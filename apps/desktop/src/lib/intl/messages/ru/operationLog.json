@@ -7,11 +7,11 @@
   "@operationLog.dialog.loading": {
     "sourceHash": "ba3bbbe"
   },
-  "operationLog.dialog.loadError": "Не удалось загрузить историю операций. Повторите попытку через некоторое время.",
+  "operationLog.dialog.loadError": "Не удалось загрузить историю операций. Попробуйте еще раз чуть позже.",
   "@operationLog.dialog.loadError": {
     "sourceHash": "cf26c51"
   },
-  "operationLog.dialog.empty": "Операций пока нет. Скопируйте, переместите, переименуйте или удалите что-нибудь — операция появится здесь.",
+  "operationLog.dialog.empty": "Операций пока нет. Скопируйте, переместите, переименуйте или удалите что-нибудь, и операция появится здесь.",
   "@operationLog.dialog.empty": {
     "sourceHash": "2dea414"
   },
@@ -139,19 +139,19 @@
   "@operationLog.rollback.partiallyRolledBack": {
     "sourceHash": "ea54c83"
   },
-  "operationLog.rollback.partiallyRolledBackNotice": "Cmdr откатил все возможное и оставил остальное без изменений. Для завершения нужен еще один проход; все сомнительные объекты будут пропущены.",
+  "operationLog.rollback.partiallyRolledBackNotice": "Cmdr откатил все, что смог, а остальное оставил как было. Чтобы завершить откат, Cmdr пройдется по операции еще раз и снова пропустит то, в чем не уверен.",
   "@operationLog.rollback.partiallyRolledBackNotice": {
     "sourceHash": "77e6f25"
   },
-  "operationLog.rollback.refusalAlreadyRollingBack": "Откат этой операции уже выполняется. Следите за ним в очереди.",
+  "operationLog.rollback.refusalAlreadyRollingBack": "Эта операция уже откатывается. Следите за ней в очереди операций.",
   "@operationLog.rollback.refusalAlreadyRollingBack": {
     "sourceHash": "282a49a"
   },
-  "operationLog.rollback.refusalAlreadyRolledBack": "Эта операция уже возвращена в исходное состояние.",
+  "operationLog.rollback.refusalAlreadyRolledBack": "Здесь уже все вернулось как было.",
   "@operationLog.rollback.refusalAlreadyRolledBack": {
     "sourceHash": "36844e7"
   },
-  "operationLog.rollback.refusalOverwrote": "Операция заменила существующие файлы. Cmdr не сохраняет копии заменяемых файлов, поэтому вернуть оригиналы невозможно.",
+  "operationLog.rollback.refusalOverwrote": "Эта операция заменила файлы, которые уже были на месте. Cmdr не хранит копии заменяемых файлов, поэтому оригиналы вернуть нельзя.",
   "@operationLog.rollback.refusalOverwrote": {
     "sourceHash": "c4fb3c4"
   },
@@ -159,7 +159,7 @@
   "@operationLog.rollback.refusalPermanentDelete": {
     "sourceHash": "5073539"
   },
-  "operationLog.rollback.refusalArchiveOverwrite": "Этот архив заменил более старый архив с тем же именем. Cmdr не сохраняет копии заменяемых файлов, поэтому вернуть прежний архив невозможно.",
+  "operationLog.rollback.refusalArchiveOverwrite": "Этот архив заменил более старый архив с тем же именем. Cmdr не хранит копии заменяемых файлов, поэтому прежний архив вернуть нельзя.",
   "@operationLog.rollback.refusalArchiveOverwrite": {
     "sourceHash": "86a374d"
   },
@@ -167,19 +167,19 @@
   "@operationLog.rollback.refusalZipEditUnsupported": {
     "sourceHash": "e0892dd"
   },
-  "operationLog.rollback.refusalJournalIncomplete": "Запись Cmdr об этой операции неполна. Откат может затронуть не те файлы.",
+  "operationLog.rollback.refusalJournalIncomplete": "Запись Cmdr об этой операции неполная, поэтому откат может затронуть не те файлы.",
   "@operationLog.rollback.refusalJournalIncomplete": {
     "sourceHash": "4176739"
   },
-  "operationLog.rollback.refusalDirectoryMerge": "При перемещении папка была объединена с существующей. Cmdr не может отличить перемещенные файлы от уже находившихся внутри, поэтому безопасный откат невозможен.",
+  "operationLog.rollback.refusalDirectoryMerge": "При этом перемещении папка объединилась с уже существующей. Cmdr не может отличить перенесенные файлы от тех, что уже были внутри, поэтому безопасно откатить операцию нельзя.",
   "@operationLog.rollback.refusalDirectoryMerge": {
     "sourceHash": "2dad38d"
   },
-  "operationLog.rollback.refusalStagedConflictResolved": "При перемещении возникло совпадение имен, и Cmdr запросил решение. Ваш ответ стал частью результата, поэтому единого способа отката нет.",
+  "operationLog.rollback.refusalStagedConflictResolved": "При этом перемещении оказалось, что такое имя уже занято, и Cmdr спросил, что делать. Ваш ответ теперь часть результата, поэтому однозначного способа отката нет.",
   "@operationLog.rollback.refusalStagedConflictResolved": {
     "sourceHash": "03ddd6e"
   },
-  "operationLog.rollback.refusalVolumeUnavailable": "Подключите диск, использованный этой операцией, и повторите попытку.",
+  "operationLog.rollback.refusalVolumeUnavailable": "Подключите диск, с которым работала эта операция, и попробуйте еще раз.",
   "@operationLog.rollback.refusalVolumeUnavailable": {
     "sourceHash": "935d109"
   },
@@ -187,7 +187,7 @@
   "@operationLog.rollback.refusalUnknown": {
     "sourceHash": "f94c33d"
   },
-  "operationLog.rollback.refusalUnexpected": "Cmdr не удалось начать откат. Повторите попытку через некоторое время.",
+  "operationLog.rollback.refusalUnexpected": "Cmdr не удалось начать откат. Попробуйте еще раз чуть позже.",
   "@operationLog.rollback.refusalUnexpected": {
     "sourceHash": "bef54f1"
   },

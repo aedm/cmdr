@@ -21,7 +21,7 @@
     "sourceHash": "aeb0b57",
     "sameAsSourceJustification": "Название бренда, стандартное обозначение или строка из подстановок; сохраняется без перевода."
   },
-  "indexing.scan.etaRough": "примерно {eta}",
+  "indexing.scan.etaRough": "{eta} (примерно)",
   "@indexing.scan.etaRough": {
     "sourceHash": "6f92820"
   },
@@ -29,7 +29,7 @@
   "@indexing.phase.priorityFolders": {
     "sourceHash": "09dd19d"
   },
-  "indexing.phase.home": "Индексация остальных папок в домашней папке",
+  "indexing.phase.home": "Индексация остального содержимого папки пользователя",
   "@indexing.phase.home": {
     "sourceHash": "8c31671"
   },
@@ -85,7 +85,7 @@
   "@indexing.summary.found": {
     "sourceHash": "fe3038e"
   },
-  "indexing.step.findFilesPhased": "Это первый проход, поэтому потребуется время. Папки становятся доступны для поиска по мере их обработки Cmdr.",
+  "indexing.step.findFilesPhased": "Это первый проход, поэтому он займет время. Папки становятся доступны для поиска, как только Cmdr до них доберется.",
   "@indexing.step.findFilesPhased": {
     "sourceHash": "dbeb379"
   },
@@ -150,51 +150,51 @@
   "@indexing.eta.almostDoneMidSentence": {
     "sourceHash": "1d2fb48"
   },
-  "indexing.eta.secondsLeft": "Осталось {secondsText} с",
+  "indexing.eta.secondsLeft": "осталось {secondsText} с",
   "@indexing.eta.secondsLeft": {
     "sourceHash": "3a67288"
   },
-  "indexing.eta.minutesLeft": "Осталось {minutesText} мин",
+  "indexing.eta.minutesLeft": "осталось {minutesText} мин",
   "@indexing.eta.minutesLeft": {
     "sourceHash": "bcb3615"
   },
-  "indexing.eta.hoursMinutesLeft": "Осталось {hours, plural, one {{hoursText} час} few {{hoursText} часа} many {{hoursText} часов} other {{hoursText} часа}} {minutes, plural, one {{minutesText} минута} few {{minutesText} минуты} many {{minutesText} минут} other {{minutesText} минуты}}",
+  "indexing.eta.hoursMinutesLeft": "осталось {hours, plural, one {{hoursText} час} few {{hoursText} часа} many {{hoursText} часов} other {{hoursText} часа}} {minutes, plural, one {{minutesText} минута} few {{minutesText} минуты} many {{minutesText} минут} other {{minutesText} минуты}}",
   "@indexing.eta.hoursMinutesLeft": {
     "sourceHash": "8b2b4c0"
   },
-  "indexing.eta.hoursLeft": "Осталось {hours, plural, one {{hoursText} час} few {{hoursText} часа} many {{hoursText} часов} other {{hoursText} часа}}",
+  "indexing.eta.hoursLeft": "осталось {hours, plural, one {{hoursText} час} few {{hoursText} часа} many {{hoursText} часов} other {{hoursText} часа}}",
   "@indexing.eta.hoursLeft": {
     "sourceHash": "1d50900"
   },
-  "indexing.rescan.staleIndex": "Индекс диска устарел. Похоже, приложение давно не запускалось. Начинается новое сканирование для обновления.",
+  "indexing.rescan.staleIndex": "Индекс диска устарел: похоже, приложение давно не запускалось. Cmdr заново сканирует диск, чтобы учесть все изменения.",
   "@indexing.rescan.staleIndex": {
     "sourceHash": "cce4c74"
   },
-  "indexing.rescan.journalGap": "В системном журнале изменений файлов не хватает старых записей. Начинается новое сканирование для восстановления индекса.",
+  "indexing.rescan.journalGap": "Системный журнал изменений файлов не охватывает весь нужный период. Cmdr заново сканирует диск, чтобы восстановить индекс.",
   "@indexing.rescan.journalGap": {
     "sourceHash": "a697c86"
   },
-  "indexing.rescan.replayOverflow": "С прошлого запуска изменилось много файлов. Вместо последовательной обработки изменений начинается новое сканирование.",
+  "indexing.rescan.replayOverflow": "С прошлого запуска изменилось очень много файлов. Cmdr заново сканирует диск, вместо того чтобы обрабатывать изменения по одному.",
   "@indexing.rescan.replayOverflow": {
     "sourceHash": "70c7481"
   },
-  "indexing.rescan.watcherStartFailed": "Не удалось запустить наблюдение за изменениями файлов. Начинается новое сканирование для обновления индекса.",
+  "indexing.rescan.watcherStartFailed": "Не удалось запустить наблюдение за изменениями файлов. Cmdr заново сканирует диск, чтобы индекс снова был актуальным.",
   "@indexing.rescan.watcherStartFailed": {
     "sourceHash": "07fb462"
   },
-  "indexing.rescan.reconcilerBufferOverflow": "Высокая активность файловой системы переполнила буфер событий. Начинается новое сканирование для сохранения точности.",
+  "indexing.rescan.reconcilerBufferOverflow": "Из-за бурной активности файловой системы переполнился буфер событий. Cmdr заново сканирует диск, чтобы индекс оставался точным.",
   "@indexing.rescan.reconcilerBufferOverflow": {
     "sourceHash": "d6000e4"
   },
-  "indexing.rescan.incompletePreviousScan": "Предыдущее сканирование не завершилось — возможно, приложение было закрыто. Сканирование начинается заново.",
+  "indexing.rescan.incompletePreviousScan": "Предыдущее сканирование не завершено (возможно, приложение было закрыто). Cmdr начинает сканирование заново.",
   "@indexing.rescan.incompletePreviousScan": {
     "sourceHash": "804084a"
   },
-  "indexing.rescan.watcherChannelOverflow": "Всплеск активности файловой системы переполнил канал наблюдения. Начинается новое сканирование для сохранения точности.",
+  "indexing.rescan.watcherChannelOverflow": "Всплеск активности файловой системы переполнил канал наблюдения за изменениями. Cmdr заново сканирует диск, чтобы индекс оставался точным.",
   "@indexing.rescan.watcherChannelOverflow": {
     "sourceHash": "b7ce086"
   },
-  "indexing.rescan.fallback": "Начинается новое сканирование диска для сохранения точности индекса.",
+  "indexing.rescan.fallback": "Cmdr заново сканирует диск, чтобы индекс оставался точным.",
   "@indexing.rescan.fallback": {
     "sourceHash": "cd99826"
   },
@@ -218,7 +218,7 @@
   "@indexing.firstConnect.silenceDrive": {
     "sourceHash": "8d7a674"
   },
-  "indexing.firstConnect.silenceAll": "Больше не спрашивать для любых дисков",
+  "indexing.firstConnect.silenceAll": "Больше не спрашивать ни про какие диски",
   "@indexing.firstConnect.silenceAll": {
     "sourceHash": "0e10003"
   },
@@ -226,7 +226,7 @@
   "@indexing.staleDialog.title": {
     "sourceHash": "7de163b"
   },
-  "indexing.staleDialog.body": "Пока диск {name} был отключен, файлы могли измениться. Размеры папок и результаты поиска могут быть неточными до повторного сканирования. Желтый индикатор рядом с диском всегда показывает такую ситуацию, а повторное сканирование обновляет индекс.",
+  "indexing.staleDialog.body": "Пока диск {name} был отключен, файлы на нем могли измениться. Размеры папок и результаты поиска могут быть немного неточными до повторного сканирования. Желтый индикатор рядом с диском всегда показывает такие случаи, а повторное сканирование все обновляет.",
   "@indexing.staleDialog.body": {
     "sourceHash": "c04519a"
   },
@@ -263,11 +263,11 @@
     "sourceHash": "ac6a373",
     "sameAsSourceJustification": "Название бренда, стандартное обозначение или строка из подстановок; сохраняется без перевода."
   },
-  "indexing.enrich.pausedIdle": "Ожидание отсутствия активности",
+  "indexing.enrich.pausedIdle": "Ждет паузы в вашей активности",
   "@indexing.enrich.pausedIdle": {
     "sourceHash": "ee9b2e9"
   },
-  "indexing.enrich.pausedDisconnected": "Приостановлено до повторного подключения",
+  "indexing.enrich.pausedDisconnected": "Приостановлено, продолжится после повторного подключения",
   "@indexing.enrich.pausedDisconnected": {
     "sourceHash": "1483989"
   },

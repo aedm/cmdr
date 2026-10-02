@@ -20,15 +20,15 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudOnlineOnlyMixedWarning": "Некоторые выбранные файлы доступны только онлайн. Для перемещения в Корзину их пришлось бы <strong>сначала скачать</strong>. Поэтому Cmdr предлагает только <strong>удалить</strong> все выбранное. Копий в Корзине не останется, но облачные службы обычно хранят удаленные файлы в своей корзине около 30 дней. Нажмите «Удалить», если согласны. Иначе отмените этот диалог и сначала сделайте все файлы доступными офлайн или отмените выбор файлов, доступных только онлайн.",
+  "fileOperations.delete.cloudOnlineOnlyMixedWarning": "Некоторые выделенные файлы доступны только онлайн. Для перемещения в Корзину их пришлось бы <strong>сначала скачать</strong>. Поэтому Cmdr предлагает только <strong>удалить</strong> все выделенное. Копий в Корзине не останется, но облачные сервисы обычно хранят удаленные файлы в своей корзине около 30 дней. Нажмите «Удалить», если согласны. Иначе отмените этот диалог и сначала сделайте все файлы доступными офлайн или снимите выделение с файлов, доступных только онлайн.",
   "@fileOperations.delete.cloudOnlineOnlyMixedWarning": {
     "sourceHash": "2468db5"
   },
-  "fileOperations.delete.cloudOnlineOnlyAllWarning": "Все выбранные файлы доступны только онлайн. Для перемещения в Корзину их пришлось бы <strong>сначала скачать</strong>. Поэтому Cmdr предлагает только <strong>удалить</strong> все выбранное. Копий в Корзине не останется, но облачные службы обычно хранят удаленные файлы в своей корзине около 30 дней. Нажмите «Удалить», если согласны. Иначе отмените этот диалог и сначала сделайте эти файлы доступными офлайн.",
+  "fileOperations.delete.cloudOnlineOnlyAllWarning": "Все выделенные файлы доступны только онлайн. Для перемещения в Корзину их пришлось бы <strong>сначала скачать</strong>. Поэтому Cmdr предлагает только <strong>удалить</strong> все выделенное. Копий в Корзине не останется, но облачные сервисы обычно хранят удаленные файлы в своей корзине около 30 дней. Нажмите «Удалить», если согласны. Иначе отмените этот диалог и сначала сделайте эти файлы доступными офлайн.",
   "@fileOperations.delete.cloudOnlineOnlyAllWarning": {
     "sourceHash": "dd04d39"
   },
-  "fileOperations.delete.cloudOnlineOnlyHandedBack": "Среди выбранных файлов оказалось содержимое, доступное только онлайн, поэтому кнопка ниже теперь предлагает действие «Удалить». Прочитайте пояснение выше и нажмите ее еще раз, если согласны.",
+  "fileOperations.delete.cloudOnlineOnlyHandedBack": "Среди выделенных файлов оказалось содержимое, доступное только онлайн, поэтому кнопка ниже теперь предлагает «Удалить». Прочитайте пояснение выше и нажмите ее еще раз, если согласны.",
   "@fileOperations.delete.cloudOnlineOnlyHandedBack": {
     "sourceHash": "d3f4a7a"
   },
@@ -108,7 +108,7 @@
   "@fileOperations.delete.titleSelected": {
     "sourceHash": "66cbe54"
   },
-  "fileOperations.delete.selectedFilesPart": "{countText} {count, plural, one {выбранный файл} few {выбранных файла} many {выбранных файлов} other {выбранного файла}}",
+  "fileOperations.delete.selectedFilesPart": "{countText} {count, plural, one {выделенный файл} few {выделенных файла} many {выделенных файлов} other {выделенного файла}}",
   "@fileOperations.delete.selectedFilesPart": {
     "sourceHash": "c444d06"
   },
@@ -116,11 +116,11 @@
   "@fileOperations.delete.foldersPart": {
     "sourceHash": "9bd56b2"
   },
-  "fileOperations.delete.symlinkNoticeSingle": "Этот объект — символическая ссылка. Будет удалена только ссылка, а не ее цель.",
+  "fileOperations.delete.symlinkNoticeSingle": "Этот объект — символическая ссылка. Будет удалена только ссылка, а не то, на что она указывает.",
   "@fileOperations.delete.symlinkNoticeSingle": {
     "sourceHash": "c5a4259"
   },
-  "fileOperations.delete.symlinkNoticeMany": "Среди выбранного: {countText} {count, plural, one {символическая ссылка} few {символические ссылки} many {символических ссылок} other {символической ссылки}}. Будут удалены только сами ссылки, а не их цели.",
+  "fileOperations.delete.symlinkNoticeMany": "В выделенном есть {countText} {count, plural, one {символическая ссылка} few {символические ссылки} many {символических ссылок} other {символической ссылки}}. Будут удалены только сами ссылки, а не то, на что они указывают.",
   "@fileOperations.delete.symlinkNoticeMany": {
     "sourceHash": "56b3f52"
   },
@@ -128,7 +128,7 @@
   "@fileOperations.mkfile.title": {
     "sourceHash": "44dedd0"
   },
-  "fileOperations.mkfile.createIn": "Создать файл в папке: <dir>{name}</dir>",
+  "fileOperations.mkfile.createIn": "Создать файл в папке <dir>{name}</dir>",
   "@fileOperations.mkfile.createIn": {
     "sourceHash": "20f4a68"
   },
@@ -144,7 +144,7 @@
   "@fileOperations.mkdir.title": {
     "sourceHash": "cf28f49"
   },
-  "fileOperations.mkdir.createIn": "Создать папку в папке: <dir>{name}</dir>",
+  "fileOperations.mkdir.createIn": "Создать папку внутри папки <dir>{name}</dir>",
   "@fileOperations.mkdir.createIn": {
     "sourceHash": "392aa18"
   },
@@ -240,7 +240,7 @@
   "@fileOperations.transferDialog.spaceInfoUnbounded": {
     "sourceHash": "5d74d4d"
   },
-  "fileOperations.transferDialog.smbNativeNote": "Этот общий ресурс использует системное подключение. Отмена может задерживаться. Выберите «Подключиться напрямую для быстрого доступа» в переключателе томов для быстрой передачи и надежной отмены.",
+  "fileOperations.transferDialog.smbNativeNote": "Эта общая папка использует системное подключение, поэтому отмена может запаздывать. Для быстрой передачи и надежной отмены выберите «Подключиться напрямую для быстрого доступа» в списке томов.",
   "@fileOperations.transferDialog.smbNativeNote": {
     "sourceHash": "60af535"
   },
@@ -251,6 +251,14 @@
   "fileOperations.transferDialog.targetWillBeCreatedMove": "Этой папки еще нет. Cmdr создаст ее при перемещении.",
   "@fileOperations.transferDialog.targetWillBeCreatedMove": {
     "sourceHash": "1246331"
+  },
+  "fileOperations.transferDialog.rootEchoWarning": "Это место уже начинается с папки {rootFolder}, поэтому этот путь ведет в {resolvedPath}. Может быть, вы имели в виду {strippedPath}?",
+  "@fileOperations.transferDialog.rootEchoWarning": {
+    "sourceHash": "b692d10"
+  },
+  "fileOperations.transferDialog.rootEchoUseStripped": "Использовать короткий путь",
+  "@fileOperations.transferDialog.rootEchoUseStripped": {
+    "sourceHash": "66972e3"
   },
   "fileOperations.transferDialog.destinationReadOnly": "Эта папка доступна только для чтения. Добавить в нее ничего нельзя.",
   "@fileOperations.transferDialog.destinationReadOnly": {
@@ -304,7 +312,7 @@
   "@fileOperations.transferDialog.scanRetry": {
     "sourceHash": "d8b8392"
   },
-  "fileOperations.transferDialog.sourceNoLongerConnected": "Телефон или сервер с этими файлами больше не подключен. Cmdr не может копировать с него.",
+  "fileOperations.transferDialog.sourceNoLongerConnected": "Телефон или сервер с этими файлами больше не подключен, поэтому Cmdr не может скопировать с него файлы.",
   "@fileOperations.transferDialog.sourceNoLongerConnected": {
     "sourceHash": "4741405"
   },
@@ -340,11 +348,11 @@
   "@fileOperations.transferDialog.policyOverwriteSmaller": {
     "sourceHash": "6b53558"
   },
-  "fileOperations.transferDialog.policyOverwriteOlder": "{count, plural, =1 {Заменить, если старее} one {Заменить все более старые} few {Заменить все более старые} many {Заменить все более старые} other {Заменить все более старые}}",
+  "fileOperations.transferDialog.policyOverwriteOlder": "{count, plural, =1 {Заменить, если более старый} one {Заменить все более старые} few {Заменить все более старые} many {Заменить все более старые} other {Заменить все более старые}}",
   "@fileOperations.transferDialog.policyOverwriteOlder": {
     "sourceHash": "97128f3"
   },
-  "fileOperations.transferDialog.policyStop": "{count, plural, =1 {Спросить позже} one {Спрашивать для каждого} few {Спрашивать для каждого} many {Спрашивать для каждого} other {Спрашивать для каждого}}",
+  "fileOperations.transferDialog.policyStop": "{count, plural, =1 {Спросить позже} one {Спрашивать каждый раз} few {Спрашивать каждый раз} many {Спрашивать каждый раз} other {Спрашивать каждый раз}}",
   "@fileOperations.transferDialog.policyStop": {
     "sourceHash": "61a6295"
   },
@@ -456,7 +464,7 @@
   "@fileOperations.transferProgress.close": {
     "sourceHash": "7d9eb7a"
   },
-  "fileOperations.transferProgress.openingSource": "Ожидание начала передачи источником ({duration})",
+  "fileOperations.transferProgress.openingSource": "Ожидаем данные от источника ({duration})",
   "@fileOperations.transferProgress.openingSource": {
     "sourceHash": "d0ad98c"
   },
@@ -464,19 +472,19 @@
   "@fileOperations.transferProgress.sourceReceiving": {
     "sourceHash": "0552601"
   },
-  "fileOperations.transferProgress.stallNotice": "Нет продвижения в течение {duration}",
+  "fileOperations.transferProgress.stallNotice": "Нет прогресса уже {duration}",
   "@fileOperations.transferProgress.stallNotice": {
     "sourceHash": "4b3c8e6"
   },
-  "fileOperations.transferProgress.stallWaitingDestination": "Ожидание ответа места назначения.",
+  "fileOperations.transferProgress.stallWaitingDestination": "Ожидаем ответа от места назначения.",
   "@fileOperations.transferProgress.stallWaitingDestination": {
     "sourceHash": "1cb8f39"
   },
-  "fileOperations.transferProgress.stallWaitingSource": "Ожидание ответа источника.",
+  "fileOperations.transferProgress.stallWaitingSource": "Ожидаем ответа от источника.",
   "@fileOperations.transferProgress.stallWaitingSource": {
     "sourceHash": "efb8d93"
   },
-  "fileOperations.transferProgress.stallUnknown": "Передача остановилась. Отмените ее или оставьте работать в фоне.",
+  "fileOperations.transferProgress.stallUnknown": "Передача замерла. Отмените ее или оставьте работать в фоне.",
   "@fileOperations.transferProgress.stallUnknown": {
     "sourceHash": "37e23a5"
   },
@@ -492,7 +500,7 @@
   "@fileOperations.transferProgress.titleConflict": {
     "sourceHash": "ae71a9a"
   },
-  "fileOperations.transferProgress.titleFlushing": "Запись последней части…",
+  "fileOperations.transferProgress.titleFlushing": "Завершение записи…",
   "@fileOperations.transferProgress.titleFlushing": {
     "sourceHash": "3aa5686"
   },
@@ -548,7 +556,7 @@
   "@fileOperations.transferProgress.warningFolderOverFile": {
     "sourceHash": "b681083"
   },
-  "fileOperations.transferProgress.lookAlikeHint": "Эти имена выглядят одинаково, но сервер различает их написание. Замена удалит существующий объект.",
+  "fileOperations.transferProgress.lookAlikeHint": "Эти имена выглядят одинаково, но на сервере они записаны по-разному. Кнопка «Заменить» заменит тот объект, что уже там лежит.",
   "@fileOperations.transferProgress.lookAlikeHint": {
     "sourceHash": "01ed9ad"
   },
@@ -564,15 +572,15 @@
   "@fileOperations.transferProgress.existingLabel": {
     "sourceHash": "4dda67f"
   },
-  "fileOperations.transferProgress.newFolderLabel": "Новая папка:",
+  "fileOperations.transferProgress.newFolderLabel": "Входящая папка:",
   "@fileOperations.transferProgress.newFolderLabel": {
     "sourceHash": "5239894"
   },
-  "fileOperations.transferProgress.newFileLabel": "Новый файл:",
+  "fileOperations.transferProgress.newFileLabel": "Входящий файл:",
   "@fileOperations.transferProgress.newFileLabel": {
     "sourceHash": "4a8d0b3"
   },
-  "fileOperations.transferProgress.newLabel": "Новое:",
+  "fileOperations.transferProgress.newLabel": "Входящее:",
   "@fileOperations.transferProgress.newLabel": {
     "sourceHash": "161dcd3"
   },
@@ -636,11 +644,11 @@
   "@fileOperations.transferProgress.conflictCancel": {
     "sourceHash": "19766ed"
   },
-  "fileOperations.transferProgress.conflictRollback": "Откат",
+  "fileOperations.transferProgress.conflictRollback": "Откатить",
   "@fileOperations.transferProgress.conflictRollback": {
     "sourceHash": "c591f55"
   },
-  "fileOperations.operationConflict.context": "{hasDestination, select, yes {{type, select, copy {Копирование в: {destination}} move {Перемещение в: {destination}} archive_edit {Редактирование: {destination}} other {Работа в: {destination}}}} other {{type, select, copy {Копирование} move {Перемещение} archive_edit {Редактирование архива} other {Работа}}}}",
+  "fileOperations.operationConflict.context": "{hasDestination, select, yes {{type, select, copy {Копирование в папку {destination}} move {Перемещение в папку {destination}} archive_edit {Изменение архива {destination}} other {Работа в папке {destination}}}} other {{type, select, copy {Копирование} move {Перемещение} archive_edit {Изменение архива} other {Выполняется операция}}}}",
   "@fileOperations.operationConflict.context": {
     "sourceHash": "ff68b4d"
   },
@@ -672,7 +680,7 @@
   "@fileOperations.transferProgress.etaRemaining": {
     "sourceHash": "a6b154c"
   },
-  "fileOperations.transferProgress.smbNativeNote": "Этот общий ресурс использует системное подключение. Отмена и откат могут задерживаться.",
+  "fileOperations.transferProgress.smbNativeNote": "Эта общая папка использует системное подключение, поэтому отмена и откат могут запаздывать.",
   "@fileOperations.transferProgress.smbNativeNote": {
     "sourceHash": "5344d07"
   },
@@ -684,7 +692,7 @@
   "@fileOperations.transferProgress.rollbackTooltipStopAndMoveBack": {
     "sourceHash": "193c682"
   },
-  "fileOperations.transferProgress.rollbackAlreadyLandedTooltip": "Все файлы уже находятся в месте назначения, поэтому Cmdr больше не может отменить перемещение. Отмена остановит удаление оставшихся оригиналов.",
+  "fileOperations.transferProgress.rollbackAlreadyLandedTooltip": "Все файлы уже в месте назначения, поэтому Cmdr больше не может отменить перемещение. Кнопка «Отменить» по-прежнему остановит удаление оставшихся оригиналов.",
   "@fileOperations.transferProgress.rollbackAlreadyLandedTooltip": {
     "sourceHash": "da51356"
   },
@@ -808,11 +816,11 @@
   "@fileOperations.cancelRollback.someMovedBack": {
     "sourceHash": "0099d44"
   },
-  "fileOperations.cancelRollback.stoppedDeleting": "Остановка после удаления {countText} {count, plural, one {объекта} few {объектов} many {объектов} other {объекта}}. Остальные остались там, где их разместил Cmdr.",
+  "fileOperations.cancelRollback.stoppedDeleting": "Откат остановлен после удаления {countText} {count, plural, one {объекта} few {объектов} many {объектов} other {объекта}}. Остальные остались там, где их разместил Cmdr.",
   "@fileOperations.cancelRollback.stoppedDeleting": {
     "sourceHash": "f9767ae"
   },
-  "fileOperations.cancelRollback.stoppedMovingBack": "Остановка после возврата {countText} {count, plural, one {объекта} few {объектов} many {объектов} other {объекта}}. Остальные остались там, куда были перемещены.",
+  "fileOperations.cancelRollback.stoppedMovingBack": "Откат остановлен после возврата {countText} {count, plural, one {объекта} few {объектов} many {объектов} other {объекта}}. Остальные остались там, куда их переместили.",
   "@fileOperations.cancelRollback.stoppedMovingBack": {
     "sourceHash": "f536342"
   },
@@ -820,77 +828,81 @@
   "@fileOperations.cancelRollback.moveAlreadyLanded": {
     "sourceHash": "88dcf83"
   },
-  "fileOperations.cancelRollback.leftBehind": "Cmdr пропускает объекты, в которых не уверен. Поэтому следующие объекты остались на месте:",
+  "fileOperations.cancelRollback.leftBehind": "Cmdr пропускает объекты, в которых не уверен, поэтому эти остались на месте:",
   "@fileOperations.cancelRollback.leftBehind": {
     "sourceHash": "bab6eb4"
   },
-  "fileOperations.cancelRollback.recoveredOriginal": "Cmdr сохранил оригинал из {path} в: {keptAt}.",
+  "fileOperations.cancelRollback.recoveredOriginal": "Cmdr сохранил оригинал из {path} как {keptAt}.",
   "@fileOperations.cancelRollback.recoveredOriginal": {
     "sourceHash": "f0df327"
   },
-  "fileOperations.cancelRollback.reason.drift.named": "Объект не изменен: {name}. После записи Cmdr он был изменен.",
+  "fileOperations.cancelRollback.reason.drift.named": "Оставлено как есть: {name}. Объект изменился после того, как Cmdr его записал.",
   "@fileOperations.cancelRollback.reason.drift.named": {
     "sourceHash": "e227f3b"
   },
-  "fileOperations.cancelRollback.reason.drift.counted": "Не изменено: {countText} {count, plural, one {объект} few {объекта} many {объектов} other {объекта}}: после записи Cmdr они были изменены.",
+  "fileOperations.cancelRollback.reason.drift.counted": "Оставлено как есть: {countText} {count, plural, one {объект} few {объекта} many {объектов} other {объекта}}. Они изменились после того, как Cmdr их записал.",
   "@fileOperations.cancelRollback.reason.drift.counted": {
     "sourceHash": "233b2f5"
   },
-  "fileOperations.cancelRollback.reason.unverifiable.named": "Без изменений: {name}. Cmdr не удалось проверить, изменился ли файл.",
+  "fileOperations.cancelRollback.reason.unverifiable.named": "Оставлено как есть: {name}. Cmdr не смог проверить, были ли изменения.",
   "@fileOperations.cancelRollback.reason.unverifiable.named": {
     "sourceHash": "3e553b2"
   },
-  "fileOperations.cancelRollback.reason.unverifiable.counted": "Не изменено: {countText} {count, plural, one {объект} few {объекта} many {объектов} other {объекта}}: Cmdr не удалось проверить наличие изменений.",
+  "fileOperations.cancelRollback.reason.unverifiable.counted": "Оставлено как есть: {countText} {count, plural, one {объект} few {объекта} many {объектов} other {объекта}}. Cmdr не смог проверить, были ли изменения.",
   "@fileOperations.cancelRollback.reason.unverifiable.counted": {
     "sourceHash": "25fe620"
   },
-  "fileOperations.cancelRollback.reason.spotTaken.named": "Объект оставлен на месте: {name}. Его прежнее место занято другим объектом.",
+  "fileOperations.cancelRollback.reason.spotTaken.named": "Оставлено на месте: {name}. На прежнем месте теперь другой объект.",
   "@fileOperations.cancelRollback.reason.spotTaken.named": {
     "sourceHash": "5e38d8d"
   },
-  "fileOperations.cancelRollback.reason.spotTaken.counted": "Оставлено на месте: {countText} {count, plural, one {объект} few {объекта} many {объектов} other {объекта}}: прежние места заняты другими объектами.",
+  "fileOperations.cancelRollback.reason.spotTaken.counted": "Оставлено на месте: {countText} {count, plural, one {объект} few {объекта} many {объектов} other {объекта}}. На прежних местах теперь другие объекты.",
   "@fileOperations.cancelRollback.reason.spotTaken.counted": {
     "sourceHash": "a55ac9a"
   },
-  "fileOperations.cancelRollback.reason.folderNotEmpty.named": "Папка без изменений: {name}. Сейчас в папке есть содержимое.",
+  "fileOperations.cancelRollback.reason.folderNotEmpty.named": "Папка {name} оставлена как есть. В ней теперь что-то есть.",
   "@fileOperations.cancelRollback.reason.folderNotEmpty.named": {
     "sourceHash": "b487d24"
   },
-  "fileOperations.cancelRollback.reason.folderNotEmpty.counted": "Без изменений: {countText} {count, plural, one {папка} few {папки} many {папок} other {папки}}. Сейчас в папках есть содержимое.",
+  "fileOperations.cancelRollback.reason.folderNotEmpty.counted": "Оставлено как есть: {countText} {count, plural, one {папка} few {папки} many {папок} other {папки}}. В них теперь что-то есть.",
   "@fileOperations.cancelRollback.reason.folderNotEmpty.counted": {
     "sourceHash": "d2c9f56"
   },
-  "fileOperations.cancelRollback.reason.failed.named": "Не удалось отменить действие для: {name}. Возможно, диск отключен или доступен только для чтения.",
+  "fileOperations.cancelRollback.reason.failed.named": "Не удалось отменить: {name}. Возможно, диск отключен или доступен только для чтения.",
   "@fileOperations.cancelRollback.reason.failed.named": {
     "sourceHash": "d22eda5"
   },
-  "fileOperations.cancelRollback.reason.failed.counted": "Не удалось отменить действия для {countText} {count, plural, one {объекта} few {объектов} many {объектов} other {объекта}}. Возможно, диск отключен или доступен только для чтения.",
+  "fileOperations.cancelRollback.reason.failed.counted": "Не удалось отменить: {countText} {count, plural, one {объект} few {объекта} many {объектов} other {объекта}}. Возможно, их диск отключен или доступен только для чтения.",
   "@fileOperations.cancelRollback.reason.failed.counted": {
     "sourceHash": "fa172fb"
   },
-  "fileOperations.cancelRollback.stagedLeftover.named": "Не удалось удалить незавершенную копию в месте назначения: {name}. Ее можно безопасно удалить. Cmdr очистит ее при следующей передаче в это место.",
+  "fileOperations.cancelRollback.stagedLeftover.named": "Не удалось убрать незавершенную копию в месте назначения: {name}. Ее можно спокойно удалить, а Cmdr уберет ее сам при одной из следующих передач туда.",
   "@fileOperations.cancelRollback.stagedLeftover.named": {
     "sourceHash": "d47b49d"
   },
-  "fileOperations.cancelRollback.stagedLeftover.counted": "Не удалось удалить {countText} {count, plural, one {незавершенную копию} few {незавершенные копии} many {незавершенных копий} other {незавершенной копии}} в месте назначения. Их можно безопасно удалить. Cmdr очистит их при следующей передаче в это место.",
+  "fileOperations.cancelRollback.stagedLeftover.counted": "Не удалось убрать {countText} {count, plural, one {незавершенную копию} few {незавершенные копии} many {незавершенных копий} other {незавершенной копии}} в месте назначения. Их можно спокойно удалить, а Cmdr уберет их сам при одной из следующих передач туда.",
   "@fileOperations.cancelRollback.stagedLeftover.counted": {
     "sourceHash": "6567e25"
   },
-  "fileOperations.leftovers.stagingFolderKept": "Cmdr нашел файлы незавершенного перемещения на томе {volumeName} и оставил их в скрытой папке: {folderName}.",
+  "fileOperations.leftovers.stagingFolderKept": "Cmdr нашел файлы незавершенного перемещения на томе {volumeName} и оставил их на месте, в скрытой папке {folderName}.",
   "@fileOperations.leftovers.stagingFolderKept": {
     "sourceHash": "fd848b8"
   },
-  "fileOperations.errorDialog.technicalDetails": "Технические сведения",
+  "fileOperations.errorDialog.technicalDetails": "Технические подробности",
   "@fileOperations.errorDialog.technicalDetails": {
     "sourceHash": "890ab35"
   },
-  "fileOperations.errorDialog.technicalDetailsAria": "Технические сведения об ошибке",
+  "fileOperations.errorDialog.technicalDetailsAria": "Технические подробности ошибки",
   "@fileOperations.errorDialog.technicalDetailsAria": {
     "sourceHash": "708186c"
   },
   "fileOperations.errorDialog.retry": "Повторить",
   "@fileOperations.errorDialog.retry": {
     "sourceHash": "942087c"
+  },
+  "fileOperations.errorDialog.copyAnyway": "Все равно скопировать",
+  "@fileOperations.errorDialog.copyAnyway": {
+    "sourceHash": "f794181"
   },
   "fileOperations.errorDialog.close": "Закрыть",
   "@fileOperations.errorDialog.close": {
@@ -904,7 +916,7 @@
   "@fileOperations.archivePassword.title": {
     "sourceHash": "54fd670"
   },
-  "fileOperations.archivePassword.retryTitle": "Не удалось разблокировать",
+  "fileOperations.archivePassword.retryTitle": "Пароль не подошел",
   "@fileOperations.archivePassword.retryTitle": {
     "sourceHash": "a12d349"
   },
@@ -912,7 +924,7 @@
   "@fileOperations.archivePassword.message": {
     "sourceHash": "ba28841"
   },
-  "fileOperations.archivePassword.retryMessage": "Этот пароль не разблокировал архив <archive>{name}</archive>. Попробуйте еще раз.",
+  "fileOperations.archivePassword.retryMessage": "С этим паролем архив <archive>{name}</archive> не разблокируется. Попробуйте еще раз.",
   "@fileOperations.archivePassword.retryMessage": {
     "sourceHash": "3d62c0c"
   },
@@ -944,7 +956,7 @@
   "@fileOperations.validation.pathTooLong": {
     "sourceHash": "1658c7a"
   },
-  "fileOperations.validation.extensionChangeBlocked": "Изменять расширение файла нельзя (было «{oldExt}»)",
+  "fileOperations.validation.extensionChangeBlocked": "Менять расширение файла не разрешено (было «{oldExt}»)",
   "@fileOperations.validation.extensionChangeBlocked": {
     "sourceHash": "e81362d"
   },

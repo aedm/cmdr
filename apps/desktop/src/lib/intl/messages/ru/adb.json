@@ -1,5 +1,5 @@
 {
-  "adb.connect.adbNotInstalled": "Cmdr не удалось найти инструменты платформы Android.",
+  "adb.connect.adbNotInstalled": "Cmdr не удалось найти пакет Android platform tools.",
   "@adb.connect.adbNotInstalled": {
     "sourceHash": "a842454"
   },
@@ -11,11 +11,11 @@
   "@adb.connect.serverUnreachable": {
     "sourceHash": "b53716b"
   },
-  "adb.connect.deviceGone": "Телефон больше не подключен.",
+  "adb.connect.deviceGone": "Ваш телефон больше не подключен.",
   "@adb.connect.deviceGone": {
     "sourceHash": "00d5254"
   },
-  "adb.connect.unauthorized": "Проверьте телефон и нажмите «Разрешить».",
+  "adb.connect.unauthorized": "Посмотрите на экран телефона и нажмите «Разрешить».",
   "@adb.connect.unauthorized": {
     "sourceHash": "6c2cf77"
   },
@@ -23,19 +23,19 @@
   "@adb.connect.deviceTooOld": {
     "sourceHash": "9ce52c1"
   },
-  "adb.connect.timedOut": "Телефон не ответил вовремя.",
+  "adb.connect.timedOut": "Ваш телефон не ответил вовремя.",
   "@adb.connect.timedOut": {
     "sourceHash": "20ddfdc"
   },
-  "adb.connect.transport": "Cmdr потерял соединение с телефоном.",
+  "adb.connect.transport": "Cmdr потерял соединение с вашим телефоном.",
   "@adb.connect.transport": {
     "sourceHash": "d90c37c"
   },
-  "adb.connect.cancelled": "Открытие телефона отменено.",
+  "adb.connect.cancelled": "Вы отменили открытие телефона.",
   "@adb.connect.cancelled": {
     "sourceHash": "bc525aa"
   },
-  "adb.connect.waitingHint": "Cmdr откроет телефон сразу после вашего разрешения.",
+  "adb.connect.waitingHint": "Cmdr откроет телефон, как только вы разрешите доступ.",
   "@adb.connect.waitingHint": {
     "sourceHash": "d1df048"
   },
@@ -43,7 +43,7 @@
   "@adb.readiness.waitingForAuthorization": {
     "sourceHash": "679558e"
   },
-  "adb.readiness.offline": "Телефон не отвечает. Включите экран или переподключите кабель.",
+  "adb.readiness.offline": "Ваш телефон не отвечает. Включите экран или переподключите кабель.",
   "@adb.readiness.offline": {
     "sourceHash": "6061885"
   },
@@ -67,7 +67,7 @@
   "@adb.disconnectDeviceAriaLabel": {
     "sourceHash": "8f755cb"
   },
-  "adb.disconnectBusyTooltip": "Cmdr еще работает с файлами на этом устройстве. Отключите устройство после завершения работы.",
+  "adb.disconnectBusyTooltip": "Cmdr еще работает с файлами на этом устройстве. Отключите его, когда работа завершится.",
   "@adb.disconnectBusyTooltip": {
     "sourceHash": "73c355e"
   },

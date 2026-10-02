@@ -446,6 +446,22 @@
       {
         "source": "{count, plural, one {file} other {files}}",
         "reason": "The selection summary follows «из» (3 из 21 файла), so fileExplorer.summary.fileNoun requires the genitive; scan counters stand alone and require nominative/number-governed forms (21 файл)."
+      },
+      {
+        "source": "custom",
+        "reason": "The «настроить…» cell opens a free-form input; the input's placeholder names what to type («значение»), since a bare «пользовательский» there would be an orphan adjective."
+      },
+      {
+        "source": "Open",
+        "reason": "«Открыть» is the menu command; «Открывать» is one of three habitual-behavior options for archives («Просматривать / Открывать / Спрашивать»), which need the imperfective."
+      },
+      {
+        "source": "Preview",
+        "reason": "«Просмотр» is the preview feature; settings.appearance.datePreviewLabel labels a sample of the chosen date format, so «Пример:»."
+      },
+      {
+        "source": "Running",
+        "reason": "A local AI server that is up «Работает»; an operation in progress «Выполняется». Different senses of the same English word."
       }
     ]
   },

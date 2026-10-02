@@ -39,7 +39,7 @@
   "@search.notAFolderToast": {
     "sourceHash": "a801255"
   },
-  "search.searchableFolder.disabledTooltip": "Сейчас открыты результаты поиска, в которых нельзя искать. Сначала откройте настоящую папку.",
+  "search.searchableFolder.disabledTooltip": "В текущей папке открыты результаты поиска, а в них искать нельзя. Сначала откройте настоящую папку.",
   "@search.searchableFolder.disabledTooltip": {
     "sourceHash": "42e599d"
   },
@@ -83,7 +83,7 @@
   "@search.imageResults.matchedDescription": {
     "sourceHash": "3b30350"
   },
-  "search.imageResults.similarTo": "Похоже на {name}",
+  "search.imageResults.similarTo": "Похожие на {name}",
   "@search.imageResults.similarTo": {
     "sourceHash": "fc94bbb"
   },
@@ -95,11 +95,11 @@
   "@search.imageResults.similarEmpty": {
     "sourceHash": "d3ef9f7"
   },
-  "search.walkHandoff.running": "Поиск еще идет: {label}",
+  "search.walkHandoff.running": "Поиск по запросу «{label}» еще идет",
   "@search.walkHandoff.running": {
     "sourceHash": "79a7339"
   },
-  "search.walkHandoff.counts": "Найдено {matchCount, plural, one {# совпадение} few {# совпадения} many {# совпадений} other {# совпадения}}, {folderCount, plural, one {проверена # папка} few {проверены # папки} many {проверено # папок} other {проверено # папки}}",
+  "search.walkHandoff.counts": "Пока найдено {matchCount, plural, one {# совпадение} few {# совпадения} many {# совпадений} other {# совпадения}}, {folderCount, plural, one {просканирована # папка} few {просканированы # папки} many {просканировано # папок} other {просканировано # папки}}",
   "@search.walkHandoff.counts": {
     "sourceHash": "8e68f3f"
   },
@@ -115,15 +115,15 @@
   "@search.walkHandoff.hideTooltip": {
     "sourceHash": "7ee94f1"
   },
-  "search.walkHandoff.finished": "{count, plural, one {Найдено # совпадение} few {Найдено # совпадения} many {Найдено # совпадений} other {Найдено # совпадения}} для {label}.",
+  "search.walkHandoff.finished": "По запросу «{label}» {count, plural, one {найдено # совпадение} few {найдено # совпадения} many {найдено # совпадений} other {найдено # совпадения}}.",
   "@search.walkHandoff.finished": {
     "sourceHash": "0cbc210"
   },
-  "search.walkHandoff.stoppedShort": "Результаты для {label} могут быть неполными: Cmdr проверил не все.",
+  "search.walkHandoff.stoppedShort": "Результаты по запросу «{label}» могут быть неполными: Cmdr проверил не все.",
   "@search.walkHandoff.stoppedShort": {
     "sourceHash": "d196ce2"
   },
-  "search.walkHandoff.superseded": "Cmdr перестал добавлять результаты для {label}, поскольку начался новый поиск.",
+  "search.walkHandoff.superseded": "Cmdr перестал дополнять результаты по запросу «{label}», потому что начался ваш новый поиск.",
   "@search.walkHandoff.superseded": {
     "sourceHash": "83aa5a2"
   },
@@ -163,7 +163,7 @@
   "@search.coverage.walk.abandonedCount": {
     "sourceHash": "2a79bc5"
   },
-  "search.coverage.denied": "{count, plural, =1 {Cmdr не получил доступа к этой папке, поэтому ее содержимого нет в результатах:} one {Cmdr не получил доступа к этим папкам, поэтому их содержимого нет в результатах:} few {Cmdr не получил доступа к этим папкам, поэтому их содержимого нет в результатах:} many {Cmdr не получил доступа к этим папкам, поэтому их содержимого нет в результатах:} other {Cmdr не получил доступа к этим папкам, поэтому их содержимого нет в результатах:}}",
+  "search.coverage.denied": "{count, plural, =1 {Cmdr не разрешено заглядывать в эту папку, поэтому ее содержимого нет в результатах:} one {Cmdr не разрешено заглядывать в эти папки, поэтому их содержимого нет в результатах:} few {Cmdr не разрешено заглядывать в эти папки, поэтому их содержимого нет в результатах:} many {Cmdr не разрешено заглядывать в эти папки, поэтому их содержимого нет в результатах:} other {Cmdr не разрешено заглядывать в эти папки, поэтому их содержимого нет в результатах:}}",
   "@search.coverage.denied": {
     "sourceHash": "c71fc2e"
   },
@@ -179,11 +179,11 @@
   "@search.coverage.declined": {
     "sourceHash": "85465f3"
   },
-  "search.coverage.stillCovering": "{count, plural, =1 {Другой поиск уже проверяет эту папку. Файлы появятся через некоторое время:} one {Другой поиск уже проверяет эти папки. Файлы появятся через некоторое время:} few {Другой поиск уже проверяет эти папки. Файлы появятся через некоторое время:} many {Другой поиск уже проверяет эти папки. Файлы появятся через некоторое время:} other {Другой поиск уже проверяет эти папки. Файлы появятся через некоторое время:}}",
+  "search.coverage.stillCovering": "{count, plural, =1 {Другой поиск уже проверяет эту папку, ее файлы скоро появятся:} one {Другой поиск уже проверяет эти папки, их файлы скоро появятся:} few {Другой поиск уже проверяет эти папки, их файлы скоро появятся:} many {Другой поиск уже проверяет эти папки, их файлы скоро появятся:} other {Другой поиск уже проверяет эти папки, их файлы скоро появятся:}}",
   "@search.coverage.stillCovering": {
     "sourceHash": "acd21dc"
   },
-  "search.coverage.unnamedDrive": "этот диск",
+  "search.coverage.unnamedDrive": "без названия",
   "@search.coverage.unnamedDrive": {
     "sourceHash": "5092f21"
   },

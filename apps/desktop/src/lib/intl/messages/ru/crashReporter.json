@@ -7,15 +7,15 @@
   "@crashReporter.dialog.title.report": {
     "sourceHash": "d8b86d2"
   },
-  "crashReporter.dialog.body.ended": "В прошлый раз Cmdr неожиданно завершил работу. Этот отчет о сбое содержит сведения, которые помогут устранить проблему.",
+  "crashReporter.dialog.body.ended": "В прошлый раз Cmdr неожиданно завершил работу. Вот отчет о сбое со сведениями, которые помогут это исправить.",
   "@crashReporter.dialog.body.ended": {
     "sourceHash": "d67f8cb"
   },
-  "crashReporter.dialog.body.keptRunning": "В прошлый раз в Cmdr возникла фоновая проблема, но приложение продолжило работу. Этот отчет содержит сведения, которые помогут устранить проблему.",
+  "crashReporter.dialog.body.keptRunning": "В прошлый раз в фоновой задаче Cmdr возникла проблема, но приложение продолжило работу. Вот отчет со сведениями, которые помогут это исправить.",
   "@crashReporter.dialog.body.keptRunning": {
     "sourceHash": "a972339"
   },
-  "crashReporter.dialog.body.unknown": "В прошлый раз в Cmdr возникла проблема. Этот отчет содержит сведения, которые помогут ее устранить.",
+  "crashReporter.dialog.body.unknown": "В прошлый раз в Cmdr возникла проблема. Вот отчет со сведениями, которые помогут это исправить.",
   "@crashReporter.dialog.body.unknown": {
     "sourceHash": "bed6934"
   },
@@ -47,7 +47,7 @@
   "@crashReporter.dialog.alwaysSend": {
     "sourceHash": "8306c0e"
   },
-  "crashReporter.dialog.dismiss": "Скрыть",
+  "crashReporter.dialog.dismiss": "Закрыть",
   "@crashReporter.dialog.dismiss": {
     "sourceHash": "48845bf"
   },
@@ -71,7 +71,7 @@
   "@crashReporter.sentToast.message.report": {
     "sourceHash": "a676ed5"
   },
-  "crashReporter.sentToast.changeSettings": "Изменить в разделе «Настройки > Обновления»",
+  "crashReporter.sentToast.changeSettings": "Изменить в настройках «Обновления и конфиденциальность»",
   "@crashReporter.sentToast.changeSettings": {
     "sourceHash": "25d151d"
   },
@@ -83,7 +83,7 @@
   "@crashReporter.sentToast.sendLogHint": {
     "sourceHash": "aec472c"
   },
-  "crashReporter.sentToast.logSent": "Журнал отправлен с идентификатором {id}. Так найти причину будет гораздо проще.",
+  "crashReporter.sentToast.logSent": "Журнал отправлен, идентификатор: {id}. Так найти причину будет гораздо проще.",
   "@crashReporter.sentToast.logSent": {
     "sourceHash": "9a0dc9e"
   },

@@ -1,5 +1,5 @@
 {
-  "licensing.windowTitle.personalUse": "Cmdr – Только для личного использования",
+  "licensing.windowTitle.personalUse": "Cmdr – только для личного использования",
   "@licensing.windowTitle.personalUse": {
     "sourceHash": "2b855d7"
   },
@@ -57,7 +57,7 @@
     "sourceHash": "40c6a1b",
     "sameAsSourceJustification": "Product name, author attribution, copyright or universal symbol is kept verbatim per docs/i18n/translation-principles.md and the Russian style guide."
   },
-  "licensing.about.tagline": "Файловый менеджер с управлением с клавиатуры",
+  "licensing.about.tagline": "Файловый менеджер для работы с клавиатуры",
   "@licensing.about.tagline": {
     "sourceHash": "e399865"
   },
@@ -144,7 +144,7 @@
   "@licensing.expiration.title": {
     "sourceHash": "7067c40"
   },
-  "licensing.expiration.orgName": "Лицензия для: <strong>{org}</strong>",
+  "licensing.expiration.orgName": "Владелец лицензии: <strong>{org}</strong>",
   "@licensing.expiration.orgName": {
     "sourceHash": "a5f0bab"
   },
@@ -228,7 +228,7 @@
   "@licensing.dialog.validityExpiredOn": {
     "sourceHash": "f8383a3"
   },
-  "licensing.dialog.pendingHint": "Проверка на сервере пройдет автоматически в течение {days} дн.",
+  "licensing.dialog.pendingHint": "Мы автоматически проверим ключ на сервере в течение {days, plural, one {# дня} few {# дней} many {# дней} other {# дня}}.",
   "@licensing.dialog.pendingHint": {
     "sourceHash": "b4bbb38"
   },
@@ -260,7 +260,7 @@
   "@licensing.dialog.inputPlaceholder": {
     "sourceHash": "3fb5cf9"
   },
-  "licensing.dialog.retryExhausted": "Число неудачных попыток: {count}. Извините за неудобства. Напишите нам на <supportEmail>{email}</supportEmail>, и мы разберемся.",
+  "licensing.dialog.retryExhausted": "Мы попробовали {count, plural, one {# раз} few {# раза} many {# раз} other {# раза}}, но не получилось. Извините за неудобства. Напишите нам на <supportEmail>{email}</supportEmail>, и мы во всем разберемся.",
   "@licensing.dialog.retryExhausted": {
     "sourceHash": "d2aa21a"
   },
@@ -324,7 +324,7 @@
   "@licensing.dialog.mailtoSubject": {
     "sourceHash": "685a80d"
   },
-  "licensing.dialog.mailtoBody": "Здравствуйте,\n\nНе удается активировать лицензионный ключ:\n{key}\n\n",
+  "licensing.dialog.mailtoBody": "Здравствуйте,\n\nУ меня проблема с активацией лицензионного ключа:\n{key}\n\n",
   "@licensing.dialog.mailtoBody": {
     "sourceHash": "c076655"
   },
@@ -352,15 +352,15 @@
   "@licensing.error.shortCodeNotFoundHint": {
     "sourceHash": "a2f07d2"
   },
-  "licensing.error.network": "Не удалось связаться с сервером лицензий.",
+  "licensing.error.network": "Ой, на этот раз не получилось связаться с сервером лицензий.",
   "@licensing.error.network": {
     "sourceHash": "d03567c"
   },
-  "licensing.error.networkHint": "Проверьте подключение к интернету и повторите попытку.",
+  "licensing.error.networkHint": "Проверьте подключение к интернету и попробуйте еще раз.",
   "@licensing.error.networkHint": {
     "sourceHash": "67cba62"
   },
-  "licensing.error.server": "Сервер лицензий вернул неожиданный ответ. Извините за неудобства.",
+  "licensing.error.server": "Хм, сервер лицензий прислал странный ответ. Извините за это.",
   "@licensing.error.server": {
     "sourceHash": "89870f9"
   },
@@ -368,7 +368,7 @@
   "@licensing.error.serverHint": {
     "sourceHash": "386b914"
   },
-  "licensing.error.generic": "При активации этого ключа произошла ошибка.",
+  "licensing.error.generic": "При активации этого ключа что-то пошло не так.",
   "@licensing.error.generic": {
     "sourceHash": "436e264"
   },

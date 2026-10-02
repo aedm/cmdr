@@ -16,7 +16,7 @@
   "@ui.popover.defaultAriaLabel": {
     "sourceHash": "d0db8b5"
   },
-  "ui.select.placeholder": "Выбрать…",
+  "ui.select.placeholder": "Выберите…",
   "@ui.select.placeholder": {
     "sourceHash": "731fe04"
   },
@@ -44,7 +44,7 @@
   "@ui.copyBox.copied": {
     "sourceHash": "ea61bc1"
   },
-  "ui.shortcutChip.customizeAria": "Настроить сочетание клавиш для команды: {commandName}",
+  "ui.shortcutChip.customizeAria": "Настроить сочетание клавиш для команды «{commandName}»",
   "@ui.shortcutChip.customizeAria": {
     "sourceHash": "a1d00b2"
   },
@@ -56,7 +56,7 @@
   "@ui.toast.sendErrorReport": {
     "sourceHash": "063c94e"
   },
-  "ui.toast.dismissAria": "Скрыть уведомление",
+  "ui.toast.dismissAria": "Закрыть уведомление",
   "@ui.toast.dismissAria": {
     "sourceHash": "b7bb3f3"
   },
@@ -64,7 +64,7 @@
   "@ui.toast.age": {
     "sourceHash": "6dcfed0"
   },
-  "ui.loadingIcon.finalizing": "Все файлы загружены ({countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}). Сортировка файлов и подготовка вида…",
+  "ui.loadingIcon.finalizing": "Все файлы загружены ({countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}). Сортировка и подготовка списка…",
   "@ui.loadingIcon.finalizing": {
     "sourceHash": "0de5a42"
   },

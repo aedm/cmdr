@@ -19,11 +19,11 @@
   "@viewer.error.noPath": {
     "sourceHash": "2b069fc"
   },
-  "viewer.error.readFailed": "Не удалось прочитать файл",
+  "viewer.error.readFailed": "Не удалось прочитать этот файл. Попробовать еще раз?",
   "@viewer.error.readFailed": {
-    "sourceHash": "ea7d976"
+    "sourceHash": "8c420fd"
   },
-  "viewer.error.notFound": "Не удалось найти файл. Возможно, файл перемещен, переименован или удален.",
+  "viewer.error.notFound": "Не удалось найти этот файл. Возможно, его переместили, переименовали или удалили.",
   "@viewer.error.notFound": {
     "sourceHash": "9257fab"
   },
@@ -35,7 +35,7 @@
   "@viewer.error.timeout": {
     "sourceHash": "74b9656"
   },
-  "viewer.error.tooLargeToPreview": "Этот файл слишком велик для просмотра отсюда. Сначала скопируйте файл из этого места, затем откройте.",
+  "viewer.error.tooLargeToPreview": "Этот файл слишком большой, чтобы просмотреть его отсюда. Сначала скопируйте его в обычную папку, затем откройте.",
   "@viewer.error.tooLargeToPreview": {
     "sourceHash": "8696039"
   },
@@ -51,11 +51,11 @@
   "@viewer.error.cancel": {
     "sourceHash": "19766ed"
   },
-  "viewer.error.stoppedResponding": "Передача файла остановилась. Проверьте подключение телефона или сервера и повторите попытку.",
+  "viewer.error.stoppedResponding": "Передача файла замерла. Проверьте, что телефон или сервер все еще подключен, и попробуйте еще раз.",
   "@viewer.error.stoppedResponding": {
     "sourceHash": "f88b690"
   },
-  "viewer.pull.title": "Загрузка для просмотра: {fileName}",
+  "viewer.pull.title": "Получение файла {fileName} для просмотра",
   "@viewer.pull.title": {
     "sourceHash": "3a02768"
   },
@@ -63,7 +63,7 @@
   "@viewer.pull.progress": {
     "sourceHash": "edce3be"
   },
-  "viewer.pull.progressUnknownTotal": "Пока {doneText}",
+  "viewer.pull.progressUnknownTotal": "Получено: {doneText}",
   "@viewer.pull.progressUnknownTotal": {
     "sourceHash": "548095e"
   },
@@ -95,9 +95,10 @@
   "@viewer.search.caseSensitive": {
     "sourceHash": "e124ba4"
   },
-  "viewer.search.regex": "Регулярное выражение",
+  "viewer.search.regex": "Regex",
   "@viewer.search.regex": {
-    "sourceHash": "0f27125"
+    "sourceHash": "0f27125",
+    "sameAsSourceJustification": "«Regex» is the developer term Russian tools keep in tight chips and toggles (JetBrains ru, VS Code ru tooltips); the full «Регулярное выражение» stays in prose and placeholders."
   },
   "viewer.search.matchPosition": "{current} из {total}{more, select, yes {+} other {}}",
   "@viewer.search.matchPosition": {
@@ -119,7 +120,7 @@
   "@viewer.search.stop": {
     "sourceHash": "c48cf72"
   },
-  "viewer.search.stopTooltip": "Остановить просмотр и сохранить результаты",
+  "viewer.search.stopTooltip": "Остановить поиск и сохранить результаты",
   "@viewer.search.stopTooltip": {
     "sourceHash": "b86629c"
   },
@@ -151,19 +152,20 @@
   "@viewer.toolbar.viewMode.binary": {
     "sourceHash": "ee1c827"
   },
-  "viewer.toolbar.viewMode.hex": "Шестнадцатеричный",
+  "viewer.toolbar.viewMode.hex": "Hex",
   "@viewer.toolbar.viewMode.hex": {
-    "sourceHash": "69493e6"
+    "sourceHash": "69493e6",
+    "sameAsSourceJustification": "«Hex» is the termbase-accepted form (concept hex) and what Russian hex viewers label the mode; a segmented option has no room for «Шестнадцатеричный»."
   },
-  "viewer.toolbar.viewMode.viewAsText": "Просмотр как текста",
+  "viewer.toolbar.viewMode.viewAsText": "Показать как текст",
   "@viewer.toolbar.viewMode.viewAsText": {
     "sourceHash": "a0059b8"
   },
-  "viewer.toolbar.viewMode.viewAsImage": "Просмотр как изображения",
+  "viewer.toolbar.viewMode.viewAsImage": "Показать как изображение",
   "@viewer.toolbar.viewMode.viewAsImage": {
     "sourceHash": "ae04259"
   },
-  "viewer.toolbar.viewMode.viewAsPdf": "Просмотр как PDF",
+  "viewer.toolbar.viewMode.viewAsPdf": "Показать как PDF",
   "@viewer.toolbar.viewMode.viewAsPdf": {
     "sourceHash": "ee89800"
   },
@@ -193,7 +195,7 @@
   "@viewer.toolbar.encoding.group.western": {
     "sourceHash": "d7d2f0f"
   },
-  "viewer.toolbar.encoding.detectedSuffix": "{label} (определено)",
+  "viewer.toolbar.encoding.detectedSuffix": "{label} (определена)",
   "@viewer.toolbar.encoding.detectedSuffix": {
     "sourceHash": "2096536"
   },
@@ -278,7 +280,7 @@
   "@viewer.image.loading": {
     "sourceHash": "65999b8"
   },
-  "viewer.image.error": "Не удалось показать изображение. Возможно, файл поврежден или имеет неподдерживаемый формат.",
+  "viewer.image.error": "Извините, не удалось показать это изображение. Возможно, файл поврежден или его формат не поддерживается.",
   "@viewer.image.error": {
     "sourceHash": "1e8c6d9"
   },
@@ -286,15 +288,15 @@
   "@viewer.pdf.loading": {
     "sourceHash": "7f9acf3"
   },
-  "viewer.copyDialog.confirmTitleKnown": "Копировать {size} в буфер обмена?",
+  "viewer.copyDialog.confirmTitleKnown": "Скопировать {size} в буфер обмена?",
   "@viewer.copyDialog.confirmTitleKnown": {
     "sourceHash": "7f97ebf"
   },
-  "viewer.copyDialog.confirmTitleUnknown": "Копировать выделение в буфер обмена?",
+  "viewer.copyDialog.confirmTitleUnknown": "Скопировать выделение в буфер обмена?",
   "@viewer.copyDialog.confirmTitleUnknown": {
     "sourceHash": "0956c8b"
   },
-  "viewer.copyDialog.confirmBody": "Вставка больших объемов может замедлить другие приложения. Используйте поиск (⌘F), чтобы сократить выделение.",
+  "viewer.copyDialog.confirmBody": "Вставка большого объема данных может замедлить другие приложения. Попробуйте поиск (⌘F), чтобы сузить выделение.",
   "@viewer.copyDialog.confirmBody": {
     "sourceHash": "c1f2927"
   },
@@ -310,7 +312,7 @@
   "@viewer.copyDialog.copy": {
     "sourceHash": "e21f935"
   },
-  "viewer.copyDialog.refuseBody": "Объем превышает ограничение буфера обмена в 100 MB. Используйте поиск (⌘F), чтобы найти нужное, или сохраните выделение как файл.",
+  "viewer.copyDialog.refuseBody": "Это больше лимита буфера обмена в 100 MB. Попробуйте найти нужное поиском (⌘F) или сохраните выделение как файл.",
   "@viewer.copyDialog.refuseBody": {
     "sourceHash": "3eaf921"
   },
@@ -334,19 +336,19 @@
   "@viewer.copy.onClipboard": {
     "sourceHash": "45934ed"
   },
-  "viewer.copy.clipboardUnreachable": "Не удалось получить доступ к буферу обмена. Повторить попытку?",
+  "viewer.copy.clipboardUnreachable": "Не удалось получить доступ к буферу обмена. Попробуйте еще раз.",
   "@viewer.copy.clipboardUnreachable": {
     "sourceHash": "3c8ddb8"
   },
-  "viewer.copy.readTooLong": "Чтение заняло слишком много времени. Уменьшить выделение?",
+  "viewer.copy.readTooLong": "Чтение заняло слишком много времени. Попробуйте выделить меньше.",
   "@viewer.copy.readTooLong": {
     "sourceHash": "2275e83"
   },
-  "viewer.copy.copyFailed": "Не удалось скопировать выделение. Повторить попытку?",
+  "viewer.copy.copyFailed": "Не удалось скопировать выделение. Попробуйте еще раз.",
   "@viewer.copy.copyFailed": {
     "sourceHash": "b08416d"
   },
-  "viewer.copy.readFailed": "Не удалось прочитать выделение. Повторить попытку?",
+  "viewer.copy.readFailed": "Не удалось прочитать выделение. Попробуйте еще раз.",
   "@viewer.copy.readFailed": {
     "sourceHash": "24ea14a"
   },
@@ -358,7 +360,7 @@
   "@viewer.saveAs.defaultName": {
     "sourceHash": "6504513"
   },
-  "viewer.saveAs.panelFailed": "Не удалось открыть окно сохранения. Повторить попытку?",
+  "viewer.saveAs.panelFailed": "Не удалось открыть окно сохранения. Попробуйте еще раз.",
   "@viewer.saveAs.panelFailed": {
     "sourceHash": "ade021c"
   },
@@ -366,15 +368,15 @@
   "@viewer.saveAs.saved": {
     "sourceHash": "5083c12"
   },
-  "viewer.saveAs.tooLong": "Сохранение заняло слишком много времени. Уменьшить выделение?",
+  "viewer.saveAs.tooLong": "Сохранение заняло слишком много времени. Попробуйте выделить меньше.",
   "@viewer.saveAs.tooLong": {
     "sourceHash": "f31d7f4"
   },
-  "viewer.saveAs.saveFailed": "Не удалось сохранить выделение. Повторить попытку?",
+  "viewer.saveAs.saveFailed": "Не удалось сохранить выделение. Попробуйте еще раз.",
   "@viewer.saveAs.saveFailed": {
     "sourceHash": "ca5709f"
   },
-  "viewer.saveAs.destinationReadOnly": "Это место доступно только для чтения. Выбрать другую папку для сохранения?",
+  "viewer.saveAs.destinationReadOnly": "Это место доступно только для чтения. Выберите другую папку для сохранения.",
   "@viewer.saveAs.destinationReadOnly": {
     "sourceHash": "8d627aa"
   },
@@ -390,17 +392,17 @@
   "@viewer.selection.toEndOfFile": {
     "sourceHash": "62d95be"
   },
-  "viewer.selection.singleLine": "В строке {line} выделено символов: {chars}",
+  "viewer.selection.singleLine": "{chars, plural, one {Выделен # символ} few {Выделено # символа} many {Выделено # символов} other {Выделено # символа}} в строке {line}",
   "@viewer.selection.singleLine": {
-    "sourceHash": "bb320d5"
+    "sourceHash": "eb11697"
   },
-  "viewer.selection.multiLine": "Выделены строки с {startLine} по {endLine}, символов: {chars}",
+  "viewer.selection.multiLine": "Выделены строки с {startLine} по {endLine}, {chars, plural, one {# символ} few {# символа} many {# символов} other {# символа}}",
   "@viewer.selection.multiLine": {
-    "sourceHash": "074c687"
+    "sourceHash": "5ba7791"
   },
-  "viewer.selection.charsOnly": "Выделено символов: {chars}",
+  "viewer.selection.charsOnly": "{chars, plural, one {Выделен # символ} few {Выделено # символа} many {Выделено # символов} other {Выделено # символа}}",
   "@viewer.selection.charsOnly": {
-    "sourceHash": "b772db6"
+    "sourceHash": "3db2c4e"
   },
   "viewer.selection.toEndOfFileNoLine": "Выделено до конца файла",
   "@viewer.selection.toEndOfFileNoLine": {

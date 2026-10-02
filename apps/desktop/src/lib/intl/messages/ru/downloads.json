@@ -7,7 +7,7 @@
   "@downloads.toast.inSubdir": {
     "sourceHash": "eea56f4"
   },
-  "downloads.toast.learnIntro": "Полезный совет о переходе к загрузкам",
+  "downloads.toast.learnIntro": "Кстати, к загрузкам можно перейти одним нажатием",
   "@downloads.toast.learnIntro": {
     "sourceHash": "3a06888"
   },
@@ -63,7 +63,7 @@
   "@downloads.empty.message": {
     "sourceHash": "83e7e07"
   },
-  "downloads.empty.dismiss": "Скрыть",
+  "downloads.empty.dismiss": "Закрыть",
   "@downloads.empty.dismiss": {
     "sourceHash": "48845bf"
   },
@@ -71,11 +71,11 @@
   "@downloads.empty.goToDownloads": {
     "sourceHash": "5c72aeb"
   },
-  "downloads.fda.message": "Cmdr нужен полный доступ к диску для наблюдения за папкой «Загрузки».",
+  "downloads.fda.message": "Чтобы следить за папкой «Загрузки», Cmdr нужен полный доступ к диску.",
   "@downloads.fda.message": {
     "sourceHash": "82c82c6"
   },
-  "downloads.fda.dismiss": "Скрыть",
+  "downloads.fda.dismiss": "Закрыть",
   "@downloads.fda.dismiss": {
     "sourceHash": "48845bf"
   },
@@ -95,15 +95,15 @@
   "@downloads.warnToast.keepOn": {
     "sourceHash": "cbfff78"
   },
-  "downloads.shortcutRow.scopeTitle": "Глобальное",
+  "downloads.shortcutRow.scopeTitle": "Глобальные сочетания",
   "@downloads.shortcutRow.scopeTitle": {
     "sourceHash": "a258b30"
   },
-  "downloads.shortcutRow.commandName": "Перейти к последней загрузке <marker>(глобальное)</marker>",
+  "downloads.shortcutRow.commandName": "Перейти к последней загрузке <marker>(глобально)</marker>",
   "@downloads.shortcutRow.commandName": {
     "sourceHash": "83f6d4b"
   },
-  "downloads.shortcutRow.modifiedTooltip": "Изменено значение по умолчанию",
+  "downloads.shortcutRow.modifiedTooltip": "Отличается от значения по умолчанию",
   "@downloads.shortcutRow.modifiedTooltip": {
     "sourceHash": "3d86215"
   },

@@ -7,11 +7,11 @@
   "@suggestedOps.description": {
     "sourceHash": "73255a0"
   },
-  "suggestedOps.empty": "Сейчас нет предложений, ожидающих ответа.",
+  "suggestedOps.empty": "Пока ничего не ждет вашего ответа.",
   "@suggestedOps.empty": {
     "sourceHash": "b93eccd"
   },
-  "suggestedOps.loadFailed": "Cmdr не удалось прочитать предложения. Закройте окно и откройте снова.",
+  "suggestedOps.loadFailed": "Cmdr не удалось прочитать предложения. Закройте окно и откройте его снова.",
   "@suggestedOps.loadFailed": {
     "sourceHash": "ef0da3e"
   },
@@ -51,7 +51,7 @@
   "@suggestedOps.reversibleRestoreMove": {
     "sourceHash": "de7f6ff"
   },
-  "suggestedOps.reversibleDeleteWritten": "Для отмены удалите созданные файлы",
+  "suggestedOps.reversibleDeleteWritten": "Отмена удалит созданные файлы",
   "@suggestedOps.reversibleDeleteWritten": {
     "sourceHash": "997843a"
   },
@@ -63,7 +63,7 @@
   "@suggestedOps.folderWillBeCreated": {
     "sourceHash": "26243e5"
   },
-  "suggestedOps.folderWillBeCreatedTooltip": "Целевой папки еще нет. При одобрении она будет создана, как и при самостоятельном запуске перемещения.",
+  "suggestedOps.folderWillBeCreatedTooltip": "Целевой папки пока нет. Одобрение создаст ее, точно так же, как если бы вы сами запустили перемещение.",
   "@suggestedOps.folderWillBeCreatedTooltip": {
     "sourceHash": "2d28b7c"
   },
@@ -119,11 +119,11 @@
   "@suggestedOps.retryFiles": {
     "sourceHash": "d8b8392"
   },
-  "suggestedOps.decisionNotRecorded": "Cmdr не удалось сохранить ваш ответ. Повторите попытку.",
+  "suggestedOps.decisionNotRecorded": "Cmdr не удалось сохранить ваш ответ. Попробуйте еще раз.",
   "@suggestedOps.decisionNotRecorded": {
     "sourceHash": "9eae594"
   },
-  "suggestedOps.approvalUnsure": "Cmdr не уверен, что одобрение получено. Проверьте очередь операций, прежде чем одобрять повторно.",
+  "suggestedOps.approvalUnsure": "Cmdr не уверен, что одобрение прошло. Проверьте очередь операций, прежде чем одобрять снова.",
   "@suggestedOps.approvalUnsure": {
     "sourceHash": "fba515a"
   },

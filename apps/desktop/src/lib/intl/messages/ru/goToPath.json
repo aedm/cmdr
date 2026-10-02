@@ -27,7 +27,7 @@
   "@goToPath.dialog.confirm": {
     "sourceHash": "6cc8519"
   },
-  "goToPath.dialog.ancestorHint": "Этот путь не существует. Ближайшая доступная папка: {dir}.",
+  "goToPath.dialog.ancestorHint": "Такого пути нет. Ближайшая папка, куда можно перейти: {dir}.",
   "@goToPath.dialog.ancestorHint": {
     "sourceHash": "e6eefca"
   },
@@ -47,7 +47,7 @@
   "@goToPath.dialog.addsServer": {
     "sourceHash": "8e73f74"
   },
-  "goToPath.dialog.snapshotNotAPath": "Результаты поиска не являются путем для перехода.",
+  "goToPath.dialog.snapshotNotAPath": "К результатам поиска нельзя перейти по пути.",
   "@goToPath.dialog.snapshotNotAPath": {
     "sourceHash": "1332610"
   }

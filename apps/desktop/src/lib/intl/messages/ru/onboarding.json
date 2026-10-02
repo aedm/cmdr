@@ -3,19 +3,19 @@
   "@onboarding.fdaBadge.label": {
     "sourceHash": "0aa10cf"
   },
-  "onboarding.fdaBadge.tooltip": "Этот доступ необязателен, но с ним Cmdr работает гораздо лучше: ищет по всему диску, читает облачные папки и меняет файлы, которые macOS защищает. Нажмите, чтобы еще раз рассмотреть этот выбор.",
+  "onboarding.fdaBadge.tooltip": "Этот доступ необязателен, но с ним Cmdr работает гораздо лучше: ищет по всему диску, читает облачные папки и меняет файлы, которые macOS бережет для себя. Нажмите, чтобы вернуться к этому выбору.",
   "@onboarding.fdaBadge.tooltip": {
     "sourceHash": "d7ff906"
   },
-  "onboarding.fdaBadge.ariaLabel": "Нет полного доступа к диску. Открыть шаг первоначальной настройки с полным доступом к диску.",
+  "onboarding.fdaBadge.ariaLabel": "Нет полного доступа к диску. Открыть шаг знакомства с приложением, посвященный полному доступу к диску.",
   "@onboarding.fdaBadge.ariaLabel": {
     "sourceHash": "60ee833"
   },
-  "onboarding.wizard.title": "Первоначальная настройка Cmdr",
+  "onboarding.wizard.title": "Знакомство с Cmdr",
   "@onboarding.wizard.title": {
     "sourceHash": "3b97a1b"
   },
-  "onboarding.wizard.progressLabel": "Ход первоначальной настройки",
+  "onboarding.wizard.progressLabel": "Ход знакомства с приложением",
   "@onboarding.wizard.progressLabel": {
     "sourceHash": "ad8a0da"
   },
@@ -27,7 +27,7 @@
   "@onboarding.moreAbout": {
     "sourceHash": "b4d183a"
   },
-  "onboarding.wizard.stepTooltip": "Шаг {step} из {mandatory}+1{note, select, remaining {, остался один необязательный шаг} last {, это последний, необязательный шаг} other {}}",
+  "onboarding.wizard.stepTooltip": "Шаг {step} из {mandatory}+1{note, select, remaining {, остался один необязательный шаг} last {, это последний необязательный шаг} other {}}",
   "@onboarding.wizard.stepTooltip": {
     "sourceHash": "53f848a"
   },
@@ -67,7 +67,7 @@
   "@onboarding.stepFda.alreadyGranted.title": {
     "sourceHash": "403273d"
   },
-  "onboarding.stepFda.alreadyGranted.body": "Вы можете отозвать доступ в любой момент: {systemSettings}.",
+  "onboarding.stepFda.alreadyGranted.body": "Отозвать доступ можно в любой момент в приложении «{systemSettings}».",
   "@onboarding.stepFda.alreadyGranted.body": {
     "sourceHash": "98fb9f4"
   },
@@ -83,7 +83,7 @@
   "@onboarding.stepFda.revoked.noAccess": {
     "sourceHash": "415a3f3"
   },
-  "onboarding.stepFda.revoked.ifIntentional": "Если это сделано намеренно, нажмите <deny>Отказать</deny>, и приложение больше не будет спрашивать.",
+  "onboarding.stepFda.revoked.ifIntentional": "Если это сделано намеренно, нажмите <deny>Отклонить</deny>, и приложение больше не будет спрашивать.",
   "@onboarding.stepFda.revoked.ifIntentional": {
     "sourceHash": "6ab4c94"
   },
@@ -91,11 +91,11 @@
   "@onboarding.stepFda.revoked.ifNot": {
     "sourceHash": "b40412b"
   },
-  "onboarding.stepFda.firstAsk.lede": "<strong>Вам наверняка хочется сразу начать пользоваться приложением.</strong> Извините за этот предварительный вопрос, но он необходим.",
+  "onboarding.stepFda.firstAsk.lede": "<strong>Вам наверняка хочется сразу начать пользоваться приложением.</strong> Простите, что начинаем с этого, но это действительно нужно.",
   "@onboarding.stepFda.firstAsk.lede": {
     "sourceHash": "4f2f392"
   },
-  "onboarding.stepFda.firstAsk.explain": "Cmdr — файловый менеджер, и ему нужен доступ к диску, чтобы видеть все ваши файлы. macOS не предоставляет такое разрешение автоматически.",
+  "onboarding.stepFda.firstAsk.explain": "Дело в том, что Cmdr — файловый менеджер, и ему нужен доступ к диску, чтобы видеть все ваши файлы. macOS не дает такое разрешение автоматически.",
   "@onboarding.stepFda.firstAsk.explain": {
     "sourceHash": "4196968"
   },
@@ -119,7 +119,7 @@
   "@onboarding.stepFda.con.label": {
     "sourceHash": "ebfc77d"
   },
-  "onboarding.stepFda.con.body": "Полный доступ к диску — серьезное разрешение: приложение сможет прочитать любой файл на Mac. Предоставляйте его, только если доверяете Cmdr. Cmdr бережно использует этот доступ, а его <sourceLink>исходный код доступен</sourceLink>, если у вас есть сомнения.",
+  "onboarding.stepFda.con.body": "Полный доступ к диску — серьезное разрешение: приложение сможет прочитать любой файл на Mac. Предоставляйте его, только если доверяете Cmdr. Cmdr пользуется этим правом бережно, а если сомневаетесь, <sourceLink>исходный код Cmdr открыт для просмотра</sourceLink>.",
   "@onboarding.stepFda.con.body": {
     "sourceHash": "af7f0de"
   },
@@ -147,11 +147,11 @@
   "@onboarding.stepFda.step2.tip": {
     "sourceHash": "ffc4289"
   },
-  "onboarding.stepFda.step3": "Подтвердите и нажмите <strong>Завершить и открыть заново</strong>",
+  "onboarding.stepFda.step3": "Подтвердите и нажмите <strong>Перезапустить</strong>",
   "@onboarding.stepFda.step3": {
     "sourceHash": "cf59f30"
   },
-  "onboarding.stepFda.deny": "Отказать",
+  "onboarding.stepFda.deny": "Отклонить",
   "@onboarding.stepFda.deny": {
     "sourceHash": "05a2d73"
   },
@@ -159,7 +159,7 @@
   "@onboarding.stepFda.postAction.intro": {
     "sourceHash": "cac5247"
   },
-  "onboarding.stepFda.postAction.body": "Когда будете готовы, нажмите <restart>Перезапустить Cmdr</restart> ниже. Если передумаете, нажмите <deny>Отказать</deny> выше.",
+  "onboarding.stepFda.postAction.body": "Когда будете готовы, нажмите <restart>Перезапустить Cmdr</restart> ниже. Если передумаете, нажмите <deny>Отклонить</deny> выше.",
   "@onboarding.stepFda.postAction.body": {
     "sourceHash": "7a5c238"
   },
@@ -179,7 +179,7 @@
   "@onboarding.stepAi.bannerTitle.denied": {
     "sourceHash": "0aa10cf"
   },
-  "onboarding.stepAi.bannerBody.denied": "Вы решили не предоставлять полный доступ к диску. Мы уважаем ваш выбор. Вскоре macOS запросит разрешения для доступа Cmdr к папкам «Рабочий стол», «Загрузки» и другим. Вы можете принять или отклонить их. Все это можно изменить позже: {systemSettings}.",
+  "onboarding.stepAi.bannerBody.denied": "Вы решили не предоставлять полный доступ к диску. Мы уважаем ваш выбор. Вскоре macOS запросит разрешения для доступа Cmdr к папкам «Рабочий стол», «Загрузки» и другим. Принимайте или отклоняйте их на свое усмотрение. Все это можно изменить позже в приложении «{systemSettings}».",
   "@onboarding.stepAi.bannerBody.denied": {
     "sourceHash": "fa85a39"
   },
@@ -187,7 +187,7 @@
   "@onboarding.stepAi.bannerTitle.stuck": {
     "sourceHash": "6e60ae7"
   },
-  "onboarding.stepAi.bannerBody.stuck": "Вы решили предоставить полный доступ к диску, но Cmdr, похоже, еще не получил его. Возможно, нужно перезапустить приложение (можно сейчас — продолжим с этого шага!) или открыть <settingsLink>{systemSettings} > Конфиденциальность и безопасность > Полный доступ к диску</settingsLink> и найти Cmdr либо добавить его вручную кнопкой «+» внизу.",
+  "onboarding.stepAi.bannerBody.stuck": "Вы решили предоставить полный доступ к диску, но Cmdr, похоже, еще не получил его. Возможно, нужно перезапустить приложение (можно сейчас, мы продолжим с этого шага!) или открыть <settingsLink>{systemSettings} > Конфиденциальность и безопасность > Доступ к диску</settingsLink> и найти Cmdr либо добавить его вручную кнопкой «+» внизу.",
   "@onboarding.stepAi.bannerBody.stuck": {
     "sourceHash": "c13bbbe"
   },
@@ -203,7 +203,7 @@
   "@onboarding.stepAi.title": {
     "sourceHash": "7fb7b12"
   },
-  "onboarding.stepAi.intro": "В Cmdr есть несколько возможностей ИИ, которые <em>могут</em> вам пригодиться, а могут и не понадобиться. Сейчас ИИ вызывает много споров.",
+  "onboarding.stepAi.intro": "В Cmdr есть немало функций ИИ, которые <em>могут</em> вам пригодиться, а могут и нет. Сейчас ИИ — тема спорная.",
   "@onboarding.stepAi.intro": {
     "sourceHash": "3b6b6c6"
   },
@@ -211,7 +211,7 @@
   "@onboarding.stepAi.comparisonIntro": {
     "sourceHash": "440ea64"
   },
-  "onboarding.stepAi.table.colFeature": "Возможность",
+  "onboarding.stepAi.table.colFeature": "Задача",
   "@onboarding.stepAi.table.colFeature": {
     "sourceHash": "3d377ae"
   },
@@ -235,11 +235,11 @@
   "@onboarding.stepAi.table.searchWith": {
     "sourceHash": "457e19a"
   },
-  "onboarding.stepAi.table.rowRename": "Массовое переименование",
+  "onboarding.stepAi.table.rowRename": "Групповое переименование",
   "@onboarding.stepAi.table.rowRename": {
     "sourceHash": "9246b56"
   },
-  "onboarding.stepAi.table.renameWithout": "Вы вручную задаете шаблон в окне массового переименования, проверяете и применяете.",
+  "onboarding.stepAi.table.renameWithout": "Вы вручную задаете шаблон в окне группового переименования, проверяете и применяете.",
   "@onboarding.stepAi.table.renameWithout": {
     "sourceHash": "b12d997"
   },
@@ -247,7 +247,7 @@
   "@onboarding.stepAi.table.renameWith": {
     "sourceHash": "5287ae3"
   },
-  "onboarding.stepAi.table.rowSelect": "Выбор",
+  "onboarding.stepAi.table.rowSelect": "Выделение",
   "@onboarding.stepAi.table.rowSelect": {
     "sourceHash": "2a78025"
   },
@@ -255,11 +255,11 @@
   "@onboarding.stepAi.table.selectWithoutBound": {
     "sourceHash": "83f83b9"
   },
-  "onboarding.stepAi.table.selectWithoutUnbound": "Вы открываете «Выбрать файлы…» и вводите что-то вроде <code>*.jpg,*.png,*.gif,*.heic,*.webp,*.jpeg</code>, проверяете и применяете.",
+  "onboarding.stepAi.table.selectWithoutUnbound": "Вы открываете «Выделить файлы…» и вводите что-то вроде <code>*.jpg,*.png,*.gif,*.heic,*.webp,*.jpeg</code>, проверяете и применяете.",
   "@onboarding.stepAi.table.selectWithoutUnbound": {
     "sourceHash": "bf9239a"
   },
-  "onboarding.stepAi.table.selectWith": "Вы говорите «выбрать все изображения», агент предлагает выбор, а вы проверяете и применяете по желанию.",
+  "onboarding.stepAi.table.selectWith": "Вы говорите «выделить все изображения», агент предлагает, что выделить, а вы проверяете и применяете по желанию.",
   "@onboarding.stepAi.table.selectWith": {
     "sourceHash": "c1cc90b"
   },
@@ -279,11 +279,11 @@
   "@onboarding.stepAi.cloud.recommended": {
     "sourceHash": "d70604e"
   },
-  "onboarding.stepAi.cloud.help": "Используйте облачный сервис со своим API-ключом или собственный ollama/LLM. Настройте ниже.",
+  "onboarding.stepAi.cloud.help": "Подключите любого поставщика облачного ИИ со своим API-ключом или собственный ollama/LLM. Настройка ниже.",
   "@onboarding.stepAi.cloud.help": {
     "sourceHash": "0841a0d"
   },
-  "onboarding.stepAi.cloud.pickerTitle": "Выберите провайдера",
+  "onboarding.stepAi.cloud.pickerTitle": "Выберите поставщика",
   "@onboarding.stepAi.cloud.pickerTitle": {
     "sourceHash": "71e2ca7"
   },
@@ -291,7 +291,7 @@
   "@onboarding.stepAi.local.label": {
     "sourceHash": "2ee5605"
   },
-  "onboarding.stepAi.local.tooltip": "Локальная модель заметно слабее облачных, занимает около 2 ГБ на диске и использует оперативную память и процессор при каждом обращении.\nЗато данные не покидают компьютер.\nCmdr старается обновлять модель до лучшей из доступных небольших моделей. Если вам нужна конфиденциальность <em>и</em> хорошая модель, лучше запустить собственный сервер ollama и настроить его через вариант <strong>Да, мне нужен ИИ</strong> ниже.",
+  "onboarding.stepAi.local.tooltip": "Локальная модель заметно глупее облачных, занимает около 2 ГБ на диске и при каждом обращении нагружает оперативную память и процессор.\nЗато данные не покидают ваш компьютер.\nCmdr старается выпускать обновления, чтобы у вас была лучшая из доступных небольших моделей. Но если вам нужна конфиденциальность <em>и</em> приличная модель, лучше всего запустить собственный сервер ollama и настроить его через вариант <strong>Да, мне нужен ИИ</strong> ниже.",
   "@onboarding.stepAi.local.tooltip": {
     "sourceHash": "ddc1a76"
   },
@@ -299,7 +299,7 @@
   "@onboarding.stepAi.local.note": {
     "sourceHash": "af89d60"
   },
-  "onboarding.stepAi.localTooltip": "Локальная LLM требует Apple silicon. Облачный ИИ работает на Intel.",
+  "onboarding.stepAi.localTooltip": "Для локальной LLM нужен Mac с чипом Apple. Облачный ИИ работает и на Intel.",
   "@onboarding.stepAi.localTooltip": {
     "sourceHash": "75c6d48"
   },
@@ -339,7 +339,7 @@
   "@onboarding.stepBeta.openBeta": {
     "sourceHash": "f3bed8c"
   },
-  "onboarding.stepBeta.checklist.title": "Список действий: каждое займет 30 секунд:",
+  "onboarding.stepBeta.checklist.title": "Контрольный список знакомства (каждый пункт займет 30 секунд):",
   "@onboarding.stepBeta.checklist.title": {
     "sourceHash": "6c0fc62"
   },
@@ -351,7 +351,7 @@
   "@onboarding.stepBeta.checklist.starNote": {
     "sourceHash": "6553ce2"
   },
-  "onboarding.stepBeta.checklist.alternativeTo": "Поставить отметку «Нравится» Cmdr на AlternativeTo",
+  "onboarding.stepBeta.checklist.alternativeTo": "Поставить лайк Cmdr на AlternativeTo",
   "@onboarding.stepBeta.checklist.alternativeTo": {
     "sourceHash": "c9b1e1e"
   },
@@ -387,11 +387,11 @@
   "@onboarding.stepBeta.crashReportsNote": {
     "sourceHash": "9be0be1"
   },
-  "onboarding.stepBeta.emailTitle": "Оставаться на связи (необязательно)",
+  "onboarding.stepBeta.emailTitle": "Будем на связи (необязательно)",
   "@onboarding.stepBeta.emailTitle": {
     "sourceHash": "cf691fa"
   },
-  "onboarding.stepBeta.emailPlaceholder": "вы@example.com",
+  "onboarding.stepBeta.emailPlaceholder": "name@example.com",
   "@onboarding.stepBeta.emailPlaceholder": {
     "sourceHash": "53e6cdc"
   },
@@ -399,7 +399,7 @@
   "@onboarding.stepBeta.signup.success": {
     "sourceHash": "b96010e"
   },
-  "onboarding.stepBeta.signup.failure": "Сейчас не удалось подписать вас. Повторить попытку?",
+  "onboarding.stepBeta.signup.failure": "Простите, сейчас не получилось вас подписать. Попробовать еще раз?",
   "@onboarding.stepBeta.signup.failure": {
     "sourceHash": "14adb30"
   },
@@ -455,11 +455,11 @@
   "@onboarding.stepOptional.networking.title": {
     "sourceHash": "204de4b"
   },
-  "onboarding.stepOptional.networking.summary": "Нужно один раз разрешить доступ к локальной сети",
+  "onboarding.stepOptional.networking.summary": "Нужно один раз разрешить пункт «Локальная сеть»",
   "@onboarding.stepOptional.networking.summary": {
     "sourceHash": "f49fbc6"
   },
-  "onboarding.stepOptional.networking.desc": "Когда этот параметр <em>включен</em>, можно подключаться к SMB-серверам: рабочим сетевым папкам, домашним NAS и другим.\nmacOS лишь запросит доступ к «Локальной сети» и разрешение на «Входящие подключения».\nОба запроса безобидны, но без понимания их смысла могут тревожить или раздражать.",
+  "onboarding.stepOptional.networking.desc": "Когда этот параметр <em>включен</em>, можно подключаться к SMB-серверам: рабочим сетевым папкам, домашнему NAS и тому подобному.\nЕдинственная плата: macOS покажет диалоговое окно с запросом разрешения для пункта «Локальная сеть» и еще одно такое окно для входящих подключений.\nОба окна безобидны, но если не знать, что это такое, они могут напугать или раздражать.",
   "@onboarding.stepOptional.networking.desc": {
     "sourceHash": "d473c62"
   },
@@ -491,11 +491,11 @@
   "@onboarding.stepOptional.updates.title": {
     "sourceHash": "147b1b6"
   },
-  "onboarding.stepOptional.updates.summary": "Небольшая проверка при запуске и раз в день, чтобы версия оставалась актуальной",
+  "onboarding.stepOptional.updates.summary": "Одна крошечная проверка при запуске приложения и раз в день, чтобы у вас всегда была последняя версия",
   "@onboarding.stepOptional.updates.summary": {
     "sourceHash": "c44fcd4"
   },
-  "onboarding.stepOptional.updates.desc": "Если включить этот параметр, Cmdr отправляет небольшой сетевой запрос центральному серверу лицензий при каждом запуске и раз в 24 часа, и вы всегда получаете последние обновления.\nЕсли выключить, текущая версия сохранится, а Cmdr не будет делать автоматические сетевые запросы (кроме периодических проверок коммерческой лицензии, если она у вас есть).",
+  "onboarding.stepOptional.updates.desc": "Если включить этот параметр, Cmdr отправляет крошечный сетевой запрос центральному серверу лицензий при каждом запуске приложения и раз в 24 часа, и у вас всегда последние обновления.\nЕсли выключить, текущая версия сохранится, а Cmdr не будет делать автоматических сетевых запросов (кроме периодических проверок коммерческой лицензии, если она у вас есть).",
   "@onboarding.stepOptional.updates.desc": {
     "sourceHash": "e1a0582"
   },
@@ -507,11 +507,11 @@
   "@onboarding.stepOptional.mtp.summary": {
     "sourceHash": "d5b9a6e"
   },
-  "onboarding.stepOptional.mtp.desc": "Если включить этот параметр, Cmdr сможет <strong>подключаться к телефонам Android, Kindle, камерам</strong>, некоторым музыкальным плеерам и другим устройствам с протоколами MTP или PTP.\nmacOS <em>тоже</em> пытается подключиться к ним (обычно безуспешно, поэтому Finder не позволяет просто копировать фотографии с Android), и Cmdr приходится приостанавливать этот процесс macOS на время работы.\nПосле выхода из Cmdr работа процесса восстанавливается.",
+  "onboarding.stepOptional.mtp.desc": "Если включить этот параметр, Cmdr сможет <strong>подключаться к телефонам Android, Kindle, камерам</strong>, некоторым музыкальным плеерам и другим устройствам с протоколами MTP или PTP.\nПлата за это: macOS <em>тоже</em> пытается подключиться к ним (обычно безуспешно, поэтому Finder не позволяет просто скопировать фотографии с Android), и Cmdr приходится приостанавливать этот процесс macOS, пока Cmdr работает.\nПосле завершения Cmdr все аккуратно восстанавливается.",
   "@onboarding.stepOptional.mtp.desc": {
     "sourceHash": "8a60e7f"
   },
-  "onboarding.cloudPicker.listAria": "Провайдеры облачного ИИ",
+  "onboarding.cloudPicker.listAria": "Поставщики облачного ИИ",
   "@onboarding.cloudPicker.listAria": {
     "sourceHash": "9494a49"
   },
@@ -531,7 +531,7 @@
   "@onboarding.cloudSetup.step.install": {
     "sourceHash": "cd0221c"
   },
-  "onboarding.cloudSetup.step.ollamaModel": "Загрузите модель в терминале командой ollama pull llama3.2 или <libraryLink>посмотрите каталог</libraryLink>",
+  "onboarding.cloudSetup.step.ollamaModel": "Загрузите модель в терминале командой ollama pull llama3.2 или <libraryLink>откройте библиотеку моделей</libraryLink>",
   "@onboarding.cloudSetup.step.ollamaModel": {
     "sourceHash": "5999d6a"
   },
@@ -539,7 +539,7 @@
   "@onboarding.cloudSetup.step.lmStudioServer": {
     "sourceHash": "447957a"
   },
-  "onboarding.cloudSetup.hint.azureEndpoint": "Замените шаблон в адресе именем своего ресурса Azure OpenAI. Этот адрес не требует параметра api-version.",
+  "onboarding.cloudSetup.hint.azureEndpoint": "Замените заполнитель в адресе именем своего ресурса Azure OpenAI. Для этого адреса параметр api-version не нужен.",
   "@onboarding.cloudSetup.hint.azureEndpoint": {
     "sourceHash": "b1d408e"
   },
@@ -591,7 +591,7 @@
   "@onboarding.cloudSetup.status.connectionError": {
     "sourceHash": "fcab672"
   },
-  "onboarding.cloudSetup.status.genericError": "Произошла ошибка",
+  "onboarding.cloudSetup.status.genericError": "Что-то пошло не так",
   "@onboarding.cloudSetup.status.genericError": {
     "sourceHash": "ab827e3"
   },
@@ -611,7 +611,7 @@
   "@onboarding.cloudSetup.modelPlaceholderExample": {
     "sourceHash": "2287b9f"
   },
-  "onboarding.cloudSetup.modelPlaceholder": "Имя модели",
+  "onboarding.cloudSetup.modelPlaceholder": "Название модели",
   "@onboarding.cloudSetup.modelPlaceholder": {
     "sourceHash": "a3c3370"
   }

@@ -7,7 +7,7 @@
   "@menu.bar.edit": {
     "sourceHash": "464c4ff"
   },
-  "menu.bar.select": "Выбор",
+  "menu.bar.select": "Выделение",
   "@menu.bar.select": {
     "sourceHash": "2a78025"
   },
@@ -51,7 +51,7 @@
   "@menu.app.checkForUpdates": {
     "sourceHash": "52d6f7d"
   },
-  "menu.app.changelog": "История изменений",
+  "menu.app.changelog": "Журнал изменений",
   "@menu.app.changelog": {
     "sourceHash": "ead07c8"
   },
@@ -123,7 +123,7 @@
   "@menu.file.delete": {
     "sourceHash": "e2d0a54"
   },
-  "menu.file.deletePermanently": "Удалить немедленно",
+  "menu.file.deletePermanently": "Удалить безвозвратно",
   "@menu.file.deletePermanently": {
     "sourceHash": "280b10c"
   },
@@ -191,39 +191,39 @@
   "@menu.edit.searchFiles": {
     "sourceHash": "149a9d1"
   },
-  "menu.select.all": "Выбрать все",
+  "menu.select.all": "Выделить все",
   "@menu.select.all": {
     "sourceHash": "1fc9a38"
   },
-  "menu.select.deselectAll": "Отменить выбор",
+  "menu.select.deselectAll": "Снять выделение со всех",
   "@menu.select.deselectAll": {
     "sourceHash": "9675494"
   },
-  "menu.select.sameKind": "Выбрать все того же типа",
+  "menu.select.sameKind": "Выделить все того же типа",
   "@menu.select.sameKind": {
     "sourceHash": "9933028"
   },
-  "menu.select.allFolders": "Выбрать все папки",
+  "menu.select.allFolders": "Выделить все папки",
   "@menu.select.allFolders": {
     "sourceHash": "5351f8b"
   },
-  "menu.select.sameExtension": "Выбрать все с расширением *.{extension}",
+  "menu.select.sameExtension": "Выделить все с расширением *.{extension}",
   "@menu.select.sameExtension": {
     "sourceHash": "7809a58"
   },
-  "menu.select.noExtension": "Выбрать все файлы без расширения",
+  "menu.select.noExtension": "Выделить все файлы без расширения",
   "@menu.select.noExtension": {
     "sourceHash": "d04751e"
   },
-  "menu.select.invert": "Инвертировать выбор",
+  "menu.select.invert": "Инвертировать выделение",
   "@menu.select.invert": {
     "sourceHash": "d2e128a"
   },
-  "menu.select.files": "Выбрать файлы…",
+  "menu.select.files": "Выделить файлы…",
   "@menu.select.files": {
     "sourceHash": "b7f202e"
   },
-  "menu.select.deselectFiles": "Отменить выбор файлов…",
+  "menu.select.deselectFiles": "Снять выделение с файлов…",
   "@menu.select.deselectFiles": {
     "sourceHash": "6fb10d5"
   },
@@ -235,7 +235,7 @@
   "@menu.view.rightPane": {
     "sourceHash": "b2d98e6"
   },
-  "menu.view.fullView": "Полный режим",
+  "menu.view.fullView": "Подробный режим",
   "@menu.view.fullView": {
     "sourceHash": "93f9dde"
   },
@@ -279,9 +279,10 @@
   "@menu.view.suggestedOps": {
     "sourceHash": "4f24ca6"
   },
-  "menu.view.askCmdr": "Спросить Cmdr",
+  "menu.view.askCmdr": "Ask Cmdr",
   "@menu.view.askCmdr": {
-    "sourceHash": "aafb1ce"
+    "sourceHash": "aafb1ce",
+    "sameAsSourceJustification": "Product name (the built-in AI panel); kept verbatim in every locale, matching commands.askCmdrToggle.label. The ru termbase rules Ask Cmdr verbatim (ask-cmdr)."
   },
   "menu.sort.name": "Имя",
   "@menu.sort.name": {
@@ -439,11 +440,11 @@
   "@menu.context.edit": {
     "sourceHash": "464c4ff"
   },
-  "menu.context.selection": "Выбор",
+  "menu.context.selection": "Выделение",
   "@menu.context.selection": {
     "sourceHash": "ca40670"
   },
-  "menu.context.toggleSelection": "Изменить выбор",
+  "menu.context.toggleSelection": "Выделить или снять выделение",
   "@menu.context.toggleSelection": {
     "sourceHash": "6cb5515"
   },
@@ -483,11 +484,11 @@
   "@menu.context.share": {
     "sourceHash": "29887a5"
   },
-  "menu.context.shareLoading": "Поиск вариантов отправки…",
+  "menu.context.shareLoading": "Поиск вариантов, чтобы поделиться…",
   "@menu.context.shareLoading": {
     "sourceHash": "1db46ae"
   },
-  "menu.context.shareNone": "Нет вариантов отправки",
+  "menu.context.shareNone": "Нет вариантов, чтобы поделиться",
   "@menu.context.shareNone": {
     "sourceHash": "cd12a10"
   },
@@ -595,7 +596,7 @@
   "@menu.volume.editFavoriteShortcut": {
     "sourceHash": "be52b50"
   },
-  "menu.volume.removeFavorite": "Удалить",
+  "menu.volume.removeFavorite": "Убрать",
   "@menu.volume.removeFavorite": {
     "sourceHash": "c3812fc"
   },

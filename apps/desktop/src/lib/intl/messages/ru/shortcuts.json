@@ -27,7 +27,7 @@
   "@shortcuts.scope.briefMode": {
     "sourceHash": "b75e4b3"
   },
-  "shortcuts.scope.fullMode": "Полный режим",
+  "shortcuts.scope.fullMode": "Подробный режим",
   "@shortcuts.scope.fullMode": {
     "sourceHash": "c284afc"
   },
@@ -63,15 +63,15 @@
   "@shortcuts.scope.onboarding": {
     "sourceHash": "a2198f4"
   },
-  "shortcuts.conflict.reservedByMacOs": "Сочетание {combo} зарезервировано macOS ({command}) и не передается Cmdr. Выберите другое сочетание.",
+  "shortcuts.conflict.reservedByMacOs": "Сочетание {combo} зарезервировано macOS ({command}) и не дойдет до Cmdr. Выберите другое сочетание.",
   "@shortcuts.conflict.reservedByMacOs": {
     "sourceHash": "76e8ad2"
   },
-  "shortcuts.conflict.fixedKey": "Сочетание {combo} закреплено в Cmdr ({command}) и не может быть переназначено. Выберите другое сочетание.",
+  "shortcuts.conflict.fixedKey": "Сочетание {combo} встроено в Cmdr ({command}), и его нельзя переназначить. Выберите другое сочетание.",
   "@shortcuts.conflict.fixedKey": {
     "sourceHash": "42c3c0e"
   },
-  "shortcuts.conflict.systemShortcut": "Сочетание {combo} обычно используется macOS ({label}), поэтому может не передаваться Cmdr. Освободить его можно в разделе «Системные настройки» > «Клавиатура».",
+  "shortcuts.conflict.systemShortcut": "Сочетание {combo} обычно занято macOS ({label}), поэтому может не доходить до Cmdr. Освободить его можно в разделе «Системные настройки» > «Клавиатура».",
   "@shortcuts.conflict.systemShortcut": {
     "sourceHash": "9ef197f"
   },
@@ -84,7 +84,7 @@
   "@shortcuts.system.finderSearch": {
     "sourceHash": "8b2f1c8"
   },
-  "shortcuts.system.characterViewer": "Просмотр символов",
+  "shortcuts.system.characterViewer": "Эмодзи и символы",
   "@shortcuts.system.characterViewer": {
     "sourceHash": "1a43164"
   },
@@ -142,7 +142,7 @@
   "@shortcuts.section.filterByKeysPlaceholder": {
     "sourceHash": "22706d1"
   },
-  "shortcuts.section.pressEscToClear": "Нажмите ESC для очистки",
+  "shortcuts.section.pressEscToClear": "Нажмите ESC, чтобы очистить",
   "@shortcuts.section.pressEscToClear": {
     "sourceHash": "3d32f9c"
   },
@@ -170,7 +170,7 @@
   "@shortcuts.section.keepBoth": {
     "sourceHash": "9367221"
   },
-  "shortcuts.section.removeFromOther": "Удалить у другого действия",
+  "shortcuts.section.removeFromOther": "Убрать у другой команды",
   "@shortcuts.section.removeFromOther": {
     "sourceHash": "f154164"
   },
@@ -178,7 +178,7 @@
   "@shortcuts.section.alreadyBound": {
     "sourceHash": "fc3862a"
   },
-  "shortcuts.section.modifiedTooltip": "Изменено значение по умолчанию",
+  "shortcuts.section.modifiedTooltip": "Отличается от значения по умолчанию",
   "@shortcuts.section.modifiedTooltip": {
     "sourceHash": "3d86215"
   },
@@ -194,7 +194,7 @@
   "@shortcuts.section.macOsTooltip": {
     "sourceHash": "fe5e056"
   },
-  "shortcuts.section.fixedTooltip": "Эта клавиша встроена в Cmdr и не может быть изменена.",
+  "shortcuts.section.fixedTooltip": "Эта клавиша встроена в Cmdr, ее нельзя изменить.",
   "@shortcuts.section.fixedTooltip": {
     "sourceHash": "9367bfe"
   },

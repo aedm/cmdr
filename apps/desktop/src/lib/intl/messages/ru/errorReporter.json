@@ -3,7 +3,7 @@
   "@errorReporter.dialog.title": {
     "sourceHash": "c327e68"
   },
-  "errorReporter.dialog.description": "Недавние журналы Cmdr будут отправлены команде, чтобы помочь устранить проблему. Перед отправкой на вашем устройстве удаляются пути к файлам, имена хостов, IP-адреса и адреса электронной почты.",
+  "errorReporter.dialog.description": "Cmdr отправит команде недавние журналы, чтобы мы могли исправить проблему. Перед отправкой прямо на вашем устройстве из них удаляются пути к файлам, имена хостов, IP-адреса и адреса электронной почты.",
   "@errorReporter.dialog.description": {
     "sourceHash": "ba4012f"
   },
@@ -72,7 +72,7 @@
   "@errorReporter.dialog.tryAgain": {
     "sourceHash": "d8b8392"
   },
-  "errorReporter.dialog.bundleUnavailable": "Cmdr не удалось собрать журналы для отчета. Повторите попытку через некоторое время.",
+  "errorReporter.dialog.bundleUnavailable": "Cmdr не удалось собрать журналы для отчета. Попробуйте еще раз чуть позже.",
   "@errorReporter.dialog.bundleUnavailable": {
     "sourceHash": "15bc5b8"
   },
@@ -104,7 +104,7 @@
   "@errorReporter.amend.title": {
     "sourceHash": "b19796b"
   },
-  "errorReporter.amend.description": "Cmdr уже отправил этот отчет. Напишите примечание или приложите адрес электронной почты — они будут добавлены к полученным командой сведениям.",
+  "errorReporter.amend.description": "Cmdr уже отправил этот отчет. Напишите примечание или приложите адрес электронной почты, и мы добавим их к уже полученному отчету.",
   "@errorReporter.amend.description": {
     "sourceHash": "9e1a80f"
   },
@@ -140,7 +140,7 @@
   "@errorReporter.sentToast.message": {
     "sourceHash": "75be6ba"
   },
-  "errorReporter.sentToast.dismiss": "Скрыть",
+  "errorReporter.sentToast.dismiss": "Закрыть",
   "@errorReporter.sentToast.dismiss": {
     "sourceHash": "48845bf"
   },
@@ -160,7 +160,7 @@
   "@errorReporter.bundleSavedToast.message": {
     "sourceHash": "7c1604d"
   },
-  "errorReporter.bundleSavedToast.dismiss": "Скрыть",
+  "errorReporter.bundleSavedToast.dismiss": "Закрыть",
   "@errorReporter.bundleSavedToast.dismiss": {
     "sourceHash": "48845bf"
   },
@@ -180,7 +180,7 @@
   "@errorReporter.autoSentToast.changeSettings": {
     "sourceHash": "873512a"
   },
-  "errorReporter.autoSentToast.viewOrAddNotes": "Посмотреть отчет или добавить примечания",
+  "errorReporter.autoSentToast.viewOrAddNotes": "Посмотреть отчет или добавить примечание",
   "@errorReporter.autoSentToast.viewOrAddNotes": {
     "sourceHash": "81a00a0"
   }

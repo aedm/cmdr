@@ -272,7 +272,10 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS Finder KIND_FORMATTER_20_1 (App → Приложение), Localizable (Apps → Приложения); MS (app → приложение); Nautilus (Program → Приложение)"
+    "sources": "macOS Finder KIND_FORMATTER_20_1 (App → Приложение), Localizable (Apps → Приложения); MS (app → приложение); Nautilus (Program → Приложение)",
+    "exceptions": {
+      "settings.archives.bundle.description": "\".app\" here is a file extension, kept verbatim; the row label above names the kind («Пакеты приложений»)."
+    }
   },
   "app-bundle": {
     "chosen": "пакет",
@@ -528,7 +531,11 @@
     "accept": ["просм"],
     "forms": "Browse like a folder → Просматривать как папку; the drive you're browsing → просматриваемый диск; Enter the password to browse it → для просмотра",
     "confidence": "high",
-    "sources": "macOS Finder ConnectToWindow 48.title (Browse → Просмотреть); MS (browse → просмотреть)"
+    "sources": "macOS Finder ConnectToWindow 48.title (Browse → Просмотреть); MS (browse → просмотреть)",
+    "exceptions": {
+      "settings.adb.browse": "The Browse… button opens a file picker: that's the browse-file-picker concept, whose ruling is «Обзор…».",
+      "servers.sheet.browse": "The Browse… button opens a file picker (browse-file-picker sense), not browsing a folder; «Обзор…» is the standard Russian picker button. Better fixed once by adding browse… to the concept's notMatch."
+    }
   },
   "browse-file-picker": {
     "chosen": "Обзор…",
@@ -765,11 +772,14 @@
   },
   "clear": {
     "chosen": "Очистить",
-    "accept": ["очист"],
+    "accept": ["очист", "очищ"],
     "forms": "Clear search → Очистить поиск; Clear index → Очистить индекс; cleared → очищено",
     "confidence": "high",
     "sources": "macOS AppKit MainMenu 164.title (Clear → Очистить), Finder A29 (Clear Menu → Очистить меню); MS (clear → очистить); DC, Thunar",
-    "note": "Phone and FaceTime say Удалить for clearing recents; Cmdr keeps Очистить so it never reads as deleting files."
+    "note": "Phone and FaceTime say Удалить for clearing recents; Cmdr keeps Очистить so it never reads as deleting files.",
+    "exceptions": {
+      "settings.mediaIndex.reclaim.alreadyCleared": "Index entries are deleted, not a field or list being emptied; «записи уже удалены» matches the sibling reclaim strings."
+    }
   },
   "click": {
     "chosen": "нажать",
@@ -783,7 +793,10 @@
     "chosen": "клиент",
     "accept": ["клиент"],
     "confidence": "high",
-    "sources": "MS (client → клиент); macOS live Sharing (Clients → Клиенты)"
+    "sources": "MS (client → клиент); macOS live Sharing (Clients → Клиенты)",
+    "exceptions": {
+      "errorReporter.dialog.description": "\"client-side\" is rendered as «на вашем устройстве»: no client noun appears, and «на стороне клиента» would be jargon."
+    }
   },
   "clipboard": {
     "chosen": "буфер обмена",
@@ -976,7 +989,7 @@
   "cost": {
     "chosen": "стоимость",
     "accept": ["стоимост"],
-    "proseAccept": ["затрат", "занима", "платн"],
+    "proseAccept": ["затрат", "занима", "платн", "плат"],
     "forms": "cost unknown → стоимость неизвестна; estimated cost → примерная стоимость; a disk-space cost → занимает около 1 ГБ",
     "confidence": "high",
     "sources": "MS (cost → стоимость / затраты); macOS live MapsUI (Cost → Стоимость)"
@@ -1028,7 +1041,10 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS 27.0 live sweep (Custom → Настроить 52×, Пользовательский/-ая/-ое/-ие 21×, Собственный 2×); Nautilus (Custom icon → Пользовательский значок)"
+    "sources": "macOS 27.0 live sweep (Custom → Настроить 52×, Пользовательский/-ая/-ое/-ие 21×, Собственный 2×); Nautilus (Custom icon → Пользовательский значок)",
+    "exceptions": {
+      "queryUi.size.customInputPlaceholder": "Placeholder inside the tiny free-form number input revealed by the «настроить…» cell; it names what to type («значение»), and «пользовательский» alone would be an orphan adjective."
+    }
   },
   "cut": {
     "chosen": "Вырезать",
@@ -1152,14 +1168,20 @@
     "confidence": "high",
     "sources": "macOS Finder (в папке назначения, целевой том, на диске назначения); Nautilus (Место назначения не является папкой); MS (destination → назначение)",
     "note": "A symlink's target is цель ссылки (Thunar), a different sense.",
-    "proseAccept": ["мест"]
+    "proseAccept": ["мест"],
+    "exceptions": {
+      "fileOperations.delete.symlinkNoticeSingle": "'target' is a symlink's target, not a transfer destination; phrased as «то, на что она указывает», like its sibling symlinkNoticeMany."
+    }
   },
   "details": {
     "chosen": "Подробнее",
     "accept": ["подробн", "сведени"],
     "forms": "a disclosure (Show details) → Подробнее; License details → Сведения о лицензии; Technical details → Технические сведения",
     "confidence": "high",
-    "sources": "macOS AppKit Common (Show Details → Подробнее), Finder Localizable (Details… → Подробнее…); macOS live Font Book (Details → Сведения); MS (Details → Сведения / Подробности)"
+    "sources": "macOS AppKit Common (Show Details → Подробнее), Finder Localizable (Details… → Подробнее…); macOS live Font Book (Details → Сведения); MS (Details → Сведения / Подробности)",
+    "exceptions": {
+      "main.oldMacos.body": "\"small layout details\" (parts of the UI), not the Details disclosure: «детали интерфейса»."
+    }
   },
   "detect": {
     "chosen": "обнаружить",
@@ -1324,7 +1346,7 @@
   },
   "drag": {
     "chosen": "перетянуть",
-    "accept": ["перетян", "перетягив"],
+    "accept": ["перетян", "перетягив", "отпуст"],
     "proseAccept": ["перетащ", "перетаскив"],
     "forms": "imperative → Перетяните вправо…; noun → перетягивание (Порог перетягивания); Drop to attach → Отпустите, чтобы прикрепить",
     "avoid": [
@@ -1347,7 +1369,8 @@
       }
     ],
     "exceptions": {
-      "settings.summary.notifications": "Low drive space is expressed concisely as «нехватка места»; the drive is implicit in this section summary."
+      "settings.summary.notifications": "Low drive space is expressed concisely as «нехватка места»; the drive is implicit in this section summary.",
+      "search.coverage.unnamedDrive": "A fallback NAME spliced after «диск {drive}» in every host (search.coverage.uncovered.*, walk.interrupted, toast.*); repeating «диск» would print «диск этот диск». «без названия» yields «диск без названия» in every case."
     },
     "confidence": "high",
     "sources": "macOS Finder (AL8 Eject → Извлечь диск; Hard disks → Жесткие диски; NE79 Том «^0» используется); Total Commander (жёсткий диск, Сетевой диск)"
@@ -2924,10 +2947,13 @@
   },
   "not-finished": {
     "chosen": "Не завершено",
-    "accept": ["не завершен", "не удалось завершить", "не удалось выполнить", "не закончен"],
+    "accept": ["не завершен", "не удалось завершить", "не удалось выполнить", "не закончен", "не завершил"],
     "forms": "queue status → «Не завершено»; Couldn't finish copying → Не удалось завершить копирование; avoid alarmist «ошибка»",
     "confidence": "high",
-    "sources": "macOS live Incomplete → «Не завершено»; AppKitErrors The operation could not be completed → «Не удается выполнить операцию»"
+    "sources": "macOS live Incomplete → «Не завершено»; AppKitErrors The operation could not be completed → «Не удается выполнить операцию»",
+    "exceptions": {
+      "askCmdr.error.unfinishedReply": "A reply stream that cut off midway: «Ответ оборвался» says what happened; «не завершен» reads like a queue status label."
+    }
   },
   "not-found": {
     "chosen": "не найдено",
@@ -3100,7 +3126,11 @@
     "proseAccept": ["вариант", "настройк"],
     "forms": "Volume options → Параметры тома; an option in a list → вариант (prose)",
     "confidence": "high",
-    "sources": "macOS AppKit NSLocalSavePanel/NSRemoteSavePanel 100202 Options → «Параметры»; Finder LocalizableMerged N280 Options → «Параметры»; MS Options → «Параметры»"
+    "sources": "macOS AppKit NSLocalSavePanel/NSRemoteSavePanel 100202 Options → «Параметры»; Finder LocalizableMerged N280 Options → «Параметры»; MS Options → «Параметры»",
+    "exceptions": {
+      "menu.context.shareLoading": "\"Share options\" are the ways to share a file (AirDrop, Mail), never settings; «параметры» would read as preferences. Uses the share-menu ruling's own empty-state frame «вариантов, чтобы поделиться».",
+      "menu.context.shareNone": "Same as menu.context.shareLoading; the value is the share-menu ruling's empty-state form verbatim."
+    }
   },
   "organization": {
     "chosen": "организация",
@@ -3351,7 +3381,10 @@
     "accept": ["просмотр", "Предпросмотр"],
     "forms": "noun and command → «Просмотр»; Preparing preview… → Подготовка просмотра…; Apple's Preview app → «Просмотр» (its localized name)",
     "confidence": "high",
-    "sources": "macOS Finder LocalizableMerged TL45 Preview → «Просмотр»; AppKit Printing and NSFontOptionsPanel Preview → «Просмотр»"
+    "sources": "macOS Finder LocalizableMerged TL45 Preview → «Просмотр»; AppKit Printing and NSFontOptionsPanel Preview → «Просмотр»",
+    "exceptions": {
+      "settings.appearance.datePreviewLabel": "Labels a sample of the chosen date format, not a preview feature; «Пример:» keeps it apart from Просмотр (the Viewer and Preview.app)."
+    }
   },
   "previous-next": {
     "chosen": "Далее",
@@ -3464,7 +3497,10 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS Finder MenuBar 300732 Quit Finder → «Завершить Finder»; AppKit Document Quit → «Завершить»; macOS live «%@ quit unexpectedly» → «Приложение «%@» неожиданно завершило работу»"
+    "sources": "macOS Finder MenuBar 300732 Quit Finder → «Завершить Finder»; AppKit Document Quit → «Завершить»; macOS live «%@ quit unexpectedly» → «Приложение «%@» неожиданно завершило работу»",
+    "exceptions": {
+      "onboarding.stepFda.step3": "Quotes the macOS TCC button Quit & Reopen, which Russian macOS 27 labels «Перезапустить» (quit-and-reopen ruling, SecurityPrivacyExtension QUIT_APP)."
+    }
   },
   "quit-and-reopen": {
     "chosen": "Перезапустить",
@@ -3595,7 +3631,7 @@
   },
   "regex": {
     "chosen": "регулярное выражение",
-    "accept": ["регулярн"],
+    "accept": ["регулярн", "Regex"],
     "forms": "the mode label → «Регулярное выражение»; a regex search → поиск по регулярному выражению",
     "avoid": [
       {
@@ -4100,7 +4136,10 @@
       "servers.hub.editPickHint": "Picking one server in the list to edit is choose.",
       "servers.hub.editShareHint": "Picking the server's row to edit it is choose.",
       "commands.navDown.label": "Moves the cursor, marks nothing; say «Следующий файл».",
-      "commands.navUp.label": "Moves the cursor, marks nothing; say «Предыдущий файл»."
+      "commands.navUp.label": "Moves the cursor, marks nothing; say «Предыдущий файл».",
+      "queue.row.selectAria": "Checkbox picking operation rows to cancel together: choosing items in a list, not marking files in a pane, so «выбрать» stays.",
+      "queue.toolbar.cancelSelected": "Cancels the operation rows ticked by checkbox; list-item choosing, so «выбранные».",
+      "queue.toolbar.selectedCount": "Count of ticked operation rows; list-item choosing, so «Выбрано: #»."
     }
   },
   "send": {
@@ -5128,7 +5167,10 @@
     "accept": ["довер"],
     "forms": "«Доверять и подключиться», «Доверять новому ключу»; adjective «доверенный», «Доверенные ключи хостов»; noun «доверие»",
     "confidence": "high",
-    "sources": "Live macOS (certificate trust): Trust → Доверять, Always Trust → Всегда доверять, Always trust “%@” → Всегда доверять «%@»; MS: trust → доверие / доверять"
+    "sources": "Live macOS (certificate trust): Trust → Доверять, Always Trust → Всегда доверять, Always trust “%@” → Всегда доверять «%@»; MS: trust → доверие / доверять",
+    "exceptions": {
+      "settings.servers.trustedHostKeys.approvedPrefix": "A one-word past-tense label before a date («Принят 2026-09-07»); «Доверен 2026-09-07» isn't idiomatic, and the card title already says «Доверенные ключи хостов»."
+    }
   },
   "type": {
     "chosen": "Тип",

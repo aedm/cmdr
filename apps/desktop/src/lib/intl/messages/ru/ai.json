@@ -51,7 +51,7 @@
   "@ai.translateError.off.title": {
     "sourceHash": "99ce709"
   },
-  "ai.translateError.off.body": "Включите провайдера в разделе «Настройки > ИИ», чтобы использовать поиск с ИИ.",
+  "ai.translateError.off.body": "Включите поставщика ИИ в разделе «Настройки > ИИ», чтобы пользоваться поиском с ИИ.",
   "@ai.translateError.off.body": {
     "sourceHash": "d8d6368"
   },
@@ -71,7 +71,7 @@
   "@ai.cloudConsent.intro": {
     "sourceHash": "9462a5a"
   },
-  "ai.cloudConsent.whereItGoes": "Куда попадут ваши данные и что с ними произойдет, зависит от выбранного сервиса и вашего соглашения с ним. Это касается и Ollama, LM Studio и пользовательских адресов: данные поступают туда, где работает сервер. Серверы Cmdr никогда не получают эти данные.",
+  "ai.cloudConsent.whereItGoes": "Куда попадут ваши данные и что с ними произойдет, зависит от выбранного сервиса и вашего соглашения с ним. Это касается и Ollama, и LM Studio, и пользовательских адресов: данные попадают туда, где работает соответствующий сервер. Серверы Cmdr никогда их не получают.",
   "@ai.cloudConsent.whereItGoes": {
     "sourceHash": "44dd8ba"
   },
@@ -83,11 +83,11 @@
   "@ai.cloudConsent.search": {
     "sourceHash": "e6d4ef9"
   },
-  "ai.cloudConsent.selection": "<b>Выбор по описанию</b>: введенный вами текст и до 240 имен из текущей папки",
+  "ai.cloudConsent.selection": "<b>Выделение по описанию</b>: введенный вами текст и до 240 имен из текущей папки",
   "@ai.cloudConsent.selection": {
     "sourceHash": "1e1c3c3"
   },
-  "ai.cloudConsent.askCmdr.title": "<b>Спросить Cmdr</b>, когда вы общаетесь или Cmdr начинает разговор самостоятельно:",
+  "ai.cloudConsent.askCmdr.title": "<b>Ask Cmdr</b>, когда вы общаетесь в чате или Cmdr начинает разговор самостоятельно:",
   "@ai.cloudConsent.askCmdr.title": {
     "sourceHash": "26e139c"
   },
@@ -107,7 +107,7 @@
   "@ai.cloudConsent.askCmdr.item.contents": {
     "sourceHash": "fcd0b73"
   },
-  "ai.cloudConsent.askCmdr.item.envelope": "Что вы сейчас просматриваете: текущая папка, курсор, выбранные объекты и подключенные диски",
+  "ai.cloudConsent.askCmdr.item.envelope": "Что вы сейчас просматриваете: текущая папка, курсор, выделенные объекты и подключенные диски",
   "@ai.cloudConsent.askCmdr.item.envelope": {
     "sourceHash": "2e5a0ef"
   },
@@ -119,23 +119,23 @@
   "@ai.cloudConsent.askCmdr.item.memory": {
     "sourceHash": "7779513"
   },
-  "ai.cloudConsent.askCmdr.contentsRule": "Cmdr никогда не отправляет файлы целиком, фотографии или миниатюры. Когда вы спрашиваете о файле, Cmdr может прочитать ограниченную часть: строки текста, несколько страниц PDF вместе с названием и автором, список файлов в архиве или сведения о камере и месте съемки фотографии. Поиск фотографий работает так же: распознанный текст в подходящих фотографиях и их теги отправляются провайдеру для поиска. Cmdr может предложить переименование, перемещение и наведение порядка, но файлы не меняются без вашего согласия.",
+  "ai.cloudConsent.askCmdr.contentsRule": "Cmdr никогда не отправляет файлы целиком, фотографии или миниатюры. Когда вы спрашиваете о файле, Cmdr может прочитать ограниченную часть: строки текста, несколько страниц PDF вместе с названием и автором, список файлов в архиве или сведения о камере и месте съемки фотографии. Поиск фотографий работает так же: распознанный текст в подходящих фотографиях и их теги отправляются вашему поставщику ИИ, чтобы он мог их найти. Cmdr может предложить переименование, перемещение и наведение порядка, но файлы не меняются без вашего согласия.",
   "@ai.cloudConsent.askCmdr.contentsRule": {
     "sourceHash": "5a378c1"
   },
-  "ai.cloudConsent.askCmdr.memory": "Cmdr записывает заметки о вас: как вы предпочитаете организовывать файлы, какие предложения отклонили и что просите запомнить. Эти заметки отправляются с каждым вашим сообщением, пока существуют, и могут включать текст, распознанный на фотографиях. Их можно прочитать или удалить в любой момент в настройках раздела «Спросить Cmdr».",
+  "ai.cloudConsent.askCmdr.memory": "Cmdr записывает заметки о вас: как вы предпочитаете организовывать файлы, какие предложения отклонили и что просите запомнить. Эти заметки отправляются с каждым вашим сообщением, пока существуют, и могут включать текст, распознанный на фотографиях. Их можно прочитать или удалить в любой момент в настройках Ask Cmdr.",
   "@ai.cloudConsent.askCmdr.memory": {
     "sourceHash": "496c78d"
   },
-  "ai.cloudConsent.askCmdr.proactive": "Cmdr также следит за используемыми папками и начинает разговор, когда есть что предложить, поэтому сообщения могут поступать провайдеру без вашего запроса. Это можно отключить в настройках раздела «Спросить Cmdr», в пункте «Самостоятельно».",
+  "ai.cloudConsent.askCmdr.proactive": "Cmdr также следит за папками, с которыми вы работаете, и начинает разговор, когда есть что предложить, поэтому сообщения могут уходить вашему поставщику ИИ без вашего запроса. Это можно отключить в настройках Ask Cmdr, в группе «По своей инициативе».",
   "@ai.cloudConsent.askCmdr.proactive": {
     "sourceHash": "abfa80b"
   },
-  "ai.cloudConsent.askCmdr.chatsStayLocal": "Ваши чаты в разделе «Спросить Cmdr» остаются на Mac в локальной базе данных, которую можно открыть и прочитать.",
+  "ai.cloudConsent.askCmdr.chatsStayLocal": "Ваши чаты Ask Cmdr остаются на вашем Mac, в локальной базе данных, которую можно открыть и прочитать.",
   "@ai.cloudConsent.askCmdr.chatsStayLocal": {
     "sourceHash": "283cdd7"
   },
-  "ai.cloudConsent.logsNote": "Если включить журнал вызовов LLM в расширенных настройках, Cmdr также сохраняет каждый запрос и ответ в папке на Mac. Эти журналы тоже остаются локальными и никуда не отправляются.",
+  "ai.cloudConsent.logsNote": "Если включить запись вызовов моделей ИИ в дополнительных настройках, Cmdr будет также сохранять каждый запрос и ответ в папку на вашем Mac. Эти журналы тоже остаются локальными и никуда не отправляются.",
   "@ai.cloudConsent.logsNote": {
     "sourceHash": "7e211fc"
   },
@@ -151,7 +151,7 @@
   "@ai.translateError.notConfigured.title": {
     "sourceHash": "bf5688a"
   },
-  "ai.translateError.notConfigured.body": "Завершите настройку провайдера в разделе «Настройки > ИИ» и повторите попытку.",
+  "ai.translateError.notConfigured.body": "Завершите настройку поставщика ИИ в разделе «Настройки > ИИ» и попробуйте еще раз.",
   "@ai.translateError.notConfigured.body": {
     "sourceHash": "65133a8"
   },
@@ -163,7 +163,7 @@
   "@ai.translateError.noCloudConsent.body": {
     "sourceHash": "fde3eb5"
   },
-  "ai.translateError.authFailed.title": "API-ключ отклонен",
+  "ai.translateError.authFailed.title": "Этот API-ключ не приняли",
   "@ai.translateError.authFailed.title": {
     "sourceHash": "93e6261"
   },
@@ -171,11 +171,11 @@
   "@ai.translateError.authFailed.body": {
     "sourceHash": "2159d5e"
   },
-  "ai.translateError.rateLimited.title": "Провайдер ИИ достиг лимита",
+  "ai.translateError.rateLimited.title": "Поставщик ИИ достиг лимита",
   "@ai.translateError.rateLimited.title": {
     "sourceHash": "26e286e"
   },
-  "ai.translateError.rateLimited.body": "Сервис ограничивает частоту запросов или квота вашего тарифа исчерпана. Проверьте тариф и оплату, затем повторите попытку.",
+  "ai.translateError.rateLimited.body": "Поставщик ограничивает частоту запросов, или квота вашего тарифа исчерпана. Проверьте тариф и оплату, затем попробуйте еще раз.",
   "@ai.translateError.rateLimited.body": {
     "sourceHash": "ca3616b"
   },
@@ -183,15 +183,15 @@
   "@ai.translateError.timeout.title": {
     "sourceHash": "d684e3f"
   },
-  "ai.translateError.timeout.body": "Время ожидания запроса истекло. Повторите попытку чуть позже.",
+  "ai.translateError.timeout.body": "Время ожидания запроса истекло. Попробуйте еще раз чуть позже.",
   "@ai.translateError.timeout.body": {
     "sourceHash": "249b720"
   },
-  "ai.translateError.unavailable.title": "Не удается связаться с провайдером ИИ",
+  "ai.translateError.unavailable.title": "Не удается связаться с поставщиком ИИ",
   "@ai.translateError.unavailable.title": {
     "sourceHash": "74e6ba8"
   },
-  "ai.translateError.unavailable.body": "Проверьте интернет или состояние сервиса и повторите попытку.",
+  "ai.translateError.unavailable.body": "Проверьте подключение к интернету или состояние сервиса поставщика и попробуйте еще раз.",
   "@ai.translateError.unavailable.body": {
     "sourceHash": "c44a8ed"
   },
@@ -203,11 +203,11 @@
   "@ai.translateError.emptyResponse.body": {
     "sourceHash": "f1704cc"
   },
-  "ai.translateError.serverError.title": "Ошибка провайдера ИИ",
+  "ai.translateError.serverError.title": "У поставщика ИИ что-то пошло не так",
   "@ai.translateError.serverError.title": {
     "sourceHash": "1b98f6a"
   },
-  "ai.translateError.serverError.body": "Сервис вернул неожиданный ответ. Повторите попытку чуть позже.",
+  "ai.translateError.serverError.body": "Поставщик вернул неожиданный ответ. Попробуйте еще раз чуть позже.",
   "@ai.translateError.serverError.body": {
     "sourceHash": "3f4af5c"
   },
@@ -215,15 +215,15 @@
   "@ai.translateError.parseError.title": {
     "sourceHash": "02af146"
   },
-  "ai.translateError.parseError.body": "Повторите попытку или выберите другую модель в разделе «Настройки > ИИ».",
+  "ai.translateError.parseError.body": "Попробуйте еще раз или выберите другую модель в разделе «Настройки > ИИ».",
   "@ai.translateError.parseError.body": {
     "sourceHash": "c299ec6"
   },
-  "ai.translateError.unknownProvider.title": "Неизвестный провайдер ИИ",
+  "ai.translateError.unknownProvider.title": "Cmdr не знает такого поставщика ИИ",
   "@ai.translateError.unknownProvider.title": {
     "sourceHash": "794a4c7"
   },
-  "ai.translateError.unknownProvider.body": "Выберите провайдера в разделе «Настройки > ИИ».",
+  "ai.translateError.unknownProvider.body": "Выберите поставщика ИИ в разделе «Настройки > ИИ».",
   "@ai.translateError.unknownProvider.body": {
     "sourceHash": "7042a75"
   },
@@ -235,7 +235,7 @@
   "@ai.cloud.apiKeyPlaceholderAnthropic": {
     "sourceHash": "89347d5"
   },
-  "ai.cloud.askCmdrOverrideHint": "Чат использует собственную модель ({model}) вместо этой. Измените ее в разделе «Спросить Cmdr».",
+  "ai.cloud.askCmdrOverrideHint": "Чат использует собственную модель ({model}) вместо этой. Изменить ее можно в настройках Ask Cmdr.",
   "@ai.cloud.askCmdrOverrideHint": {
     "sourceHash": "5a5539a"
   },
@@ -267,7 +267,7 @@
   "@ai.cloud.connectionError": {
     "sourceHash": "79d79fb"
   },
-  "ai.cloud.genericError": "Произошла ошибка",
+  "ai.cloud.genericError": "Что-то пошло не так",
   "@ai.cloud.genericError": {
     "sourceHash": "ab827e3"
   },
@@ -295,7 +295,7 @@
   "@ai.local.statusStarting": {
     "sourceHash": "bbe5fc3"
   },
-  "ai.local.statusRunning": "Выполняется",
+  "ai.local.statusRunning": "Работает",
   "@ai.local.statusRunning": {
     "sourceHash": "f4ccae2"
   },
@@ -352,7 +352,7 @@
     "sourceHash": "8a8de82",
     "sameAsSourceJustification": "Product name, author attribution, copyright or universal symbol is kept verbatim per docs/i18n/translation-principles.md and the Russian style guide."
   },
-  "ai.local.notInstalled": "Не установлена. Локальная модель ({modelName}, {modelSize}) полностью работает на вашем устройстве для максимальной конфиденциальности. Требуется Apple silicon.",
+  "ai.local.notInstalled": "Не установлена. Локальная модель ({modelName}, {modelSize}) работает полностью на вашем устройстве, поэтому ваши данные никуда не уходят. Нужен Mac с чипом Apple.",
   "@ai.local.notInstalled": {
     "sourceHash": "c865b94"
   },
@@ -436,7 +436,7 @@
   "@ai.secretError.keychainTitle": {
     "sourceHash": "2b2ef89"
   },
-  "ai.secretError.keychainBody": "{op, select, save {Откройте «Связка ключей», проверьте запись «Cmdr» или удалите ее и попробуйте сохранить ключ снова.} other {Откройте «Связка ключей», найдите запись «Cmdr» и разрешите доступ или удалите запись и введите ключ снова.}}",
+  "ai.secretError.keychainBody": "{op, select, save {Откройте приложение «Связка ключей», проверьте запись «Cmdr» или удалите ее и попробуйте сохранить ключ снова.} other {Откройте приложение «Связка ключей», найдите запись «Cmdr» и разрешите доступ или удалите запись и введите ключ снова.}}",
   "@ai.secretError.keychainBody": {
     "sourceHash": "8f1380e"
   },
@@ -444,7 +444,7 @@
   "@ai.secretError.keyringTitle": {
     "sourceHash": "60f5401"
   },
-  "ai.secretError.keyringBody": "Разблокируйте хранилище ключей (приложение «Пароли / Связки ключей») и повторите попытку.",
+  "ai.secretError.keyringBody": "Разблокируйте хранилище ключей (например, в приложении «Пароли и ключи») и попробуйте еще раз.",
   "@ai.secretError.keyringBody": {
     "sourceHash": "023bde3"
   },

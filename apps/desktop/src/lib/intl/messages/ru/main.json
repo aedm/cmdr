@@ -3,7 +3,7 @@
   "@main.instanceLock.alertTitle": {
     "sourceHash": "7c8f09d"
   },
-  "main.instanceLock.alertBody": "Другая копия Cmdr использует эту папку данных. Переключитесь на работающее приложение или завершите его работу и повторите попытку.",
+  "main.instanceLock.alertBody": "Другая копия Cmdr использует эту папку данных. Переключитесь на запущенное приложение или завершите его и попробуйте еще раз.",
   "@main.instanceLock.alertBody": {
     "sourceHash": "140c57d"
   },
@@ -19,11 +19,11 @@
   "@main.dockPinNudge.title": {
     "sourceHash": "3a6ce9f"
   },
-  "main.dockPinNudge.body": "Вы используете Cmdr уже несколько дней — похоже, приложение вам подходит. Закрепить значок рядом с Finder в Dock?",
+  "main.dockPinNudge.body": "Вы пользуетесь Cmdr уже несколько дней, и, похоже, он вам подходит. Закрепить его значок в Dock рядом с Finder?",
   "@main.dockPinNudge.body": {
     "sourceHash": "7f4265e"
   },
-  "main.dockPinNudge.unpinNote": "Закрепление можно отменить в любое время.",
+  "main.dockPinNudge.unpinNote": "Если передумаете, значок можно открепить в любой момент.",
   "@main.dockPinNudge.unpinNote": {
     "sourceHash": "28748d3"
   },
@@ -39,7 +39,7 @@
   "@main.dockPinNudge.added": {
     "sourceHash": "61bec58"
   },
-  "main.dockPinNudge.addedButDockDidNotRestart": "Значок Cmdr добавлен, но Dock не перезагрузился. Значок появится при следующем входе в систему.",
+  "main.dockPinNudge.addedButDockDidNotRestart": "Значок Cmdr на месте, но Dock не перезагрузился. Значок появится, когда вы в следующий раз войдете в систему.",
   "@main.dockPinNudge.addedButDockDidNotRestart": {
     "sourceHash": "7a4e3bb"
   },
@@ -47,7 +47,7 @@
   "@main.dockPinNudge.managedDock": {
     "sourceHash": "4781787"
   },
-  "main.dockPinNudge.notAdded": "Cmdr не удалось добавить значок в Dock. Вы можете перетащить приложение из папки «Программы» в любое время.",
+  "main.dockPinNudge.notAdded": "На этот раз Cmdr не получилось добавить в Dock. Его можно в любой момент перетащить в Dock из папки «Программы».",
   "@main.dockPinNudge.notAdded": {
     "sourceHash": "0b863ad"
   },
@@ -75,19 +75,19 @@
   "@main.revealNudge.turnedOn": {
     "sourceHash": "27c0ea2"
   },
-  "main.revealNudge.heldByOtherApp": "Команду «Показать в Finder» сейчас обрабатывает приложение {app}. Вы можете передать ее Cmdr в настройках в любое время.",
+  "main.revealNudge.heldByOtherApp": "Команду «Показать в Finder» сейчас обрабатывает приложение {app}. Передать ее Cmdr можно в настройках в любой момент.",
   "@main.revealNudge.heldByOtherApp": {
     "sourceHash": "0893821"
   },
-  "main.revealNudge.notTurnedOn": "Cmdr пока не удалось перехватить «Показать в Finder». Повторить попытку можно с помощью переключателя в настройках.",
+  "main.revealNudge.notTurnedOn": "На этот раз Cmdr не смог перехватить «Показать в Finder». Если захотите попробовать еще раз, переключатель есть в настройках.",
   "@main.revealNudge.notTurnedOn": {
     "sourceHash": "0f572c0"
   },
-  "main.revealActivation.title": "«Показать в Finder» открыто здесь",
+  "main.revealActivation.title": "Команда «Показать в Finder» открыла папку здесь",
   "@main.revealActivation.title": {
     "sourceHash": "6bb18bb"
   },
-  "main.revealActivation.body": "Cmdr настроен перехватывать эти команды, поэтому файл открыт в панели вместо Finder. Все остальное открывается как прежде.",
+  "main.revealActivation.body": "Cmdr настроен перехватывать такие команды, поэтому файл открылся в панели, а не в Finder. Все остальное открывается как раньше.",
   "@main.revealActivation.body": {
     "sourceHash": "19ea7d6"
   },
@@ -99,11 +99,11 @@
   "@main.quit.title": {
     "sourceHash": "2671a89"
   },
-  "main.quit.body": "Завершенные действия сохранятся. Запись незавершенных данных остановится, а Cmdr удалит все недописанные файлы.",
+  "main.quit.body": "Все, что уже готово, сохранится. Незавершенная запись остановится, а Cmdr уберет недописанные файлы.",
   "@main.quit.body": {
     "sourceHash": "79a69f9"
   },
-  "main.quit.countdown": "{seconds, plural, one {Cmdr завершит работу через {secondsText} секунду, чтобы не задерживать перезапуск или выход из системы.} few {Cmdr завершит работу через {secondsText} секунды, чтобы не задерживать перезапуск или выход из системы.} many {Cmdr завершит работу через {secondsText} секунд, чтобы не задерживать перезапуск или выход из системы.} other {Cmdr завершит работу через {secondsText} секунды, чтобы не задерживать перезапуск или выход из системы.}}",
+  "main.quit.countdown": "{seconds, plural, one {Cmdr завершит работу через {secondsText} секунду, чтобы не задерживать перезагрузку или выход из системы.} few {Cmdr завершит работу через {secondsText} секунды, чтобы не задерживать перезагрузку или выход из системы.} many {Cmdr завершит работу через {secondsText} секунд, чтобы не задерживать перезагрузку или выход из системы.} other {Cmdr завершит работу через {secondsText} секунды, чтобы не задерживать перезагрузку или выход из системы.}}",
   "@main.quit.countdown": {
     "sourceHash": "a389e0c"
   },
@@ -135,7 +135,7 @@
   "@main.oldMacos.title": {
     "sourceHash": "e75f925"
   },
-  "main.oldMacos.body": "Cmdr официально поддерживает macOS 12 и новее, поэтому здесь работа не гарантирована. Большинство функций работают, но некоторые цвета и детали интерфейса могут выглядеть иначе. Исправления для старых систем имеют низкий приоритет. Если что-то не работает, сообщите об этом.",
+  "main.oldMacos.body": "Cmdr официально поддерживает macOS 12 и новее, так что здесь он работает без гарантий. Почти все работает, но некоторые цвета и мелкие детали интерфейса могут выглядеть странно, а исправления для старых систем идут в последнюю очередь. Если что-то сломается, мне все равно будет интересно об этом узнать.",
   "@main.oldMacos.body": {
     "sourceHash": "f9b4185"
   },
@@ -143,7 +143,7 @@
   "@main.oldMacos.gotIt": {
     "sourceHash": "5ad3dbd"
   },
-  "main.oldWebkit.quit": "Завершить работу",
+  "main.oldWebkit.quit": "Завершить",
   "@main.oldWebkit.quit": {
     "sourceHash": "b3eb37a"
   },
@@ -155,11 +155,11 @@
   "@main.escapeFullScreenHint.switchLabel": {
     "sourceHash": "f98be5e"
   },
-  "main.escapeFullScreenHint.settingsLine": "Это также можно изменить в разделе <settingsLink>Настройки > Дополнительно</settingsLink>.",
+  "main.escapeFullScreenHint.settingsLine": "Это также можно изменить в разделе <settingsLink>Настройки > Дополнения</settingsLink>.",
   "@main.escapeFullScreenHint.settingsLine": {
     "sourceHash": "a7fc48a"
   },
-  "main.escapeFullScreenHint.onceNote": "Это сообщение показывается только один раз.",
+  "main.escapeFullScreenHint.onceNote": "Это сообщение вы увидите только один раз.",
   "@main.escapeFullScreenHint.onceNote": {
     "sourceHash": "210b892"
   }

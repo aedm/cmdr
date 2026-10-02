@@ -67,11 +67,12 @@
   "@queryUi.mode.content.aria": {
     "sourceHash": "5bce643"
   },
-  "queryUi.mode.regex.label": "Регулярное выражение",
+  "queryUi.mode.regex.label": "Regex",
   "@queryUi.mode.regex.label": {
-    "sourceHash": "0f27125"
+    "sourceHash": "0f27125",
+    "sameAsSourceJustification": "«Regex» is the developer term Russian tools keep in tight chips and toggles (JetBrains ru, VS Code ru tooltips); the full «Регулярное выражение» stays in prose and placeholders."
   },
-  "queryUi.mode.regex.aria": "Режим «Регулярное выражение» (Alt+R)",
+  "queryUi.mode.regex.aria": "Режим «Regex» (Alt+R)",
   "@queryUi.mode.regex.aria": {
     "sourceHash": "7c0b401"
   },
@@ -132,9 +133,10 @@
     "sourceHash": "18d00f7",
     "sameAsSourceJustification": "Стандартное техническое имя Glob; сохраняется по правилам имен продуктов и форматов."
   },
-  "queryUi.ai.patternLabel.regex": "Регулярное выражение",
+  "queryUi.ai.patternLabel.regex": "Regex",
   "@queryUi.ai.patternLabel.regex": {
-    "sourceHash": "0f27125"
+    "sourceHash": "0f27125",
+    "sameAsSourceJustification": "«Regex» is the developer term Russian tools keep in tight chips and toggles (JetBrains ru, VS Code ru tooltips); the full «Регулярное выражение» stays in prose and placeholders."
   },
   "queryUi.ai.patternLabel.generic": "Шаблон",
   "@queryUi.ai.patternLabel.generic": {
@@ -260,7 +262,7 @@
   "@queryUi.results.live.waitingForAnotherWalk": {
     "sourceHash": "4a3b061"
   },
-  "queryUi.results.live.waitingOnPathAria": "Другое сканирование читает путь: {path}",
+  "queryUi.results.live.waitingOnPathAria": "Другое сканирование читает папку {path}",
   "@queryUi.results.live.waitingOnPathAria": {
     "sourceHash": "a54a689"
   },
@@ -300,7 +302,7 @@
   "@queryUi.results.live.stopTooltip": {
     "sourceHash": "e72f5d7"
   },
-  "queryUi.results.live.scanningAria": "Сейчас поиск идет в: {path}",
+  "queryUi.results.live.scanningAria": "Сейчас поиск идет в папке {path}",
   "@queryUi.results.live.scanningAria": {
     "sourceHash": "0071028"
   },
@@ -336,7 +338,7 @@
   "@queryUi.recent.listboxAria": {
     "sourceHash": "228c84b"
   },
-  "queryUi.recent.popoverHint": "<moveKey>↑↓</moveKey> — перемещение · <selectKey>Enter</selectKey> — заполнить поле · щелчок правой кнопкой — удалить",
+  "queryUi.recent.popoverHint": "<moveKey>↑↓</moveKey> — перемещение · <selectKey>Enter</selectKey> — подстановка в поле · нажатие правой кнопкой — удаление",
   "@queryUi.recent.popoverHint": {
     "sourceHash": "a7ccaef"
   },
@@ -344,9 +346,10 @@
   "@queryUi.recent.mode.ai": {
     "sourceHash": "11fb682"
   },
-  "queryUi.recent.mode.regex": "Регулярное выражение",
+  "queryUi.recent.mode.regex": "Regex",
   "@queryUi.recent.mode.regex": {
-    "sourceHash": "0f27125"
+    "sourceHash": "0f27125",
+    "sameAsSourceJustification": "«Regex» is the developer term Russian tools keep in tight chips and toggles (JetBrains ru, VS Code ru tooltips); the full «Регулярное выражение» stays in prose and placeholders."
   },
   "queryUi.recent.mode.filename": "Имя файла",
   "@queryUi.recent.mode.filename": {
@@ -364,19 +367,19 @@
   "@queryUi.age.hours": {
     "sourceHash": "520c737"
   },
-  "queryUi.age.days": "{count} дн назад",
+  "queryUi.age.days": "{count} дн. назад",
   "@queryUi.age.days": {
     "sourceHash": "a412343"
   },
-  "queryUi.age.weeks": "{count} нед назад",
+  "queryUi.age.weeks": "{count} нед. назад",
   "@queryUi.age.weeks": {
     "sourceHash": "7c7a56d"
   },
-  "queryUi.age.months": "{count} мес назад",
+  "queryUi.age.months": "{count} мес. назад",
   "@queryUi.age.months": {
     "sourceHash": "e3ca968"
   },
-  "queryUi.age.years": "{count} г назад",
+  "queryUi.age.years": "{count} г. назад",
   "@queryUi.age.years": {
     "sourceHash": "e0d32e9"
   },
@@ -388,7 +391,7 @@
   "@queryUi.recent.caseSensitive": {
     "sourceHash": "3934758"
   },
-  "queryUi.recent.systemDirsIncluded": "системные папки включены",
+  "queryUi.recent.systemDirsIncluded": "с системными папками",
   "@queryUi.recent.systemDirsIncluded": {
     "sourceHash": "c928638"
   },
@@ -449,7 +452,7 @@
   "@queryUi.filters.toolbarAria": {
     "sourceHash": "f484e72"
   },
-  "queryUi.filters.type.both": "Оба типа",
+  "queryUi.filters.type.both": "Все",
   "@queryUi.filters.type.both": {
     "sourceHash": "b6c1d86"
   },
@@ -485,11 +488,11 @@
   "@queryUi.filters.countOnly.label": {
     "sourceHash": "a28dbfe"
   },
-  "queryUi.filters.countOnly.tooltip": "Показать только количество подходящих файлов",
+  "queryUi.filters.countOnly.tooltip": "Показать только количество подходящих файлов, без списка",
   "@queryUi.filters.countOnly.tooltip": {
     "sourceHash": "7351921"
   },
-  "queryUi.filters.scope.includesSystemFolders": "включает системные папки",
+  "queryUi.filters.scope.includesSystemFolders": "с системными папками",
   "@queryUi.filters.scope.includesSystemFolders": {
     "sourceHash": "3bb9784"
   },
@@ -528,15 +531,15 @@
   "@queryUi.size.unit.byte": {
     "sourceHash": "1c31626"
   },
-  "queryUi.size.unit.bytes": "байты",
+  "queryUi.size.unit.bytes": "байт",
   "@queryUi.size.unit.bytes": {
     "sourceHash": "277089d"
   },
-  "queryUi.size.customCell": "свой вариант…",
+  "queryUi.size.customCell": "настроить…",
   "@queryUi.size.customCell": {
     "sourceHash": "564a4d3"
   },
-  "queryUi.size.customInputPlaceholder": "свой вариант",
+  "queryUi.size.customInputPlaceholder": "значение",
   "@queryUi.size.customInputPlaceholder": {
     "sourceHash": "6cdfd27"
   },
@@ -548,7 +551,7 @@
   "@queryUi.size.popover.aria": {
     "sourceHash": "087d449"
   },
-  "queryUi.size.aria.comparator": "Условие сравнения",
+  "queryUi.size.aria.comparator": "Оператор сравнения",
   "@queryUi.size.aria.comparator": {
     "sourceHash": "9a348d5"
   },
@@ -568,11 +571,11 @@
   "@queryUi.size.aria.maxUnit": {
     "sourceHash": "7ab449b"
   },
-  "queryUi.size.aria.customMin": "Свой минимальный размер",
+  "queryUi.size.aria.customMin": "Пользовательский минимальный размер",
   "@queryUi.size.aria.customMin": {
     "sourceHash": "d841b6a"
   },
-  "queryUi.size.aria.customMax": "Свой максимальный размер",
+  "queryUi.size.aria.customMax": "Пользовательский максимальный размер",
   "@queryUi.size.aria.customMax": {
     "sourceHash": "4761acf"
   },
@@ -592,7 +595,7 @@
   "@queryUi.date.comparator.between": {
     "sourceHash": "fbb27fb"
   },
-  "queryUi.date.customCell": "свой вариант…",
+  "queryUi.date.customCell": "настроить…",
   "@queryUi.date.customCell": {
     "sourceHash": "564a4d3"
   },
@@ -604,7 +607,7 @@
   "@queryUi.date.popover.aria": {
     "sourceHash": "e0fd68c"
   },
-  "queryUi.date.aria.comparator": "Условие сравнения",
+  "queryUi.date.aria.comparator": "Оператор сравнения",
   "@queryUi.date.aria.comparator": {
     "sourceHash": "9a348d5"
   },
@@ -616,11 +619,11 @@
   "@queryUi.date.aria.maxValue": {
     "sourceHash": "733e9f1"
   },
-  "queryUi.date.aria.custom": "Своя дата",
+  "queryUi.date.aria.custom": "Пользовательская дата",
   "@queryUi.date.aria.custom": {
     "sourceHash": "531707c"
   },
-  "queryUi.date.aria.customMax": "Своя максимальная дата",
+  "queryUi.date.aria.customMax": "Пользовательская максимальная дата",
   "@queryUi.date.aria.customMax": {
     "sourceHash": "fae3317"
   },
@@ -668,7 +671,7 @@
   "@queryUi.scope.textareaAria": {
     "sourceHash": "0d82c92"
   },
-  "queryUi.scope.toggle.hideBoring": "Скрыть неинтересные папки",
+  "queryUi.scope.toggle.hideBoring": "Скрыть скучные папки",
   "@queryUi.scope.toggle.hideBoring": {
     "sourceHash": "972df96"
   },

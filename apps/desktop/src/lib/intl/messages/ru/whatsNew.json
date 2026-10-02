@@ -15,11 +15,11 @@
   "@whatsNew.dialog.showLess": {
     "sourceHash": "94ea9b1"
   },
-  "whatsNew.dialog.seeFullChangelog": "Показать полный список изменений",
+  "whatsNew.dialog.seeFullChangelog": "Открыть полный журнал изменений",
   "@whatsNew.dialog.seeFullChangelog": {
     "sourceHash": "66a59ed"
   },
-  "whatsNew.dialog.optOut": "Не интересуют списки изменений",
+  "whatsNew.dialog.optOut": "Не показывать журнал изменений",
   "@whatsNew.dialog.optOut": {
     "sourceHash": "f1259e9"
   },
@@ -27,7 +27,7 @@
   "@whatsNew.dialog.close": {
     "sourceHash": "7d9eb7a"
   },
-  "whatsNew.optOutToast": "Списки изменений больше не будут показаны. Их можно снова включить в разделе «Настройки > Обновления и конфиденциальность».",
+  "whatsNew.optOutToast": "Понятно, списки изменений больше не будут показываться. Их можно снова включить в разделе «Настройки > Обновления и конфиденциальность».",
   "@whatsNew.optOutToast": {
     "sourceHash": "368591b"
   }

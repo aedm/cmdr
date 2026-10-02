@@ -27,7 +27,7 @@
   "@transfer.split.skipped": {
     "sourceHash": "5fe3ee2"
   },
-  "transfer.fileOnly.allDone": "{verb, select, copy {Копирование} other {Перемещение}} завершено: {verb, select, copy {скопировано} other {перемещено}} {transferredText} {transferred, plural, one {файл} few {файла} many {файлов} other {файла}}.",
+  "transfer.fileOnly.allDone": "{verb, select, copy {Копирование} other {Перемещение}} завершено. {verb, select, copy {Скопировано} other {Перемещено}}: {transferredText} {transferred, plural, one {файл} few {файла} many {файлов} other {файла}}.",
   "@transfer.fileOnly.allDone": {
     "sourceHash": "19c9b7d"
   },
@@ -35,23 +35,23 @@
   "@transfer.fileOnly.allSkippedSingle": {
     "sourceHash": "9ed3c9a"
   },
-  "transfer.fileOnly.allSkippedMany": "{verb, select, copy {Копирование} other {Перемещение}} завершено: пропущены все файлы ({skippedText} {skipped, plural, one {файл} few {файла} many {файлов} other {файла}}), поскольку они уже в целевой папке. Ничего не {verb, select, copy {скопировано} other {перемещено}}.",
+  "transfer.fileOnly.allSkippedMany": "{verb, select, copy {Копирование} other {Перемещение}} завершено: пропущены все файлы ({skippedText} {skipped, plural, one {файл} few {файла} many {файлов} other {файла}}), потому что они уже были в целевой папке. Ничего не {verb, select, copy {скопировано} other {перемещено}}.",
   "@transfer.fileOnly.allSkippedMany": {
     "sourceHash": "5b688cf"
   },
-  "transfer.fileOnly.mixedCopy": "Копирование завершено: скопировано {transferredText}, пропущено {skippedText}. Все выбранные файлы ({processedText} {processed, plural, one {файл} few {файла} many {файлов} other {файла}}) теперь в целевой папке.",
+  "transfer.fileOnly.mixedCopy": "Копирование завершено. Скопировано: {transferredText}, пропущено: {skippedText}. Все выделенные файлы ({processedText} {processed, plural, one {файл} few {файла} many {файлов} other {файла}}) теперь в целевой папке.",
   "@transfer.fileOnly.mixedCopy": {
     "sourceHash": "b00606b"
   },
-  "transfer.fileOnly.mixedMove": "Перемещение завершено: перемещено {transferredText}, пропущено {skippedText}. {skippedText} {skipped, plural, one {файл} few {файла} many {файлов} other {файла}} {skipped, plural, one {уже находился} few {уже находились} many {уже находились} other {уже находились}} в целевой папке.",
+  "transfer.fileOnly.mixedMove": "Перемещение завершено. Перемещено: {transferredText}, пропущено: {skippedText}. {skippedText} {skipped, plural, one {файл} few {файла} many {файлов} other {файла}} {skipped, plural, one {уже был} few {уже были} many {уже были} other {уже были}} в целевой папке.",
   "@transfer.fileOnly.mixedMove": {
     "sourceHash": "1457a4f"
   },
-  "transfer.appearedDuringMove": "Во время перемещения {countText} {count, plural, one {объект появился} few {объекта появились} many {объектов появилось} other {объекта появилось}} и {count, plural, one {остается} few {остаются} many {осталось} other {осталось}} в исходном месте. Исходные папки: {scope, select, manyFolders {{folderName} и другие исходные папки} other {{folderName}}}.",
+  "transfer.appearedDuringMove": "Во время перемещения в {scope, select, manyFolders {папке {folderName} и других исходных папках} other {папке {folderName}}} {count, plural, one {появился {countText} объект, и он остался там} few {появились {countText} объекта, и они остались там} many {появилось {countText} объектов, и они остались там} other {появилось {countText} объекта, и они остались там}}.",
   "@transfer.appearedDuringMove": {
     "sourceHash": "b884882"
   },
-  "transfer.changedDuringMove": "Во время перемещения {countText} {count, plural, one {объект изменился} few {объекта изменились} many {объектов изменилось} other {объекта изменилось}} и {count, plural, one {остается} few {остаются} many {осталось} other {осталось}} в исходном месте. Исходные папки: {scope, select, manyFolders {{folderName} и другие исходные папки} other {{folderName}}}.",
+  "transfer.changedDuringMove": "Во время перемещения {count, plural, one {изменился {countText} объект, и он остался} few {изменились {countText} объекта, и они остались} many {изменилось {countText} объектов, и они остались} other {изменилось {countText} объекта, и они остались}} в {scope, select, manyFolders {папке {folderName} и других исходных папках} other {папке {folderName}}}.",
   "@transfer.changedDuringMove": {
     "sourceHash": "b446f54"
   }

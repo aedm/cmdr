@@ -67,7 +67,7 @@ describe('the shipped Russian catalog', () => {
     setLocale('ru')
     expect(
       tString('fileExplorer.selectionInfo.noSelectionOfMatches', { count: 21, shownText: '3', totalText: '21' }),
-    ).toBe('Ничего не выбрано, 3 из 21 совпадения.')
+    ).toBe('Ничего не выделено, 3 из 21 совпадения.')
     expect(tString('fileExplorer.summary.fileNoun', { count: 21 })).toBe('файла')
   })
 })

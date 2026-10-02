@@ -3,15 +3,15 @@
   "@updates.failure.check": {
     "sourceHash": "5fb454c"
   },
-  "updates.failure.checkUntyped": "Cmdr не удалось проверить наличие обновлений. Проверьте интернет-соединение и повторите попытку позже.",
+  "updates.failure.checkUntyped": "Cmdr не удалось проверить наличие обновлений. Проверьте подключение к интернету и попробуйте еще раз позже.",
   "@updates.failure.checkUntyped": {
     "sourceHash": "233f5d9"
   },
-  "updates.failure.download": "Cmdr не удалось загрузить обновление. Повторите попытку позже.",
+  "updates.failure.download": "Cmdr не удалось загрузить обновление. Попробуйте еще раз позже.",
   "@updates.failure.download": {
     "sourceHash": "1becb1b"
   },
-  "updates.failure.install": "Cmdr не удалось установить обновление. Повторите попытку позже или загрузите последнюю версию Cmdr с getcmdr.com.",
+  "updates.failure.install": "Cmdr не удалось установить обновление. Попробуйте еще раз позже или скачайте последнюю версию Cmdr с getcmdr.com.",
   "@updates.failure.install": {
     "sourceHash": "05a4714"
   },
@@ -23,7 +23,7 @@
   "@updates.toast.ready": {
     "sourceHash": "622668e"
   },
-  "updates.toast.readyDetail": "Перезапустите приложение сейчас или получите обновление при следующем запуске Cmdr.",
+  "updates.toast.readyDetail": "Можно перезапустить сейчас, а можно ничего не делать: обновление включится при следующем запуске Cmdr.",
   "@updates.toast.readyDetail": {
     "sourceHash": "42ce099"
   },
@@ -48,15 +48,15 @@
   "@updates.moveToApplicationsDialog.title": {
     "sourceHash": "97f87a0"
   },
-  "updates.moveToApplicationsDialog.translocated": "Новая версия готова, но macOS запускает Cmdr из временной копии, доступной только для чтения. Так бывает при запуске приложения прямо из места загрузки. В таком случае обновление невозможно установить.",
+  "updates.moveToApplicationsDialog.translocated": "Новая версия готова, но macOS запускает Cmdr из временной копии, доступной только для чтения. Так бывает, если открыть приложение прямо оттуда, куда его скачали, и тогда обновлениям некуда записаться.",
   "@updates.moveToApplicationsDialog.translocated": {
     "sourceHash": "ed64953"
   },
-  "updates.moveToApplicationsDialog.readOnlyVolume": "Новая версия готова, но Cmdr запущен из места, доступного только для чтения, обычно из подключенного образа диска. В таком случае обновление невозможно установить.",
+  "updates.moveToApplicationsDialog.readOnlyVolume": "Новая версия готова, но Cmdr запущен из места, доступного только для чтения, обычно из еще подключенного образа диска. Поэтому обновлениям некуда записаться.",
   "@updates.moveToApplicationsDialog.readOnlyVolume": {
     "sourceHash": "a23ef5a"
   },
-  "updates.moveToApplicationsDialog.howTo": "Завершите работу Cmdr, перетащите приложение в папку «Программы» и запустите оттуда. После этого обновления будут устанавливаться автоматически.",
+  "updates.moveToApplicationsDialog.howTo": "Завершите Cmdr, перетащите его в папку «Программы» и откройте оттуда. Дальше все обновления будут приходить сами.",
   "@updates.moveToApplicationsDialog.howTo": {
     "sourceHash": "76a136d"
   },
@@ -80,7 +80,7 @@
   "@updates.status.installing": {
     "sourceHash": "214ef12"
   },
-  "updates.status.ready": "Обновление v{next} готово. Перезапустите приложение для установки.",
+  "updates.status.ready": "Обновление v{next} готово. Перезапустите, чтобы применить.",
   "@updates.status.ready": {
     "sourceHash": "2c226ff"
   }

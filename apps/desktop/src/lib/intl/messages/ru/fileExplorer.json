@@ -15,7 +15,7 @@
   "@fileExplorer.archiveEnterMenu.configure": {
     "sourceHash": "37d7822"
   },
-  "fileExplorer.breadcrumb.navigateTooltip": "Нажмите для перехода к: {path}",
+  "fileExplorer.breadcrumb.navigateTooltip": "Нажмите, чтобы перейти в папку {path}",
   "@fileExplorer.breadcrumb.navigateTooltip": {
     "sourceHash": "9d08428"
   },
@@ -23,7 +23,7 @@
   "@fileExplorer.doubleClickHint.title": {
     "sourceHash": "865b71e"
   },
-  "fileExplorer.doubleClickHint.body": "Вы дважды щелкнули по фону панели. Это открывает папку на уровень выше.",
+  "fileExplorer.doubleClickHint.body": "Вы дважды нажали на фон панели. Так открывается папка на уровень выше.",
   "@fileExplorer.doubleClickHint.body": {
     "sourceHash": "cfbc7d3"
   },
@@ -96,15 +96,15 @@
   "@fileExplorer.pane.disconnectFailedToast": {
     "sourceHash": "e394098"
   },
-  "fileExplorer.pane.connectedDirectlyToast": "Прямое подключение установлено для быстрого доступа",
+  "fileExplorer.pane.connectedDirectlyToast": "Установлено прямое подключение: доступ будет быстрее",
   "@fileExplorer.pane.connectedDirectlyToast": {
     "sourceHash": "5c6bcd2"
   },
-  "fileExplorer.pane.directConnectionUnreachableToast": "Сейчас не удается связаться с сервером {server}. Общий ресурс продолжает использовать системное подключение.",
+  "fileExplorer.pane.directConnectionUnreachableToast": "Сейчас не удается связаться с сервером {server}, поэтому общая папка продолжает работать через системное подключение.",
   "@fileExplorer.pane.directConnectionUnreachableToast": {
     "sourceHash": "4a5ca66"
   },
-  "fileExplorer.pane.directConnectionBlockedByThisMacToast": "Что-то на этом Mac мешает Cmdr подключиться напрямую к серверу {server}. Общий ресурс продолжает использовать системное подключение. Выключите и снова включите Cmdr в разделе «{localNetwork}» или проверьте приложение брандмауэра.",
+  "fileExplorer.pane.directConnectionBlockedByThisMacToast": "Что-то на этом Mac не дает Cmdr подключиться к серверу {server} напрямую, поэтому общая папка продолжает работать через системное подключение. Выключите и снова включите Cmdr в разделе «{localNetwork}» или проверьте приложение-брандмауэр.",
   "@fileExplorer.pane.directConnectionBlockedByThisMacToast": {
     "sourceHash": "74f758e"
   },
@@ -112,31 +112,31 @@
   "@fileExplorer.pane.openLocalNetworkSettings": {
     "sourceHash": "c3931df"
   },
-  "fileExplorer.pane.directConnectionTooSlowToast": "Сервер {server} слишком долго отвечал. Общий ресурс продолжает использовать системное подключение.",
+  "fileExplorer.pane.directConnectionTooSlowToast": "Сервер {server} слишком долго не отвечал, поэтому общая папка продолжает работать через системное подключение.",
   "@fileExplorer.pane.directConnectionTooSlowToast": {
     "sourceHash": "bb5baea"
   },
-  "fileExplorer.pane.directConnectionUnexpectedToast": "Не удалось установить прямое подключение к серверу {server}. Общий ресурс продолжает использовать системное подключение.",
+  "fileExplorer.pane.directConnectionUnexpectedToast": "Не удалось установить прямое подключение к серверу {server}, поэтому общая папка продолжает работать через системное подключение.",
   "@fileExplorer.pane.directConnectionUnexpectedToast": {
     "sourceHash": "1b14bd0"
   },
-  "fileExplorer.pane.directConnectionShareNotOnServerToast": "Сервер {server} сообщает, что этого общего ресурса нет. Ресурс продолжает использовать системное подключение.",
+  "fileExplorer.pane.directConnectionShareNotOnServerToast": "Сервер {server} сообщает, что такой общей папки у него нет, поэтому она продолжает работать через системное подключение.",
   "@fileExplorer.pane.directConnectionShareNotOnServerToast": {
     "sourceHash": "1936abc"
   },
-  "fileExplorer.pane.directConnectionUnavailableToast": "Сейчас не удалось установить прямое подключение. Общий ресурс продолжает использовать системное подключение.",
+  "fileExplorer.pane.directConnectionUnavailableToast": "Сейчас не удалось установить прямое подключение, поэтому общая папка продолжает работать через системное подключение.",
   "@fileExplorer.pane.directConnectionUnavailableToast": {
     "sourceHash": "282f96d"
   },
-  "fileExplorer.pane.directConnectionShareGoneToast": "Общий ресурс {share} больше не подключен. Ускорять нечего.",
+  "fileExplorer.pane.directConnectionShareGoneToast": "Общая папка {share} больше не подключена, так что ускорять нечего.",
   "@fileExplorer.pane.directConnectionShareGoneToast": {
     "sourceHash": "d562549"
   },
-  "fileExplorer.pane.directConnectionMountNotRespondingToast": "Общий ресурс {share} сейчас не отвечает. Cmdr не может подключиться напрямую. Попробуйте еще раз чуть позже.",
+  "fileExplorer.pane.directConnectionMountNotRespondingToast": "Общая папка {share} сейчас не отвечает, поэтому Cmdr не может подключиться к ней напрямую. Попробуйте еще раз чуть позже.",
   "@fileExplorer.pane.directConnectionMountNotRespondingToast": {
     "sourceHash": "baa6b1a"
   },
-  "fileExplorer.pane.directConnectionNotNetworkShareToast": "Том {volume} не является общим сетевым ресурсом. Ускорять нечего.",
+  "fileExplorer.pane.directConnectionNotNetworkShareToast": "Том {volume} не является общей сетевой папкой, так что ускорять нечего.",
   "@fileExplorer.pane.directConnectionNotNetworkShareToast": {
     "sourceHash": "f634743"
   },
@@ -148,11 +148,11 @@
   "@fileExplorer.pane.refreshStillRunningToast": {
     "sourceHash": "0636af4"
   },
-  "fileExplorer.pane.dialogRenderFailedToast": "Не удалось открыть диалог, поэтому он закрыт и управление клавиатурой возвращено. Попробуйте еще раз.",
+  "fileExplorer.pane.dialogRenderFailedToast": "Это диалоговое окно не открылось, поэтому мы его закрыли и вернули управление клавиатурой. Попробуйте еще раз.",
   "@fileExplorer.pane.dialogRenderFailedToast": {
     "sourceHash": "1e8ed2d"
   },
-  "fileExplorer.pane.ejectFailedToast": "Не удалось извлечь {volumeName}: {message}",
+  "fileExplorer.pane.ejectFailedToast": "Том {volumeName} не извлечен: {message}",
   "@fileExplorer.pane.ejectFailedToast": {
     "sourceHash": "f4072a7"
   },
@@ -164,15 +164,15 @@
   "@fileExplorer.errorPane.openSystemSettings": {
     "sourceHash": "f735c5c"
   },
-  "fileExplorer.errorPane.goBack": "Вернуться назад",
+  "fileExplorer.errorPane.goBack": "Назад",
   "@fileExplorer.errorPane.goBack": {
     "sourceHash": "6aadac2"
   },
-  "fileExplorer.errorPane.goHome": "Перейти в личную папку",
+  "fileExplorer.errorPane.goHome": "Перейти в папку пользователя",
   "@fileExplorer.errorPane.goHome": {
     "sourceHash": "74b2a8b"
   },
-  "fileExplorer.errorPane.technicalDetails": "Технические сведения",
+  "fileExplorer.errorPane.technicalDetails": "Технические подробности",
   "@fileExplorer.errorPane.technicalDetails": {
     "sourceHash": "890ab35"
   },
@@ -233,7 +233,7 @@
   "@fileExplorer.functionKeyBar.permanentlyLabel": {
     "sourceHash": "d06138e"
   },
-  "fileExplorer.functionKeyBar.deletePermanentlyAction": "Удалить немедленно",
+  "fileExplorer.functionKeyBar.deletePermanentlyAction": "Удалить безвозвратно",
   "@fileExplorer.functionKeyBar.deletePermanentlyAction": {
     "sourceHash": "280b10c"
   },
@@ -241,11 +241,11 @@
   "@fileExplorer.functionKeyBar.viewLabel": {
     "sourceHash": "dcc839a"
   },
-  "fileExplorer.functionKeyBar.viewAction": "Просмотр файла",
+  "fileExplorer.functionKeyBar.viewAction": "Просмотреть файл",
   "@fileExplorer.functionKeyBar.viewAction": {
     "sourceHash": "6ef3f36"
   },
-  "fileExplorer.functionKeyBar.editLabel": "Редактировать",
+  "fileExplorer.functionKeyBar.editLabel": "Правка",
   "@fileExplorer.functionKeyBar.editLabel": {
     "sourceHash": "464c4ff"
   },
@@ -289,7 +289,7 @@
   "@fileExplorer.functionKeyBar.hiddenToast": {
     "sourceHash": "f961d3b"
   },
-  "fileExplorer.typeToJump.ariaLabel": "Перейти к: {buffer}",
+  "fileExplorer.typeToJump.ariaLabel": "Переход: {buffer}",
   "@fileExplorer.typeToJump.ariaLabel": {
     "sourceHash": "da879a5"
   },
@@ -329,7 +329,7 @@
   "@fileExplorer.network.osMountFallback.message": {
     "sourceHash": "cb53372"
   },
-  "fileExplorer.network.osMountFallback.shareNotOnServer": "Не удалось подключиться напрямую к <shareName>{share}</shareName>: сервер сообщает, что общего ресурса с таким именем нет. Подключение сохраняется через системное SMB-подключение macOS, которое значительно медленнее. Само это не исправится: ресурс мог быть переименован или удален на сервере. Проверьте его там.",
+  "fileExplorer.network.osMountFallback.shareNotOnServer": "Не удалось подключиться напрямую к <shareName>{share}</shareName>: сервер сообщает, что общей папки с таким именем нет. Подключение по-прежнему идет через системное SMB-подключение macOS, а оно намного медленнее. Повторная попытка тут не поможет: возможно, папку переименовали или удалили на сервере, так что стоит проверить там.",
   "@fileExplorer.network.osMountFallback.shareNotOnServer": {
     "sourceHash": "3ae984e"
   },
@@ -349,11 +349,11 @@
   "@fileExplorer.network.browser.refresh": {
     "sourceHash": "0e91610"
   },
-  "fileExplorer.network.browser.refreshAriaLabel": "Обновить сетевые узлы",
+  "fileExplorer.network.browser.refreshAriaLabel": "Обновить сетевые хосты",
   "@fileExplorer.network.browser.refreshAriaLabel": {
     "sourceHash": "73966bd"
   },
-  "fileExplorer.network.browser.refreshHint": "Нажмите <key></key> или щелкните здесь для обновления",
+  "fileExplorer.network.browser.refreshHint": "Чтобы обновить, нажмите <key></key> или сюда",
   "@fileExplorer.network.browser.refreshHint": {
     "sourceHash": "7f65c7d"
   },
@@ -389,7 +389,7 @@
   "@fileExplorer.network.browser.status.unreachable": {
     "sourceHash": "abaa46a"
   },
-  "fileExplorer.network.browser.status.error": "Ошибка",
+  "fileExplorer.network.browser.status.error": "Проблема",
   "@fileExplorer.network.browser.status.error": {
     "sourceHash": "54a0e8c"
   },
@@ -405,7 +405,7 @@
   "@fileExplorer.network.browser.status.connected": {
     "sourceHash": "2296556"
   },
-  "fileExplorer.network.browser.tooltip.resolving": "Определение имени узла и IP-адреса…",
+  "fileExplorer.network.browser.tooltip.resolving": "Определение имени хоста и IP-адреса…",
   "@fileExplorer.network.browser.tooltip.resolving": {
     "sourceHash": "cac249d"
   },
@@ -413,11 +413,11 @@
   "@fileExplorer.network.browser.tooltip.waitingForNetwork": {
     "sourceHash": "81ac569"
   },
-  "fileExplorer.network.browser.tooltip.doubleClickToConnect": "Дважды щелкните для подключения и просмотра общих ресурсов",
+  "fileExplorer.network.browser.tooltip.doubleClickToConnect": "Дважды нажмите, чтобы подключиться и посмотреть общие папки",
   "@fileExplorer.network.browser.tooltip.doubleClickToConnect": {
     "sourceHash": "a068f74"
   },
-  "fileExplorer.network.browser.tooltip.credsStored": "Учетные данные сохранены. Дважды щелкните для подключения.",
+  "fileExplorer.network.browser.tooltip.credsStored": "Учетные данные сохранены. Дважды нажмите, чтобы подключиться.",
   "@fileExplorer.network.browser.tooltip.credsStored": {
     "sourceHash": "ff82a32"
   },
@@ -425,7 +425,7 @@
   "@fileExplorer.network.browser.tooltip.credsRejected": {
     "sourceHash": "a3d55a2"
   },
-  "fileExplorer.network.browser.tooltip.requiresLogin": "Этот узел требует входа. Дважды щелкните для ввода учетных данных.",
+  "fileExplorer.network.browser.tooltip.requiresLogin": "Этот хост требует входа. Дважды нажмите, чтобы ввести учетные данные.",
   "@fileExplorer.network.browser.tooltip.requiresLogin": {
     "sourceHash": "8e64ac0"
   },
@@ -433,19 +433,19 @@
   "@fileExplorer.network.browser.tooltip.authFailed": {
     "sourceHash": "b8620ab"
   },
-  "fileExplorer.network.browser.cannotRemoveDiscovered": "Обнаруженные узлы удалить нельзя",
+  "fileExplorer.network.browser.cannotRemoveDiscovered": "Найденные в сети хосты удалить нельзя",
   "@fileExplorer.network.browser.cannotRemoveDiscovered": {
     "sourceHash": "bde1b3c"
   },
-  "fileExplorer.network.browser.removeHostConfirm": "Забыть {hostName}? Cmdr перестанет показывать этот узел и сохраненные для него общие ресурсы. Подключенные тома останутся подключенными.",
+  "fileExplorer.network.browser.removeHostConfirm": "Забыть {hostName}? Cmdr перестанет показывать этот хост и сохраненные для него общие папки. Подключенные тома останутся подключенными.",
   "@fileExplorer.network.browser.removeHostConfirm": {
     "sourceHash": "25262e0"
   },
-  "fileExplorer.network.browser.hostRemoved": "Узел забыт: {hostName}",
+  "fileExplorer.network.browser.hostRemoved": "Хост забыт: {hostName}",
   "@fileExplorer.network.browser.hostRemoved": {
     "sourceHash": "51e025a"
   },
-  "fileExplorer.network.browser.hostRemoveFailed": "Не удалось забыть {hostName}",
+  "fileExplorer.network.browser.hostRemoveFailed": "Не удалось забыть хост {hostName}",
   "@fileExplorer.network.browser.hostRemoveFailed": {
     "sourceHash": "4411547"
   },
@@ -461,7 +461,7 @@
   "@fileExplorer.network.browser.disconnected": {
     "sourceHash": "6cb30d3"
   },
-  "fileExplorer.network.browser.noMountedShares": "Нет подключенных общих ресурсов с сервера {hostName}",
+  "fileExplorer.network.browser.noMountedShares": "Нет подключенных общих папок с сервера {hostName}",
   "@fileExplorer.network.browser.noMountedShares": {
     "sourceHash": "913c7e6"
   },
@@ -473,7 +473,7 @@
   "@fileExplorer.network.share.credentialsStoredLocally": {
     "sourceHash": "18dd24e"
   },
-  "fileExplorer.network.share.notFound": "Общий ресурс «{shareName}» не найден на сервере {hostName}",
+  "fileExplorer.network.share.notFound": "Общая папка «{shareName}» не найдена на сервере {hostName}",
   "@fileExplorer.network.share.notFound": {
     "sourceHash": "afdd472"
   },
@@ -489,15 +489,15 @@
   "@fileExplorer.network.share.signInTitle": {
     "sourceHash": "c6ff588"
   },
-  "fileExplorer.network.share.signInMessage": "Этот сервер показывает общие ресурсы после входа.",
+  "fileExplorer.network.share.signInMessage": "Этот сервер показывает общие папки после входа.",
   "@fileExplorer.network.share.signInMessage": {
     "sourceHash": "a07c053"
   },
-  "fileExplorer.network.share.noSharesTitle": "Нет доступных общих ресурсов",
+  "fileExplorer.network.share.noSharesTitle": "Нет доступных общих папок",
   "@fileExplorer.network.share.noSharesTitle": {
     "sourceHash": "56890aa"
   },
-  "fileExplorer.network.share.noSharesMessage": "У этого узла нет доступных общих ресурсов либо требуется аутентификация.",
+  "fileExplorer.network.share.noSharesMessage": "У этого хоста нет доступных общих папок, или требуется аутентификация.",
   "@fileExplorer.network.share.noSharesMessage": {
     "sourceHash": "6633416"
   },
@@ -521,7 +521,7 @@
   "@fileExplorer.network.share.forgetPassword": {
     "sourceHash": "ed68566"
   },
-  "fileExplorer.network.share.shareCount": "{count, plural, one {{countText} общий ресурс} few {{countText} общих ресурса} many {{countText} общих ресурсов} other {{countText} общего ресурса}}",
+  "fileExplorer.network.share.shareCount": "{count, plural, one {{countText} общая папка} few {{countText} общие папки} many {{countText} общих папок} other {{countText} общей папки}}",
   "@fileExplorer.network.share.shareCount": {
     "sourceHash": "4cc6002"
   },
@@ -541,51 +541,19 @@
   "@fileExplorer.network.reconnect.finalAttempt": {
     "sourceHash": "7418a78"
   },
-  "fileExplorer.network.reconnect.willTryMore": "Подключение повторено {retried}. После этой попытки повторим еще {remaining}.",
+  "fileExplorer.network.reconnect.willTryMore": "Подключение повторено {retried}. После этой попытки Cmdr попробует еще {remaining}.",
   "@fileExplorer.network.reconnect.willTryMore": {
     "sourceHash": "a7d887a"
   },
-  "fileExplorer.mtp.connectTimedOut": "Время ожидания подключения истекло. Возможно, устройство работает медленно или не отвечает.",
-  "@fileExplorer.mtp.connectTimedOut": {
-    "sourceHash": "cc01ae7"
-  },
-  "fileExplorer.mtp.exclusiveAccess": "Другое приложение использует это устройство. Примените обходное решение для ptpcamerad.",
-  "@fileExplorer.mtp.exclusiveAccess": {
-    "sourceHash": "1fac18c"
-  },
-  "fileExplorer.mtp.deviceNotFound": "Устройство не найдено. Возможно, оно отключено.",
-  "@fileExplorer.mtp.deviceNotFound": {
-    "sourceHash": "15d2382"
-  },
-  "fileExplorer.mtp.disconnected": "Устройство отключено.",
-  "@fileExplorer.mtp.disconnected": {
-    "sourceHash": "57e823a"
-  },
-  "fileExplorer.mtp.deviceBusy": "Устройство занято. Попробуйте еще раз.",
-  "@fileExplorer.mtp.deviceBusy": {
-    "sourceHash": "7199b1d"
-  },
-  "fileExplorer.mtp.noStorage": "У устройства нет доступного хранилища",
-  "@fileExplorer.mtp.noStorage": {
-    "sourceHash": "ff30402"
-  },
-  "fileExplorer.mtp.connecting": "Подключение к устройству…",
-  "@fileExplorer.mtp.connecting": {
-    "sourceHash": "860bb9b"
-  },
-  "fileExplorer.mtp.tryAgain": "Повторить попытку",
-  "@fileExplorer.mtp.tryAgain": {
-    "sourceHash": "d8b8392"
-  },
-  "fileExplorer.networkMount.mounting": "Подключение тома {target}…",
+  "fileExplorer.networkMount.mounting": "Подключение: {target}…",
   "@fileExplorer.networkMount.mounting": {
     "sourceHash": "7b7368d"
   },
-  "fileExplorer.networkMount.shareFallback": "общий ресурс",
+  "fileExplorer.networkMount.shareFallback": "общая папка",
   "@fileExplorer.networkMount.shareFallback": {
     "sourceHash": "c3bc45a"
   },
-  "fileExplorer.networkMount.mountFailedTitle": "Не удалось подключить общий ресурс",
+  "fileExplorer.networkMount.mountFailedTitle": "Не удалось подключить общую папку",
   "@fileExplorer.networkMount.mountFailedTitle": {
     "sourceHash": "d04d142"
   },
@@ -593,7 +561,7 @@
   "@fileExplorer.networkMount.signInTitle": {
     "sourceHash": "8e161f1"
   },
-  "fileExplorer.networkMount.signInMessage": "Сервер «{server}» открывает этот общий ресурс только после входа.",
+  "fileExplorer.networkMount.signInMessage": "Сервер «{server}» открывает эту общую папку только после входа в учетную запись.",
   "@fileExplorer.networkMount.signInMessage": {
     "sourceHash": "bec2bf7"
   },
@@ -605,7 +573,7 @@
   "@fileExplorer.networkMount.back": {
     "sourceHash": "76900f1"
   },
-  "fileExplorer.unreachable.title": "Не удалось получить доступ к: {path}",
+  "fileExplorer.unreachable.title": "Папка {path} недоступна",
   "@fileExplorer.unreachable.title": {
     "sourceHash": "5fa39ab"
   },
@@ -629,7 +597,7 @@
   "@fileExplorer.unreachable.disconnect": {
     "sourceHash": "acfc5be"
   },
-  "fileExplorer.unreachable.openHome": "Открыть личную папку",
+  "fileExplorer.unreachable.openHome": "Открыть папку пользователя",
   "@fileExplorer.unreachable.openHome": {
     "sourceHash": "a178b4d"
   },
@@ -653,7 +621,7 @@
   "@fileExplorer.listingStalled.tryAgain": {
     "sourceHash": "d8b8392"
   },
-  "fileExplorer.listingStalled.goBack": "Вернуться назад",
+  "fileExplorer.listingStalled.goBack": "Назад",
   "@fileExplorer.listingStalled.goBack": {
     "sourceHash": "6aadac2"
   },
@@ -661,7 +629,7 @@
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
   },
-  "fileExplorer.clipboard.cutReady": "Готово к перемещению: {countText} {count, plural, one {объект} few {объекта} many {объектов} other {объекта}}. Завершите вставкой.",
+  "fileExplorer.clipboard.cutReady": "Готово к перемещению: {countText} {count, plural, one {объект} few {объекта} many {объектов} other {объекта}}. Вставьте, чтобы завершить.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"
   },
@@ -717,7 +685,7 @@
   "@fileExplorer.edit.appMissingUnnamed": {
     "sourceHash": "c61458b"
   },
-  "fileExplorer.edit.launchRefused": "Cmdr не удалось запустить текстовый редактор. Один раз откройте его самостоятельно, затем вернитесь.",
+  "fileExplorer.edit.launchRefused": "Cmdr не смог запустить текстовый редактор. Откройте его один раз вручную, затем вернитесь сюда.",
   "@fileExplorer.edit.launchRefused": {
     "sourceHash": "8a18c5c"
   },
@@ -737,7 +705,7 @@
   "@fileExplorer.clipboard.empty": {
     "sourceHash": "0cbe304"
   },
-  "fileExplorer.clipboard.pastedAsFile": "Содержимое буфера обмена ({kind, select, image {изображение} pdf {PDF} other {текст}}) сохранено как {filename}",
+  "fileExplorer.clipboard.pastedAsFile": "{kind, select, image {Изображение из буфера обмена вставлено} pdf {PDF из буфера обмена вставлен} other {Текст из буфера обмена вставлен}} как файл {filename}",
   "@fileExplorer.clipboard.pastedAsFile": {
     "sourceHash": "d61d4b5"
   },
@@ -898,7 +866,7 @@
   "@fileExplorer.list.fileListAriaLabel": {
     "sourceHash": "0728b8e"
   },
-  "fileExplorer.list.sortColumnsAriaLabel": "Сортировать колонки",
+  "fileExplorer.list.sortColumnsAriaLabel": "Сортировка по колонкам",
   "@fileExplorer.list.sortColumnsAriaLabel": {
     "sourceHash": "21f76f8"
   },
@@ -978,11 +946,11 @@
   "@fileExplorer.git.size.commits": {
     "sourceHash": "cfdb4be"
   },
-  "fileExplorer.git.size.stashEntries": "{count, plural, one {{countText} запись stash} few {{countText} записи stash} many {{countText} записей stash} other {{countText} записи stash}}",
+  "fileExplorer.git.size.stashEntries": "{count, plural, one {{countText} запись в stash} few {{countText} записи в stash} many {{countText} записей в stash} other {{countText} записи в stash}}",
   "@fileExplorer.git.size.stashEntries": {
     "sourceHash": "d9f98ff"
   },
-  "fileExplorer.git.size.linkedWorktrees": "{count, plural, one {{countText} связанное рабочее дерево} few {{countText} связанных рабочих дерева} many {{countText} связанных рабочих деревьев} other {{countText} связанного рабочего дерева}}",
+  "fileExplorer.git.size.linkedWorktrees": "{count, plural, one {{countText} связанный worktree} few {{countText} связанных worktree} many {{countText} связанных worktree} other {{countText} связанного worktree}}",
   "@fileExplorer.git.size.linkedWorktrees": {
     "sourceHash": "7bc228e"
   },
@@ -1035,19 +1003,19 @@
   "@fileExplorer.git.tooltip.stashedOnBranch": {
     "sourceHash": "5a1ad8d"
   },
-  "fileExplorer.git.tooltip.worktreeOnBranch": "Выбрана ветка «{branch}»",
+  "fileExplorer.git.tooltip.worktreeOnBranch": "Извлечена ветка «{branch}»",
   "@fileExplorer.git.tooltip.worktreeOnBranch": {
     "sourceHash": "4941fa5"
   },
-  "fileExplorer.git.tooltip.worktreeDetached": "Отсоединено на {id}",
+  "fileExplorer.git.tooltip.worktreeDetached": "Отсоединенный HEAD: {id}",
   "@fileExplorer.git.tooltip.worktreeDetached": {
     "sourceHash": "8455479"
   },
-  "fileExplorer.selectionTooltip.selected": "Выбрано",
+  "fileExplorer.selectionTooltip.selected": "Выделено",
   "@fileExplorer.selectionTooltip.selected": {
     "sourceHash": "57fd7a0"
   },
-  "fileExplorer.selectionTooltip.ofTotal": "Из общего количества",
+  "fileExplorer.selectionTooltip.ofTotal": "Всего",
   "@fileExplorer.selectionTooltip.ofTotal": {
     "sourceHash": "1269b5a"
   },
@@ -1055,7 +1023,7 @@
   "@fileExplorer.selectionTooltip.onDiskHeader": {
     "sourceHash": "9795f99"
   },
-  "fileExplorer.entry.brokenSymlink": "(поврежденная символическая ссылка)",
+  "fileExplorer.entry.brokenSymlink": "(битая ссылка)",
   "@fileExplorer.entry.brokenSymlink": {
     "sourceHash": "a7ffd43"
   },
@@ -1099,7 +1067,7 @@
   "@fileExplorer.imageIndex.file.excluded": {
     "sourceHash": "1f68cee"
   },
-  "fileExplorer.imageIndex.folder.allIndexed": "Проиндексировано все: {totalText} {total, plural, one {изображение} few {изображения} many {изображений} other {изображения}}",
+  "fileExplorer.imageIndex.folder.allIndexed": "{total, plural, one {Проиндексированы все изображения ({totalText})} few {Проиндексированы все изображения ({totalText})} many {Проиндексированы все изображения ({totalText})} other {Проиндексированы все изображения ({totalText})}}",
   "@fileExplorer.imageIndex.folder.allIndexed": {
     "sourceHash": "c19fe12"
   },
@@ -1119,7 +1087,7 @@
   "@fileExplorer.imageIndex.drive.indexing": {
     "sourceHash": "23d351d"
   },
-  "fileExplorer.imageIndex.drive.done": "На этом диске проиндексировано все: {totalText} {total, plural, one {изображение} few {изображения} many {изображений} other {изображения}}.",
+  "fileExplorer.imageIndex.drive.done": "{total, plural, one {Все изображения на этом диске ({totalText}) проиндексированы.} few {Все изображения на этом диске ({totalText}) проиндексированы.} many {Все изображения на этом диске ({totalText}) проиндексированы.} other {Все изображения на этом диске ({totalText}) проиндексированы.}}",
   "@fileExplorer.imageIndex.drive.done": {
     "sourceHash": "0f4f795"
   },
@@ -1155,15 +1123,15 @@
   "@fileExplorer.selectionInfo.noSelectionDirs": {
     "sourceHash": "e1259ef"
   },
-  "fileExplorer.selectionInfo.noSelection": "Ничего не выбрано, {files}{dirs}.",
+  "fileExplorer.selectionInfo.noSelection": "Ничего не выделено, {files}{dirs}.",
   "@fileExplorer.selectionInfo.noSelection": {
     "sourceHash": "beea8ac"
   },
-  "fileExplorer.selectionInfo.noSelectionOfMatches": "Ничего не выбрано, {shownText} из {count, plural, one {{totalText} совпадения} few {{totalText} совпадений} many {{totalText} совпадений} other {{totalText} совпадения}}.",
+  "fileExplorer.selectionInfo.noSelectionOfMatches": "Ничего не выделено, {shownText} из {count, plural, one {{totalText} совпадения} few {{totalText} совпадений} many {{totalText} совпадений} other {{totalText} совпадения}}.",
   "@fileExplorer.selectionInfo.noSelectionOfMatches": {
     "sourceHash": "4063c2b"
   },
-  "fileExplorer.tabBar.paneTabsAriaLabel": "Вкладки панели {paneId}",
+  "fileExplorer.tabBar.paneTabsAriaLabel": "{paneId, select, left {Вкладки левой панели} other {Вкладки правой панели}}",
   "@fileExplorer.tabBar.paneTabsAriaLabel": {
     "sourceHash": "d641870"
   },
@@ -1195,7 +1163,7 @@
   "@fileExplorer.summary.of": {
     "sourceHash": "28391d3"
   },
-  "fileExplorer.summary.percentSelectedIn": "({percent}%) выбрано —",
+  "fileExplorer.summary.percentSelectedIn": "({percent}%) выделено —",
   "@fileExplorer.summary.percentSelectedIn": {
     "sourceHash": "7e01a02"
   },
@@ -1203,7 +1171,7 @@
   "@fileExplorer.summary.and": {
     "sourceHash": "6201111"
   },
-  "fileExplorer.summary.selectedSuffix": "выбрано",
+  "fileExplorer.summary.selectedSuffix": "выделено",
   "@fileExplorer.summary.selectedSuffix": {
     "sourceHash": "d7cbbb6"
   },
@@ -1271,7 +1239,7 @@
   "@fileExplorer.extensionChange.useNew": {
     "sourceHash": "b1c0e92"
   },
-  "fileExplorer.quickLookHint.spaceSelects": "В Cmdr клавиша <space></space> по умолчанию выбирает файл под курсором.",
+  "fileExplorer.quickLookHint.spaceSelects": "В Cmdr клавиша <space></space> по умолчанию выделяет файл под курсором.",
   "@fileExplorer.quickLookHint.spaceSelects": {
     "sourceHash": "192689a"
   },
@@ -1339,15 +1307,15 @@
   "@fileExplorer.navigation.favoritesAlreadyAdded": {
     "sourceHash": "731a929"
   },
-  "fileExplorer.navigation.favoritesCantAddHere": "Эту папку нельзя добавить в избранное: доступны только диски и подключенные общие ресурсы",
+  "fileExplorer.navigation.favoritesCantAddHere": "Эту папку нельзя добавить в избранное: избранное работает только с дисками и подключенными общими папками",
   "@fileExplorer.navigation.favoritesCantAddHere": {
     "sourceHash": "86564ea"
   },
-  "fileExplorer.navigation.seeFavorites": "{count, plural, =0 {Посмотреть избранное} one {Посмотреть {count} пункт избранного} few {Посмотреть {count} пункта избранного} many {Посмотреть {count} пунктов избранного} other {Посмотреть {count} пункта избранного}}",
+  "fileExplorer.navigation.seeFavorites": "{count, plural, =0 {Посмотреть избранное} one {Посмотреть избранное ({count})} few {Посмотреть избранное ({count})} many {Посмотреть избранное ({count})} other {Посмотреть избранное ({count})}}",
   "@fileExplorer.navigation.seeFavorites": {
     "sourceHash": "7a7e169"
   },
-  "fileExplorer.navigation.favoriteTooltip": "{path}\nПеретащите для изменения порядка или используйте {reorder}. Щелкните правой кнопкой для переименования или удаления.",
+  "fileExplorer.navigation.favoriteTooltip": "{path}\nПеретащите, чтобы изменить порядок, или используйте {reorder}. Нажмите правой кнопкой, чтобы переименовать или удалить.",
   "@fileExplorer.navigation.favoriteTooltip": {
     "sourceHash": "88d54d3"
   },
@@ -1359,7 +1327,7 @@
   "@fileExplorer.navigation.favoriteShortcutPrompt": {
     "sourceHash": "51f3d7d"
   },
-  "fileExplorer.navigation.favoriteShortcutAriaLabel": "Сочетание клавиш для: {name}. Нажмите A–Z или Delete для очистки.",
+  "fileExplorer.navigation.favoriteShortcutAriaLabel": "Сочетание клавиш для «{name}». Нажмите A–Z или Delete, чтобы очистить.",
   "@fileExplorer.navigation.favoriteShortcutAriaLabel": {
     "sourceHash": "31515c1"
   },
@@ -1403,7 +1371,7 @@
   "@fileExplorer.navigation.connectDirectlyNow": {
     "sourceHash": "e81ea20"
   },
-  "fileExplorer.navigation.connectDirectlyNowTooltip": "Этот общий ресурс пока использует медленное системное подключение. Подключитесь напрямую для быстрого доступа.",
+  "fileExplorer.navigation.connectDirectlyNowTooltip": "Эта общая папка все еще работает через медленное системное подключение. Подключитесь напрямую для быстрого доступа.",
   "@fileExplorer.navigation.connectDirectlyNowTooltip": {
     "sourceHash": "42b6bcc"
   },
@@ -1471,11 +1439,11 @@
   "@fileExplorer.navigation.serverUnpinnedToast": {
     "sourceHash": "7fa97b2"
   },
-  "fileExplorer.navigation.pinRefusedToast": "Cmdr не удалось изменить отображение сервера {name}.",
+  "fileExplorer.navigation.pinRefusedToast": "Cmdr не смог изменить, где показывается сервер {name}.",
   "@fileExplorer.navigation.pinRefusedToast": {
     "sourceHash": "59f1f8b"
   },
-  "fileExplorer.navigation.disconnectRefusedToast": "Cmdr не удалось отключиться от {name}.",
+  "fileExplorer.navigation.disconnectRefusedToast": "Cmdr не смог отключиться от сервера {name}.",
   "@fileExplorer.navigation.disconnectRefusedToast": {
     "sourceHash": "375b424"
   },
@@ -1495,7 +1463,7 @@
   "@fileExplorer.navigation.forgetPasswordToo": {
     "sourceHash": "6d79654"
   },
-  "fileExplorer.navigation.forgetServerRefusedToast": "Cmdr не удалось забыть {name}.",
+  "fileExplorer.navigation.forgetServerRefusedToast": "Cmdr не смог забыть сервер {name}.",
   "@fileExplorer.navigation.forgetServerRefusedToast": {
     "sourceHash": "f7c6c64"
   },
@@ -1507,7 +1475,7 @@
   "@fileExplorer.navigation.forgetSecretConfirm": {
     "sourceHash": "300d043"
   },
-  "fileExplorer.navigation.forgetSecretRefusedToast": "Cmdr не удалось забыть сохраненный пароль для {name}.",
+  "fileExplorer.navigation.forgetSecretRefusedToast": "Cmdr не смог забыть сохраненный пароль для сервера {name}.",
   "@fileExplorer.navigation.forgetSecretRefusedToast": {
     "sourceHash": "b7a15b2"
   },
@@ -1515,7 +1483,7 @@
   "@fileExplorer.navigation.forgetSecretNoneToast": {
     "sourceHash": "3d40a09"
   },
-  "fileExplorer.navigation.ejectVolumeAriaLabel": "Извлечь {name}",
+  "fileExplorer.navigation.ejectVolumeAriaLabel": "Извлечь «{name}»",
   "@fileExplorer.navigation.ejectVolumeAriaLabel": {
     "sourceHash": "61db18b"
   },
@@ -1523,7 +1491,7 @@
   "@fileExplorer.navigation.ejectBusyTooltip": {
     "sourceHash": "3da6312"
   },
-  "fileExplorer.navigation.ejectingVolumeAriaLabel": "Извлечение {name}…",
+  "fileExplorer.navigation.ejectingVolumeAriaLabel": "Извлечение «{name}»…",
   "@fileExplorer.navigation.ejectingVolumeAriaLabel": {
     "sourceHash": "e8bca64"
   },
@@ -1575,7 +1543,7 @@
   "@fileExplorer.navigation.refreshVolumeList": {
     "sourceHash": "f668a8c"
   },
-  "fileExplorer.navigation.driveIndex.ariaLabel": "Статус индекса диска",
+  "fileExplorer.navigation.driveIndex.ariaLabel": "Состояние индекса диска",
   "@fileExplorer.navigation.driveIndex.ariaLabel": {
     "sourceHash": "ff831be"
   },
@@ -1599,27 +1567,27 @@
   "@fileExplorer.navigation.driveIndex.tooltipStalePhone": {
     "sourceHash": "d5a58a7"
   },
-  "fileExplorer.navigation.driveIndex.tooltipFailed": "Индексация остановлена из-за ошибки сохранения индекса этого диска. Просканируйте диск снова для восстановления индекса.",
+  "fileExplorer.navigation.driveIndex.tooltipFailed": "Индексация остановлена: возникла проблема при сохранении индекса этого диска. Просканируйте диск заново, чтобы восстановить индекс.",
   "@fileExplorer.navigation.driveIndex.tooltipFailed": {
     "sourceHash": "7c7e776"
   },
-  "fileExplorer.navigation.driveIndex.tooltipCoalesced": "За {hours, plural, one {{hoursText} час} few {{hoursText} часа} many {{hoursText} часов} other {{hoursText} часа}} macOS {count, plural, =1 {один раз} one {{countText} раз} few {{countText} раза} many {{countText} раз} other {{countText} раза}} потеряла часть изменений файловой системы, поэтому размеры некоторых папок могут быть немного неточными. Обычно это кеши с множеством мелких файлов. Следующая полная проверка Cmdr через {remaining, plural, one {{remainingText} час} few {{remainingText} часа} many {{remainingText} часов} other {{remainingText} часа}} исправит это.",
+  "fileExplorer.navigation.driveIndex.tooltipCoalesced": "{hours, plural, =1 {За последний час} one {За последний {hoursText} час} few {За последние {hoursText} часа} many {За последние {hoursText} часов} other {За последние {hoursText} часа}} macOS {count, plural, =1 {один раз} one {{countText} раз} few {{countText} раза} many {{countText} раз} other {{countText} раза}} потеряла часть изменений файловой системы, поэтому размеры некоторых папок могут быть немного неточными. Обычно это кэши с множеством мелких файлов. Следующая полная проверка Cmdr {remaining, plural, =1 {через час} one {через {remainingText} час} few {через {remainingText} часа} many {через {remainingText} часов} other {через {remainingText} часа}} все исправит.",
   "@fileExplorer.navigation.driveIndex.tooltipCoalesced": {
     "sourceHash": "eb09aed"
   },
-  "fileExplorer.navigation.driveIndex.tooltipCoalescedCheckRunning": "macOS {count, plural, =1 {один раз} one {{countText} раз} few {{countText} раза} many {{countText} раз} other {{countText} раза}} потеряла часть изменений файловой системы, поэтому размеры некоторых папок могут быть немного неточными. Обычно это кеши с множеством мелких файлов. Текущая проверка исправит это.",
+  "fileExplorer.navigation.driveIndex.tooltipCoalescedCheckRunning": "macOS {count, plural, =1 {один раз} one {{countText} раз} few {{countText} раза} many {{countText} раз} other {{countText} раза}} потеряла часть изменений файловой системы, поэтому размеры некоторых папок могут быть немного неточными. Обычно это кэши с множеством мелких файлов. Текущая проверка все исправит.",
   "@fileExplorer.navigation.driveIndex.tooltipCoalescedCheckRunning": {
     "sourceHash": "0ff330c"
   },
-  "fileExplorer.navigation.driveIndex.tooltipCoalescedNoNextCheck": "За {hours, plural, one {{hoursText} час} few {{hoursText} часа} many {{hoursText} часов} other {{hoursText} часа}} macOS {count, plural, =1 {один раз} one {{countText} раз} few {{countText} раза} many {{countText} раз} other {{countText} раза}} потеряла часть изменений файловой системы, поэтому размеры некоторых папок могут быть немного неточными. Обычно это кеши с множеством мелких файлов, так что ничего страшного.",
+  "fileExplorer.navigation.driveIndex.tooltipCoalescedNoNextCheck": "{hours, plural, =1 {За последний час} one {За последний {hoursText} час} few {За последние {hoursText} часа} many {За последние {hoursText} часов} other {За последние {hoursText} часа}} macOS {count, plural, =1 {один раз} one {{countText} раз} few {{countText} раза} many {{countText} раз} other {{countText} раза}} потеряла часть изменений файловой системы, поэтому размеры некоторых папок могут быть немного неточными. Обычно это кэши с множеством мелких файлов, так что ничего страшного.",
   "@fileExplorer.navigation.driveIndex.tooltipCoalescedNoNextCheck": {
     "sourceHash": "68420b0"
   },
-  "fileExplorer.navigation.driveIndex.tooltipUnreadable": "Cmdr не удалось прочитать {count, plural, =1 {одно расположение} one {{countText} расположение} few {{countText} расположения} many {{countText} расположений} other {{countText} расположения}} на этом диске, поэтому поиск может вернуть не все результаты.",
+  "fileExplorer.navigation.driveIndex.tooltipUnreadable": "Cmdr не смог прочитать {count, plural, =1 {одно расположение} one {{countText} расположение} few {{countText} расположения} many {{countText} расположений} other {{countText} расположения}} на этом диске, поэтому поиск здесь может найти не все.",
   "@fileExplorer.navigation.driveIndex.tooltipUnreadable": {
     "sourceHash": "6523d04"
   },
-  "fileExplorer.navigation.driveIndex.tooltipUnreadableRetried": "Cmdr не удалось прочитать {count, plural, =1 {одно расположение} one {{countText} расположение} few {{countText} расположения} many {{countText} расположений} other {{countText} расположения}} на этом диске, поэтому поиск может вернуть не все результаты. Cmdr вернется к ним автоматически.",
+  "fileExplorer.navigation.driveIndex.tooltipUnreadableRetried": "Cmdr не смог прочитать {count, plural, =1 {одно расположение} one {{countText} расположение} few {{countText} расположения} many {{countText} расположений} other {{countText} расположения}} на этом диске, поэтому поиск здесь может найти не все. Cmdr сам вернется к ним позже.",
   "@fileExplorer.navigation.driveIndex.tooltipUnreadableRetried": {
     "sourceHash": "f1ea5cb"
   },
@@ -1655,7 +1623,7 @@
   "@fileExplorer.navigation.driveIndex.durationSec": {
     "sourceHash": "fde82d3"
   },
-  "fileExplorer.navigation.driveIndex.refusedUpgradeFailed": "Cmdr не удалось подключиться напрямую к {name}. Это необходимо для индексации общего ресурса. Проверьте доступность ресурса и попробуйте еще раз.",
+  "fileExplorer.navigation.driveIndex.refusedUpgradeFailed": "Cmdr не смог подключиться напрямую к {name}, а без этого общую папку не проиндексировать. Проверьте, доступна ли папка, и попробуйте еще раз.",
   "@fileExplorer.navigation.driveIndex.refusedUpgradeFailed": {
     "sourceHash": "79a31a4"
   },
@@ -1679,7 +1647,7 @@
   "@fileExplorer.navigation.driveIndex.refusedGeneric": {
     "sourceHash": "83bd66e"
   },
-  "fileExplorer.navigation.driveIndex.refusedInternal": "Не удалось включить индексацию для {name}. Такого быть не должно. Обычно помогает перезапуск Cmdr.",
+  "fileExplorer.navigation.driveIndex.refusedInternal": "Что-то помешало Cmdr включить индексацию для {name}. Так быть не должно. Обычно помогает перезапуск Cmdr.",
   "@fileExplorer.navigation.driveIndex.refusedInternal": {
     "sourceHash": "e3841d9"
   },

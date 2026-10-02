@@ -1,5 +1,5 @@
 {
-  "mtp.connectedToast.title": "Подключено устройство: {deviceName}",
+  "mtp.connectedToast.title": "Подключено: {deviceName}",
   "@mtp.connectedToast.title": {
     "sourceHash": "562319d"
   },
@@ -36,7 +36,7 @@
   "@mtp.permissionDialog.explanation": {
     "sourceHash": "6bc70dd"
   },
-  "mtp.permissionDialog.helpText": "После выполнения команды отсоедините и снова подключите устройство, затем повторите попытку.",
+  "mtp.permissionDialog.helpText": "После выполнения команды отсоедините и снова подключите устройство, затем попробуйте еще раз.",
   "@mtp.permissionDialog.helpText": {
     "sourceHash": "519f195"
   },
@@ -56,15 +56,15 @@
   "@mtp.ptpcameradDialog.inUseBy": {
     "sourceHash": "5b97c25"
   },
-  "mtp.ptpcameradDialog.inUseGeneric": "Другой процесс получил исключительный доступ к устройству.",
+  "mtp.ptpcameradDialog.inUseGeneric": "Другой процесс получил монопольный доступ к устройству.",
   "@mtp.ptpcameradDialog.inUseGeneric": {
     "sourceHash": "cfba635"
   },
-  "mtp.ptpcameradDialog.explanation": "В macOS системная служба <code>ptpcamerad</code> автоматически занимает устройства Android. Чтобы обойти это ограничение, выполните следующую команду в Terminal и оставьте ее работать, пока используете Cmdr:",
+  "mtp.ptpcameradDialog.explanation": "В macOS системная служба <code>ptpcamerad</code> автоматически занимает устройства Android. Чтобы обойти это, выполните следующую команду в Терминале и не закрывайте ее, пока пользуетесь Cmdr:",
   "@mtp.ptpcameradDialog.explanation": {
     "sourceHash": "65b6ee3"
   },
-  "mtp.ptpcameradDialog.helpText": "Пока эта команда работает, она постоянно останавливает ptpcamerad. Закончив работу, нажмите <key>Ctrl+C</key> в Terminal, чтобы остановить команду.",
+  "mtp.ptpcameradDialog.helpText": "Пока эта команда работает, она постоянно останавливает ptpcamerad. Когда закончите, нажмите <key>Ctrl+C</key> в Терминале, чтобы остановить ее.",
   "@mtp.ptpcameradDialog.helpText": {
     "sourceHash": "85b5060"
   },
@@ -79,13 +79,5 @@
   "mtp.deviceFallbackName": "Устройство MTP",
   "@mtp.deviceFallbackName": {
     "sourceHash": "8ba7a69"
-  },
-  "mtp.error.exclusiveAccess": "Другой процесс получил исключительный доступ{blocking, select, none {} other { (блокирует: {blocking})}}",
-  "@mtp.error.exclusiveAccess": {
-    "sourceHash": "a81f306"
-  },
-  "mtp.error.permissionDenied": "Нет разрешения на доступ по USB. Установите правила udev и подключите устройство заново",
-  "@mtp.error.permissionDenied": {
-    "sourceHash": "3362501"
   }
 }

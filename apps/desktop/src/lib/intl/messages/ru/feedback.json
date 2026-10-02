@@ -20,7 +20,7 @@
     "sourceHash": "36ca789",
     "sameAsSourceJustification": "Название бренда, стандартное обозначение или строка из подстановок; сохраняется без перевода."
   },
-  "feedback.dialog.tooLong": "Текст слишком длинный. Максимум: {maxText} {max, plural, one {символ} few {символа} many {символов} other {символа}}.",
+  "feedback.dialog.tooLong": "Извините, текст слишком длинный. Максимум: {maxText} {max, plural, one {символ} few {символа} many {символов} other {символа}}.",
   "@feedback.dialog.tooLong": {
     "sourceHash": "b6e0abf"
   },
@@ -28,11 +28,11 @@
   "@feedback.dialog.moreWays": {
     "sourceHash": "5a26a7c"
   },
-  "feedback.dialog.invalid": "Отзыв не отправлен. Сократите текст и повторите попытку.",
+  "feedback.dialog.invalid": "Отзыв не отправился. Может, сократить текст и попробовать еще раз?",
   "@feedback.dialog.invalid": {
     "sourceHash": "a997cb3"
   },
-  "feedback.dialog.softFailure": "Сейчас не удалось отправить отзыв. Повторить попытку?",
+  "feedback.dialog.softFailure": "Извините, сейчас не получилось отправить отзыв. Попробовать еще раз?",
   "@feedback.dialog.softFailure": {
     "sourceHash": "603c329"
   },

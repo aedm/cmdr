@@ -1,9 +1,10 @@
 {
-  "askCmdr.title": "Спросить Cmdr",
+  "askCmdr.title": "Ask Cmdr",
   "@askCmdr.title": {
-    "sourceHash": "aafb1ce"
+    "sourceHash": "aafb1ce",
+    "sameAsSourceJustification": "Product name kept verbatim in every locale, like de and hu (termbase concept ask-cmdr: «Ask Cmdr», high confidence)."
   },
-  "askCmdr.close": "Закрыть «Спросить Cmdr»",
+  "askCmdr.close": "Закрыть панель Ask Cmdr",
   "@askCmdr.close": {
     "sourceHash": "d34225d"
   },
@@ -31,15 +32,15 @@
   "@askCmdr.composer.stop": {
     "sourceHash": "cae7d57"
   },
-  "askCmdr.thinking": "Размышление…",
+  "askCmdr.thinking": "Думаю…",
   "@askCmdr.thinking": {
     "sourceHash": "a02f1ce"
   },
-  "askCmdr.stalled": "Это занимает больше времени, чем обычно. Можно подождать или остановить.",
+  "askCmdr.stalled": "Это занимает больше времени, чем обычно. Можно подождать или нажать «Остановить».",
   "@askCmdr.stalled": {
     "sourceHash": "c171aab"
   },
-  "askCmdr.softCap.message": "Этот чат становится длинным. Новый чат поможет отвечать быстро и по существу.",
+  "askCmdr.softCap.message": "Этот чат становится длинным. В новом чате ответы будут быстрее и точнее.",
   "@askCmdr.softCap.message": {
     "sourceHash": "60d2c54"
   },
@@ -47,19 +48,19 @@
   "@askCmdr.softCap.action": {
     "sourceHash": "677d4c2"
   },
-  "askCmdr.tool.appState.doing": "Просмотр текущего состояния",
+  "askCmdr.tool.appState.doing": "Проверка того, что у вас открыто",
   "@askCmdr.tool.appState.doing": {
     "sourceHash": "832e0cc"
   },
-  "askCmdr.tool.appState.done": "Текущее состояние просмотрено",
+  "askCmdr.tool.appState.done": "Проверено, что у вас открыто",
   "@askCmdr.tool.appState.done": {
     "sourceHash": "155621e"
   },
-  "askCmdr.tool.listDir.doing": "Чтение списка файлов в папке",
+  "askCmdr.tool.listDir.doing": "Просмотр папки",
   "@askCmdr.tool.listDir.doing": {
     "sourceHash": "64aa697"
   },
-  "askCmdr.tool.listDir.done": "Список файлов в папке прочитан",
+  "askCmdr.tool.listDir.done": "Папка просмотрена",
   "@askCmdr.tool.listDir.done": {
     "sourceHash": "5746fef"
   },
@@ -87,11 +88,11 @@
   "@askCmdr.tool.listVolumes.done": {
     "sourceHash": "b13a0b3"
   },
-  "askCmdr.tool.operationsList.doing": "Поиск в истории операций с файлами",
+  "askCmdr.tool.operationsList.doing": "Поиск в истории операций",
   "@askCmdr.tool.operationsList.doing": {
     "sourceHash": "4e8c41a"
   },
-  "askCmdr.tool.operationsList.done": "Поиск в истории операций с файлами завершен",
+  "askCmdr.tool.operationsList.done": "Поиск в истории операций завершен",
   "@askCmdr.tool.operationsList.done": {
     "sourceHash": "03021d5"
   },
@@ -167,11 +168,11 @@
   "@askCmdr.tool.proposeSuggestions.done": {
     "sourceHash": "42457d2"
   },
-  "askCmdr.tool.nothingToSuggest.doing": "Проверка, стоит ли это предложить",
+  "askCmdr.tool.nothingToSuggest.doing": "Оценка, стоит ли об этом сообщать",
   "@askCmdr.tool.nothingToSuggest.doing": {
     "sourceHash": "51ef519"
   },
-  "askCmdr.tool.nothingToSuggest.done": "Нет подходящих предложений",
+  "askCmdr.tool.nothingToSuggest.done": "Сообщать не о чем",
   "@askCmdr.tool.nothingToSuggest.done": {
     "sourceHash": "2287381"
   },
@@ -191,7 +192,7 @@
   "@askCmdr.tool.memoryEdit.done": {
     "sourceHash": "5fdfbdc"
   },
-  "askCmdr.tool.unknown.doing": "Работа",
+  "askCmdr.tool.unknown.doing": "В работе",
   "@askCmdr.tool.unknown.doing": {
     "sourceHash": "a92f044"
   },
@@ -207,11 +208,11 @@
   "@askCmdr.error.noKey": {
     "sourceHash": "0a78f37"
   },
-  "askCmdr.error.notConfigured": "Для общения нужен провайдер ИИ. Включите его в настройках.",
+  "askCmdr.error.notConfigured": "Для общения нужен поставщик ИИ. Включите его в настройках.",
   "@askCmdr.error.notConfigured": {
     "sourceHash": "2d55d2c"
   },
-  "askCmdr.error.askCmdrOff": "«Спросить Cmdr» выключен.",
+  "askCmdr.error.askCmdrOff": "Ask Cmdr выключен.",
   "@askCmdr.error.askCmdrOff": {
     "sourceHash": "6599ee1"
   },
@@ -219,43 +220,43 @@
   "@askCmdr.error.noCloudConsent": {
     "sourceHash": "cd2af1d"
   },
-  "askCmdr.error.localWindowTooSmall": "Cmdr нужно большее контекстное окно, чем у вашей локальной модели. Выберите не менее 32 768 токенов в разделе «ИИ» настроек.",
+  "askCmdr.error.localWindowTooSmall": "Cmdr нужно контекстное окно больше, чем у вашей локальной модели. Выберите не менее 32 768 токенов в настройках, в разделе «ИИ».",
   "@askCmdr.error.localWindowTooSmall": {
     "sourceHash": "8ac7452"
   },
-  "askCmdr.error.unavailable": "Не удалось связаться с провайдером ИИ. Проверьте подключение и повторите попытку.",
+  "askCmdr.error.unavailable": "Не удалось связаться с поставщиком ИИ. Проверьте подключение и попробуйте еще раз.",
   "@askCmdr.error.unavailable": {
     "sourceHash": "eb59e2b"
   },
-  "askCmdr.error.timeout": "Ожидание затянулось. Повторить попытку?",
+  "askCmdr.error.timeout": "Ответ занял слишком много времени. Попробовать еще раз?",
   "@askCmdr.error.timeout": {
     "sourceHash": "22cd775"
   },
-  "askCmdr.error.authFailed": "Провайдер не принял API-ключ. Проверьте его в настройках.",
+  "askCmdr.error.authFailed": "Поставщик не принял ваш API-ключ. Проверьте его в настройках.",
   "@askCmdr.error.authFailed": {
     "sourceHash": "a2302ca"
   },
-  "askCmdr.error.rateLimited": "Провайдер занят или квота исчерпана. Попробуйте чуть позже.",
+  "askCmdr.error.rateLimited": "Поставщик занят или ваша квота исчерпана. Попробуйте чуть позже.",
   "@askCmdr.error.rateLimited": {
     "sourceHash": "7b441e9"
   },
-  "askCmdr.error.budgetExhausted": "Лимит исчерпан до завершения ответа. Попробуйте задать более конкретный вопрос.",
+  "askCmdr.error.budgetExhausted": "Этот ответ уперся в лимит, не дойдя до конца. Попробуйте спросить что-то более конкретное.",
   "@askCmdr.error.budgetExhausted": {
     "sourceHash": "ea2beb2"
   },
-  "askCmdr.error.repeatedToolCall": "Один и тот же поиск повторялся без результата. Попробуйте переформулировать вопрос.",
+  "askCmdr.error.repeatedToolCall": "Один и тот же поиск повторялся без результата. Попробуйте спросить по-другому.",
   "@askCmdr.error.repeatedToolCall": {
     "sourceHash": "ea46ed7"
   },
-  "askCmdr.error.unfinishedReply": "Ответ не завершен. Повторить попытку?",
+  "askCmdr.error.unfinishedReply": "Ответ оборвался. Попробовать еще раз?",
   "@askCmdr.error.unfinishedReply": {
     "sourceHash": "7cc85f5"
   },
-  "askCmdr.error.provider": "На стороне провайдера произошла ошибка. Повторить попытку?",
+  "askCmdr.error.provider": "У поставщика что-то пошло не так. Попробовать еще раз?",
   "@askCmdr.error.provider": {
     "sourceHash": "d536cce"
   },
-  "askCmdr.event.chatMemoryChanged": "Теперь в памяти чата {tokens, number} токенов",
+  "askCmdr.event.chatMemoryChanged": "Теперь в памяти чата {tokens, plural, one {# токен} few {# токена} many {# токенов} other {# токена}}",
   "@askCmdr.event.chatMemoryChanged": {
     "sourceHash": "7dea8f2"
   },
@@ -263,7 +264,7 @@
   "@askCmdr.event.contextTrimmed": {
     "sourceHash": "baf10e5"
   },
-  "askCmdr.event.modelChanged": "Модель изменена на {model}",
+  "askCmdr.event.modelChanged": "Выбрана модель {model}",
   "@askCmdr.event.modelChanged": {
     "sourceHash": "dd0a934"
   },
@@ -339,15 +340,15 @@
   "@askCmdr.sessions.archivedBadge": {
     "sourceHash": "bdb8650"
   },
-  "askCmdr.composer.attach": "Спросить о выбранном",
+  "askCmdr.composer.attach": "Спросить о выделенном",
   "@askCmdr.composer.attach": {
     "sourceHash": "3e812c7"
   },
-  "askCmdr.composer.dropHint": "Перетащите сюда, чтобы прикрепить",
+  "askCmdr.composer.dropHint": "Отпустите, чтобы прикрепить",
   "@askCmdr.composer.dropHint": {
     "sourceHash": "34a7a63"
   },
-  "askCmdr.composer.providerOff": "Включите провайдера ИИ в настройках, чтобы начать общение.",
+  "askCmdr.composer.providerOff": "Включите поставщика ИИ в настройках, чтобы начать общение.",
   "@askCmdr.composer.providerOff": {
     "sourceHash": "e466415"
   },
@@ -355,15 +356,15 @@
   "@askCmdr.attachment.remove": {
     "sourceHash": "595b066"
   },
-  "askCmdr.gate.off.title": "«Спросить Cmdr» выключен",
+  "askCmdr.gate.off.title": "Ask Cmdr выключен",
   "@askCmdr.gate.off.title": {
     "sourceHash": "0420c9a"
   },
-  "askCmdr.gate.off.body": "Включите эту возможность, чтобы обсуждать свои файлы с Cmdr.",
+  "askCmdr.gate.off.body": "Включите Ask Cmdr, чтобы обсуждать с Cmdr свои файлы.",
   "@askCmdr.gate.off.body": {
     "sourceHash": "48b16af"
   },
-  "askCmdr.gate.off.turnOn": "Включить «Спросить Cmdr»",
+  "askCmdr.gate.off.turnOn": "Включить Ask Cmdr",
   "@askCmdr.gate.off.turnOn": {
     "sourceHash": "0d656c4"
   },
@@ -371,7 +372,7 @@
   "@askCmdr.gate.cloudOff.title": {
     "sourceHash": "2e56781"
   },
-  "askCmdr.gate.cloudOff.body": "«Спросить Cmdr» общается с настроенным облачным сервисом ИИ. Сначала разрешите облачный ИИ в настройках, и можно начинать общение.",
+  "askCmdr.gate.cloudOff.body": "Ask Cmdr общается с облачным сервисом ИИ, который вы настроили. Сначала разрешите облачный ИИ в настройках, и можно начинать.",
   "@askCmdr.gate.cloudOff.body": {
     "sourceHash": "d3d3252"
   },
@@ -491,7 +492,7 @@
   "@askCmdr.renameReview.allow": {
     "sourceHash": "e213c16"
   },
-  "askCmdr.renameReview.deny": "Отказать",
+  "askCmdr.renameReview.deny": "Отклонить",
   "@askCmdr.renameReview.deny": {
     "sourceHash": "05a2d73"
   },
@@ -499,7 +500,7 @@
   "@askCmdr.renameReview.allowAll": {
     "sourceHash": "56ac845"
   },
-  "askCmdr.renameReview.denyAll": "Отказать всем",
+  "askCmdr.renameReview.denyAll": "Отклонить все",
   "@askCmdr.renameReview.denyAll": {
     "sourceHash": "5a41803"
   },
@@ -603,47 +604,47 @@
   "@askCmdr.renameUndo.partial": {
     "sourceHash": "d38b563"
   },
-  "askCmdr.renameUndo.skipped": "Без изменений: {countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}. {count, plural, one {Файл изменился} few {Файлы изменились} many {Файлы изменились} other {Файлы изменились}} после переименования или прежнее имя снова занято.",
+  "askCmdr.renameUndo.skipped": "Оставлено как есть: {countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}. {count, plural, =1 {Файл изменился после переименования или его прежнее имя снова занято.} one {Файлы изменились после переименования или их прежние имена снова заняты.} few {Файлы изменились после переименования или их прежние имена снова заняты.} many {Файлы изменились после переименования или их прежние имена снова заняты.} other {Файлы изменились после переименования или их прежние имена снова заняты.}}",
   "@askCmdr.renameUndo.skipped": {
     "sourceHash": "9a04738"
   },
-  "askCmdr.renameUndo.skipReason.drift.named": "Без изменений: {name}. Файл изменился после переименования.",
+  "askCmdr.renameUndo.skipReason.drift.named": "Оставлено как есть: {name}. Файл изменился после переименования.",
   "@askCmdr.renameUndo.skipReason.drift.named": {
     "sourceHash": "70f663f"
   },
-  "askCmdr.renameUndo.skipReason.drift.counted": "Без изменений: {countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}. После переименования содержимое изменилось.",
+  "askCmdr.renameUndo.skipReason.drift.counted": "Оставлено как есть: {countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}. Они изменились после переименования.",
   "@askCmdr.renameUndo.skipReason.drift.counted": {
     "sourceHash": "217d1e8"
   },
-  "askCmdr.renameUndo.skipReason.nameTaken.named": "Без изменений: {name}. Прежнее имя снова занято.",
+  "askCmdr.renameUndo.skipReason.nameTaken.named": "Оставлено как есть: {name}. Прежнее имя снова занято.",
   "@askCmdr.renameUndo.skipReason.nameTaken.named": {
     "sourceHash": "ed5bd8e"
   },
-  "askCmdr.renameUndo.skipReason.nameTaken.counted": "Без изменений: {countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}. Прежние имена снова заняты.",
+  "askCmdr.renameUndo.skipReason.nameTaken.counted": "Оставлено как есть: {countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}. Прежние имена снова заняты.",
   "@askCmdr.renameUndo.skipReason.nameTaken.counted": {
     "sourceHash": "2fd2e7a"
   },
-  "askCmdr.renameUndo.skipReason.unverifiable.named": "Без изменений: {name}. Cmdr не удалось проверить, изменился ли файл.",
+  "askCmdr.renameUndo.skipReason.unverifiable.named": "Оставлено как есть: {name}. Cmdr не смог проверить, были ли изменения.",
   "@askCmdr.renameUndo.skipReason.unverifiable.named": {
     "sourceHash": "3e553b2"
   },
-  "askCmdr.renameUndo.skipReason.unverifiable.counted": "Без изменений: {countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}. Cmdr не удалось проверить наличие изменений.",
+  "askCmdr.renameUndo.skipReason.unverifiable.counted": "Оставлено как есть: {countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}. Cmdr не смог проверить, были ли изменения.",
   "@askCmdr.renameUndo.skipReason.unverifiable.counted": {
     "sourceHash": "5964166"
   },
-  "askCmdr.renameUndo.skipReason.folderNotEmpty.named": "Папка без изменений: {name}. Сейчас в папке есть содержимое.",
+  "askCmdr.renameUndo.skipReason.folderNotEmpty.named": "Папка {name} оставлена как есть. В ней теперь что-то есть.",
   "@askCmdr.renameUndo.skipReason.folderNotEmpty.named": {
     "sourceHash": "b487d24"
   },
-  "askCmdr.renameUndo.skipReason.folderNotEmpty.counted": "Без изменений: {countText} {count, plural, one {папка} few {папки} many {папок} other {папки}}. Сейчас в папках есть содержимое.",
+  "askCmdr.renameUndo.skipReason.folderNotEmpty.counted": "Оставлено как есть: {countText} {count, plural, one {папка} few {папки} many {папок} other {папки}}. В них теперь что-то есть.",
   "@askCmdr.renameUndo.skipReason.folderNotEmpty.counted": {
     "sourceHash": "d2c9f56"
   },
-  "askCmdr.renameUndo.skipReason.failed.named": "Без изменений: {name}. Cmdr не удалось восстановить прежнее имя.",
+  "askCmdr.renameUndo.skipReason.failed.named": "Оставлено как есть: {name}. Cmdr не удалось вернуть прежнее имя.",
   "@askCmdr.renameUndo.skipReason.failed.named": {
     "sourceHash": "35bb622"
   },
-  "askCmdr.renameUndo.skipReason.failed.counted": "Без изменений: {countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}. Cmdr не удалось восстановить прежние имена.",
+  "askCmdr.renameUndo.skipReason.failed.counted": "Оставлено как есть: {countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}. Cmdr не удалось вернуть прежние имена.",
   "@askCmdr.renameUndo.skipReason.failed.counted": {
     "sourceHash": "f13c021"
   },
@@ -671,11 +672,11 @@
   "@askCmdr.wake.stop": {
     "sourceHash": "1eae5cb"
   },
-  "askCmdr.wake.needsFullDiskAccess": "Возможности ИИ пока не видят ваши папки. Нажмите, чтобы настроить полный доступ к диску.",
+  "askCmdr.wake.needsFullDiskAccess": "Функции ИИ пока не видят ваши папки. Нажмите, чтобы настроить полный доступ к диску.",
   "@askCmdr.wake.needsFullDiskAccess": {
     "sourceHash": "ae245b9"
   },
-  "askCmdr.wake.needsApiKey": "Возможности ИИ включены, но для работы нужен провайдер. Нажмите, чтобы настроить его.",
+  "askCmdr.wake.needsApiKey": "Функции ИИ включены, но для работы им нужен поставщик. Нажмите, чтобы выбрать его в настройках.",
   "@askCmdr.wake.needsApiKey": {
     "sourceHash": "0f71f75"
   },
@@ -703,7 +704,7 @@
   "@askCmdr.wakeDigest.noChanges": {
     "sourceHash": "0ba2a57"
   },
-  "askCmdr.wakeDigest.rollup": "Еще {foldersText} {folders, plural, one {папка} few {папки} many {папок} other {папки}} в {ancestor}: {changesText} {changes, plural, one {изменение} few {изменения} many {изменений} other {изменения}}",
+  "askCmdr.wakeDigest.rollup": "Еще {foldersText} {folders, plural, one {папка} few {папки} many {папок} other {папки}} в папке {ancestor}: {changesText} {changes, plural, one {изменение} few {изменения} many {изменений} other {изменения}}",
   "@askCmdr.wakeDigest.rollup": {
     "sourceHash": "3b8f0dd"
   },
@@ -719,7 +720,7 @@
   "@askCmdr.wakeToast.action": {
     "sourceHash": "aff0766"
   },
-  "askCmdr.wakeToast.openThread": "Узнать почему",
+  "askCmdr.wakeToast.openThread": "Узнать, почему",
   "@askCmdr.wakeToast.openThread": {
     "sourceHash": "0a641f8"
   },
@@ -731,7 +732,7 @@
   "@askCmdr.decision.approved": {
     "sourceHash": "aa911e6"
   },
-  "askCmdr.decision.result": "Выполнено: {doneText}, пропущено: {skippedText}, ошибок: {failedText}",
+  "askCmdr.decision.result": "Выполнено: {doneText}, пропущено: {skippedText}, не выполнено: {failedText}",
   "@askCmdr.decision.result": {
     "sourceHash": "13d97c7"
   },
@@ -759,7 +760,7 @@
   "@askCmdr.decision.verbCompress": {
     "sourceHash": "45391ae"
   },
-  "askCmdr.decision.verbExtract": "извлечение",
+  "askCmdr.decision.verbExtract": "распаковка",
   "@askCmdr.decision.verbExtract": {
     "sourceHash": "c924f71"
   }
