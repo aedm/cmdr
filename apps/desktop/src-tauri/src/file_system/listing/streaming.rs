@@ -572,9 +572,16 @@ pub(crate) async fn read_directory_with_progress(
     // answers again (`stall.rs`).
     let total_start = std::time::Instant::now();
     let read_start = std::time::Instant::now();
+    let on_stalled = || events.emit_stalled(listing_id);
+    let on_progress: Arc<dyn Fn(usize) + Send + Sync> = {
+        let events = Arc::clone(events);
+        let listing_id = listing_id.to_string();
+        Arc::new(move |loaded| events.emit_progress(&listing_id, loaded))
+    };
     let outcome = read_until_answered(
         ListingRead {
-            events,
+            on_stalled: &on_stalled,
+            on_progress,
             listing_id,
             volume_id,
             volume: &volume,

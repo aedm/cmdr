@@ -21,7 +21,6 @@ use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
 use crate::file_system::listing::foreign_path::{Listed, list_as_stored};
-use crate::file_system::listing::streaming::ListingEventSink;
 use crate::file_system::volume::friendly_error::{ErrorCategory, listing_error_from_volume_error};
 use crate::file_system::volume::{BackendKind, ListingProgress, Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
@@ -268,8 +267,15 @@ struct Attempt {
 type AttemptFuture = Pin<Box<dyn Future<Output = (u64, Result<Listed, VolumeError>)> + Send>>;
 
 /// Who's asking, and where to report: what every attempt of one listing shares.
+///
+/// Reports go through plain callbacks, ❌ never `streaming::ListingEventSink`: the
+/// streaming listing calls in here, so naming its sink would weld the two modules
+/// into a cycle (`module-cycles`).
 pub(crate) struct ListingRead<'a> {
-    pub events: &'a Arc<dyn ListingEventSink>,
+    /// The read went `stall_after` without a new entry.
+    pub on_stalled: &'a (dyn Fn() + Sync),
+    /// A read's running entry count, for the pane's "Loaded N files…" line.
+    pub on_progress: Arc<dyn Fn(usize) + Send + Sync>,
     pub listing_id: &'a str,
     pub volume_id: &'a str,
     pub volume: &'a Arc<dyn Volume>,
@@ -380,7 +386,7 @@ pub(crate) async fn read_until_answered(read: ListingRead<'_>, watch: &StallWatc
                         read.volume_id,
                         policy.stall_after,
                     );
-                    read.events.emit_stalled(read.listing_id);
+                    (read.on_stalled)();
                     if probes && next_attempt_at.is_none() {
                         next_attempt_at = Some(now + backoff.step());
                     }
@@ -412,7 +418,7 @@ fn spawn_read(read: &ListingRead<'_>, slot: ReadSlot, beat: Arc<Beat>, cancel: C
     let read_id = slot.read_id;
     let volume = Arc::clone(read.volume);
     let path: PathBuf = read.path.to_path_buf();
-    let events = Arc::clone(read.events);
+    let report_progress = Arc::clone(&read.on_progress);
     let listing_id = read.listing_id.to_string();
     let task = tokio::spawn(async move {
         // Stall-probe: marker logged as the FIRST executable line inside the spawned task.
@@ -447,7 +453,7 @@ fn spawn_read(read: &ListingRead<'_>, slot: ReadSlot, beat: Arc<Beat>, cancel: C
             // Streaming listing UI shows "Loaded N entries…", so it wants total
             // entry count, not just files. `ListingProgress::entries()` sums
             // files + dirs for that.
-            events.emit_progress(&listing_id, p.entries());
+            report_progress(p.entries());
         };
         // A pane can ask by a spelling its volume doesn't store (typed, restored,
         // carried over from the kernel mount); this lands it on the stored one.
