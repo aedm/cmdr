@@ -39,7 +39,8 @@ pub(super) const LIVE_ROOT: &str = "cmdr-live/";
 
 /// One real account this run reaches.
 pub(super) struct Live {
-    /// `r2`, `hetzner`, `gcs`, `spaces`: what each finding is printed under.
+    /// `r2`, `hetzner`, `gcs`, `spaces`, `aws`, `b2`, `wasabi`: what each
+    /// finding is printed under.
     pub name: &'static str,
     pub provider: S3Provider,
     pub key_id: String,
@@ -97,6 +98,18 @@ pub(super) fn live_targets() -> Vec<Live> {
     add(
         "spaces",
         var("CMDR_S3_LIVE_SPACES_REGION").map(|region| S3Provider::DigitalOcean { region }),
+    );
+    add(
+        "aws",
+        var("CMDR_S3_LIVE_AWS_REGION").map(|region| S3Provider::Aws { region }),
+    );
+    add(
+        "b2",
+        var("CMDR_S3_LIVE_B2_REGION").map(|region| S3Provider::B2 { region }),
+    );
+    add(
+        "wasabi",
+        var("CMDR_S3_LIVE_WASABI_REGION").map(|region| S3Provider::Wasabi { region }),
     );
     targets
 }
