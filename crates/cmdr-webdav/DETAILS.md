@@ -13,6 +13,16 @@ and no `read_timeout`, redirects off, Basic auth on every request, plus a pool-f
 proves it with one `PROPFIND Depth: 0` on the root. The probe rides `tokio::select!` against the cancel token; a cancel
 leaves nothing behind. On success the backend records the PII-free analytics event `webdav_connected`.
 
+**Decision: the client turns every response decoder off and the crate declares `http2` itself.** The app's reqwest has
+`gzip` and `http2` unified in through `genai`, which `cmdr-webdav` built alone never saw. Decoders: a file manager
+copies bytes, so a file served with `Content-Encoding: gzip` (a `.gz` handed out as-is, or a server compressing on the
+fly) must copy as the bytes the server holds, at its `Content-Length`; with `gzip` on, reqwest decoded it and dropped
+the length. The builder sets `no_gzip`, `no_brotli`, `no_deflate`, and `no_zstd`, and the test build turns every decoder
+on through a dev-dependency so `transport_test.rs::an_encoded_file_reads_back_as_its_stored_bytes` runs against the
+client the app ships. `http2`: so this crate's own tests negotiate what the app does; the gap hid a GCS-only HTTP/2
+refusal from `cmdr-s3`'s live suite (`crates/cmdr-s3/DETAILS.md` § "Connecting"). `transport_test.rs` fails to compile
+without it (2026-10-02).
+
 **An instance is a name and a root over a shared client.** `WebdavVolume` is `{ name, root, inner }`, the same split
 `crates/cmdr-sftp/DETAILS.md` § "The connection model" describes, and
 `WebdavVolume::sharing_connection(name, remote_root)` builds another instance over the same client with no re-probe. It

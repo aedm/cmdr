@@ -109,6 +109,15 @@ impl WebdavClient {
                 .user_agent("Cmdr")
                 .connect_timeout(REQUEST_BUDGET)
                 .redirect(reqwest::redirect::Policy::none())
+                // ❗ Bytes as served, never decoded: a file sent with a
+                // `Content-Encoding` must copy as itself, at the length its
+                // `Content-Length` says. Whatever decoders other crates unify
+                // into the app's reqwest (`genai` brings `gzip`), each is off
+                // here (`transport_test.rs`).
+                .no_gzip()
+                .no_brotli()
+                .no_deflate()
+                .no_zstd()
         };
         let build_failed = |e: reqwest::Error| WebdavConnectError::Transport(e.to_string());
         Ok(Self {
@@ -287,3 +296,7 @@ pub(crate) fn offers_basic<'a>(mut challenges: impl Iterator<Item = &'a HeaderVa
         })
     })
 }
+
+#[cfg(test)]
+#[path = "transport_test.rs"]
+mod transport_test;
