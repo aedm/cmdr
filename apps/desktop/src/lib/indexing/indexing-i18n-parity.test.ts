@@ -69,6 +69,7 @@ describe('indexing catalog parity (en)', () => {
 
   it('resolves the ETA phrases (preserving the s/m abbreviations)', () => {
     expect(tString('indexing.eta.almostDone')).toBe('Almost done')
+    expect(tString('indexing.eta.almostDoneMidSentence')).toBe('almost done')
     expect(tString('indexing.eta.secondsLeft', { secondsText: '45' })).toBe('45s left')
     expect(tString('indexing.eta.minutesLeft', { minutesText: '3' })).toBe('3m left')
   })

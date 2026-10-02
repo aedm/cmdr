@@ -52,7 +52,8 @@
          *  and the aggregation ETA advance live even when progress events stall. */
         now: number
         /** The scan/replay ETA from the wrapper's sliding window, already formatted
-         *  (and "roughly"-wrapped for a rough first scan). `null` when there's no
+         *  in its mid-sentence form (it only lands inside `indexing.progress.percentEta`)
+         *  and "roughly"-wrapped for a rough first scan. `null` when there's no
          *  windowed estimate (before the window has samples). */
         windowedEta: string | null
         /** The calibrated scan ETA in seconds, the same estimate `windowedEta`
@@ -183,7 +184,8 @@
         const elapsed = (now - aggStartedAt) / 1000
         return computeElapsedEta(elapsed, aggCurrent, aggTotal - aggCurrent)
     })
-    const aggEta = $derived(aggEtaSeconds != null ? formatEta(aggEtaSeconds) : null)
+    // Mid-sentence: it only ever lands inside `indexing.progress.percentEta`.
+    const aggEta = $derived(aggEtaSeconds != null ? formatEta(aggEtaSeconds, 'midSentence') : null)
 
     // ── Replay inputs (the Update-index step's detail) ────────────────
     const eventsProcessed = $derived(activity.replayEventsProcessed)
@@ -259,7 +261,7 @@
     const overall = $derived(deriveOverallEta(active?.kind, activeEtaSeconds, stepsAhead))
     const overallText = $derived(
         overall.kind === 'known'
-            ? tString('indexing.overall.eta', { eta: formatEta(overall.seconds) })
+            ? tString('indexing.overall.eta', { eta: formatEta(overall.seconds, 'midSentence') })
             : overall.kind === 'estimating'
               ? tString('indexing.overall.estimating')
               : null,

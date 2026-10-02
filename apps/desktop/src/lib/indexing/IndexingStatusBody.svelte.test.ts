@@ -144,6 +144,14 @@ describe('IndexingStatusBody checklist', () => {
     expect(target.querySelector('[role="progressbar"]')).not.toBeNull()
   })
 
+  it('aggregation near its end joins the percent with a lowercase "almost done"', () => {
+    const target = render({
+      activity: scanActivity(),
+      aggregation: { phase: 'computing', current: 999, total: 1_000, startedAt: Date.now() - 1000 },
+    })
+    expect(target.querySelector('.tooltip-percent')?.textContent).toBe('100%, almost done')
+  })
+
   it('reconcile phase: catch up active, everything before it done, no detail', () => {
     const target = render({ activity: scanActivity(), phase: 'reconciling' })
     expect(stepStatus(target, 'Compute folder sizes')).toBe('done')
@@ -261,6 +269,17 @@ describe('IndexingStatusBody overall figure', () => {
       stepsAhead: { ...remembered, findFiles: null },
     })
     expect(overall(gap)).toBeNull()
+  })
+
+  it('reads "almost done" in lowercase after "Overall:"', () => {
+    const target = render({
+      activity: scanActivity({ priorTotalEntries: 100_000 }),
+      phase: 'scanning',
+      scanRunKind: 'change_check',
+      windowedEtaSeconds: 0.5,
+      stepsAhead: { ...remembered, findFiles: 500 },
+    })
+    expect(overall(target)).toBe('Overall: almost done')
   })
 
   it('holds its place while the active step has no estimate yet', () => {

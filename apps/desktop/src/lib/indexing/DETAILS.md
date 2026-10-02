@@ -374,11 +374,16 @@ sliding window fills again (accepted). Tier 1 reads the prior scan's totals from
 Pure helpers. `formatEta` tiers: under two seconds "Almost done", under a minute whole seconds, under an hour whole
 minutes ("12m left"), one-to-ten hours spelled out ("1 hour 24 minutes left" — a bare "84m left" makes the reader do the
 division), and from ten hours up whole hours only, rounded ("20 hours left" — minute precision is noise at that scale).
-Aggregation uses a single elapsed extrapolation. Scan and replay blend that 50-50 with a sliding-window rate over the
-last ~5 seconds (early extrapolation alone is wildly wrong). The window-snapshot collection is the only stateful glue
-and stays in each `IndexingDriveRow` (so per-drive rates don't collide); it feeds the pure `pruneSnapshots` /
-`computeWindowEta` / `blendEtas` / `formatEta`. Tier 1's prior-duration seed (`priorScanDurationMs − elapsed`,
-ms→seconds) covers the gap before the window has samples. Tier 2's ETA is prefixed "roughly".
+Its `placement` picks between two "Almost done" messages: `standalone` (capitalized, starts the line) and `midSentence`
+(`indexing.eta.almostDoneMidSentence`, lowercase in English) for every wrapper the phrase lands in (`Overall: …`,
+`percentEta`, the enrich row's `rateEta`). Separate messages because recasing a translated string by hand breaks across
+locales. The windowed and aggregation ETAs are always mid-sentence (they only show inside `percentEta`); the enrich row
+keeps seconds and formats at the join, since its ETA can also stand alone. Aggregation uses a single elapsed
+extrapolation. Scan and replay blend that 50-50 with a sliding-window rate over the last ~5 seconds (early extrapolation
+alone is wildly wrong). The window-snapshot collection is the only stateful glue and stays in each `IndexingDriveRow`
+(so per-drive rates don't collide); it feeds the pure `pruneSnapshots` / `computeWindowEta` / `blendEtas` / `formatEta`.
+Tier 1's prior-duration seed (`priorScanDurationMs − elapsed`, ms→seconds) covers the gap before the window has samples.
+Tier 2's ETA is prefixed "roughly".
 
 ## The prompts this area owns
 

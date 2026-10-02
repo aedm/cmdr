@@ -359,6 +359,12 @@ export const REPRESENTATIVE_SCREENSHOTS: RepresentativeMapping[] = [
     note: 'The drive-indexing checklist, pictured here. Your string is the header naming the kind of run in progress, for a run this screenshot doesn’t show.',
   },
   {
+    // Before the `indexing.eta.` family, whose "longer waits" note would mislead here.
+    prefix: 'indexing.eta.almostDoneMidSentence',
+    screenshot: 'indexing-checklist.png',
+    note: 'The drive-indexing checklist, pictured here. Your string is what a time-left phrase in it (like the overall line or the one after the percent) reads in the last seconds, in the middle of that line.',
+  },
+  {
     prefix: 'indexing.eta.',
     screenshot: 'indexing-checklist.png',
     note: 'The drive-indexing checklist, pictured here. Your string is how much time it says is left, in the form it uses for longer waits.',

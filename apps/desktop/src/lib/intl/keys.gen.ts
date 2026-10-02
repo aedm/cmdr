@@ -1890,6 +1890,7 @@ export type MessageKey =
   | 'indexing.enrich.rate'
   | 'indexing.enrich.rateEta'
   | 'indexing.eta.almostDone'
+  | 'indexing.eta.almostDoneMidSentence'
   | 'indexing.eta.hoursLeft'
   | 'indexing.eta.hoursMinutesLeft'
   | 'indexing.eta.minutesLeft'
