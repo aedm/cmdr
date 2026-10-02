@@ -119,16 +119,35 @@ Observed by hand with `curl --aws-sigv4` and a small Go SigV4 signer against Ver
 - Garage's `CompleteMultipartUpload` `<Location>` reads `https://cmdr-test..s3.garage.localhost/...` (a doubled dot from
   its `root_domain`). Cosmetic; nothing should parse it.
 
-**How real providers compare.** `live.sh` beside this README runs `cmdr-s3`'s `live_` cells against real R2, Hetzner,
-GCS, and Spaces accounts (credentials from the secret store; never in a lane). Two things the fixtures here don't show:
-both accept a zero-byte PUT and a bodyless POST without `Content-Length`, which R2, Hetzner, and GCS refuse with 411;
-and R2 refuses a last part LARGER than the rest, the shape Garage's small-copy-source rule pushed toward. Real providers
-refuse a cut-off PUT (VersityGW's publish is the fixture outlier), and VersityGW's `If-None-Match` on Complete matches
-AWS and R2 but not Hetzner, GCS, or Spaces. All findings: `crates/cmdr-s3/DETAILS.md` § "Verified providers".
+**How real providers compare.** `live.sh` beside this README runs `cmdr-s3`'s `live_` cells against real accounts (§
+"Live providers" below; never in a lane). Two things the fixtures here don't show: both accept a zero-byte PUT and a
+bodyless POST without `Content-Length`, which R2, Hetzner, and GCS refuse with 411; and R2 refuses a last part LARGER
+than the rest, the shape Garage's small-copy-source rule pushed toward. Real providers refuse a cut-off PUT (VersityGW's
+publish is the fixture outlier), and VersityGW's `If-None-Match` on Complete matches AWS and R2 but not Hetzner, GCS, or
+Spaces. All findings: `crates/cmdr-s3/DETAILS.md` § "Verified providers".
 
 ❗ **macOS's curl 8.7.1 signs `x-amz-copy-source-range` wrong**: both servers reject the request with a signature
 mismatch, while the same request signed by hand passes. It's a curl bug, not a server one, so don't trust a
 `curl --aws-sigv4` failure on that header as evidence about a server.
+
+## Live providers
+
+`live.sh` runs `cmdr-s3`'s `live_` cells against seven real accounts: R2, Hetzner (`nbg1`), GCS, Spaces, AWS
+(`eu-north-1`, plus a `us-west-2` bucket for region routing), Backblaze B2 (`eu-central-003`), and Wasabi
+(`eu-central-1`). Never in a lane or CI.
+
+```bash
+./live.sh                      # every provider, every live cell, then the sweep
+./live.sh aws,b2               # only these providers
+./live.sh all live_batch       # every provider, only cells matching a filter
+source ./live-env.sh           # the variables alone, for another runner
+```
+
+`live-env.sh` is the single source of the variables (`CMDR_S3_LIVE_<NAME>_{REGION,KEY_ID,SECRET,BUCKET,BUCKET_2}` and a
+few extras): credentials from David's sops store through `secret`, bucket names as defaults. Any variable already set
+wins. ❗ It never echoes a value. The buckets stay between runs; each cell deletes what it wrote under
+`cmdr-live/<run>/`, and the last step sweeps leftovers. Cost guardrails: Hetzner bills per hour while a bucket exists,
+and Wasabi bills every object for 90 days even once deleted, so its big-file cells stay small.
 
 ## Adding a server
 
