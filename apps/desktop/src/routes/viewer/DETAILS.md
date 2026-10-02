@@ -21,6 +21,7 @@ Per-file inventory for the route. Locate symbols via `codegraph_search`; this is
   `viewer-scroll` creates and delegates to), **`viewer-search`** (start/poll/cancel/navigate, regex projection),
   **`viewer-line-heights`** (word-wrap height map via DOM measurement, FullLoad only), **`viewer-text-width`**
   (`ResizeObserver` width tracker), **`viewer-tail`** (`viewer:file-changed:<sid>` → reload toasts).
+- **`viewer-tail-follow.ts`**: `isScrolledToEnd`, the "parked at the end" test tail follow keys on (§ "Tail mode").
 - **`viewer-indexing-poll.ts`**: `viewer_get_status` poll during line-index build.
 - **`viewer-open-failure.ts`**: `handleOpenFailure`, the copy, Retry flag, and log level for an open that didn't
   succeed, shared by the three open sites. See § "A read that didn't come back".
@@ -634,12 +635,23 @@ Toast deduplication: ids include the kind (`viewer-file-changed-<sid>-grew`, `�
 coalesce into one toast. A rotated event explicitly dismisses any open grew toast: the older "reload to catch up"
 message is no longer accurate.
 
-Tail mode is **not persisted** across sessions: it defaults off on every viewer open and the user re-enables it per
-session. The viewer window has no `store:default` capability by security design (it renders arbitrary, possibly-hostile
-file content), so it can't write a per-path store. Viewer settings that DO persist (`viewer.wordWrap`,
-`fileViewer.suppressBinaryWarning`) route through the typed restricted-window commands (`get_restricted_window_settings`
-/ `persist_restricted_window_setting`) — never re-grant store access to the window; extend that allowlist instead. See
-`src-tauri/capabilities/CLAUDE.md` § viewer and `lib/settings/DETAILS.md` § "Restricted-window mode".
+**Follow.** With tail mode on, a viewport parked at the end stays at the end as the file grows, the way `tail -f` reads:
+`viewer-scroll.svelte.ts` keeps a `followsEnd` flag that only the user's own scroll events set (scrolling up releases
+it, scrolling back to the end re-pins it; growth fires no scroll event, so it survives that), and `runTailFollowEffect`
+scrolls to the new end on every row-count change while it holds. The "at the end" test allows one row of slack
+(`viewer-tail-follow.ts`), since zoom leaves a fractional gap.
+
+**Opening tailed.** `openFileViewer(path, volumeId, { tail: true })` adds `tail=1` to the viewer URL; the page then
+turns tail mode on after the open and `pinToEnd()`s once the content renders. Help > View debug log opens this way. Text
+only: a media open ignores it.
+
+Tail mode is **not persisted** across sessions: it defaults off on every viewer open (unless the opener passed `tail=1`)
+and the user re-enables it per session. The viewer window has no `store:default` capability by security design (it
+renders arbitrary, possibly-hostile file content), so it can't write a per-path store. Viewer settings that DO persist
+(`viewer.wordWrap`, `fileViewer.suppressBinaryWarning`) route through the typed restricted-window commands
+(`get_restricted_window_settings` / `persist_restricted_window_setting`) — never re-grant store access to the window;
+extend that allowlist instead. See `src-tauri/capabilities/CLAUDE.md` § viewer and `lib/settings/DETAILS.md` §
+"Restricted-window mode".
 
 ## Search modes
 

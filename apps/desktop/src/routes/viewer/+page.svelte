@@ -173,14 +173,13 @@
     })
 
     /**
-     * Flip the tail-mode flag and push the new value down to the backend. Tail
-     * mode is per-session only: it defaults off on every viewer open and isn't
-     * persisted across sessions. Calling without a sessionId (during startup)
-     * is a no-op.
+     * Set the tail-mode flag and push the new value down to the backend. Tail
+     * mode is per-session only: it starts off on every viewer open unless the
+     * opener asked for `tail=1`, and isn't persisted across sessions. Calling
+     * without a sessionId (during startup) is a no-op.
      */
-    async function toggleTailMode(): Promise<void> {
+    async function setTailMode(next: boolean): Promise<void> {
         if (!sessionId) return
-        const next = !tailMode
         tailMode = next
         try {
             const res = await viewerSetTailMode(sessionId, next)
@@ -482,6 +481,12 @@
         textCursor.runMeasureEffect()
     })
 
+    // Tail follow: a viewport parked at the end stays there as the file grows
+    $effect(() => {
+        if (!isTextView) return
+        scroll.runTailFollowEffect(tailMode)
+    })
+
     function closeWindow() {
         if (closing) return
         if (!canClose) {
@@ -566,7 +571,7 @@
             void copyFlow.handleCopy()
         },
         toggleTailMode: () => {
-            void toggleTailMode()
+            void setTailMode(!tailMode)
         },
         toggleWordWrap,
         closeWindow,
@@ -968,8 +973,12 @@
             pull.report(progress)
         })
 
+        // `tail=1`: the opener wants a live view (Help > View debug log), so the
+        // viewer starts tailed and parked at the end of the file.
+        const openTailed = params.get('tail') === '1'
         try {
             await openViewerSession(pathParam)
+            if (openTailed && viewMode === 'text') await setTailMode(true)
         } catch (e) {
             const failure = handleOpenFailure(log, 'Open', e)
             error = failure.message
@@ -978,6 +987,7 @@
             loading = false
             await tick()
             scroll.containerRef?.focus()
+            if (tailMode) scroll.pinToEnd()
 
             // `setTimeout(0)`, NOT `requestAnimationFrame`: macOS WKWebView
             // throttles (or fully starves) rAF in windows that opened without
@@ -1046,7 +1056,7 @@
         onModeChange={(mode: ViewerDisplayMode) => { void switchViewMode(mode) }}
         onEncodingChange={(enc: FileEncoding) => void handleEncodingChange(enc)}
         onToggleTail={() => {
-            void toggleTailMode()
+            void setTailMode(!tailMode)
         }}
     />
     <!--
