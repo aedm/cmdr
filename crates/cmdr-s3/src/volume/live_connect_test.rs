@@ -163,6 +163,50 @@ async fn live_connect_refusals() {
     }
 }
 
+/// Off AWS nothing routes per bucket, so what does an account root reached
+/// through another region's endpoint make of a bucket that lives elsewhere?
+/// Recorded, not asserted: it decides whether those presets need routing.
+#[tokio::test(flavor = "multi_thread")]
+async fn live_connect_account_root_through_another_region() {
+    for live in live_targets()
+        .into_iter()
+        .filter(|live| !matches!(live.provider, S3Provider::Aws { .. }))
+    {
+        let Some(other) = elsewhere(&live.provider) else {
+            continue;
+        };
+        let secret = secret_of(&live);
+        let root = match dial(&other, &live.key_id, &secret, None).await {
+            Ok(root) => root,
+            Err(e) => {
+                report(&live, &format!("account root through {other:?}"), format!("{e:?}"));
+                continue;
+            }
+        };
+        let names = root
+            .list_directory(root.root(), None)
+            .await
+            .map(|entries| entries.into_iter().map(|e| e.name).collect::<Vec<_>>());
+        let bucket = root.root().join(&live.bucket);
+        let listed = root.list_directory(&bucket, None).await.map(|e| e.len());
+        let path = bucket.join(format!("{}elsewhere.txt", live_prefix("routing")));
+        let written = put(&root, &path, b"elsewhere").await;
+        let back = if written.is_ok() {
+            String::from_utf8_lossy(&read_back(&root, &path).await).into_owned()
+        } else {
+            String::new()
+        };
+        let deleted = root.delete(&path).await;
+        report(
+            &live,
+            &format!("account root through {other:?}"),
+            format!(
+                "lists {names:?}; the bucket lists {listed:?}; write {written:?}, reads back {back:?}, delete {deleted:?}"
+            ),
+        );
+    }
+}
+
 /// A copy's progress hook that never pauses or cancels.
 struct Silent;
 
