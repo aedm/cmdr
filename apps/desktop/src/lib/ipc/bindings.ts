@@ -4950,6 +4950,7 @@ export const events = {
   listingProgress: makeEvent<ListingProgressEvent>('listing-progress'),
   listingReadComplete: makeEvent<ListingReadCompleteEvent>('listing-read-complete'),
   listingRespelled: makeEvent<ListingRespelledEvent>('listing-respelled'),
+  listingStalled: makeEvent<ListingStalledEvent>('listing-stalled'),
   lowDiskSpace: makeEvent<LowDiskSpacePayload>('low-disk-space'),
   mcpSettingsClose: makeEvent<McpSettingsClose>('mcp-settings-close'),
   mediaEnrichProgress: makeEvent<MediaEnrichProgressEvent>('media-enrich-progress'),
@@ -9506,6 +9507,15 @@ export type ListingRespelledEvent = {
 }
 
 /**
+ *  Stalled event payload: the read has gone `StallPolicy::stall_after` without
+ *  a new entry. The listing keeps waiting and retrying (`stall.rs`); a later
+ *  progress, complete, error, or cancelled event for the same id supersedes it.
+ */
+export type ListingStalledEvent = {
+  listingId: string
+}
+
+/**
  *  Why a synchronous listing start didn't produce a listing.
  *
  *  ❌ Not prose: `VolumeError` is the wire type the frontend's listing-error
@@ -11443,6 +11453,20 @@ export type PaneFileEntry = {
   tags?: TagRef[]
 }
 
+// Where a pane's listing stands, as the pane shows it.
+export type PaneListing =
+  // The rows (or the pane's own view) are what's on screen.
+  | 'settled'
+  // A listing is on its way and hasn't gone quiet.
+  | 'loading'
+  /**
+   *  The listing's volume stopped answering mid-read. The pane says so and keeps
+   *  retrying in the background; it lands on its own when the volume answers.
+   */
+  | 'stalled'
+  // The pane shows an error screen for this folder (`recentErrors` says why).
+  | 'error'
+
 // State of a single pane.
 export type PaneState = {
   path: string
@@ -11489,6 +11513,12 @@ export type PaneState = {
    *  in the resource. Cleared by the next push from any other view.
    */
   mountError?: MountErrorInfo | null
+  /**
+   *  Where the pane's listing stands. Without it, an empty folder, one still
+   *  loading, one whose server stopped answering, and an error screen all read
+   *  as `totalFiles: 0` with no rows.
+   */
+  listing?: PaneListing
 }
 
 // Parsed search scope: which subtrees to include and which directory names/paths to exclude.

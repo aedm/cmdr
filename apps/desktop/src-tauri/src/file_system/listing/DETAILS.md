@@ -14,6 +14,7 @@ Frontend                          Backend
    |                                   |
    |                            [background task spawns]
    |<--- listing-opening event --------| (just before read_dir)
+   |<--- listing-stalled event --------| (only if the read goes quiet for 8 s; the listing keeps going)
    |<--- listing-progress event -------| (every 200ms, { listingId, loadedCount })
    |<--- listing-read-complete event --| (when read_dir finishes, { listingId, totalCount })
    |                            [overlay rows folded in; sorting + caching; watcher arm dispatched, not awaited]
@@ -725,16 +726,17 @@ two_concurrent_listings_on_one_volume_both_have_to_finish, dropping_the_listing_
 ## Cancelling a listing detaches, never aborts
 
 `StreamingListingState.cancel` is ONE `CancellationToken` serving three roles: the sync cancellation checks, the
-`select!` arm that races the read, and the backend's cooperative cancel token via `Volume::list_directory_with_cancel`.
-It used to be a flag plus a `Notify`; one token means the "is it cancelled?" checks and the "wake up" signal can't
-disagree, and `cancel_listing()` is one call. By the time `read_directory_with_progress`'s `select!` cancel arm runs,
-the backend has necessarily already been told to stop — the same cancellation woke it.
+`select!` arm in `stall::read_until_answered` that races the reads, and (as a child token) the backend's cooperative
+cancel token via `Volume::list_directory_with_cancel`. One token means the "is it cancelled?" checks and the "wake up"
+signal can't disagree, and `cancel_listing()` is one call. By the time the cancel arm runs, the backend has necessarily
+already been told to stop: the same cancellation woke it.
 
-That arm then emits `listing-cancelled` and RETURNS, dropping the listing task's `JoinHandle`. Dropping a `JoinHandle`
+The listing then emits `listing-cancelled` and RETURNS, dropping each read's `JoinHandle`. Dropping a `JoinHandle`
 detaches the task; it does not cancel it. So the backend keeps running for exactly as long as it needs to reach its own
-safe boundary, while the user sees an instant cancel.
+safe boundary, while the user sees an instant cancel. A stalled listing whose retry wins detaches its other read the
+same way, after cancelling its child token so a backend that listens unwinds.
 
-❌ Never `listing_task.abort()` there. Abort drops the listing future at whatever await point it's sitting on. For MTP
+❌ Never `abort()` a read's task there. Abort drops the listing future at whatever await point it's sitting on. For MTP
 that's mid-PTP-transaction: the device is left expecting bytes nobody will send, and it wedges until the user replugs
 the phone; the guardrail is in `crates/cmdr-mtp/src/connection/CLAUDE.md`. MTP bails between per-handle `GetObjectInfo`
 round trips, so cooperative cancel costs at most one round trip of latency.
@@ -744,6 +746,72 @@ That's not a regression: local listings run inside `spawn_blocking`, which `abor
 
 Pinned by `streaming_test::test_cancel_unwinds_the_listing_instead_of_aborting_it`, which drives a fake volume that
 only ends when its token flips and fails if its future is dropped first.
+
+## Stalled listings (`stall.rs`)
+
+**The failure.** A pane navigating into an OS-mounted share whose server stopped answering (NFS or `smbfs`) showed a
+spinner for as long as the kernel held the read, and `cmdr://state` showed the pane on the new path with
+`totalFiles: 0`, no rows, and no error: indistinguishable from an empty folder. `LocalPosixVolume` reads inside
+`spawn_blocking`, and `read_dir` on a silent mount blocks in the kernel with no timeout of ours anywhere above it. What
+the stuck call answers when the server comes back differs by filesystem, so recovery can't count on either:
+
+- **`smbfs`**: blocks for as long as the server is silent (116 s observed, with no sign of ending), then answers
+  `ENOTCONN` the instant the server is back, and the kernel drops the mount (macOS 27.0, `docker pause` on a Samba
+  fixture mounted with `mount_smbfs`, `ls` timed from a second shell, 2026-10-02).
+- **NFS (hard mount)**: blocks until the server answers, then completes, or refuses with `EPERM` if it comes back
+  with stricter exports (the NAS in the issue rewrote its exports as `secure` on restart). Reasoned from GitHub issue #305, not reproduced here.
+
+**The watch.** `read_until_answered` races each read against `StallPolicy::stall_after` (8 s) of silence: no entry
+count growth, since a local read stuck on one `stat` repeats the same number every progress tick. 8 s clears the
+0.3–6 s a busy NAS holds a single request for (`listing_done_level`), so a slow answer never reads as a dead server. On
+a stall the listing emits `listing-stalled` and keeps waiting; the frontend swaps the spinner for the "still waiting"
+screen, and any later progress, complete, error, or cancelled event for the same listing replaces it. A read that
+resumes producing entries clears the stall, and a later silence reports it again.
+
+**After a stall, the listing answers for itself** until the volume does, so the pane recovers with no help:
+
+- A STUCK read's refusal is stale (it spent the outage in the kernel, and the `ENOTCONN` above is exactly that), so the
+  listing asks again at once.
+- A PROMPT transient refusal (`ErrorCategory::Transient`, the same classification the error screen renders from) is
+  retried after a backoff: 2 s doubling to 30 s.
+- A PROMPT lasting refusal is the answer and ends the listing (a folder gone once the server is back walks the pane up
+  as before). So does any refusal from a listing that never stalled: nothing changed for a healthy volume.
+- On a `BackendKind::Local` volume (where reads block in the kernel), one fresh probe runs beside the stuck read once
+  the first backoff passes, since a stuck read can stay stuck after the server is back, and the probe answers the
+  moment it is. Connecting backends (SMB direct, SFTP, WebDAV, MTP, ADB) get no probe: their own session timeouts and
+  the reconnect manager already turn silence into a typed answer, and the frontend's `live-retry` re-lists once the
+  volume is live again.
+
+The retries stop with the listing: cancel (the user navigating away, Esc, or Go back) wins every `select!`, and the
+function's drop guard cancels the child token every read carries, so a read still waiting at the gate never starts.
+
+**The thread bound.** Every read on a hung mount pins a blocking-pool thread until the kernel lets go, and the pool is
+finite (`deadline::BlockingBudget`'s doc has the incident where it ran out). One listing holds at most two reads (the
+stuck one and the probe). Across listings, `HungReads` keeps every volume's reads: once one is hung, at most
+`MAX_READS_ON_A_HUNG_VOLUME` (4) may be in flight on that volume, and any further read waits at the gate as a future,
+never a thread. That leaves a stalled listing's two reads plus a user's Retry room to land the moment the server is
+back, and caps what mashing Retry or opening one folder after another can pin. A read's slot lives in its own task,
+so it frees when the KERNEL lets go, however long after its listing moved on.
+
+**Decision: a gate that closes only on a hung volume, not a `BlockingBudget`.** A budget caps a family's reads always,
+which would throttle the healthy concurrent listings of a busy pane pair, two tabs, and a refresh on the boot disk. The
+gate costs nothing until a read on that volume has actually gone quiet. The bound is loose for the first 8 s (nobody
+knows the volume is hung yet), which only a human mashing Escape and Enter can exploit.
+
+**Decision: never a deadline that ENDS the listing.** Ending it would hand the pane an error while the server may be
+seconds from answering, and the stuck read would keep its thread anyway. Waiting costs the same thread and lands on
+its own.
+
+Pinned by `stall_test` (a read that never answers stalls within the deadline; recovery from a stale `ENOTCONN`;
+transient retries; a lasting refusal ends it; cancel stops retries; the per-volume bound, mutation-checked; a steady
+read never stalls). The frontend half: `apps/desktop/src/lib/file-explorer/pane/DETAILS.md` § "A folder that stops
+answering".
+
+**Manual repro**, no NAS needed: run a private copy of the guest SMB fixture image
+(`docker run -d --rm -p 127.0.0.1:<port>:445 smb-consumer-smb-consumer-guest`), `mount_smbfs -N
+//guest@127.0.0.1:<port>/public <dir>`, open `<dir>` in a pane, `docker pause` the container, and open a subfolder:
+the "still waiting" screen appears after 8 s. `docker unpause` and the pane lands, or walks up if the kernel dropped the
+mount. Don't pause the shared fixture containers: other sessions' E2E runs use them.
 
 ## Serializing full refreshes
 

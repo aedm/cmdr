@@ -158,9 +158,7 @@ async fn listing_a_saved_server_nobody_connected_says_it_is_not_connected() {
 
     let listing = TestListingGuard::adopt(unique_test_id("saved-server-listing"));
     let events: std::sync::Arc<dyn ListingEventSink> = std::sync::Arc::new(CollectorListingEventSink::new());
-    let state = std::sync::Arc::new(StreamingListingState {
-        cancel: tokio_util::sync::CancellationToken::new(),
-    });
+    let state = std::sync::Arc::new(StreamingListingState::new());
     let pane_path = format!("sftp://ada@{host}:2222/srv/data/photos");
     let outcome = read_directory_with_progress(
         &events,

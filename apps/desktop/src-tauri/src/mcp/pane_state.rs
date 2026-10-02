@@ -125,6 +125,29 @@ pub struct PaneState {
     /// in the resource. Cleared by the next push from any other view.
     #[serde(default)]
     pub mount_error: Option<MountErrorInfo>,
+    /// Where the pane's listing stands. Without it, an empty folder, one still
+    /// loading, one whose server stopped answering, and an error screen all read
+    /// as `totalFiles: 0` with no rows.
+    #[serde(default)]
+    pub listing: PaneListing,
+}
+
+/// Where a pane's listing stands, as the pane shows it.
+// DEFAULT-OK: `Settled` is what a pane that never pushed one says: it shows what it
+// shows, which is every pane that isn't mid-load or on an error screen.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum PaneListing {
+    /// The rows (or the pane's own view) are what's on screen.
+    #[default]
+    Settled,
+    /// A listing is on its way and hasn't gone quiet.
+    Loading,
+    /// The listing's volume stopped answering mid-read. The pane says so and keeps
+    /// retrying in the background; it lands on its own when the volume answers.
+    Stalled,
+    /// The pane shows an error screen for this folder (`recentErrors` says why).
+    Error,
 }
 
 /// Why a pane is showing a mount failure rather than a directory.
@@ -367,6 +390,7 @@ mod tests {
             tabs: vec![],
             type_to_jump: None,
             mount_error: None,
+            listing: Default::default(),
         };
 
         store.set_left(state.clone());

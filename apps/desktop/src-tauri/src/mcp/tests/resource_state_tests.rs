@@ -3,7 +3,7 @@
 //! `resource_tests.rs`.
 
 use crate::mcp::listing_errors::RecentListingError;
-use crate::mcp::pane_state::{MountErrorInfo, PaneFileEntry, PaneState, TabInfo};
+use crate::mcp::pane_state::{MountErrorInfo, PaneFileEntry, PaneListing, PaneState, TabInfo};
 use crate::mcp::resources::panes::{
     build_pane_yaml_with_options, format_file_compact, format_tab_compact, tags_marker,
 };
@@ -288,6 +288,7 @@ fn test_build_pane_yaml() {
         ],
         type_to_jump: None,
         mount_error: None,
+        listing: Default::default(),
     };
 
     let yaml = build_pane_yaml_with_options(&state, "  ", &StateOptions::default());
@@ -353,6 +354,7 @@ fn test_brief_cursor_detail_respects_loaded_window() {
         tabs: vec![],
         type_to_jump: None,
         mount_error: None,
+        listing: Default::default(),
     };
 
     let yaml = build_pane_yaml_with_options(&state, "  ", &StateOptions::default());
@@ -664,6 +666,45 @@ fn a_pane_showing_a_mount_failure_reports_it() {
         ..Default::default()
     };
     assert!(!build_pane_yaml_with_options(&ok, "  ", &StateOptions::default()).contains("mountError"));
+}
+
+/// A pane whose folder's server stopped answering used to read as an empty
+/// folder: `totalFiles: 0`, no rows, no error. The `listing:` line tells an
+/// agent "stuck" (and "loading", and "error screen") from "empty", and stays out
+/// of the YAML when the listing is settled.
+#[test]
+fn a_pane_reports_a_stalled_listing_and_stays_quiet_when_settled() {
+    let stalled = PaneState {
+        path: "/Volumes/nas".to_string(),
+        view_mode: "brief".to_string(),
+        listing: PaneListing::Stalled,
+        ..Default::default()
+    };
+    let yaml = build_pane_yaml_with_options(&stalled, "  ", &StateOptions::default());
+    assert!(
+        yaml.contains("  listing: stalled"),
+        "expected a stalled listing line:\n{yaml}"
+    );
+
+    let error = PaneState {
+        listing: PaneListing::Error,
+        ..stalled.clone()
+    };
+    let yaml = build_pane_yaml_with_options(&error, "  ", &StateOptions::default());
+    assert!(
+        yaml.contains("  listing: error"),
+        "expected an error listing line:\n{yaml}"
+    );
+
+    let settled = PaneState {
+        listing: PaneListing::Settled,
+        ..stalled
+    };
+    let yaml = build_pane_yaml_with_options(&settled, "  ", &StateOptions::default());
+    assert!(
+        !yaml.contains("listing:"),
+        "a settled pane carries no listing line:\n{yaml}"
+    );
 }
 
 /// A search-results pane in the engine's ranked order reports `relevance:desc`,

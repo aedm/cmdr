@@ -59,7 +59,7 @@ use crate::events::index_mapping::{
 use crate::file_system::git::wiring::GitStateChangedPayload;
 use crate::file_system::listing::streaming::{
     ListingCancelledEvent, ListingCompleteEvent, ListingErrorEvent, ListingOpeningEvent, ListingProgressEvent,
-    ListingReadCompleteEvent,
+    ListingReadCompleteEvent, ListingStalledEvent,
 };
 use crate::file_system::volume::eject::VolumesEjectingChanged;
 use crate::file_system::write_operations::{
@@ -1050,6 +1050,7 @@ pub fn builder() -> Builder<tauri::Wry> {
             QuitCalledOff,
             // Listing sink (file_system/listing/streaming.rs `TauriListingEventSink`).
             ListingOpeningEvent,
+            ListingStalledEvent,
             ListingProgressEvent,
             ListingReadCompleteEvent,
             ListingCompleteEvent,

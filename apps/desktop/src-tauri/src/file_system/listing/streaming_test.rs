@@ -50,9 +50,7 @@ fn cleanup(volume_id: &str) {
 }
 
 fn new_state() -> Arc<StreamingListingState> {
-    Arc::new(StreamingListingState {
-        cancel: CancellationToken::new(),
-    })
+    Arc::new(StreamingListingState::new())
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

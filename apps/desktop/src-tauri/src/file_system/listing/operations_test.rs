@@ -153,9 +153,7 @@ fn test_cancel_listing_sets_flag() {
 
     // Create a test listing ID and state
     let listing_id = "test-cancel-listing-12345";
-    let state = Arc::new(StreamingListingState {
-        cancel: tokio_util::sync::CancellationToken::new(),
-    });
+    let state = Arc::new(StreamingListingState::new());
 
     // Store it in the streaming state cache
     {

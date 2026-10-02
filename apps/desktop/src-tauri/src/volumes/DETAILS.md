@@ -244,6 +244,9 @@ flat ~30s (one smbfs kernel timeout). (Incident: live NAS QA, 2026-07-13.)
    retire-by-absence, and the volume store settles a retry only on a non-pending event. `apps/desktop/src-tauri/src/volume_broadcast/round.rs` §
    `Broadcaster::round`.
 
+A pane LISTING a folder on a hung mount is the other half: it says the volume isn't answering after 8 s, keeps waiting
+and retrying, and caps the threads the mount can pin. `apps/desktop/src-tauri/src/file_system/listing/DETAILS.md` § "Stalled listings".
+
 Note that the 2s deadline fires for reasons other than a hung mount: `list_locations` runs on the shared blocking pool,
 so a subsystem that saturates the pool starves it just as effectively (`commands/CLAUDE.md` § `BlockingBudget`).
 

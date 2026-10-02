@@ -5,7 +5,7 @@ Backend directory reading, caching, sorting, and streaming: 100k+ entries, non-b
 ## Module map
 
 - Read and serve: **reading.rs** disk I/O, **streaming.rs** async progress and cancellation (`ListingEventSink`),
-  **operations.rs** the sync API, **cached_listing.rs** `CachedListing` + `LISTING_CACHE`, **caching.rs** patch helpers,
+  **stall.rs** reads that go quiet, **operations.rs** the sync API, **cached_listing.rs** `CachedListing` + `LISTING_CACHE`, **caching.rs** patch helpers,
   **orphan_reaper.rs** the 6 h backstop, **mutation.rs**, **foreign_path.rs** stored spellings.
 - Derive and emit: **diff.rs** `compute_diff`, **diff_emitter.rs** 50 ms coalescing, **visible_rows.rs** /
   **path_index.rs** the row and path maps, **sorting.rs** the one comparator, **collation.rs** the one name order, plus
@@ -29,8 +29,9 @@ Backend directory reading, caching, sorting, and streaming: 100k+ entries, non-b
 - **The orphan reaper keys on `last_accessed_ms`, not `created_at`**: every read accessor and cache patch bumps it, or
   it evicts a live pane. ❌ Never from `refresh_listing_index_sizes` (background work).
 - **`read_directory_with_progress` holds a `priority::foreground` lease** for its whole body: ❌ never bind it to `_`.
-- ❌ **The `select!` cancel arm must never `listing_task.abort()`**: returning detaches a safely-unwinding task,
-  aborting wedges an MTP phone mid-round-trip.
+- ❌ **A listing never aborts a read**, on cancel or when a retry wins: detaching lets it unwind; aborting wedges an
+  MTP phone. A read quiet for `stall_after` emits `listing-stalled` and keeps waiting, ❌ never a deadline that ends
+  it. `DETAILS.md` § "Stalled listings".
 - **FullRefresh goes through `caching::spawn_full_refresh`**: on a watcher's OS thread a bare `tokio::spawn` panics.
 - **Sorting has ONE comparator**, `entry_comparator` over `SortableEntry` (`FileEntry` plus a search-results row). ❌
   Never add a second. A sort change invalidates the frontend's cached range, so bump `cacheGeneration`.
@@ -38,8 +39,7 @@ Backend directory reading, caching, sorting, and streaming: 100k+ entries, non-b
   side by side). Both readings, live `compare` and prebuilt `key`, end with a raw-bytes tiebreak, else two spellings of
   one name tie and the watcher sees a phantom `Move`. ❌ Never persist a `NameKey`.
 - **A listing's path is a `ListingPath`, built only by `ListingPath::on_volume`** (the volume's one spelling,
-  `Volume::listing_path`). ❌ Never compare a raw path to it: MTP reports at `mtp://…` while a pane entered with Enter
-  holds `/DCIM`, and a verbatim match drops every Cmdr-made delete on that pane.
+  `Volume::listing_path`). ❌ Never compare a raw path to it: MTP reports `mtp://…` where the pane holds `/DCIM`.
 - **Only a pane open or a Finder drop/paste resolves a foreign spelling** (`list_as_stored`, `stored_spellings`): ❌
   never a walker, scan, or refresh, where a miss means gone and a resolve returns a look-alike twin. `DETAILS.md` § "A
   pane path the volume stores another way".
@@ -47,5 +47,4 @@ Backend directory reading, caching, sorting, and streaming: 100k+ entries, non-b
 - **Finder tags are deferred**: `list_directory_core` never reads them, and every modify path calls
   `carry_forward_tags` BEFORE storing, else an mtime touch blanks a file's dots. ❌ Never route enrich through it.
 
-Data flow, the caching lifecycle, row numbers, entries by path, the overlay step, sorting, collation, and the decisions
-behind them: `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or advising.
+Data flow, caching, row numbers, stalls, sorting, and the decisions behind them: `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or advising.
