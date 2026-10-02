@@ -365,6 +365,8 @@ mod copy_test;
 #[cfg(test)]
 mod integration_test;
 #[cfg(test)]
+mod live_connect_test;
+#[cfg(test)]
 mod live_flow_test;
 #[cfg(test)]
 mod late_cancel_test;

@@ -937,38 +937,74 @@ async fn live_metadata_and_checksum_headers() {
     }
 }
 
-/// Removes everything any live run left under `cmdr-live/`, open uploads
-/// included. The runner calls it last.
+/// Leftovers older than this are a crashed run's. ❗ Younger ones may belong
+/// to a run still going: several runners share one bucket (R2's key reaches
+/// only one), and a sweep of everything under `cmdr-live/` once deleted a
+/// running flow's objects out from under it.
+const STALE_AFTER: Duration = Duration::from_secs(3 * 60 * 60);
+
+fn is_stale(when: Option<std::time::SystemTime>) -> bool {
+    when.and_then(|t| t.elapsed().ok()).is_some_and(|age| age > STALE_AFTER)
+}
+
+/// Every key under `cmdr-live/` in `bucket` older than [`STALE_AFTER`].
+async fn stale_keys(live: &Live, client: &S3Client, bucket: &str) -> Vec<String> {
+    let mut keys = Vec::new();
+    let mut token: Option<String> = None;
+    loop {
+        let params = ListObjectsParams {
+            prefix: LIVE_ROOT,
+            delimiter: None,
+            continuation_token: token.as_deref(),
+            max_keys: None,
+        };
+        let request = ops::list_objects(client.profile(), bucket, &params).expect("builds");
+        let answer = live.send(client, request).await;
+        let Ok(page) = parse_list_objects(&answer.text()) else {
+            return keys;
+        };
+        keys.extend(
+            page.objects
+                .into_iter()
+                .filter(|o| is_stale(o.last_modified))
+                .map(|o| o.key),
+        );
+        match page.next_continuation_token {
+            Some(next) if page.is_truncated => token = Some(next),
+            _ => return keys,
+        }
+    }
+}
+
+/// Removes what crashed live runs left under `cmdr-live/`, open uploads
+/// included, in both buckets: everything older than [`STALE_AFTER`]. The
+/// runner calls it last; each cell already deletes its own.
 #[tokio::test(flavor = "multi_thread")]
 async fn live_cleanup_removes_every_leftover() {
     for live in live_targets() {
         let client = live.client();
-        live.clean(&client, LIVE_ROOT).await;
-        let left = live.keys_under(&client, LIVE_ROOT).await.len();
-        let uploads = live.uploads_under(&client, LIVE_ROOT).await.map(|u| u.len());
+        let request = ops::list_multipart_uploads(client.profile(), &live.bucket, LIVE_ROOT, None).expect("builds");
+        let answer = live.send(&client, request).await;
+        if let Ok(page) = crate::xml::parse_list_multipart_uploads(&answer.text()) {
+            for upload in page.uploads.into_iter().filter(|u| is_stale(u.initiated)) {
+                live.abort(&client, &upload.key, &upload.upload_id).await;
+            }
+        }
+        let stale = stale_keys(&live, &client, &live.bucket).await;
+        live.delete_each(&client, &stale).await;
+        if let Some(other) = &live.bucket_2 {
+            for key in stale_keys(&live, &client, other).await {
+                let request = ops::delete_object(client.profile(), other, &key).expect("builds");
+                live.send(&client, request).await;
+            }
+        }
+        let left = stale_keys(&live, &client, &live.bucket).await.len();
+        let fresh = live.keys_under(&client, LIVE_ROOT).await.len();
         report(
             &live,
             "cleanup",
-            format!("objects left: {left}, open uploads left: {uploads:?}"),
+            format!("stale objects left: {left}, recent ones left to their runs: {fresh}"),
         );
-        if let Some(other) = &live.bucket_2 {
-            let request = ops::list_objects(
-                client.profile(),
-                other,
-                &ListObjectsParams {
-                    prefix: LIVE_ROOT,
-                    ..ListObjectsParams::default()
-                },
-            )
-            .expect("builds");
-            let answer = live.send(&client, request).await;
-            if let Ok(page) = parse_list_objects(&answer.text()) {
-                for object in page.objects {
-                    let request = ops::delete_object(client.profile(), other, &object.key).expect("builds");
-                    live.send(&client, request).await;
-                }
-            }
-        }
         assert_eq!(left, 0, "[{}]", live.name);
     }
 }
