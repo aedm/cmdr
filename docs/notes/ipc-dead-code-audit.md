@@ -119,6 +119,6 @@ superseded too, not groundwork.
 - **Done**: `VolumeScanError::SourceVolumeNotFound` / `SourceVolumeNotConnected` are gone (nothing, the stubs included,
   built them after the removed command).
 - **Done**: the `desktop-ipc-unused` check now fails on an uncalled `tauri-commands` export or `commands.*` entry, with
-  the GAP and UNSURE items above (plus `get_memory_diagnostics`, agent tooling) in its allowlist until they're resolved.
-  knip also sees `tauri-commands/` now. Rule: `apps/desktop/src/lib/tauri-commands/DETAILS.md` § "Unused wrappers and
-  commands".
+  the UNSURE items above (plus `get_memory_diagnostics`, agent tooling) in its allowlist until they're decided. The GAP
+  items are being wired up instead, so they get no entry. knip also sees `tauri-commands/` now. Rule:
+  `apps/desktop/src/lib/tauri-commands/DETAILS.md` § "Unused wrappers and commands".

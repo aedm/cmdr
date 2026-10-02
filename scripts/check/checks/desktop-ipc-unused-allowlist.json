@@ -2,9 +2,7 @@
   "$comment": "IPC wrappers (tauri-commands/*.ts exports, by name) and commands (bindings.ts, by snake_case name) kept with no caller, each mapped to its reason. An allowlisted wrapper also covers the commands it calls. The desktop-ipc-unused check shrink-wraps stale entries on local runs; adding one needs David's explicit consent (see .claude/rules/file-length-allowlist.md).",
   "wrappers": {
     "clearRecentSearches": "awaiting David's call: a 'Clear history' row in the Search recents popover, or delete it with its command; see docs/notes/ipc-dead-code-audit.md",
-    "clearRecentSelections": "awaiting David's call: a 'Clear history' row in the Selection recents popover, or delete it with its command; see docs/notes/ipc-dead-code-audit.md",
-    "deleteAiApiKey": "gap: no way to remove a saved cloud AI key from the Keychain (covers delete_ai_api_key), see docs/notes/ipc-dead-code-audit.md",
-    "onIndexMemoryWarning": "gap: the memory watchdog stops every index and nobody is told, see docs/notes/ipc-dead-code-audit.md"
+    "clearRecentSelections": "awaiting David's call: a 'Clear history' row in the Selection recents popover, or delete it with its command; see docs/notes/ipc-dead-code-audit.md"
   },
   "commands": {
     "clear_recent_paths": "awaiting David's call: a 'Clear history' row in the Go to folder recents popover, or delete it; see docs/notes/ipc-dead-code-audit.md",
