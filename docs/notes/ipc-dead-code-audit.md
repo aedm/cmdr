@@ -24,6 +24,9 @@ superseded too, not groundwork.
 
 ## GAP
 
+All three are fixed: the AI key in `136523dd6`, focus-settings in `bcf6b1050`, and the memory-stop toast in `541b2e39c`
+(translations in `482109a40`). Kept below as the record of what was missing.
+
 - **`deleteAiApiKey` / `delete_ai_api_key`**: there's no way to remove a saved cloud AI key. Settings › AI › Provider
   saves on typing and the field starts empty behind a "your key is saved" placeholder, so a person can replace a key but
   never take one out of the Keychain. The command exists since `42bc5eaf7` (2026-05-14, "AI API keys: move to OS secret
