@@ -68,6 +68,10 @@
     ],
     "fr": [
       {
+        "source": "Archived",
+        "reason": "Two senses of one English word. `askCmdr.sessions.archivedBadge` marks an archived chat (une conversation, feminine: `Archivée`); `fileExplorer.archivedFile.label` marks a file in an S3 cold-storage class (un fichier, masculine: `Archivé`). The badge agrees with its noun, so one form can't serve both."
+      },
+      {
         "source": "App",
         "reason": "The color options name the app as the SOURCE of a tint in a very short button (`App`); the shortcut scope covers the whole application (`Application`)."
       },
@@ -289,6 +293,10 @@
       }
     ],
     "vi": [
+      {
+        "source": "Archived",
+        "reason": "Two senses of one English word. `askCmdr.sessions.archivedBadge` marks a chat the user put away (`Đã lưu trữ`, stored away); `fileExplorer.archivedFile.label` marks a file in an S3 cold-storage class that must be restored before it can be read (`Lưu trữ lạnh`, cold storage). Using the chat's word on the file hides why it won't open."
+      },
       {
         "source": "Back",
         "reason": "macOS vi draws this line: going back in the folder HISTORY is `Trở lại` (Finder Go > Back, `menu.go.back`), returning to the previous SCREEN or step inside a flow is `Quay lại` (Setup Assistant, the Apple ID sheets; the network browser and the onboarding wizard). See `docs/i18n/vi/terms.json` `back`."
