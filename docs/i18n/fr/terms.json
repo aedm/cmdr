@@ -641,7 +641,7 @@
     "sources": "MS terminology FRA"
   },
   "copy": {
-    "accept": ["copie", "copié"],
+    "accept": ["copie", "copié", "copiait"],
     "chosen": "Copier",
     "confidence": "high",
     "forms": "progress noun Copie (Copie en cours..., Copie vers {destination}); participles copié/copiés; Copied → Copié",
@@ -813,6 +813,13 @@
     "forms": "USB device → appareil USB; transitive disconnect → déconnecter l’appareil",
     "note": "A phone the source calls a phone is téléphone; appareil stays the generic MTP word (Kindle, camera).",
     "sources": "macOS; catalog"
+  },
+  "dialog": {
+    "accept": ["fenêtre"],
+    "chosen": "boîte de dialogue",
+    "confidence": "high",
+    "forms": "a named Cmdr dialog → la boîte de dialogue Déplacer (the dialog’s own title, unquoted)",
+    "sources": "MS terminology FRA (dialog box → boîte de dialogue); catalog (boîte de dialogue, nine uses)"
   },
   "disable": {
     "accept": ["désactive", "désactivé"],
@@ -1008,6 +1015,13 @@
     "chosen": "estimation",
     "confidence": "high",
     "sources": "catalog"
+  },
+  "example": {
+    "accept": ["exemple", "ex."],
+    "chosen": "Exemple",
+    "confidence": "high",
+    "forms": "placeholder prefix → Exemple : {value} (no-break space before the colon); in running prose → par exemple",
+    "sources": "catalog (servers.sheet.usernamePlaceholder, ai.cloud.modelPlaceholderExample, onboarding.cloudSetup.step.endpointPlaceholder)"
   },
   "expired": {
     "accept": ["expire", "expiration"],
@@ -1291,6 +1305,16 @@
     "decision": "Un mot anglais, un mot français : la revue de dérive",
     "sources": "macOS fr (Got It → D'accord, verified on macOS 26.6.2, 2026-08-30)"
   },
+  "grant": {
+    "accept": ["accord", "autoris", "accès", "reçu"],
+    "chosen": "accorder",
+    "confidence": "high",
+    "exceptions": {
+      "onboarding.fdaBadge.tooltip": "The grant folds into fonctionne bien mieux avec (the access the badge names), so no verb is left to carry it."
+    },
+    "forms": "grant Cmdr access → accordez l’accès à Cmdr",
+    "sources": "macOS Finder (Impossible d’accorder les autorisations à « %@ »…); catalog (errors.listing.*.suggestion)"
+  },
   "group": {
     "chosen": "groupe",
     "confidence": "high",
@@ -1542,6 +1566,10 @@
   "list": {
     "chosen": "liste",
     "confidence": "high",
+    "exceptions": {
+      "fileOperations.s3Cost.infoText": "English-sense: list prices are a provider’s published tariff, prix catalogue (MS terminology FRA: list price → prix catalogue).",
+      "fileOperations.s3Cost.line": "English-sense: list prices are a provider’s published tariff, prix catalogue (MS terminology FRA: list price → prix catalogue)."
+    },
     "forms": "the Servers list → la liste Serveurs (row name unquoted, as shipped); stops listing it → n’affiche plus",
     "sources": "MS terminology FRA (list → liste); catalog (la liste, 33 uses)"
   },
@@ -1660,6 +1688,7 @@
       "errors.write.trashRefused.message.other": "English-sense: moving to the trash is placer dans la corbeille.",
       "fileOperations.transferProgress.rollbackAlreadyLandedTooltip": "French names what the button no longer does (le retour en arrière n'est plus possible) instead of undoing the move.",
       "operationLog.summary.trash": "English-sense: moving to the trash is placer dans la corbeille.",
+      "commands.handler.shareLinkUnavailable": "English-sense: moving the cursor onto a file is placer le curseur, not the F6 move.",
       "queryUi.recent.popoverHint": "English-sense: the arrow keys move the highlight, so naviguer.",
       "transfer.trash": "English-sense: moving to the trash is placer dans la corbeille."
     },
@@ -1684,6 +1713,9 @@
     "chosen": "nom",
     "confidence": "high",
     "decision": "Refus de renommage et de création",
+    "exceptions": {
+      "servers.sheet.identityLockedS3": "English-sense: “what name this place” is the verb (identify), rendered identifient like the shipped sibling servers.sheet.identityLocked."
+    },
     "forms": "Name column → Nom; Ext → Ext",
     "sources": "macOS; catalog"
   },
@@ -1902,6 +1934,13 @@
     "confidence": "high",
     "forms": "overwrite all → Tout écraser; the badge → (écrasement !)",
     "sources": "macOS Finder (Écraser à la destination, Écraser les extensions)"
+  },
+  "owner": {
+    "accept": ["propriété"],
+    "chosen": "propriétaire",
+    "confidence": "high",
+    "forms": "ownership (a volume setting) → propriété",
+    "sources": "macOS Finder (Saisissez le nom d’un nouveau propriétaire :); catalog (errors.listing.noPermissionErrno.suggestion)"
   },
   "package": {
     "chosen": "paquet",
@@ -2341,6 +2380,14 @@
     "confidence": "high",
     "sources": "macOS Menus (Restart → Redémarrer)"
   },
+  "restore": {
+    "accept": ["restauré", "restauration", "restaurez"],
+    "chosen": "restaurer",
+    "confidence": "high",
+    "forms": "a file in cloud cold storage → le fichier est archivé … tant qu’il n’a pas été restauré; noun → une restauration",
+    "sources": "macOS Finder (Restaurer, Restaurer une copie, Préparation de la restauration de la version…); AWS French docs (restaurer un objet archivé)",
+    "note": "Not rollback: Cmdr undoing its own operation is revenir en arrière."
+  },
   "resume": {
     "accept": ["reprend", "reprise"],
     "chosen": "Reprendre",
@@ -2542,6 +2589,9 @@
     "chosen": "Réglages",
     "confidence": "high",
     "decision": "Sections des réglages et noms de présentation",
+    "exceptions": {
+      "servers.sheet.s3GcsKeyHelp": "Third-party UI: Google Cloud’s French console names Cloud Storage’s settings page Paramètres, so the hint quotes the vendor’s word (tentative)."
+    },
     "forms": "Cmdr’s own window → les Réglages (Ouvrir les réglages, Activez-la dans les Réglages); breadcrumbs Réglages > IA, Réglages › Mises à jour et confidentialité (mirror EN’s separator); Apple’s app is Réglages Système",
     "sources": "macOS (Réglages Système CFBundleName)"
   },
@@ -2707,6 +2757,27 @@
     "confidence": "high",
     "forms": "the Stop button → Arrêter; Stop, and … (rollback tooltip) → Arrêter et …; You stopped X → Vous avez arrêté X",
     "sources": "macOS fr (Arrêter la copie, Arrêter le déplacement)"
+  },
+  "storage": {
+    "chosen": "stockage",
+    "confidence": "high",
+    "exceptions": {
+      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google’s product name, kept verbatim.",
+      "servers.sheet.s3ProviderGcs": "Product name (Google Cloud Storage), kept verbatim.",
+      "servers.sheet.s3ProviderHetzner": "Product name (Hetzner Object Storage), kept verbatim."
+    },
+    "forms": "cloud storage → stockage cloud; cold storage → stockage froid; storage provider → fournisseur de stockage; S3 storage → un stockage S3",
+    "sources": "macOS AppKit (Stockage dans le cloud, Gérer le stockage…); MS terminology FRA (cold storage → stockage froid, storage provider → fournisseur de stockage)"
+  },
+  "store": {
+    "accept": ["enregistr", "stock", "trouve"],
+    "chosen": "enregistrer",
+    "confidence": "high",
+    "exceptions": {
+      "errors.listing.ambiguousName.explanation": "English-sense: the server stores the names differently means it spells them differently, so écrit."
+    },
+    "forms": "a secret stored in the keychain → enregistrer dans le trousseau; a destination that can’t store a name → stocker",
+    "sources": "catalog (servers.refusal.secretNotStored, errors.volume.invalidName)"
   },
   "streaming": {
     "chosen": "streaming",

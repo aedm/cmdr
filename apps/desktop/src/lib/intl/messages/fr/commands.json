@@ -556,27 +556,27 @@
   "@commands.cloudAskGemini.description": {
     "sourceHash": "37d4e7c"
   },
-  "commands.fileCopyShareLink.label": "Copy share link (seven days)",
+  "commands.fileCopyShareLink.label": "Copier un lien de partage (sept jours)",
   "@commands.fileCopyShareLink.label": {
     "sourceHash": "314bee8"
   },
-  "commands.fileCopyShareLink.description": "Copies a link anyone can open to download the file for the next seven days",
+  "commands.fileCopyShareLink.description": "Copie un lien que n’importe qui peut ouvrir pour télécharger le fichier pendant sept jours",
   "@commands.fileCopyShareLink.description": {
     "sourceHash": "eb35b64"
   },
-  "commands.fileCopyShareLinkOneDay.label": "Copy share link (one day)",
+  "commands.fileCopyShareLinkOneDay.label": "Copier un lien de partage (un jour)",
   "@commands.fileCopyShareLinkOneDay.label": {
     "sourceHash": "468010c"
   },
-  "commands.fileCopyShareLinkOneDay.description": "Copies a link anyone can open to download the file for the next day",
+  "commands.fileCopyShareLinkOneDay.description": "Copie un lien que n’importe qui peut ouvrir pour télécharger le fichier pendant un jour",
   "@commands.fileCopyShareLinkOneDay.description": {
     "sourceHash": "70461ac"
   },
-  "commands.fileCopyShareLinkOneHour.label": "Copy share link (one hour)",
+  "commands.fileCopyShareLinkOneHour.label": "Copier un lien de partage (une heure)",
   "@commands.fileCopyShareLinkOneHour.label": {
     "sourceHash": "ffea990"
   },
-  "commands.fileCopyShareLinkOneHour.description": "Copies a link anyone can open to download the file for the next hour",
+  "commands.fileCopyShareLinkOneHour.description": "Copie un lien que n’importe qui peut ouvrir pour télécharger le fichier pendant une heure",
   "@commands.fileCopyShareLinkOneHour.description": {
     "sourceHash": "45091c5"
   },
@@ -828,23 +828,23 @@
   "@commands.handler.googleDriveCopyFailed": {
     "sourceHash": "0af1fd3"
   },
-  "commands.handler.shareLinkCopied.sevenDays": "Copied a share link. It works for seven days.",
+  "commands.handler.shareLinkCopied.sevenDays": "Lien de partage copié. Il reste valable sept jours.",
   "@commands.handler.shareLinkCopied.sevenDays": {
     "sourceHash": "6f4055b"
   },
-  "commands.handler.shareLinkCopied.oneDay": "Copied a share link. It works for one day.",
+  "commands.handler.shareLinkCopied.oneDay": "Lien de partage copié. Il reste valable un jour.",
   "@commands.handler.shareLinkCopied.oneDay": {
     "sourceHash": "ca08c52"
   },
-  "commands.handler.shareLinkCopied.oneHour": "Copied a share link. It works for one hour.",
+  "commands.handler.shareLinkCopied.oneHour": "Lien de partage copié. Il reste valable une heure.",
   "@commands.handler.shareLinkCopied.oneHour": {
     "sourceHash": "8b9f0cc"
   },
-  "commands.handler.shareLinkUnavailable": "Move the cursor to a file in an S3 bucket to copy a share link.",
+  "commands.handler.shareLinkUnavailable": "Placez le curseur sur un fichier d’un compartiment S3 pour copier un lien de partage.",
   "@commands.handler.shareLinkUnavailable": {
     "sourceHash": "c4ea112"
   },
-  "commands.handler.shareLinkFailed": "Couldn’t make a share link. {detail}",
+  "commands.handler.shareLinkFailed": "Impossible de créer un lien de partage. {detail}",
   "@commands.handler.shareLinkFailed": {
     "sourceHash": "5ff44b7"
   },

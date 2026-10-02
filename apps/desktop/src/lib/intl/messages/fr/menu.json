@@ -475,19 +475,19 @@
   "@menu.context.copyGoogleDriveLink": {
     "sourceHash": "070b383"
   },
-  "menu.context.copyShareLink": "Copy share link",
+  "menu.context.copyShareLink": "Copier un lien de partage",
   "@menu.context.copyShareLink": {
     "sourceHash": "d31483e"
   },
-  "menu.context.shareLinkSevenDays": "Expires in seven days",
+  "menu.context.shareLinkSevenDays": "Expire dans sept jours",
   "@menu.context.shareLinkSevenDays": {
     "sourceHash": "06949d8"
   },
-  "menu.context.shareLinkOneDay": "Expires in one day",
+  "menu.context.shareLinkOneDay": "Expire dans un jour",
   "@menu.context.shareLinkOneDay": {
     "sourceHash": "5ff3dbc"
   },
-  "menu.context.shareLinkOneHour": "Expires in one hour",
+  "menu.context.shareLinkOneHour": "Expire dans une heure",
   "@menu.context.shareLinkOneHour": {
     "sourceHash": "faf9c50"
   },

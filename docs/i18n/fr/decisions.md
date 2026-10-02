@@ -549,7 +549,6 @@ values write the catalog's `’`.
 - Re-check → `Rechercher à nouveau` (Apple’s `Rechercher les mises à jour`) over `Vérifier`.
 - Trusted <date> → `Approuvée le` (French needs `le`; agrees with `clé`). plugged in → `branché`.
 - Watching for phones → `Cmdr détecte un téléphone dès qu’il est branché.`, never a technical module name.
-- The server tint now covers three protocols: `Teinter les panneaux de serveur (SMB, SFTP, WebDAV)`.
 - `settings.section.adb` (`Android (ADB)`) is identical and justified.
 
 ## Le téléphone Android : le panneau de connexion, les info-bulles et l'astuce ADB (`adb.*`, `settings.behavior.adbHintDismissed.*`)
@@ -762,3 +761,9 @@ values write the catalog's `’`.
 
 - `le dossier qui le contient` avoids a pronoun agreeing with the inserted item, and `supprimez vous-même l’original`
   marks no gender.
+
+## Le stockage S3 (`servers.sheet.s3*`, `.accessKeyId`, `.secretAccessKey`, `servers.refusal.*`, `*.coldStorage*`)
+
+- bucket → `compartiment`; access key ID → `ID de clé d’accès`; secret access key → `clé d’accès secrète` (AWS FR
+  console, MS FRA).
+- cold storage → `stockage froid`; archived → `archivé` (the file; the chat badge stays `Archivée`).

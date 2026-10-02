@@ -25,6 +25,9 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
   / mass-rename → `renommage en masse`, **Wilting → `Flétrissement`** (a Cmdr coinage).
 - **page up / page down → `page précédente` / `page suivante`**, **jump to → `aller à`**.
 - **Ask about X → `Poser une question sur X`**, and the compact button `Interroger la sélection`.
+- **S3 bucket → `compartiment`** (AWS’s French console and MS FRA), while Google Cloud and Scaleway French say `bucket`:
+  confirm French S3 users recognize it. Also `adressage de type chemin` (path-style), `stockage froid` (cold storage),
+  and the Google console wording `onglet Interopérabilité des paramètres de Cloud Storage` (tentative).
 
 ## Phrasing
 
