@@ -80,29 +80,14 @@ impl PartReader {
     /// The next `want` bytes, as `fill` reads them, calling `between` after
     /// every piece it pulls and every [`PROGRESS_TICK`] while one is pending,
     /// so a slow or stalled source still reports progress and can be
-    /// cancelled. ❗ A `next_chunk` is dropped half-read only when `between`
-    /// fails, which ends the upload: no later part reads past the lost bytes.
+    /// cancelled ([`Self::pull_with`]).
     pub(super) async fn fill_with(
         &mut self,
         want: usize,
         between: &mut (dyn FnMut() -> Result<(), VolumeError> + Send),
     ) -> Result<Vec<u8>, VolumeError> {
         while self.carry.len() < want && !self.ended {
-            let start = tokio::time::Instant::now() + PROGRESS_TICK;
-            let mut tick = tokio::time::interval_at(start, PROGRESS_TICK);
-            tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-            let pull = self.pull();
-            tokio::pin!(pull);
-            loop {
-                tokio::select! {
-                    pulled = &mut pull => {
-                        pulled?;
-                        break;
-                    }
-                    _ = tick.tick() => between()?,
-                }
-            }
-            between()?;
+            self.pull_with(between).await?;
         }
         let rest = self.carry.split_off(want.min(self.carry.len()));
         let part = std::mem::replace(&mut self.carry, rest);
@@ -112,11 +97,47 @@ impl PartReader {
 
     /// Whether the source has nothing left, reading one piece ahead to find
     /// out (kept for the next `fill`).
+    #[cfg(test)]
     pub(super) async fn at_end(&mut self) -> Result<bool, VolumeError> {
+        self.at_end_with(&mut || Ok(())).await
+    }
+
+    /// Whether the source has nothing left, as `at_end` finds out, calling
+    /// `between` the way `fill_with` does: a source that stalls right at its
+    /// end still reports progress and can be cancelled.
+    pub(super) async fn at_end_with(
+        &mut self,
+        between: &mut (dyn FnMut() -> Result<(), VolumeError> + Send),
+    ) -> Result<bool, VolumeError> {
         while self.carry.is_empty() && !self.ended {
-            self.pull().await?;
+            self.pull_with(between).await?;
         }
         Ok(self.carry.is_empty())
+    }
+
+    /// One `pull`, calling `between` every [`PROGRESS_TICK`] while it's
+    /// pending and once after it lands. ❗ A `next_chunk` is dropped half-read
+    /// only when `between` fails, which ends the upload: no later part reads
+    /// past the lost bytes.
+    async fn pull_with(
+        &mut self,
+        between: &mut (dyn FnMut() -> Result<(), VolumeError> + Send),
+    ) -> Result<(), VolumeError> {
+        let start = tokio::time::Instant::now() + PROGRESS_TICK;
+        let mut tick = tokio::time::interval_at(start, PROGRESS_TICK);
+        tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        let pull = self.pull();
+        tokio::pin!(pull);
+        loop {
+            tokio::select! {
+                pulled = &mut pull => {
+                    pulled?;
+                    break;
+                }
+                _ = tick.tick() => between()?,
+            }
+        }
+        between()
     }
 
     /// Every byte out of the source so far, the read-ahead included.
@@ -305,7 +326,7 @@ impl S3Volume {
             let head = reader
                 .fill_with(usize::try_from(part_size).unwrap_or(usize::MAX), &mut between)
                 .await?;
-            if reader.at_end().await? && (short == ShortStream::OnePut || head.is_empty()) {
+            if reader.at_end_with(&mut between).await? && (short == ShortStream::OnePut || head.is_empty()) {
                 return self.put_buffered(client, target, head, progress).await;
             }
             first = Some(head);
@@ -566,7 +587,12 @@ impl S3Volume {
         // ❗ A known length is a promise: bytes past the last part mean the
         // source changed under us, and the upload must not complete short.
         if let PartSizes::Planned(plan) = sizes {
-            let more = !reader.at_end().await?;
+            // Every part is in, so progress stands still while this waits.
+            let mut between = || match progress.at(done_bytes) {
+                std::ops::ControlFlow::Break(()) => Err(VolumeError::Cancelled(self.volume_id().to_string())),
+                std::ops::ControlFlow::Continue(()) => Ok(()),
+            };
+            let more = !reader.at_end_with(&mut between).await?;
             if more || reader.taken != plan.total {
                 return Err(size_mismatch(target.remote, reader.read_so_far(), plan.total));
             }

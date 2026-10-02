@@ -357,7 +357,9 @@ stays `false`: a request is open while the source drains.
   read from the source only when a slot is free, so at most four part buffers exist (256 MiB at the floor). Parts are
   buffered at all because a failed one is sent again after 1, 2, then 4 s on a throttle (`SlowDown`, 503, 429), a server
   fault, or a transport failure. The source is read with progress and cancel still answered after every piece and every
-  200 ms tick while one is pending, so a stalled source can't hold a Cancel; ❌ a `next_chunk` is dropped half-read only
+  200 ms tick while one is pending (`PartReader::pull_with`, under both the part fill and the look-ahead past the last
+  part), so a source stalled mid-part or right at its end can't hold a Cancel. The single streamed PUT needs none of
+  this: its own tick loop drops the request whatever the body is waiting on. ❌ a `next_chunk` is dropped half-read only
   when that ends the upload. A known length is a promise: a part that comes up short, or bytes left after the last part,
   fail the upload. Cancel is checked once more right before `CompleteMultipartUpload`, which is what publishes.
 - **Verification**: a HEAD after every write (`verify_landing`, `judge_landing`) compares the size and the ETag with
@@ -389,7 +391,7 @@ part of any size), and a stream of unknown length that ends inside its first par
   duration). A write to a FREE name keeps going as one PUT (there's no original to lose; a cut-off one is removed by its
   token).
 - **Progress** stays at zero while the one part fills from the source, then moves as it goes out. A source that stalls
-  mid-part still answers Cancel every progress tick (`PartReader::fill_with`).
+  mid-part or at its end still answers Cancel every progress tick (`PartReader::pull_with`).
 
 ## No-overwrite writes
 

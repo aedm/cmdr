@@ -70,6 +70,41 @@ async fn bytes_past_the_last_part_are_noticed() {
     assert_eq!(reader.fill(6).await.expect("the rest"), all[6..8]);
 }
 
+/// Hands out its pieces, then never answers again: a source that stalls right
+/// at its end, where only the look-ahead past the last part is waiting.
+struct StallsAtEnd(Vec<Vec<u8>>);
+
+impl VolumeReadStream for StallsAtEnd {
+    fn next_chunk(&mut self) -> Pin<Box<dyn Future<Output = Option<Result<Vec<u8>, VolumeError>>> + Send + '_>> {
+        Box::pin(async move {
+            if self.0.is_empty() {
+                std::future::pending::<()>().await;
+            }
+            Some(Ok(self.0.remove(0)))
+        })
+    }
+
+    fn total_size(&self) -> StreamLength {
+        StreamLength::Unknown
+    }
+
+    fn bytes_read(&self) -> u64 {
+        0
+    }
+}
+
+/// A Cancel while the end-of-source check waits on a stalled source is heard
+/// on the next progress tick, as it is while a part fills.
+#[tokio::test(start_paused = true)]
+async fn a_cancel_while_the_end_check_waits_on_a_stalled_source_returns() {
+    let mut reader = PartReader::new(Box::new(StallsAtEnd(vec![vec![7; 4]])));
+    assert_eq!(reader.fill(4).await.expect("a part").len(), 4);
+    let mut between = || Err(VolumeError::Cancelled("s3-test".to_string()));
+    let checked = tokio::time::timeout(Duration::from_secs(2), reader.at_end_with(&mut between)).await;
+    let answer = checked.expect("Cancel returns within a couple of progress ticks");
+    assert!(matches!(answer, Err(VolumeError::Cancelled(_))), "got {answer:?}");
+}
+
 #[test]
 fn a_failed_part_is_tried_three_more_times_with_growing_waits() {
     assert_eq!(retry_after(1), Some(Duration::from_secs(1)));
