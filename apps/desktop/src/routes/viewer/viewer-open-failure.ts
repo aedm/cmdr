@@ -30,7 +30,7 @@ function openFailureCopy(e: unknown): OpenFailure {
     if (ve.kind === 'tooLargeToPreview') return { message: tString('viewer.error.tooLargeToPreview'), canRetry: false }
     if (ve.kind === 'archive') return { message: tString('viewer.error.archiveUnreadable'), canRetry: false }
   }
-  return { message: tString('viewer.error.readFailed'), canRetry: false }
+  return { message: tString('viewer.error.readFailed'), canRetry: true }
 }
 
 /**

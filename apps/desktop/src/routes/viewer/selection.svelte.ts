@@ -339,18 +339,18 @@ export function describeSelectionForAt(sel: Selection | null, getRow: (row: numb
   const totalChars = countSelectedChars(start, end, getRow)
   const endLine = start.row === end.row ? startLine : lineOfRow(end.row, getRow)
   if (startLine === null || endLine === null) {
-    return tString('viewer.selection.charsOnly', { chars: String(totalChars) })
+    return tString('viewer.selection.charsOnly', { chars: totalChars })
   }
   if (startLine === endLine) {
     return tString('viewer.selection.singleLine', {
-      chars: String(totalChars),
+      chars: totalChars,
       line: String(startLine + 1),
     })
   }
   return tString('viewer.selection.multiLine', {
     startLine: String(startLine + 1),
     endLine: String(endLine + 1),
-    chars: String(totalChars),
+    chars: totalChars,
   })
 }
 

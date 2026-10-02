@@ -698,8 +698,9 @@ VARIANT (`kind: 'timedOut'`) rather than a flag beside a sentence. Both surfaces
 `asViewerError(e)?.kind`: `viewer-row-fetch.svelte.ts` routes `timedOut` to `deps.onTimeoutError()` and logs everything
 else by kind, and `viewer-open-failure.ts`'s `handleOpenFailure` (all three open sites) maps `timedOut` /
 `stoppedResponding` / `notFound` / `isDirectory` / `tooLargeToPreview` / `archive` to their own catalog keys and falls
-back to `viewer.error.readFailed` for anything else. `timedOut` and `stoppedResponding` also set `canRetry`, which puts
-Retry and Cancel under the message. Nothing renders the backend's own words. The wider split:
+back to `viewer.error.readFailed` for anything else. `timedOut`, `stoppedResponding`, and that fallback set `canRetry`,
+which puts Retry and Cancel under the message: the fallback covers passing trouble (a busy disk, a flaky mount) as often
+as lasting trouble, so offering Retry is honest. Nothing renders the backend's own words. The wider split:
 `docs/guides/error-handling.md`.
 
 **Log level follows what the window shows.** An error log counts toward an auto-sent error report, so an outcome the
@@ -811,7 +812,9 @@ so the page shows how far it got. Backend half: `apps/desktop/src-tauri/src/file
   always starts the file's first line. ⌘A in ByteSeek-no-index mode sets `focus.row = EOF_ROW` (the sentinel that maps
   to `RangeEnd::Eof` at the IPC boundary), so an uncapped loop would iterate 9e15 times; the
   `MAX_ANNOUNCE_ROWS = 10_000` cap short-circuits to "Selected from line N to the end of the file" without touching the
-  row lookup at all.
+  row lookup at all. The character count goes in as a NUMBER, ❌ never `String(n)`: the strings are ICU plurals whose
+  `#` picks the singular ("1 character") and prints the locale's digit grouping ("12,345"), and a string argument gets
+  neither.
 - **Drag autoscroll honours `prefers-reduced-motion`.** Under reduced motion, `createViewerAutoscroll().start()` does a
   single synchronous snap step and exits without queuing a RAF. The page's `pointermove` calls `start()` on every move,
   so the user still progresses through the file in discrete jumps. Override via the `prefersReducedMotion` dep for
