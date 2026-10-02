@@ -42,6 +42,7 @@ interface PaneState {
   error: string | null
   friendlyError: unknown
   openingFolder: boolean
+  stalled: boolean
   loadingCount: number | undefined
   finalizingCount: number | undefined
   volumeRootFromEvent: string | undefined
@@ -70,6 +71,7 @@ export function makeHarness(over: Partial<PaneState> = {}) {
     error: null,
     friendlyError: null,
     openingFolder: false,
+    stalled: false,
     loadingCount: undefined,
     finalizingCount: undefined,
     volumeRootFromEvent: undefined,
@@ -149,6 +151,9 @@ export function makeHarness(over: Partial<PaneState> = {}) {
     },
     setOpeningFolder: (v) => {
       state.openingFolder = v
+    },
+    setStalled: (v) => {
+      state.stalled = v
     },
     setLoadingCount: (c) => {
       state.loadingCount = c

@@ -21,6 +21,7 @@ import type {
   ListingProgressEvent,
   ListingReadCompleteEvent,
   ListingRespelledEvent,
+  ListingStalledEvent,
 } from '$lib/ipc/bindings'
 import type { TimedOut } from './ipc-types'
 import { throwIpcError } from './ipc-types'
@@ -29,6 +30,7 @@ import type { ListingDirectorySortMode } from '$lib/settings'
 
 export type {
   ListingOpeningEvent,
+  ListingStalledEvent,
   ListingProgressEvent,
   ListingReadCompleteEvent,
   ListingCompleteEvent,
@@ -562,6 +564,17 @@ export async function hasFontMetrics(fontId: string): Promise<boolean> {
 /** Emitted just before `read_dir` starts (the slow part for network folders). */
 export async function onListingOpening(callback: (event: ListingOpeningEvent) => void): Promise<UnlistenFn> {
   return events.listingOpening.listen((event) => {
+    callback(event.payload)
+  })
+}
+
+/**
+ * Emitted when a read goes several seconds without a new entry: the folder's volume
+ * stopped answering. The listing keeps waiting and retrying; any later event for the
+ * same id supersedes it.
+ */
+export async function onListingStalled(callback: (event: ListingStalledEvent) => void): Promise<UnlistenFn> {
+  return events.listingStalled.listen((event) => {
     callback(event.payload)
   })
 }

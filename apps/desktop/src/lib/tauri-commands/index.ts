@@ -38,6 +38,7 @@ export {
   extendFontMetrics,
   hasFontMetrics,
   onListingOpening,
+  onListingStalled,
   onListingProgress,
   onListingReadComplete,
   onListingComplete,
@@ -49,6 +50,7 @@ export {
 // Streaming-listing event payload types, from the typed-events bindings via `file-listing.ts`.
 export type {
   ListingOpeningEvent,
+  ListingStalledEvent,
   ListingProgressEvent,
   ListingReadCompleteEvent,
   ListingCompleteEvent,

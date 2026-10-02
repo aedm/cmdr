@@ -46,6 +46,7 @@
     import { createSmbViewState } from './smb-view-state.svelte'
     import { createVolumeSpace } from './volume-space.svelte'
     import ErrorPane from './ErrorPane.svelte'
+    import ListingStalledView from './ListingStalledView.svelte'
     import VolumeUnreachableBanner from './VolumeUnreachableBanner.svelte'
     import NetworkMountView from './NetworkMountView.svelte'
     import SearchResultsView from './SearchResultsView.svelte'
@@ -68,7 +69,7 @@
     import { createDeviceConnect } from './device-connect.svelte'
     import AdbHint from '$lib/adb/AdbHint.svelte'
     import { createSelectionState } from './selection-state.svelte'
-    import { createPaneMcpSync } from './pane-mcp-sync.svelte'
+    import { createPaneMcpSync, paneListingOf } from './pane-mcp-sync.svelte'
     import { initListingDiffSync } from './listing-diff-sync.svelte'
     import { createRenameState } from '../rename/rename-state.svelte'
     import { type ListingDirectorySortMode } from '$lib/settings'
@@ -342,6 +343,9 @@
         },
         setOpeningFolder: (value) => {
             openingFolder = value
+        },
+        setStalled: (value) => {
+            stalled = value
         },
         setLoadingCount: (count) => {
             loadingCount = count
@@ -1279,6 +1283,8 @@
     let lastSequence = 0
     // Opening folder state (before read_dir starts - slow for network folders)
     let openingFolder = $state(false)
+    // The folder's volume stopped answering mid-read; the load stays in flight (`listing-loader.ts`)
+    let stalled = $state(false)
     // Loading progress state for streaming
     let loadingCount = $state<number | undefined>(undefined)
     // Finalizing state (read_dir done, now sorting/caching)
@@ -1325,6 +1331,7 @@
             indicatorStale: jump.indicatorStale,
         }),
         getLastJumpMatchedName: () => jump.lastMatchedName,
+        getListing: () => paneListingOf({ hasError: Boolean(friendlyError || error), loading, stalled }),
     })
     const syncPaneStateToMcp = mcpSync.syncPaneStateToMcp
 
@@ -2025,6 +2032,12 @@
             />
         {:else if paneViewKind === 'mtp-connect'}
             <MtpConnectionView {volumeId} {onVolumeChange} />
+        {:else if loading && stalled}
+            <ListingStalledView
+                folderPath={currentPath}
+                onRetry={() => navigateToPath(currentPath)}
+                onGoBack={() => { loader.handleCancelLoading() }}
+            />
         {:else if loading && listingPresentation.showLoading}
             <LoadingIcon {openingFolder} loadedCount={loadingCount} {finalizingCount} showCancelHint={true} />
         {:else if friendlyError}

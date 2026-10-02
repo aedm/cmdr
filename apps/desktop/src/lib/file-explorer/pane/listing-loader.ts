@@ -4,7 +4,7 @@
  * listing from landing in the wrong pane or overwriting a newer navigation.
  *
  * Lifted out of `FilePane.svelte` as the last (deliberately deferred, highest-
- * risk) cluster. Behavior-preserving: the six streaming listeners, the
+ * risk) cluster. Behavior-preserving: the streaming listeners, the
  * `pendingLoad` promise machinery, and the reset semantics are moved verbatim.
  *
  * Ownership (the surgical / getter-setter idiom, like `type-to-jump-controller`
@@ -12,7 +12,7 @@
  * and the staleness machinery — the `loadGeneration` counter (its only two bump
  * sites, `loadDirectory` and `adoptListing`, both live here), `isDestroyed`, the
  * active listing's `loadedPath`, what the pane last showed (`lastShown`) and the
- * load in flight, the six `unlisten*` handles, and the `pendingLoad`
+ * load in flight, the `unlisten*` handles, and the `pendingLoad`
  * resolver/rejecter. The pane's lifecycle `$state`
  * (`loading` / `listingId` / `totalCount` / `error` / `friendlyError` /
  * `openingFolder` / `loadingCount` / `finalizingCount` / `volumeRootFromEvent` /
@@ -38,6 +38,7 @@ import {
   listDirectoryEnd,
   listDirectoryStart,
   onListingOpening,
+  onListingStalled,
   onListingProgress,
   onListingReadComplete,
   onListingComplete,
@@ -125,6 +126,8 @@ export interface ListingLoaderDeps {
   setError: (error: string | null) => void
   setFriendlyError: (friendly: FriendlyError | null) => void
   setOpeningFolder: (opening: boolean) => void
+  /** The volume stopped answering mid-read (`listing-stalled`); cleared by anything else heard for the load. */
+  setStalled: (stalled: boolean) => void
   setLoadingCount: (count: number | undefined) => void
   setFinalizingCount: (count: number | undefined) => void
   setVolumeRootFromEvent: (root: string | undefined) => void
@@ -217,6 +220,7 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
   let inFlight: ListingLoad | null = null
   // Streaming event listeners.
   let unlistenOpening: UnlistenFn | undefined
+  let unlistenStalled: UnlistenFn | undefined
   let unlistenProgress: UnlistenFn | undefined
   let unlistenComplete: UnlistenFn | undefined
   let unlistenError: UnlistenFn | undefined
@@ -271,6 +275,7 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
     if (!preserveTotalCount) deps.setTotalCount(0)
     deps.setLoading(false)
     deps.setOpeningFolder(false)
+    deps.setStalled(false)
     deps.setLoadingCount(undefined)
     deps.setFinalizingCount(undefined)
     // Reject pending load promise on error/cancel
@@ -372,6 +377,7 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
 
     // Clean up previous event listeners
     unlistenOpening?.()
+    unlistenStalled?.()
     unlistenProgress?.()
     unlistenReadComplete?.()
     unlistenComplete?.()
@@ -382,6 +388,7 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
     // This ensures the UI shows the loading spinner immediately
     deps.setLoading(true)
     deps.setOpeningFolder(false)
+    deps.setStalled(false)
     deps.setLoadingCount(undefined)
     deps.setFinalizingCount(undefined)
     deps.setError(null)
@@ -417,137 +424,157 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
       const captured = { listingId: newListingId, generation: thisGeneration }
 
       // Register all event listeners in parallel (no ordering dependency between them)
-      ;[unlistenOpening, unlistenProgress, unlistenReadComplete, unlistenComplete, unlistenError, unlistenCancelled] =
-        await Promise.all([
-          onListingOpening((payload) => {
-            if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
-              deps.setOpeningFolder(true)
-            }
-          }),
-          onListingProgress((payload) => {
-            if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
-              deps.setLoadingCount(payload.loadedCount)
-            }
-          }),
-          onListingReadComplete((payload) => {
-            if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
-              deps.setFinalizingCount(payload.totalCount)
-            }
-          }),
-          onListingComplete((payload) => {
-            if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
-              void handleListingComplete(payload, load)
-            }
-          }),
-          onListingError((payload) => {
-            if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
-              // One line per failed listing, with the typed reason, so a log says why.
-              const reason = payload.error?.reason
-              log.debug('Listing {listingId} on {volumeId} ended in error: {reason}', {
-                listingId: payload.listingId,
-                volumeId,
-                reason: reason?.reason ?? 'untyped',
+      ;[
+        unlistenOpening,
+        unlistenStalled,
+        unlistenProgress,
+        unlistenReadComplete,
+        unlistenComplete,
+        unlistenError,
+        unlistenCancelled,
+      ] = await Promise.all([
+        onListingOpening((payload) => {
+          if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
+            deps.setOpeningFolder(true)
+          }
+        }),
+        // The volume went quiet mid-read. The backend keeps waiting and retrying
+        // (`file_system/listing/stall.rs`), so this only changes what the pane
+        // SAYS: the load stays in flight and lands through the handlers below.
+        onListingStalled((payload) => {
+          if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
+            deps.setStalled(true)
+            deps.syncMcp()
+          }
+        }),
+        onListingProgress((payload) => {
+          if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
+            deps.setStalled(false)
+            deps.setLoadingCount(payload.loadedCount)
+          }
+        }),
+        onListingReadComplete((payload) => {
+          if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
+            deps.setStalled(false)
+            deps.setFinalizingCount(payload.totalCount)
+          }
+        }),
+        onListingComplete((payload) => {
+          if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
+            void handleListingComplete(payload, load)
+          }
+        }),
+        onListingError((payload) => {
+          if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
+            // One line per failed listing, with the typed reason, so a log says why.
+            const reason = payload.error?.reason
+            log.debug('Listing {listingId} on {volumeId} ended in error: {reason}', {
+              listingId: payload.listingId,
+              volumeId,
+              reason: reason?.reason ?? 'untyped',
+            })
+
+            // For MTP volumes, trigger fallback on error (device likely disconnected)
+            if (deps.getIsMtpView()) {
+              resetLoadingState(payload.message)
+              log.warn('MTP listing error, triggering fallback: {error}', {
+                error: payload.message,
               })
+              deps.onMtpFatalError?.(payload.message)
+              return
+            }
 
-              // For MTP volumes, trigger fallback on error (device likely disconnected)
-              if (deps.getIsMtpView()) {
-                resetLoadingState(payload.message)
-                log.warn('MTP listing error, triggering fallback: {error}', {
-                  error: payload.message,
-                })
-                deps.onMtpFatalError?.(payload.message)
-                return
-              }
+            // Shows the failed listing and records it in history so Cmd+[ goes
+            // back one step, not two. The success path pushes via the
+            // `onPathChange` call in `handleListingComplete`; without this an
+            // error pane would be visible but absent from history, so Back
+            // would skip over it. `pushPath` deduplicates same-path retries. The
+            // error screen is what the pane shows now, so a later cancel returns here.
+            const showListingError = () => {
+              const rendered = payload.error ? renderListingError(payload.error) : undefined
+              resetLoadingState(payload.message, false, rendered)
+              lastShown = { volumeId, path: loadPath }
+              deps.onPathChange?.(loadPath)
+              // An agent reads the error screen, not an empty folder (`cmdr://state`'s `listing:`).
+              deps.syncMcp()
+            }
 
-              // Shows the failed listing and records it in history so Cmd+[ goes
-              // back one step, not two. The success path pushes via the
-              // `onPathChange` call in `handleListingComplete`; without this an
-              // error pane would be visible but absent from history, so Back
-              // would skip over it. `pushPath` deduplicates same-path retries. The
-              // error screen is what the pane shows now, so a later cancel returns here.
-              const showListingError = () => {
-                const rendered = payload.error ? renderListingError(payload.error) : undefined
-                resetLoadingState(payload.message, false, rendered)
-                lastShown = { volumeId, path: loadPath }
-                deps.onPathChange?.(loadPath)
-              }
+            // A header-encrypted archive needs its password even to LIST it.
+            // Raise the browse-time password prompt ON TOP of the fallback
+            // error pane: on submit `retry` re-lists this same path (which now
+            // succeeds); on cancel the prompt closes and the "This archive
+            // needs a password" pane stays put (the user simply doesn't get in).
+            //
+            // ⚠️ Answered BEFORE the existence probe below, not inside it. That
+            // probe resolves through the same archive volume, which can't say
+            // whether an inner path exists without the password either — so it
+            // answers "gone", and the walk-up took the pane back out of the
+            // archive before anyone could be asked for the password. The typed
+            // reason is definitive; ❌ don't make it wait on a probe that
+            // cannot answer.
+            if (reason?.reason === 'archiveNeedsPassword') {
+              showListingError()
+              deps.onArchiveNeedsPassword?.({
+                volumeId: deps.getVolumeId(),
+                archivePath: loadPath,
+                wrongAttempt: reason.wrongAttempt,
+                retry: () => {
+                  void loadDirectory({ path: loadPath })
+                },
+              })
+              return
+            }
 
-              // A header-encrypted archive needs its password even to LIST it.
-              // Raise the browse-time password prompt ON TOP of the fallback
-              // error pane: on submit `retry` re-lists this same path (which now
-              // succeeds); on cancel the prompt closes and the "This archive
-              // needs a password" pane stays put (the user simply doesn't get in).
-              //
-              // ⚠️ Answered BEFORE the existence probe below, not inside it. That
-              // probe resolves through the same archive volume, which can't say
-              // whether an inner path exists without the password either — so it
-              // answers "gone", and the walk-up took the pane back out of the
-              // archive before anyone could be asked for the password. The typed
-              // reason is definitive; ❌ don't make it wait on a probe that
-              // cannot answer.
-              if (reason?.reason === 'archiveNeedsPassword') {
-                showListingError()
-                deps.onArchiveNeedsPassword?.({
-                  volumeId: deps.getVolumeId(),
-                  archivePath: loadPath,
-                  wrongAttempt: reason.wrongAttempt,
-                  retry: () => {
-                    void loadDirectory({ path: loadPath })
-                  },
-                })
-                return
-              }
+            // A phone or server nobody has connected yet: nothing was deleted, and the
+            // existence probe below can only answer "couldn't tell" there, so it would
+            // cost a round trip and end in this same refusal. Definitive, like the
+            // password case above.
+            if (reason?.reason === 'notConnected') {
+              showListingError()
+              return
+            }
 
-              // A phone or server nobody has connected yet: nothing was deleted, and the
-              // existence probe below can only answer "couldn't tell" there, so it would
-              // cost a round trip and end in this same refusal. Definitive, like the
-              // password case above.
-              if (reason?.reason === 'notConnected') {
-                showListingError()
-                return
-              }
-
-              // Check whether the path was deleted, and walk up, asking the volume THIS
-              // load listed (`volumeId`, captured at the start), ❌ never a live read
-              // here: without an id the backend asks the boot disk, which says "gone"
-              // for every `adb://` or `sftp://` path. The checked variant keeps a
-              // connection blip's "false" from reading as "deleted".
-              void pathExistsChecked(loadPath, volumeId).then(({ data: exists, timedOut }) => {
-                if (!exists && !timedOut) {
-                  void resolveValidPath(loadPath, {
-                    volumeRoot: deps.getVolumePath(),
-                    volumeId,
-                    connectionState: deps.getConnectionState(),
-                    // A root that doesn't answer in time is a slow drive, not a gone one:
-                    // stay on it and show this error, ❌ never `~` on another volume.
-                    keepSilentVolume: true,
-                  }).then((validPath) => {
-                    // ❗ A walk-up that lands back on the path that just failed (a
-                    // volume's own root, a silent one included) or nowhere at all has
-                    // nothing better to offer: navigating would re-list the same failure, forever.
-                    if (validPath === null || validPath === loadPath) {
-                      showListingError()
-                      return
-                    }
-                    log.info('Listing error for deleted path, navigating to valid parent: {path}', {
-                      path: loadPath,
-                    })
-                    navigateToFallback(validPath)
+            // Check whether the path was deleted, and walk up, asking the volume THIS
+            // load listed (`volumeId`, captured at the start), ❌ never a live read
+            // here: without an id the backend asks the boot disk, which says "gone"
+            // for every `adb://` or `sftp://` path. The checked variant keeps a
+            // connection blip's "false" from reading as "deleted".
+            void pathExistsChecked(loadPath, volumeId).then(({ data: exists, timedOut }) => {
+              if (!exists && !timedOut) {
+                void resolveValidPath(loadPath, {
+                  volumeRoot: deps.getVolumePath(),
+                  volumeId,
+                  connectionState: deps.getConnectionState(),
+                  // A root that doesn't answer in time is a slow drive, not a gone one:
+                  // stay on it and show this error, ❌ never `~` on another volume.
+                  keepSilentVolume: true,
+                }).then((validPath) => {
+                  // ❗ A walk-up that lands back on the path that just failed (a
+                  // volume's own root, a silent one included) or nowhere at all has
+                  // nothing better to offer: navigating would re-list the same failure, forever.
+                  if (validPath === null || validPath === loadPath) {
+                    showListingError()
+                    return
+                  }
+                  log.info('Listing error for deleted path, navigating to valid parent: {path}', {
+                    path: loadPath,
                   })
-                } else {
-                  // Path exists, or we couldn't tell: show the original listing error
-                  showListingError()
-                }
-              })
-            }
-          }),
-          onListingCancelled((payload) => {
-            if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
-              // Cancellation handled by onCancelLoading callback
-              resetLoadingState(undefined, true)
-            }
-          }),
-        ])
+                  navigateToFallback(validPath)
+                })
+              } else {
+                // Path exists, or we couldn't tell: show the original listing error
+                showListingError()
+              }
+            })
+          }
+        }),
+        onListingCancelled((payload) => {
+          if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
+            // Cancellation handled by onCancelLoading callback
+            resetLoadingState(undefined, true)
+          }
+        }),
+      ])
 
       // Now start streaming listing - listeners are already set up
       benchmark.logEvent('IPC listDirectoryStart CALL')
@@ -617,6 +644,7 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
 
     deps.setLoading(false)
     deps.setOpeningFolder(false)
+    deps.setStalled(false)
     deps.setLoadingCount(undefined)
     deps.setFinalizingCount(undefined)
     benchmark.logEvent('loading = false (UI can render)')
@@ -807,6 +835,7 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
       evictPerPathIconsForDir(loadedPath)
     }
     unlistenOpening?.()
+    unlistenStalled?.()
     unlistenProgress?.()
     unlistenReadComplete?.()
     unlistenComplete?.()

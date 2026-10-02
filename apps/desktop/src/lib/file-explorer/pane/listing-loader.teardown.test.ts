@@ -34,6 +34,7 @@ function register(bucket: ((p: unknown) => void)[]) {
 
 vi.mock('$lib/tauri-commands', () => ({
   onListingOpening: register(h.listeners.opening),
+  onListingStalled: register([]),
   onListingProgress: register(h.listeners.progress),
   onListingReadComplete: register(h.listeners.readComplete),
   onListingComplete: register(h.listeners.complete),

@@ -974,6 +974,22 @@
   "@fileExplorer.unreachable.openHome": {
     "description": "Button on the unreachable banner that navigates to the user’s home folder instead."
   },
+  "fileExplorer.listingStalled.title": "Still waiting for this folder",
+  "@fileExplorer.listingStalled.title": {
+    "description": "Heading shown in place of a file list when a folder has stopped answering for several seconds while opening, usually because the network server it lives on went silent. Cmdr keeps waiting and retrying in the background. Calm, not alarming."
+  },
+  "fileExplorer.listingStalled.detail": "The server or drive it’s on isn’t answering. Cmdr keeps trying in the background and opens the folder as soon as it answers.",
+  "@fileExplorer.listingStalled.detail": {
+    "description": "Explanation under the “Still waiting for this folder” heading. “it” is the folder. The server is usually a NAS or file server; the drive is a disk. Promises that the folder opens by itself once the server or drive responds again, with no action needed."
+  },
+  "fileExplorer.listingStalled.tryAgain": "Try again",
+  "@fileExplorer.listingStalled.tryAgain": {
+    "description": "Button on the “Still waiting for this folder” screen. Starts opening the folder again right away instead of waiting for the next automatic attempt."
+  },
+  "fileExplorer.listingStalled.goBack": "Go back",
+  "@fileExplorer.listingStalled.goBack": {
+    "description": "Button on the “Still waiting for this folder” screen. Stops waiting and returns the pane to the folder it showed before. Shown with the Esc key, which does the same."
+  },
   "fileExplorer.clipboard.copied": "Copied {countText} {count, plural, one {item} other {items}}",
   "@fileExplorer.clipboard.copied": {
     "description": "Toast confirming files were copied to the system clipboard, e.g. \"Copied 3 items\".",

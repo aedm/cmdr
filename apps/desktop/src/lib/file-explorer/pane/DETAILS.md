@@ -9,8 +9,8 @@ lifecycle, drag handling, volume tinting, and navigation primitives.
 `DualPaneExplorer.svelte` is the root: it owns both panes, the unified key/command dispatch, the dialog manager, and the
 MCP-exposed surface. `FilePane.svelte` is one pane: it owns its listing, cursor, selection, view mode, type-to-jump
 buffer, rename flow, breadcrumb, and the alt-view rendering ({#if/elseif} between `MtpConnectionView`,
-`NetworkMountView`, `RemoteConnectView`, `SearchResultsView`, `ErrorPane`, `VolumeUnreachableBanner`, and the regular
-list).
+`NetworkMountView`, `RemoteConnectView`, `SearchResultsView`, `ListingStalledView`, `ErrorPane`,
+`VolumeUnreachableBanner`, and the regular list).
 
 ## File map
 
@@ -1308,6 +1308,24 @@ subscriber. Two behaviors the fold preserves byte-for-byte:
   navigated pane focused. `shiftsFocus(source)` in `navigate.ts` is the single source of that rule. The `'fallback'` and
   `'cancel'` sources are also `terminal`: a fixed recovery target, so no old-path pre-save and no background
   `determineNavigationPath` correction.
+
+### A folder that stops answering
+
+When a listing's volume goes quiet mid-read (a NAS whose server stopped answering), the backend emits `listing-stalled`
+after 8 s and keeps the listing alive, retrying on its own (`apps/desktop/src-tauri/src/file_system/listing/DETAILS.md`
+§ "Stalled listings"). `listing-loader.ts` turns that into the pane's `stalled` flag, and `FilePane` renders
+`ListingStalledView` in place of the spinner: the folder, a sentence saying the server or drive isn't answering, Try
+again (a fresh `navigateToPath` of the same folder), and Go back (the same step as Esc, so § "Escape during a load"
+decides where). The load stays in flight underneath: the listing lands through the ordinary handlers, and any progress,
+read-complete, complete, error, or cancel for that load clears the flag, as does the next `loadDirectory`.
+
+- **A load that ends never renders as an empty list.** An error event shows the error screen (`showListingError`); a
+  cancel goes back. Both push to MCP, and `cmdr://state` carries `listing: loading | stalled | error` (from
+  `paneListingOf`) beside `totalFiles`, so an agent can tell a stuck or failed folder from an empty one.
+- **The MCP push happens at the stall and at the error, ❌ not at every load's start.** A push bumps the pane-state
+  `generation` that `await` waits on, and a push mid-navigation would satisfy a waiter before the listing landed.
+- Pinned by `listing-loader.stalled.test.ts`, `ListingStalledView.svelte.test.ts`, and the `paneListingOf` cases in
+  `pane-mcp-sync.svelte.test.ts`.
 
 ### Escape during a load
 
