@@ -63,6 +63,7 @@ async fn live_hostile_cancel_uploads() {
                 let source = Box::new(PatternSource::new(size, n as u8));
                 let outcome = write_cancelled_when(&volume, &path, mode, source, |written| written >= at_bytes).await;
                 // A cut-off PUT's remains are removed after 150 and 300 ms.
+                // allowed-test-sleep: the cut-off cleanup HEADs again after 150 and 300 ms; this outlasts it
                 tokio::time::sleep(Duration::from_millis(500)).await;
                 let left = live.length(&client, &key).await;
                 let intact = if over {
@@ -198,10 +199,8 @@ async fn live_hostile_cancel_server_copies() {
 }
 
 /// A fresh directory for one cell's unfinished-upload record.
-fn state_dir(label: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cmdr-hostile-{label}-{}", uuid::Uuid::new_v4().simple()));
-    std::fs::create_dir_all(&dir).expect("a state dir");
-    dir
+fn state_dir(label: &str) -> cmdr_fs::testing::TestDir {
+    cmdr_fs::testing::TestDir::new(&format!("hostile_{label}"))
 }
 
 /// The upload ids the record under `dir` holds open, in the order started.
@@ -230,6 +229,7 @@ async fn wait_for(limit: Duration, mut until: impl FnMut() -> bool) -> bool {
         if until() {
             return true;
         }
+        // allowed-test-sleep: the poll interval of this probe loop
         tokio::time::sleep(Duration::from_millis(200)).await;
     }
     until()
@@ -314,6 +314,7 @@ async fn live_hostile_crash_recovery() {
         let mut child = spawn_child(&live, &dir, &key);
         let recorded = wait_for(Duration::from_secs(90), || !recorded_ids(&dir).is_empty()).await;
         // Let a part or two land, so there's something to bill.
+        // allowed-test-sleep: lets a part or two land before the SIGKILL; nothing observable marks that
         tokio::time::sleep(Duration::from_secs(4)).await;
         child.kill().expect("SIGKILL");
         let _ = child.wait();
@@ -349,7 +350,6 @@ async fn live_hostile_crash_recovery() {
                 ),
             );
         }
-        let _ = std::fs::remove_dir_all(&dir);
 
         // 2. An upload in flight in this process survives another place's
         // connect and sweep.
@@ -390,7 +390,6 @@ async fn live_hostile_crash_recovery() {
             "an upload in flight in this process survives a second connect's sweep",
             format!("recorded: {started}, swept {swept}, upload {finished:?}, read back {intact:?}"),
         );
-        let _ = std::fs::remove_dir_all(&dir);
 
         // 3. A second LIVE process on the same record: reported, not judged.
         let dir = state_dir("two-processes");
@@ -417,7 +416,6 @@ async fn live_hostile_crash_recovery() {
                 "recorded: {recorded}, explicit sweep aborted {swept}, the other process's upload ok: {child_ok} ({detail})"
             ),
         );
-        let _ = std::fs::remove_dir_all(&dir);
 
         live.clean(&client, &prefix).await;
         all.push((live.name.to_string(), m.misses));
@@ -432,6 +430,7 @@ async fn wait_for_async<F: Future<Output = bool>>(limit: Duration, mut until: im
         if until().await {
             return true;
         }
+        // allowed-test-sleep: the poll interval of this probe loop
         tokio::time::sleep(Duration::from_millis(500)).await;
     }
     until().await

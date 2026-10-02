@@ -98,12 +98,12 @@ pub(super) async fn pattern_mismatch(volume: &S3Volume, path: &Path, len: u64, t
                 return Some(format!("longer than {len}"));
             }
             if byte != pattern_byte(offset, tag) {
-                return Some(format!("byte {offset} differs"));
+                return Some(format!("byte {offset} differs")); // allowed-pluralize-noun: an offset, not a count
             }
             offset += 1;
         }
     }
-    (offset != len).then(|| format!("{offset} bytes of {len}"))
+    (offset != len).then(|| format!("{offset} bytes of {len}")) // allowed-pluralize-noun: a test diagnostic about a short read
 }
 
 pub(super) async fn write(volume: &S3Volume, path: &Path, mode: WriteMode, bytes: Vec<u8>) -> Result<u64, VolumeError> {

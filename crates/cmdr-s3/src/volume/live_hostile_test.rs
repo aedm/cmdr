@@ -456,7 +456,7 @@ async fn live_hostile_sizes() {
                     .await;
                 let mismatch = pattern_mismatch(&volume, &path, size, tag).await;
                 let stat = volume.get_metadata(&path).await.map(|e| e.size);
-                let what = format!("{size} bytes, {} length", if known { "known" } else { "unknown" });
+                let what = format!("{size} bytes, {} length", if known { "known" } else { "unknown" }); // allowed-pluralize-noun: a test label naming a size in bytes
                 m.check(
                     wrote.as_ref().ok() == Some(&size) && mismatch.is_none() && stat.as_ref().ok() == Some(&Some(size)),
                     &what,
@@ -690,6 +690,7 @@ async fn live_hostile_share_links() {
             .await
             .expect("a link");
         let fresh = http.get(short.as_str()).send().await.expect("fetches").status();
+        // allowed-test-sleep: waits out the three-second link's expiry, the subject of the check
         tokio::time::sleep(Duration::from_secs(6)).await;
         let expired = http.get(short.as_str()).send().await.expect("fetches").status();
         m.check(
@@ -820,6 +821,7 @@ async fn live_hostile_metadata() {
         let foreign = format!("{prefix}foreign.txt");
         live.put(&client, &foreign, b"foreign", &[]).await;
         let foreign_time = mtime_of(at(&volume, &foreign)).await;
+        // allowed-test-sleep: a copy made in the same second would hide a copy that took its own upload time
         tokio::time::sleep(Duration::from_secs(2)).await;
         let to = format!("{prefix}foreign-copy.txt");
         let copied = volume

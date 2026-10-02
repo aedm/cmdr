@@ -14,6 +14,7 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use cmdr_fs::ignore_poison::IgnorePoison as _;
 use cmdr_fs::volume::host::VolumeHost;
 use percent_encoding::percent_decode_str;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -77,11 +78,11 @@ impl FakeS3 {
     }
 
     pub(super) fn object(&self, key: &str) -> Option<Stored> {
-        self.world.lock().unwrap().objects.get(key).cloned()
+        self.world.lock_ignore_poison().objects.get(key).cloned()
     }
 
     pub(super) fn seed(&self, key: &str, len: usize) {
-        self.world.lock().unwrap().objects.insert(
+        self.world.lock_ignore_poison().objects.insert(
             key.to_string(),
             Stored {
                 len,
@@ -93,7 +94,7 @@ impl FakeS3 {
 
     /// Every listing prefix the volume asked for.
     pub(super) fn listed(&self) -> Vec<String> {
-        self.world.lock().unwrap().listed.clone()
+        self.world.lock_ignore_poison().listed.clone()
     }
 
     /// A bucket place on R2, its endpoint dialing this fake over plain HTTP.
@@ -140,7 +141,7 @@ async fn answer(
         ("PUT", Some(_)) if body_len < length => return None,
         ("PUT", Some(key)) => {
             let etag = {
-                let mut world = world.lock().unwrap();
+                let mut world = world.lock_ignore_poison();
                 world.writes += 1;
                 let etag = format!("\"v{}\"", world.writes);
                 let meta = head
@@ -161,7 +162,7 @@ async fn answer(
             tokio::time::sleep(answer_after).await;
             format!("HTTP/1.1 200 OK\r\netag: {etag}\r\ncontent-length: 0\r\nconnection: close\r\n\r\n")
         }
-        ("HEAD", Some(key)) => match world.lock().unwrap().objects.get(&key) {
+        ("HEAD", Some(key)) => match world.lock_ignore_poison().objects.get(&key) {
             Some(stored) => format!(
                 "HTTP/1.1 200 OK\r\ncontent-length: {}\r\netag: {}\r\nlast-modified: Fri, 02 Oct 2026 10:00:00 GMT\r\n{}connection: close\r\n\r\n",
                 stored.len,
@@ -171,7 +172,7 @@ async fn answer(
             None => NOT_FOUND.into(),
         },
         ("DELETE", Some(key)) => {
-            world.lock().unwrap().objects.remove(&key);
+            world.lock_ignore_poison().objects.remove(&key);
             "HTTP/1.1 204 No Content\r\nconnection: close\r\n\r\n".into()
         }
         ("GET", None) if query.contains("list-type=2") => list(world, query),
@@ -188,7 +189,7 @@ fn list(world: &Mutex<World>, query: &str) -> String {
         .find_map(|pair| pair.strip_prefix("prefix="))
         .map(|value| percent_decode_str(value).decode_utf8_lossy().into_owned())
         .unwrap_or_default();
-    let mut world = world.lock().unwrap();
+    let mut world = world.lock_ignore_poison();
     world.listed.push(prefix.clone());
     if prefix.len() > 1024 {
         let body = "<Error><Code>InvalidRequest</Code><Message>prefix too long</Message></Error>";

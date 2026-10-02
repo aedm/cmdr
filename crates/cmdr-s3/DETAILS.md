@@ -355,7 +355,8 @@ in two runs. Full per-cell findings: `docs/notes/s3/live-verification-2026-10.md
 - **Names** (`live_hostile_names_round_trip`, 2026-10-02): NFC and NFD, emoji, RTL, leading and trailing spaces, a
   trailing dot, `...`, `%`, `+`, `#`, `?`, `&`, `\`, quotes, and a 1,024-byte key round-trip everywhere. ❗ GCS refuses
   a key holding CR or LF (400), and B2 any control character, a tab included (`400 InvalidRequest`); both surface as an
-  `IoError`, nothing lands.
+  `IoError`, nothing lands. Every hostile cell's findings (names, sizes, cancels, crashes, races, scale):
+  `docs/notes/s3/live-hostile-2026-10.md`.
 - **Unverified, and why**: a cross-bucket copy on R2, GCS, and Spaces (each key reaches one bucket).
 - ❗ **A copy's ETag pin is ignored on Hetzner, Spaces, and Wasabi**, so a source replaced mid-copy could be stitched
   from two versions there; AWS, R2, and B2 refuse the part. Hence `enforces_copy_source_pin` (AWS, R2, B2) and the HEAD
