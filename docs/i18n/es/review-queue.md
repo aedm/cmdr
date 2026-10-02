@@ -55,3 +55,7 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
   `settings.fileOperations.adbEnabled.description`, `adb.connect.adbNotInstalled`): Google's Spanish docs
   (machine-translated) say `Herramientas de la plataforma del SDK`; a native reader should say whether the catalog
   should follow that wording.
+- **S3 console labels** (`servers.sheet.s3AccountIdHelp`, `servers.sheet.s3GcsKeyHelp`, `servers.sheet.s3PathStyle`):
+  `página de información general` (Cloudflare's Overview), `pestaña Interoperabilidad` /
+  `configuración de Cloud Storage` (Google), and `direccionamiento de estilo de ruta` (AWS's path-style) weren't checked
+  against the live Spanish consoles; a reviewer with access should confirm them.

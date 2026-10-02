@@ -23,9 +23,9 @@ Small, local, binding (tentative unless sourced).
 - **Search**: ámbito; patrón; comodín; Glob / Regex; personalizado; carpetas aburridas (the playful voice is
   deliberate); Pregunta lo que sea.
 - **Misc**: vacío (AppKit); por ADB / por USB in a label, `a través de un cable USB` for the physical cable; en los
-  sitios habituales; marcador de posición (MS); implementación (an Azure deployment, MS); OK → Aceptar; under cursor →
-  bajo el cursor; umbral; ajuste de línea; píxeles; identificador (a file handle); enlace simbólico (roto); enlace
-  físico; siendo usado por; a toggle in a description is the action itself (activar / desactivar), never a noun.
+  sitios habituales; marcador de posición (MS); implementación (an Azure deployment, MS); OK → Aceptar; umbral; ajuste
+  de línea; píxeles; identificador (a file handle); enlace simbólico (roto); enlace físico; siendo usado por; a toggle
+  in a description is the action itself (activar / desactivar), never a noun.
 - **Verbatim**: git, worktree, repo (inflects: los repos), blob, commit, clone, byte(s), FAT32, exFAT, daemon, udev,
   ptpcamerad, Terminal, Ctrl+C, PTP.
 
@@ -625,13 +625,16 @@ in labels. `Solo verás este aviso una vez.`: names the notice, no gendered adje
 
 ## Coherencia del termbase (`goToPath.dialog.removeFromList`, `askCmdr.wakeDigest.removed`, `errors.write.fallback.message.*`, `onboarding.stepFda.con.body`, `indexing.staleDialog.body`, `indexing.rescan.*`)
 
-- `Algo ha ido mal` everywhere; `errors.write.fallback.message.*` → `Algo ha ido mal al copiar.` (no `error`).
+- `errors.write.fallback.message.*` → `Algo ha ido mal al copiar.` (no `error`).
 - `askCmdr.wakeDigest.removed` → `elementos que ya no están`: they may be trashed, deleted, or moved out.
 - Cmdr is BSL: `su código fuente es público`, ❌ never `de código abierto`.
-- Preview is `Vista Previa` on a Spanish Mac.
-- The rescan lines are subjectless gerunds, like `Reiniciando el análisis desde cero`.
-- watcher → `vigilancia`; view modes lowercase in prose (`la vista breve`).
 - `indexing.staleDialog.body` → `estuvo sin conectar`, `la unidad`: nothing agrees with `{name}`.
+
+## S3 (`servers.sheet.s3*`, `*coldStorage*`, `*ShareLink*`)
+
+- `el bucket` (AWS es; ❌ MS `cubo`); `ID de clave de acceso`, `clave de acceso secreta`.
+- cold storage → `archivado`, `restaurar`; write `el archivo {path}`.
+- share link → `enlace para compartir`.
 
 ## El original se quedó (`errors.write.sourceNotRemoved.*`, `errors.write.permissionDenied.*.source*`, `errors.write.deletePending.message`)
 

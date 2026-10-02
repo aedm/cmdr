@@ -523,6 +523,14 @@
   "@errors.write.deletePending.message": {
     "sourceHash": "5ff91b5"
   },
+  "errors.write.sourceChanged.title": "Este archivo cambió durante la copia",
+  "@errors.write.sourceChanged.title": {
+    "sourceHash": "fb20395"
+  },
+  "errors.write.sourceChanged.message": "El archivo {path} cambió mientras Cmdr hacía la copia, así que Cmdr no guardó nada. El archivo sigue donde estaba.",
+  "@errors.write.sourceChanged.message": {
+    "sourceHash": "6751aad"
+  },
   "errors.write.newDataKeptAt.title": "Tu archivo nuevo quedó con otro nombre",
   "@errors.write.newDataKeptAt.title": {
     "sourceHash": "1c51b7d"
@@ -610,6 +618,10 @@
   "errors.volume.cancelled": "Cmdr detuvo esto porque se lo pediste.",
   "@errors.volume.cancelled": {
     "sourceHash": "09a878e"
+  },
+  "errors.volume.sourceChanged": "El archivo “{path}” cambió mientras Cmdr hacía la copia, así que Cmdr no guardó nada. Vuelve a intentarlo para copiar la versión nueva.",
+  "@errors.volume.sourceChanged": {
+    "sourceHash": "899c296"
   },
   "errors.volume.ambiguousName": "Más de un elemento del servidor coincide con “{path}”, así que Cmdr no eligió ninguno. Elígelo desde su carpeta.",
   "@errors.volume.ambiguousName": {

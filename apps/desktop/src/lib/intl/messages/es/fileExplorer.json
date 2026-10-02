@@ -55,11 +55,11 @@
   "@fileExplorer.restrictedFolder.label": {
     "sourceHash": "bbcf72f"
   },
-  "fileExplorer.archivedFile.label": "Archived",
+  "fileExplorer.archivedFile.label": "Archivado",
   "@fileExplorer.archivedFile.label": {
     "sourceHash": "bdb8650"
   },
-  "fileExplorer.archivedFile.tooltip": "Archived in cold storage. Restore it in your storage provider’s console before opening or copying it.",
+  "fileExplorer.archivedFile.tooltip": "Archivado en almacenamiento en frío. Restáuralo en la consola de tu proveedor de almacenamiento antes de abrirlo o copiarlo.",
   "@fileExplorer.archivedFile.tooltip": {
     "sourceHash": "8897d71"
   },
@@ -825,7 +825,7 @@
   "@fileExplorer.rename.chainKeptOriginalNameAndOthers": {
     "sourceHash": "016797b"
   },
-  "fileExplorer.rename.needsOwnMoveDialog": "Renaming it copies on the server, which needs its own Move dialog. Rename it again by itself.",
+  "fileExplorer.rename.needsOwnMoveDialog": "Renombrar este elemento hace una copia en el servidor, y eso necesita su propio diálogo Mover. Vuelve a renombrar el elemento por separado.",
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "sourceHash": "87110e0"
   },

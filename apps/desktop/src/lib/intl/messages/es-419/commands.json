@@ -111,6 +111,22 @@
   "@commands.handler.googleDriveCopyFailed": {
     "sourceHash": "a4bd00b"
   },
+  "commands.handler.shareLinkCopied.sevenDays": "Se copió un enlace para compartir. Funciona durante siete días.",
+  "@commands.handler.shareLinkCopied.sevenDays": {
+    "sourceHash": "6dac1f1"
+  },
+  "commands.handler.shareLinkCopied.oneDay": "Se copió un enlace para compartir. Funciona durante un día.",
+  "@commands.handler.shareLinkCopied.oneDay": {
+    "sourceHash": "58fd6b8"
+  },
+  "commands.handler.shareLinkCopied.oneHour": "Se copió un enlace para compartir. Funciona durante una hora.",
+  "@commands.handler.shareLinkCopied.oneHour": {
+    "sourceHash": "fb11a63"
+  },
+  "commands.handler.shareLinkFailed": "No se pudo crear un enlace para compartir. {detail}",
+  "@commands.handler.shareLinkFailed": {
+    "sourceHash": "c46a8a3"
+  },
   "commands.handler.openTerminalHere.hint": "Carpeta abierta en tu app de terminal. ¿Quieres que Cmdr abra otra app la próxima vez? Elígela en Configuración, en “Navegación y operaciones de archivos”.",
   "@commands.handler.openTerminalHere.hint": {
     "sourceHash": "1942df6"

@@ -428,7 +428,11 @@
     "accept": ["nube"],
     "forms": "cloud service → servicio en la nube; cloud folders → carpetas en la nube",
     "confidence": "high",
-    "sources": "catalog"
+    "sources": "catalog",
+    "exceptions": {
+      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim.",
+      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is the Google product name, kept verbatim."
+    }
   },
   "column": {
     "accept": ["columnas"],
@@ -591,6 +595,12 @@
     "confidence": "high",
     "sources": "macOS Finder (Mostrar la ubicación de la carpeta actual); catalog (commands.favoritesAdd.description)"
   },
+  "cursor": {
+    "chosen": "cursor",
+    "forms": "el cursor; under the cursor → bajo el cursor; move the cursor to X → mueve el cursor a X",
+    "confidence": "high",
+    "sources": "catalog (commands.navOpenUnderCursor.label Abrir el elemento bajo el cursor, ×5 uses); MS terminology (cursor)"
+  },
   "custom": {
     "chosen": "personalizado",
     "accept": ["personaliz"],
@@ -690,6 +700,12 @@
     "chosen": "dispositivo",
     "confidence": "high",
     "sources": "catalog (settings.fileOperations.mtpConnectionWarning.description)"
+  },
+  "dialog": {
+    "chosen": "diálogo",
+    "forms": "a named Cmdr dialog → el diálogo Mover, el diálogo Seleccionar archivos (name unquoted); cuadro de diálogo is also fine in prose",
+    "confidence": "high",
+    "sources": "catalog (diálogo ×10, cuadro de diálogo ×1)"
   },
   "direct-connection": {
     "chosen": "conexión directa",
@@ -890,6 +906,13 @@
     "accept": ["estimad", "estimacion", "estimación"],
     "confidence": "high",
     "sources": "catalog"
+  },
+  "example": {
+    "chosen": "Ejemplo:",
+    "accept": ["ejemplo", "p. ej."],
+    "forms": "placeholder prefix Ejemplo: {value}; inline in prose → por ejemplo; a tight option description → p. ej.",
+    "confidence": "high",
+    "sources": "catalog (servers.sheet.usernamePlaceholder, onboarding.cloudSetup.step.endpointPlaceholder, ai.cloud.modelPlaceholderExample)"
   },
   "expired": {
     "chosen": "caducar",
@@ -1541,7 +1564,8 @@
     "confidence": "high",
     "sources": "macOS Finder (N220 Nombre)",
     "exceptions": {
-      "errors.write.duplicateSourceNames.title": "The idiom se llaman igual carries the name."
+      "errors.write.duplicateSourceNames.title": "The idiom se llaman igual carries the name.",
+      "servers.sheet.identityLockedS3": "English \"what name this place\" is the verb: son los que identifican, matching its twin servers.sheet.identityLocked."
     }
   },
   "nas": {
@@ -1579,7 +1603,16 @@
     "confidence": "high",
     "sources": "macOS (recurso compartido), NetAuthAgent (EINFO_NO_SHARES), MS",
     "exceptions": {
-      "settings.section.smbNetworkShares": "Settings sidebar title, shortened to SMB/Recursos de red."
+      "settings.section.smbNetworkShares": "Settings sidebar title, shortened to SMB/Recursos de red.",
+      "commands.fileCopyShareLink.label": "A share link (an S3 download URL), not an SMB share: enlace para compartir.",
+      "commands.fileCopyShareLinkOneDay.label": "A share link, not an SMB share: enlace para compartir.",
+      "commands.fileCopyShareLinkOneHour.label": "A share link, not an SMB share: enlace para compartir.",
+      "commands.handler.shareLinkCopied.sevenDays": "A share link, not an SMB share: enlace para compartir.",
+      "commands.handler.shareLinkCopied.oneDay": "A share link, not an SMB share: enlace para compartir.",
+      "commands.handler.shareLinkCopied.oneHour": "A share link, not an SMB share: enlace para compartir.",
+      "commands.handler.shareLinkUnavailable": "A share link, not an SMB share: enlace para compartir.",
+      "commands.handler.shareLinkFailed": "A share link, not an SMB share: enlace para compartir.",
+      "menu.context.copyShareLink": "A share link, not an SMB share: enlace para compartir."
     },
     "decision": "Por qué no se monta un recurso compartido o no carga su lista"
   },
@@ -2126,6 +2159,13 @@
     "confidence": "high",
     "sources": "macOS Finder (NE101 Reanudar, N158.1 Reanudar copia)"
   },
+  "restore": {
+    "chosen": "restaurar",
+    "accept": ["restaur", "restáur"],
+    "forms": "noun la restauración; a file in cold storage → restáuralo en la consola de tu proveedor de almacenamiento",
+    "confidence": "high",
+    "sources": "macOS (Restore → Restaurar, Restore a Copy → Restaurar una copia); AWS es console (restaurar objetos archivados)"
+  },
   "retry": {
     "chosen": "Reintentar",
     "accept": ["reintent", "intentarlo", "inténtalo", "intentas", "intento"],
@@ -2290,6 +2330,9 @@
     ],
     "confidence": "high",
     "sources": "macOS SystemSettings (Ajustes, Ajustes del Sistema)",
+    "exceptions": {
+      "servers.sheet.s3GcsKeyHelp": "Google Cloud’s own Spanish console names that page Configuración; a third-party label is quoted from its own UI."
+    },
     "decision": "Ask Cmdr: el panel del chat"
   },
   "share-menu": {
@@ -2444,6 +2487,24 @@
       "search.coverage.walk.interrupted": "The search ended early on its own: terminó antes de tiempo."
     },
     "decision": "El teléfono Android por ADB: el panel de conexión, los avisos del selector y la línea de invitación"
+  },
+  "storage": {
+    "chosen": "almacenamiento",
+    "forms": "cloud storage → almacenamiento en la nube; S3 storage → almacenamiento S3; storage provider → proveedor de almacenamiento; cold storage → almacenamiento en frío",
+    "confidence": "high",
+    "sources": "macOS (Almacenamiento); MS terminology (storage → almacenamiento)",
+    "exceptions": {
+      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim.",
+      "servers.sheet.s3ProviderHetzner": "Product name Hetzner Object Storage, kept verbatim.",
+      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is the Google product name, kept verbatim."
+    }
+  },
+  "store": {
+    "chosen": "guardar",
+    "accept": ["guard", "almacen"],
+    "forms": "store a secret in the Keychain → guardar en el Llavero; what a file system can hold → almacenar (FAT32 no puede almacenar archivos de más de 4 GB)",
+    "confidence": "high",
+    "sources": "catalog (servers.refusal.secretNotStored: no ha podido guardar esta contraseña en el Llavero)"
   },
   "streaming": {
     "chosen": "transmisión",
