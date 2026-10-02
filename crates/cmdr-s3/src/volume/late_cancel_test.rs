@@ -1,4 +1,4 @@
-//! A Cancel that arrives after a PUT's whole body went out, against a fake S3
+//! A write whose server published while the answer was lost, against a fake S3
 //! that commits the object and then answers slowly (R2 did, live, 2026-10-02:
 //! `live_hostile_cancel_uploads`). The publish can't be taken back by then, so
 //! the write must report the file it finished, ❌ never `Cancelled` over an
@@ -91,4 +91,110 @@ async fn a_cancel_before_the_last_piece_still_publishes_nothing() {
     assert!(matches!(outcome, Err(VolumeError::Cancelled(_))), "{outcome:?}");
     let stored = s3.object("kept.bin").expect("the original stays");
     assert_eq!((stored.len, stored.etag.as_str()), (32, "\"original\""));
+}
+
+/// Writes `source` to `key` with nobody asking to stop.
+async fn write_through(volume: &S3Volume, key: &str, mode: WriteMode, source: BytesSource) -> Result<u64, VolumeError> {
+    let length = source.total_size();
+    volume
+        .write_from_stream(&volume.root().join(key), mode, length, Box::new(source), &|_| {
+            ControlFlow::Continue(())
+        })
+        .await
+}
+
+/// ❗ The link dies right after the server published a PUT: what's at the key
+/// is our whole new object, so the write reports it. Pre-fix the cut-off
+/// cleanup found our token on it and deleted it, losing the original and the
+/// new bytes alike.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_put_whose_answer_never_comes_keeps_the_overwrite_it_finished() {
+    let s3 = FakeS3::start(Duration::ZERO).await;
+    s3.seed("kept.bin", 32);
+    s3.hang_up_after_commit();
+    let volume = s3.volume();
+    let outcome = write_through(
+        &volume,
+        "kept.bin",
+        WriteMode::CreateOrReplace,
+        BytesSource::new(vec![7u8; 2 * MIB]),
+    )
+    .await;
+    assert_eq!(
+        s3.object("kept.bin").map(|s| s.len),
+        Some(2 * MIB),
+        "the published overwrite stays ({outcome:?})"
+    );
+    assert!(matches!(outcome, Ok(n) if n == (2 * MIB) as u64), "{outcome:?}");
+}
+
+/// The same for a short stream of unknown length, which goes as one buffered PUT.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_buffered_put_whose_answer_never_comes_keeps_the_overwrite_it_finished() {
+    let s3 = FakeS3::start(Duration::ZERO).await;
+    s3.seed("kept.bin", 32);
+    s3.hang_up_after_commit();
+    let volume = s3.volume();
+    let source = BytesSource::new(vec![7u8; MIB]).of_unknown_length();
+    let outcome = write_through(&volume, "kept.bin", WriteMode::CreateOrReplace, source).await;
+    assert_eq!(
+        s3.object("kept.bin").map(|s| s.len),
+        Some(MIB),
+        "the published overwrite stays ({outcome:?})"
+    );
+    assert!(matches!(outcome, Ok(n) if n == MIB as u64), "{outcome:?}");
+}
+
+/// ❗ The link dies right after the server completed a multipart upload: the
+/// object landed whole, so the write reports it, and nothing aborts or deletes
+/// its way into losing it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_completion_whose_answer_never_comes_reports_the_file_it_published() {
+    let s3 = FakeS3::start(Duration::ZERO).await;
+    s3.seed("big.bin", 32);
+    s3.hang_up_after_commit();
+    let volume = s3.volume();
+    volume.set_part_floor((5 * MIB) as u64);
+    let outcome = write_through(
+        &volume,
+        "big.bin",
+        WriteMode::CreateOrReplace,
+        BytesSource::new(vec![7u8; 11 * MIB]),
+    )
+    .await;
+    assert_eq!(
+        s3.object("big.bin").map(|s| s.len),
+        Some(11 * MIB),
+        "the published object stays ({outcome:?})"
+    );
+    assert_eq!(s3.open_uploads(), 0);
+    assert!(matches!(outcome, Ok(n) if n == (11 * MIB) as u64), "{outcome:?}");
+}
+
+/// A body genuinely cut short on a server that keeps what arrived (VersityGW
+/// does): that object is ours and truncated, so it still goes.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_truncated_body_a_server_kept_is_still_removed() {
+    let s3 = FakeS3::start(Duration::ZERO).await;
+    s3.keep_cut_off_bodies();
+    let volume = s3.volume();
+    let source = BytesSource::new(vec![7u8; 4 * MIB]);
+    let length = source.total_size();
+    let outcome = volume
+        .write_from_stream(
+            &volume.root().join("cut.bin"),
+            WriteMode::CreateNew,
+            length,
+            Box::new(source),
+            &|progress| {
+                if progress.bytes_written >= MIB as u64 {
+                    ControlFlow::Break(())
+                } else {
+                    ControlFlow::Continue(())
+                }
+            },
+        )
+        .await;
+    assert!(matches!(outcome, Err(VolumeError::Cancelled(_))), "{outcome:?}");
+    assert!(s3.object("cut.bin").is_none(), "the truncated object is removed");
 }

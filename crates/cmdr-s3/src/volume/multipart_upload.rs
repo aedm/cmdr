@@ -350,7 +350,17 @@ impl S3Volume {
         let outcome = match sent {
             Ok((parts, total)) => match self.complete(client, target, &upload_id, &parts, &gone).await {
                 Ok(etag) => Ok((total, etag)),
-                Err(e) => Err(e),
+                // ❗ The link can die after the server completed: then our
+                // whole object is at the key, the upload no longer exists, and
+                // the write landed. ❌ Never reported as a failure.
+                Err(e) => match self.landed_whole(client, target, total).await {
+                    Some(head) => {
+                        self.inner.ledger.finished(&guard.upload);
+                        guard.settled = true;
+                        return Ok(self.published_after_all(target, &head, total, progress));
+                    }
+                    None => Err(e),
+                },
             },
             Err(e) => Err(e),
         };
@@ -422,8 +432,11 @@ impl S3Volume {
             Ok(answer) => answer,
             Err(e) => {
                 // A transport failure mid-body can leave a truncated object on
-                // a server that keeps one (`writes.rs` § "A cut-off PUT").
-                self.remove_cut_off_put(client, target).await;
+                // a server that keeps one, or come after the server published
+                // the whole body (`writes.rs::settle_cut_off_put`).
+                if let Some(head) = self.settle_cut_off_put(client, target, length).await {
+                    return Ok(self.published_after_all(target, &head, length, progress));
+                }
                 return Err(map_transport_error(&e, self.volume_id(), target.remote));
             }
         };

@@ -1,13 +1,20 @@
 //! A tiny in-process S3 for cells that need a server to misbehave in one
-//! precise way the Docker fixtures can't: it commits a PUT whose whole body
-//! arrived and then waits `answer_after` before saying so (R2's slow answer),
-//! and it refuses a listing prefix past S3's 1,024-byte key ceiling with `400
-//! InvalidRequest` the way B2 does, where other servers answer an empty page.
+//! precise way the Docker fixtures can't:
+//!
+//! - it commits a PUT whose whole body arrived and then waits `answer_after`
+//!   before saying so (R2's slow answer);
+//! - [`FakeS3::hang_up_after_commit`]: it commits a PUT or a
+//!   `CompleteMultipartUpload` and then drops the connection unanswered (a
+//!   link that dies right after the server published);
+//! - [`FakeS3::keep_cut_off_bodies`]: it stores what arrived of a PUT cut off
+//!   mid-body, the way VersityGW does, where S3 publishes nothing;
+//! - it refuses a listing prefix past S3's 1,024-byte key ceiling with `400
+//!   InvalidRequest` the way B2 does, where other servers answer an empty page.
 //!
 //! It speaks path style over plain HTTP, one request per connection, and
-//! knows HEAD, PUT, DELETE, and `ListObjectsV2`. A cell reaches it through a
-//! bucket place on R2 ([`FakeS3::volume`]): R2 refuses a short body, so an
-//! overwrite goes as one PUT.
+//! knows HEAD, PUT, DELETE, `ListObjectsV2`, and the multipart calls. A cell
+//! reaches it through a bucket place on R2 ([`FakeS3::volume`]): R2 refuses a
+//! short body, so an overwrite goes as one PUT.
 
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
@@ -39,13 +46,24 @@ pub(super) struct Stored {
     pub meta: Vec<String>,
 }
 
+/// A multipart upload in progress: its key, the metadata its creation named,
+/// and each part's length.
+struct Upload {
+    key: String,
+    meta: Vec<String>,
+    parts: BTreeMap<u32, usize>,
+}
+
 #[derive(Default)]
 struct World {
     /// By decoded key.
     objects: BTreeMap<String, Stored>,
+    uploads: BTreeMap<String, Upload>,
     writes: usize,
     /// Every listing prefix asked for, decoded.
     listed: Vec<String>,
+    hang_up_after_commit: bool,
+    keep_cut_off_bodies: bool,
 }
 
 pub(super) struct FakeS3 {
@@ -77,6 +95,17 @@ impl FakeS3 {
         Self { addr, world }
     }
 
+    /// From now on, a PUT or a completion is committed and then left
+    /// unanswered: the connection drops after the server published.
+    pub(super) fn hang_up_after_commit(&self) {
+        self.world.lock_ignore_poison().hang_up_after_commit = true;
+    }
+
+    /// From now on, a PUT cut off mid-body stores what arrived.
+    pub(super) fn keep_cut_off_bodies(&self) {
+        self.world.lock_ignore_poison().keep_cut_off_bodies = true;
+    }
+
     pub(super) fn object(&self, key: &str) -> Option<Stored> {
         self.world.lock_ignore_poison().objects.get(key).cloned()
     }
@@ -95,6 +124,11 @@ impl FakeS3 {
     /// Every listing prefix the volume asked for.
     pub(super) fn listed(&self) -> Vec<String> {
         self.world.lock_ignore_poison().listed.clone()
+    }
+
+    /// How many multipart uploads are still open.
+    pub(super) fn open_uploads(&self) -> usize {
+        self.world.lock_ignore_poison().uploads.len()
     }
 
     /// A bucket place on R2, its endpoint dialing this fake over plain HTTP.
@@ -121,6 +155,36 @@ impl FakeS3 {
 
 const NOT_FOUND: &str = "HTTP/1.1 404 Not Found\r\ncontent-length: 0\r\nconnection: close\r\n\r\n";
 
+fn ok_xml(body: &str) -> String {
+    format!(
+        "HTTP/1.1 200 OK\r\ncontent-type: application/xml\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+        body.len()
+    )
+}
+
+fn error(status: &str, code: &str) -> String {
+    let body = format!("<Error><Code>{code}</Code><Message>m</Message></Error>");
+    format!(
+        "HTTP/1.1 {status}\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+        body.len()
+    )
+}
+
+/// One query parameter's decoded value; a valueless one answers `""`.
+fn param(query: &str, name: &str) -> Option<String> {
+    query.split('&').find_map(|pair| {
+        let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
+        (key == name).then(|| percent_decode_str(value).decode_utf8_lossy().into_owned())
+    })
+}
+
+fn meta_lines(head: &str) -> Vec<String> {
+    head.lines()
+        .filter(|l| l.to_ascii_lowercase().starts_with("x-amz-meta-"))
+        .map(str::to_string)
+        .collect()
+}
+
 /// What the fake says to one request; `None` hangs up without an answer.
 async fn answer(
     world: &Mutex<World>,
@@ -136,33 +200,100 @@ async fn answer(
     let key = path
         .strip_prefix(&format!("/{BUCKET}/"))
         .map(|key| percent_decode_str(key).decode_utf8_lossy().into_owned());
-    let response = match (method.as_str(), key) {
-        // Cut off: S3 publishes nothing.
-        ("PUT", Some(_)) if body_len < length => return None,
-        ("PUT", Some(key)) => {
-            let etag = {
+    let upload_id = param(query, "uploadId");
+    let response = match (method.as_str(), key, upload_id) {
+        ("PUT", Some(_), Some(id)) if body_len == length => {
+            let mut world = world.lock_ignore_poison();
+            let number: u32 = param(query, "partNumber").and_then(|n| n.parse().ok()).unwrap_or(0);
+            match world.uploads.get_mut(&id) {
+                Some(upload) => {
+                    upload.parts.insert(number, body_len);
+                    format!("HTTP/1.1 200 OK\r\netag: \"p{number}\"\r\ncontent-length: 0\r\nconnection: close\r\n\r\n")
+                }
+                None => error("404 Not Found", "NoSuchUpload"),
+            }
+        }
+        ("PUT", Some(_), Some(_)) => return None,
+        ("PUT", Some(key), None) if body_len < length => {
+            let mut world = world.lock_ignore_poison();
+            if world.keep_cut_off_bodies {
+                world.writes += 1;
+                let etag = format!("\"v{}\"", world.writes);
+                world.objects.insert(
+                    key,
+                    Stored {
+                        len: body_len,
+                        etag,
+                        meta: meta_lines(head),
+                    },
+                );
+            }
+            // Cut off: a well-behaved S3 publishes nothing.
+            return None;
+        }
+        ("PUT", Some(key), None) => {
+            let (etag, hang) = {
                 let mut world = world.lock_ignore_poison();
                 world.writes += 1;
                 let etag = format!("\"v{}\"", world.writes);
-                let meta = head
-                    .lines()
-                    .filter(|l| l.to_ascii_lowercase().starts_with("x-amz-meta-"))
-                    .map(str::to_string)
-                    .collect();
                 world.objects.insert(
                     key,
                     Stored {
                         len: body_len,
                         etag: etag.clone(),
-                        meta,
+                        meta: meta_lines(head),
                     },
                 );
-                etag
+                (etag, world.hang_up_after_commit)
             };
+            if hang {
+                return None;
+            }
             tokio::time::sleep(answer_after).await;
             format!("HTTP/1.1 200 OK\r\netag: {etag}\r\ncontent-length: 0\r\nconnection: close\r\n\r\n")
         }
-        ("HEAD", Some(key)) => match world.lock_ignore_poison().objects.get(&key) {
+        ("POST", Some(key), None) if param(query, "uploads").is_some() => {
+            let mut world = world.lock_ignore_poison();
+            world.writes += 1;
+            let id = format!("up{}", world.writes);
+            world.uploads.insert(
+                id.clone(),
+                Upload {
+                    key: key.clone(),
+                    meta: meta_lines(head),
+                    parts: BTreeMap::new(),
+                },
+            );
+            ok_xml(&format!(
+                "<InitiateMultipartUploadResult><Bucket>{BUCKET}</Bucket><Key>{key}</Key><UploadId>{id}</UploadId></InitiateMultipartUploadResult>"
+            ))
+        }
+        ("POST", Some(key), Some(id)) => {
+            let mut world = world.lock_ignore_poison();
+            let Some(upload) = world.uploads.remove(&id) else {
+                return Some(error("404 Not Found", "NoSuchUpload"));
+            };
+            let etag = format!("\"m{}-{}\"", world.writes, upload.parts.len());
+            world.objects.insert(
+                key.clone(),
+                Stored {
+                    len: upload.parts.values().sum(),
+                    etag: etag.clone(),
+                    meta: upload.meta,
+                },
+            );
+            if world.hang_up_after_commit {
+                return None;
+            }
+            ok_xml(&format!(
+                "<CompleteMultipartUploadResult><Bucket>{BUCKET}</Bucket><Key>{key}</Key><ETag>{etag}</ETag></CompleteMultipartUploadResult>"
+            ))
+        }
+        ("DELETE", Some(_), Some(id)) => match world.lock_ignore_poison().uploads.remove(&id) {
+            Some(_) => "HTTP/1.1 204 No Content\r\nconnection: close\r\n\r\n".into(),
+            None => error("404 Not Found", "NoSuchUpload"),
+        },
+        ("HEAD", Some(key), None) => match world.lock_ignore_poison().objects.get(&key) {
             Some(stored) => format!(
                 "HTTP/1.1 200 OK\r\ncontent-length: {}\r\netag: {}\r\nlast-modified: Fri, 02 Oct 2026 10:00:00 GMT\r\n{}connection: close\r\n\r\n",
                 stored.len,
@@ -171,11 +302,22 @@ async fn answer(
             ),
             None => NOT_FOUND.into(),
         },
-        ("DELETE", Some(key)) => {
+        ("DELETE", Some(key), None) => {
             world.lock_ignore_poison().objects.remove(&key);
             "HTTP/1.1 204 No Content\r\nconnection: close\r\n\r\n".into()
         }
-        ("GET", None) if query.contains("list-type=2") => list(world, query),
+        ("GET", None, None) if param(query, "uploads").is_some() => {
+            let world = world.lock_ignore_poison();
+            let uploads: String = world
+                .uploads
+                .iter()
+                .map(|(id, upload)| format!("<Upload><Key>{}</Key><UploadId>{id}</UploadId></Upload>", upload.key))
+                .collect();
+            ok_xml(&format!(
+                "<ListMultipartUploadsResult><Bucket>{BUCKET}</Bucket><IsTruncated>false</IsTruncated>{uploads}</ListMultipartUploadsResult>"
+            ))
+        }
+        ("GET", None, None) if query.contains("list-type=2") => list(world, query),
         _ => "HTTP/1.1 501 Not Implemented\r\ncontent-length: 0\r\nconnection: close\r\n\r\n".into(),
     };
     Some(response)
@@ -184,19 +326,11 @@ async fn answer(
 /// `ListObjectsV2`, every match as `Contents` (no delimiter folding), and ❗
 /// B2's refusal of a prefix no key could carry.
 fn list(world: &Mutex<World>, query: &str) -> String {
-    let prefix = query
-        .split('&')
-        .find_map(|pair| pair.strip_prefix("prefix="))
-        .map(|value| percent_decode_str(value).decode_utf8_lossy().into_owned())
-        .unwrap_or_default();
+    let prefix = param(query, "prefix").unwrap_or_default();
     let mut world = world.lock_ignore_poison();
     world.listed.push(prefix.clone());
     if prefix.len() > 1024 {
-        let body = "<Error><Code>InvalidRequest</Code><Message>prefix too long</Message></Error>";
-        return format!(
-            "HTTP/1.1 400 Bad Request\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
-            body.len()
-        );
+        return error("400 Bad Request", "InvalidRequest");
     }
     let contents: String = world
         .objects
@@ -209,13 +343,9 @@ fn list(world: &Mutex<World>, query: &str) -> String {
             )
         })
         .collect();
-    let body = format!(
+    ok_xml(&format!(
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?><ListBucketResult><Name>{BUCKET}</Name><Prefix>{prefix}</Prefix><IsTruncated>false</IsTruncated>{contents}</ListBucketResult>"
-    );
-    format!(
-        "HTTP/1.1 200 OK\r\ncontent-type: application/xml\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
-        body.len()
-    )
+    ))
 }
 
 /// The request head, the body bytes that arrived, and the `Content-Length`.

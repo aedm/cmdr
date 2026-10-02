@@ -390,10 +390,14 @@ stays `false`: a request is open while the source drains.
   `Content-Length`: VersityGW stores whatever arrived before the connection dropped (fixture README). Every PUT carries
   a token of its own (`x-amz-meta-cmdr-write`, `metadata::write_token`), and a PUT that was cancelled or cut off HEADs
   its key (again after 150 and 300 ms, since the server stores the body only once it notices the drop) and deletes the
-  object ONLY when it carries that token (`writes.rs::remove_cut_off_put`): anything else there is the original or
-  another writer's. That covers a write to a FREE name; an overwrite of an existing object on a provider not trusted to
-  refuse a short body never goes as a PUT at all (§ "Overwrites in parts"). The token is visible as user metadata and
-  harmless to other tools.
+  object ONLY when it carries that token AND is short (`writes.rs::settle_cut_off_put`): anything else there is the
+  original or another writer's. ❗ Ours at the full size is the write having LANDED (the server published, then the link
+  died before the answer), so the write reports it as written; deleting it there lost the original and the new bytes
+  alike on an overwrite. The same holds for the buffered PUT, and a failed `CompleteMultipartUpload` asks
+  `landed_whole` (one HEAD, never a delete) before calling the write failed (`late_cancel_test.rs`, a fake that commits
+  and then hangs up). That covers a write to a FREE name; an overwrite of an existing object on a provider not trusted
+  to refuse a short body never goes as a PUT at all (§ "Overwrites in parts"). The token is visible as user metadata
+  and harmless to other tools.
 - **Multipart** (`multipart_upload.rs`): up to the profile's `upload_concurrency()` (4) parts in flight, and a part is
   read from the source only when a slot is free, so at most four part buffers exist (256 MiB at the floor). Parts are
   buffered at all because a failed one is sent again after 1, 2, then 4 s on a throttle (`SlowDown`, 503, 429), a server
