@@ -11,10 +11,18 @@ import { createListingPresentation, LISTING_LOADING_DELAY_MS } from './listing-p
 describe('createListingPresentation', () => {
   let dispose: (() => void) | undefined
 
-  function create(initial: { listingId: string; totalCount: number; loading: boolean }) {
+  interface State {
+    listingId: string
+    totalCount: number
+    loading: boolean
+    parentRow?: { hasParent: boolean; parentPath: string }
+  }
+
+  function create(initial: State) {
     let listingId = $state(initial.listingId)
     let totalCount = $state(initial.totalCount)
     let loading = $state(initial.loading)
+    let parentRow = $state(initial.parentRow ?? { hasParent: false, parentPath: '' })
     let presentation!: ReturnType<typeof createListingPresentation>
 
     dispose = $effect.root(() => {
@@ -22,13 +30,15 @@ describe('createListingPresentation', () => {
         getListingId: () => listingId,
         getTotalCount: () => totalCount,
         getLoading: () => loading,
+        getParentRow: () => parentRow,
       })
     })
     flushSync()
 
     return {
       presentation,
-      set: (next: Partial<typeof initial>) => {
+      set: (next: Partial<State>) => {
+        if (next.parentRow !== undefined) parentRow = next.parentRow
         if (next.listingId !== undefined) listingId = next.listingId
         if (next.totalCount !== undefined) totalCount = next.totalCount
         if (next.loading !== undefined) loading = next.loading
@@ -67,6 +77,20 @@ describe('createListingPresentation', () => {
     expect(presentation.showLoading).toBe(false)
     expect(presentation.listingId).toBe('new')
     expect(presentation.totalCount).toBe(7)
+  })
+
+  // The `..` row belongs to the listing it heads. A jump from `/b` to `/b/test/sub`
+  // once kept `/b`'s rows but showed the new `..` (`/b/test`), which `/b` also lists.
+  it('keeps the settled listing’s ".." row until the next listing lands', () => {
+    const settled = { hasParent: false, parentPath: '' }
+    const next = { hasParent: true, parentPath: '/b/test' }
+    const { presentation, set } = create({ listingId: 'old', totalCount: 2, loading: false, parentRow: settled })
+
+    set({ listingId: 'new', totalCount: 0, loading: true, parentRow: next })
+    expect(presentation.parentRow).toEqual(settled)
+
+    set({ totalCount: 4, loading: false })
+    expect(presentation.parentRow).toEqual(next)
   })
 
   it('reveals loading after 100 ms and cancels the timer when the load settles', () => {

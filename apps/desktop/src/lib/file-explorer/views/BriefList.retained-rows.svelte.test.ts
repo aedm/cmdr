@@ -65,4 +65,24 @@ describe('BriefList retained rows', () => {
 
     expect(list.component.getEntryAt(0)?.name).toBe('new.txt')
   })
+
+  // A jump from `/root` straight to `/root/b/sub` once painted the new `..`
+  // (`/root/b`) over the old rows, which hold `/root/b` too: a duplicate key.
+  it('keep the parent row they were fetched with, so no path repeats', async () => {
+    const live = $state<Partial<Props>>({})
+    const list = await mountBriefList({
+      entries: [fileEntry({ name: 'a' }), fileEntry({ name: 'b' })],
+      liveProps: live,
+    })
+    vi.mocked(getFileRange).mockImplementation(() => new Promise(() => {}))
+
+    live.listingId = 'listing-2'
+    live.hasParent = true
+    live.parentPath = '/root/b'
+    live.currentPath = '/root/b/sub'
+    live.totalCount = 3
+    await tick()
+
+    expect(list.rowNames()).toEqual(['a', 'b'])
+  })
 })

@@ -62,6 +62,12 @@ export interface FullListCacheDeps {
   onFolderCoverageRequest: () => ((folderPaths: string[]) => void) | undefined
 }
 
+/** Whether a window starts with the synthetic `..` row, and where that row points. */
+interface ParentRow {
+  hasParent: boolean
+  parentPath: string
+}
+
 /** A row ready to render: the entry plus its UI index (`..` included when `hasParent`). */
 export interface WindowRow {
   file: FileEntry
@@ -126,6 +132,11 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
   // painted until the forced fetch lands, but they no longer match the indices, so
   // lookups must not hand them out as the entry under the cursor.
   let entriesEpoch = 0
+  // The listing and `..` row `entries` were fetched under. Rows retained from another
+  // listing paint under their own `..`, not the new one: the new `..` can be one of the
+  // old rows (`/a` → `/a/b/c` makes it `/a/b`), a duplicate key in the keyed `#each`.
+  let entriesListingId = ''
+  let entriesParentRow: ParentRow = { hasParent: false, parentPath: '' }
   let queuedFetch: (VisibleWindowRange & { force?: boolean }) | null = null
 
   /** The cached rows that are safe to act on: none while retained rows await replacement. */
@@ -158,6 +169,7 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
     const capturedEpoch = fetchEpoch
 
     const hasParent = deps.hasParent()
+    const parentPath = deps.parentPath()
     const totalCount = deps.totalCount()
 
     // Check if range is already cached BEFORE setting isFetching
@@ -191,6 +203,8 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
         entries = result.entries
         range = result.range
         entriesEpoch = capturedEpoch
+        entriesListingId = listingId
+        entriesParentRow = { hasParent, parentPath }
         noteRenderedFolderSizes(entries, deps.volumeId())
       }
     } catch {
@@ -242,8 +256,10 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
     indexOfEntry: (path: string) => indexOfEntryUtil(path, deps.hasParent(), actionableEntries(), range),
 
     windowRows: ({ startIndex, endIndex }: VisibleWindowRange) => {
-      const hasParent = deps.hasParent()
-      const parentPath = deps.parentPath()
+      // Read the live props either way, so the caller's `$derived` re-runs when they move.
+      const live: ParentRow = { hasParent: deps.hasParent(), parentPath: deps.parentPath() }
+      const retained = entries.length > 0 && entriesListingId !== deps.listingId()
+      const { hasParent, parentPath } = retained ? entriesParentRow : live
       // Spread to read every element, so the caller's `$derived` re-runs on an
       // in-place entry mutation (index-size enrichment) and not only on a swap.
       const slice = [...entries]
@@ -306,6 +322,7 @@ export function createFullListCache(deps: FullListCacheDeps): FullListCache {
       entries = src
       range = { start: 0, end: src.length }
       entriesEpoch = fetchEpoch
+      entriesListingId = deps.listingId()
     },
 
     refreshIndexSizes: refreshIndexSizesNow,

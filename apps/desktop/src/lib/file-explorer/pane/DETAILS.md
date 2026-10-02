@@ -1111,7 +1111,10 @@ injected accessors (the `type-to-jump-controller` idiom, not a state-owning `.sv
 owns the full listing teardown (`cancelListing` + `listDirectoryEnd` + `evictPerPathIconsForDir` + the six `unlisten*`).
 
 **Fast navigation never paints an empty loading frame.** `listing-presentation.svelte.ts` keeps the last settled
-`listingId` and row count for 100 ms after the next load starts. If that load settles inside the grace period, the
+`listingId`, row count, and `..` row (`parentRow`) for 100 ms after the next load starts. The `..` row belongs to the
+listing it heads: the lists once got the new path's `..` over the old rows, and a jump from `/a` to `/a/b/c` made it
+`/a/b`, a row `/a` also lists, which threw Svelte's `each_key_duplicate`. ❌ Don't feed the lists the live `hasParent` /
+`parentPath`. If that load settles inside the grace period, the
 loading screen never mounts; if it outlasts the threshold, the ordinary cancellable `LoadingIcon` takes over. The old
 rows are presentation only: a transparent shield blocks pointer input, while `FilePane.isLoading()` keeps keyboard and
 command paths blocked. Once the listing lands, Brief and Full fetch the new visible range and atomically replace the old

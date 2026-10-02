@@ -405,6 +405,7 @@
         getListingId: () => listingId,
         getTotalCount: () => effectiveTotalCount,
         getLoading: () => loading,
+        getParentRow: () => ({ hasParent, parentPath: hasParent && canonicalPath ? parentOf(canonicalPath) : '' }),
     })
 
     // Volume root path from listing-complete event (accurate for MTP and all volume types)
@@ -2054,11 +2055,11 @@
                 indexStatusMap={overlays.indexStatusMap}
                 folderCoverageMap={overlays.folderCoverageMap}
                 selectedIndices={selection.selectedIndices}
-                {hasParent}
+                hasParent={listingPresentation.parentRow.hasParent}
                 {sortBy}
                 {sortOrder}
                 renameState={rename.active ? rename : null}
-                parentPath={hasParent && canonicalPath ? parentOf(canonicalPath) : ''}
+                parentPath={listingPresentation.parentRow.parentPath}
                 {currentPath}
                 onSelect={handleSelect}
                 onNavigate={handleNavigate}
@@ -2096,13 +2097,13 @@
                 indexStatusMap={overlays.indexStatusMap}
                 folderCoverageMap={overlays.folderCoverageMap}
                 selectedIndices={selection.selectedIndices}
-                {hasParent}
+                hasParent={listingPresentation.parentRow.hasParent}
                 {sortBy}
                 {sortOrder}
                 gitRepoRoot={gitBrowser.gitRepoInfo?.repoRoot ?? null}
                 showGitColumn={gitBrowser.showGitStatusColumn}
                 renameState={rename.active ? rename : null}
-                parentPath={hasParent && canonicalPath ? parentOf(canonicalPath) : ''}
+                parentPath={listingPresentation.parentRow.parentPath}
                 {currentPath}
                 onSelect={handleSelect}
                 onNavigate={handleNavigate}

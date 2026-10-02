@@ -180,6 +180,11 @@
     // rows stay painted until the forced fetch lands, but they no longer match the
     // indices, so lookups must not hand them out as the entry under the cursor.
     let cachedEntriesEpoch = 0
+    // The listing and `..` row `cachedEntries` were fetched under. Rows retained from
+    // another listing paint under their own `..`: the new one can be one of the old
+    // rows (`/a` → `/a/b/c` makes it `/a/b`), a duplicate key in the keyed `#each`.
+    let cachedEntriesListingId = ''
+    let cachedEntriesParentRow = { hasParent: false, parentPath: '' }
     let forceFetchAfterCurrent = false
 
     /** The cached rows that are safe to act on: none while retained rows await replacement. */
@@ -363,6 +368,7 @@
         }
         const capturedEpoch = fetchEpoch
         const capturedListingId = listingId
+        const capturedParentRow = { hasParent, parentPath }
 
         // Calculate which backend indices we need (convert column range to item range)
         const startCol = virtualWindow.startIndex
@@ -396,6 +402,8 @@
                 cachedEntries = result.entries
                 cachedRange = result.range
                 cachedEntriesEpoch = capturedEpoch
+                cachedEntriesListingId = capturedListingId
+                cachedEntriesParentRow = capturedParentRow
                 noteRenderedFolderSizes(cachedEntries, volumeId)
             }
         } catch {
@@ -422,6 +430,9 @@
         const entries = [...cachedEntries] // Spread to read all elements
         const rangeStart = cachedRange.start
         const rangeEnd = cachedRange.end
+        const live = { hasParent, parentPath }
+        const retained = entries.length > 0 && cachedEntriesListingId !== listingId
+        const parentRow = retained ? cachedEntriesParentRow : live
 
         const columns: { columnIndex: number; files: { file: FileEntry; globalIndex: number }[] }[] = []
         for (let col = virtualWindow.startIndex; col < virtualWindow.endIndex; col++) {
@@ -431,10 +442,10 @@
             for (let i = startFileIndex; i < endFileIndex; i++) {
                 // Inline getEntryAt logic to use local variables
                 let entry: FileEntry | undefined
-                if (hasParent && i === 0) {
-                    entry = createParentEntry(parentPath, parentDirStats ?? undefined)
+                if (parentRow.hasParent && i === 0) {
+                    entry = createParentEntry(parentRow.parentPath, parentDirStats ?? undefined)
                 } else {
-                    const backendIndex = hasParent ? i - 1 : i
+                    const backendIndex = parentRow.hasParent ? i - 1 : i
                     if (backendIndex >= rangeStart && backendIndex < rangeEnd) {
                         entry = entries[backendIndex - rangeStart]
                     }

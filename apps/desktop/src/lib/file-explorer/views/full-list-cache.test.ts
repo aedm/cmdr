@@ -331,6 +331,45 @@ describe('windowRows', () => {
     ])
   })
 
+  // Navigating from `/bucket` straight to `/bucket/test/sub` (a restored path, a
+  // history jump) once painted the new `..` (`/bucket/test`) over the old rows,
+  // which hold `/bucket/test` too: a duplicate key in the keyed `#each`.
+  it('paints retained rows under the parent row they were fetched with, so no path repeats', async () => {
+    props.hasParent = false
+    props.parentPath = ''
+    props.currentPath = '/bucket'
+    utils.fetchVisibleRange.mockResolvedValueOnce({
+      entries: [entry('cmdr-live', { path: '/bucket/cmdr-live' }), entry('test', { path: '/bucket/test' })],
+      range: { start: 0, end: 2 },
+    })
+    const cache = makeCache()
+    cache.syncToProps(true)
+    await cache.fetch({ startIndex: 0, endIndex: 10 })
+
+    props.listingId = 'listing-2'
+    props.hasParent = true
+    props.parentPath = '/bucket/test'
+    props.currentPath = '/bucket/test/sub'
+    cache.syncToProps(true)
+
+    const rows = cache.windowRows({ startIndex: 0, endIndex: 10 })
+    expect(rows.map((r) => [r.globalIndex, r.file.path])).toEqual([
+      [0, '/bucket/cmdr-live'],
+      [1, '/bucket/test'],
+    ])
+
+    utils.fetchVisibleRange.mockResolvedValueOnce({
+      entries: [entry('a.txt', { path: '/bucket/test/sub/a.txt' })],
+      range: { start: 0, end: 1 },
+    })
+    await cache.fetch({ startIndex: 0, endIndex: 10, force: true })
+
+    expect(cache.windowRows({ startIndex: 0, endIndex: 10 }).map((r) => [r.globalIndex, r.file.path])).toEqual([
+      [0, '/bucket/test'],
+      [1, '/bucket/test/sub/a.txt'],
+    ])
+  })
+
   it('skips rows outside the fetched range rather than rendering blanks', async () => {
     const cache = makeCache()
     await cache.fetch({ startIndex: 0, endIndex: 10 })
