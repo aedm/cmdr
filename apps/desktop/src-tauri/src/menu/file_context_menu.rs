@@ -522,8 +522,6 @@ pub fn build_context_menu<R: Runtime>(
     })
 }
 
-/// Open in Google Drive, Copy Google Drive link, and Ask Gemini, in menu order.
-#[cfg(target_os = "macos")]
 /// "Copy share link" with one row per expiry, the seven-day default first.
 fn share_link_submenu<R: Runtime>(app: &AppHandle<R>, shortcuts: &ContextMenuShortcuts) -> tauri::Result<Submenu<R>> {
     let submenu = Submenu::with_id(app, SHARE_LINK_SUBMENU_ID, menu_t("menu.context.copyShareLink"), true)?;
@@ -537,6 +535,8 @@ fn share_link_submenu<R: Runtime>(app: &AppHandle<R>, shortcuts: &ContextMenuSho
     Ok(submenu)
 }
 
+/// Open in Google Drive, Copy Google Drive link, and Ask Gemini, in menu order.
+#[cfg(target_os = "macos")]
 fn drive_items<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<[MenuItem<R>; 3]> {
     Ok([
         MenuItem::with_id(
