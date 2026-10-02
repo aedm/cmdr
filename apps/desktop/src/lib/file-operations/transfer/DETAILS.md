@@ -632,6 +632,13 @@ Two niceties on top:
   the auto-confirm go through `handleConfirm` and meet the backend's typed refusal, where a refused confirm would leave
   their round trip waiting. `unknown` shows nothing and blocks nothing. The phone case this exists for: copying onto a
   Pixel's `/` surfaced only after confirm, as "Not enough space".
+- **Yellow "this path repeats the place's folder" warning (#164).** The same debounced probe asks `destinationRootEcho`
+  (the `destination_root_echo` command over `cmdr_fs::volume::root_echo`, whose rule and why live in
+  `crates/cmdr-fs/DETAILS.md` § "`root_anchored`"). On a place rooted at a server folder, `/srv/data/photos` reads two
+  ways, so `#transfer-path-root-echo` names where it goes (`/srv/data/srv/data/photos`) and offers `/photos` behind a
+  "Use shorter path" button. ❌ Nothing rewrites the box on its own, and Enter sends what the box says: the doubled
+  folder can be real. It shows for a prefilled path too, and outranks "will be created" (usually also true of the
+  doubled folder); red errors and the refusal outrank it.
 
 Backend counterpart: every transfer path creates a missing destination (and ancestors) before transferring — the local
 copy/move paths via `ensure_destination_dir` (`write_operations/validation.rs`), and the cross-volume +

@@ -422,6 +422,16 @@ and is exactly why the anchoring has to happen upstream. Consumers:
 `commands/file_system/volume_copy.rs::resolve_dest_path` (every copy / move / compress / scan destination),
 `path_exists`, and the transfer engine's local shortcuts.
 
+**A typed path that repeats the root folder is anchored anyway, and the dialog warns (`volume::root_echo`).** On a place
+rooted at a server folder (`sftp://ada@nas:22/srv/data`), a user typing the server path they know (`/srv/data/photos`)
+gets `/srv/data/srv/data/photos`. Decision: keep the anchoring and warn, ❌ never strip the prefix on our own. Why: the
+doubled folder can be real (a place rooted at `/home/bob` holding `/home/bob/home/bob/folder`, which F5 prefills as
+`/home/bob/folder`), so a silent strip would send that copy somewhere else. `root_echo(root, path)` answers both
+readings (`resolved`, server-side, and `stripped`, volume-relative) for the transfer dialog's warning and its "Use
+shorter path" button. It only fires for a scheme-shaped root with a folder below the server's `/`: a mounted root
+(`/Volumes/naspi`) is matched by `root_anchored`'s pass-through arm, and a root at `/` reads the same both ways. Folders
+match by whole components.
+
 ## `InMemoryVolume` honors the contracts data safety leans on
 
 The double is the oracle: these `Volume` contracts have to hold in it, not just on the happy path.

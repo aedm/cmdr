@@ -1742,6 +1742,8 @@ export type MessageKey =
   | 'fileOperations.transferDialog.policyOverwriteSmaller'
   | 'fileOperations.transferDialog.policySkip'
   | 'fileOperations.transferDialog.policyStop'
+  | 'fileOperations.transferDialog.rootEchoUseStripped'
+  | 'fileOperations.transferDialog.rootEchoWarning'
   | 'fileOperations.transferDialog.scanDir'
   | 'fileOperations.transferDialog.scanFile'
   | 'fileOperations.transferDialog.scanRetry'

@@ -1720,6 +1720,7 @@ pub mod mtp_ids;
 pub mod patching;
 pub mod remote_paths;
 mod retirement;
+mod root_echo;
 mod scan_boundary;
 pub mod scan_stop;
 pub mod scan_walk;
@@ -1759,6 +1760,7 @@ pub use mkdir_all::{LeadsTo, MadeDirectories, MakesDirectories};
 pub use patching::{PatchSource, patch_created, patch_deleted, patch_mutation, patch_renamed};
 pub use remote_paths::{ServerPath, adb_app_root, adb_serial_of_path, server_of_path, sftp_app_root, webdav_app_root};
 pub use retirement::{Retirement, Retires, SelfHandle};
+pub use root_echo::{RootEcho, root_echo};
 pub use scan_boundary::{ScanBoundary, stopped as scan_stopped};
 pub use scan_stop::{ScanStop, ScanStopSignal};
 pub use scan_walk::{ScanSource, Walking, conflicts_against, fold_batch, scan_conflicts, scan_one, scan_trees};
@@ -1779,3 +1781,5 @@ mod in_memory_test;
 mod retirement_test;
 #[cfg(test)]
 mod root_anchored_path_test;
+#[cfg(test)]
+mod root_echo_test;

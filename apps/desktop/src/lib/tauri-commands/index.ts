@@ -643,6 +643,7 @@ export {
   scanVolumeForCopy,
   scanVolumeForConflicts,
   destinationWriteAccess,
+  destinationRootEcho,
 } from './mtp'
 // Android devices over ADB (device list, connect, cancel, settings)
 export {

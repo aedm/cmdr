@@ -432,6 +432,21 @@
     "description": "Yellow inline warning beneath the destination path box in the Copy/Move dialog, shown when the typed destination folder doesn’t exist yet and the Move action is selected. Reassures the user the folder will be made automatically. Active voice, friendly. Keep the product name 'Cmdr' as-is. There’s a separate '...Copy' variant for the Copy action."
   },
 
+  "fileOperations.transferDialog.rootEchoWarning": "This place already starts in {rootFolder}, so this path leads to {resolvedPath}. Did you mean {strippedPath}?",
+  "@fileOperations.transferDialog.rootEchoWarning": {
+    "description": "Yellow inline warning beneath the destination path box in the Copy/Move/Compress dialog. The box takes paths relative to the chosen place (a server folder or phone storage), but the typed path starts with that place's own folder, so the folder appears twice in where the files go. Cmdr does what the box says; this explains the result and suggests the shorter path. A button beside it puts the shorter path in the box. Keep the three paths exactly as given.",
+    "placeholders": {
+      "rootFolder": "the folder the place starts in, as a path (e.g. /srv/data)",
+      "resolvedPath": "where the files go if the box stays as typed, as a path with the folder doubled (e.g. /srv/data/srv/data/photos)",
+      "strippedPath": "the typed path with the repeated folder taken off, which is probably what the user meant (e.g. /photos)"
+    }
+  },
+
+  "fileOperations.transferDialog.rootEchoUseStripped": "Use shorter path",
+  "@fileOperations.transferDialog.rootEchoUseStripped": {
+    "description": "Small button inside the yellow warning beneath the destination path box (see fileOperations.transferDialog.rootEchoWarning). Pressing it replaces the typed path with the shorter one the warning suggests. A verb phrase for a button; keep it short."
+  },
+
   "fileOperations.transferDialog.destinationReadOnly": "This folder is read-only, so nothing can go here.",
   "@fileOperations.transferDialog.destinationReadOnly": {
     "description": "Red inline notice beneath the destination path box in the Copy/Move/Compress dialog, shown before confirming when the destination folder is on storage mounted read-only (a disk image, a write-protected card). Plain and factual, about the folder rather than the whole device."

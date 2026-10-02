@@ -1111,6 +1111,21 @@ export const commands = {
    */
   destinationWriteAccess: (destVolumeId: string, destPath: string) =>
     __TAURI_INVOKE<WriteAccess>('destination_write_access', { destVolumeId, destPath }),
+  /**
+   *  Whether the destination box's path repeats the place's own root folder, so
+   *  the dialog can warn. ❌ Never rewrites anything: the transfer still anchors
+   *  the path as typed (`resolve_dest_path`), because the doubled folder can be
+   *  real. `None` for an unregistered volume and for any path that reads one way.
+   */
+  destinationRootEcho: (destVolumeId: string, destPath: string) =>
+    __TAURI_INVOKE<{
+      // The server-side folder the place is rooted at (`/srv/data`).
+      rootFolder: string
+      // Where the transfer goes as typed (`/srv/data/srv/data/photos`).
+      resolved: string
+      // The box's text with the repeated root folder taken off (`/photos`).
+      stripped: string
+    } | null>('destination_root_echo', { destVolumeId, destPath }),
   // Returns total file/dir counts and sizes, plus selection stats if `selected_indices` is given.
   getListingStats: (listingId: string, includeHidden: boolean, selectedIndices: number[] | null) =>
     typedError<ListingStats, string>(
@@ -6758,6 +6773,21 @@ export type DeadlineError =
 export type DedupCluster = {
   // The paths in this near-duplicate group (two or more).
   paths: string[]
+}
+
+/**
+ *  The transfer dialog's destination when it starts with the place's own root
+ *  folder: both readings, for the warning under the path box. Paths are
+ *  server-side (`resolved`, `rootFolder`) or volume-relative (`stripped`, what
+ *  the box would hold instead). The rule: `cmdr_fs::volume::root_echo`.
+ */
+export type DestinationRootEcho = {
+  // The server-side folder the place is rooted at (`/srv/data`).
+  rootFolder: string
+  // Where the transfer goes as typed (`/srv/data/srv/data/photos`).
+  resolved: string
+  // The box's text with the repeated root folder taken off (`/photos`).
+  stripped: string
 }
 
 /**

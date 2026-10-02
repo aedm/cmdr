@@ -348,6 +348,18 @@
         )
     })
 
+    // The path starts with the place's own root folder (`/srv/data/photos` on a
+    // place rooted at `/srv/data`), so it can be read two ways (#164). The transfer
+    // goes where the box says; this names that and offers the other reading, and
+    // nothing rewrites the box unless the button is pressed. Outranks "will be
+    // created", which is usually true of the doubled folder too.
+    const rootEcho = $derived(pathError || targetRefusal ? null : destExists.rootEcho)
+
+    function useStrippedPath() {
+        if (rootEcho) editedPath = rootEcho.stripped
+        pathInputRef?.focus()
+    }
+
     // Free-space text is intentionally uncolored: red GB would falsely signal "low space".
     const spaceInfoText = $derived(
         formatSpaceInfo(volumeSpace, formatByteSize),
@@ -654,15 +666,17 @@
                         bind:inputElement={pathInputRef}
                         bind:value={editedPath}
                         invalid={!!pathError || !!targetRefusal}
-                        warning={!!targetWarning}
+                        warning={!!rootEcho || !!targetWarning}
                         ariaLabel={tString('fileOperations.transferDialog.destPathAria')}
                         aria-describedby={pathError
                             ? 'transfer-path-error'
                             : targetRefusal
                               ? 'transfer-path-refusal'
-                              : targetWarning
-                                ? 'transfer-path-warning'
-                                : undefined}
+                              : rootEcho
+                                ? 'transfer-path-root-echo'
+                                : targetWarning
+                                  ? 'transfer-path-warning'
+                                  : undefined}
                         spellcheck={false}
                         autocomplete="off"
                         onkeydown={handleInputKeydown}
@@ -671,6 +685,19 @@
                         <p id="transfer-path-error" class="path-error" role="alert">{pathError}</p>
                     {:else if targetRefusal}
                         <p id="transfer-path-refusal" class="path-error" role="alert">{targetRefusal}</p>
+                    {:else if rootEcho}
+                        <div class="path-warning root-echo">
+                            <p id="transfer-path-root-echo">
+                                {tString('fileOperations.transferDialog.rootEchoWarning', {
+                                    rootFolder: rootEcho.rootFolder,
+                                    resolvedPath: rootEcho.resolved,
+                                    strippedPath: rootEcho.stripped,
+                                })}
+                            </p>
+                            <Button variant="secondary" size="mini" onclick={useStrippedPath}>
+                                {tString('fileOperations.transferDialog.rootEchoUseStripped')}
+                            </Button>
+                        </div>
                     {:else if targetWarning}
                         <p id="transfer-path-warning" class="path-warning">{targetWarning}</p>
                     {/if}
@@ -928,6 +955,18 @@
         margin: var(--spacing-sm) 0 0;
         font-size: var(--font-size-sm);
         color: var(--color-warning-text);
+    }
+
+    /* The two-readings warning: the sentence, then its one button under it. */
+    .root-echo {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+
+    .root-echo p {
+        margin: 0;
     }
 
     .smb-native-note {

@@ -177,6 +177,40 @@ pub async fn destination_write_access(dest_volume_id: String, dest_path: String)
     .unwrap_or_else(|unknown| unknown)
 }
 
+/// The transfer dialog's destination when it starts with the place's own root
+/// folder: both readings, for the warning under the path box. Paths are
+/// server-side (`resolved`, `rootFolder`) or volume-relative (`stripped`, what
+/// the box would hold instead). The rule: `cmdr_fs::volume::root_echo`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DestinationRootEcho {
+    /// The server-side folder the place is rooted at (`/srv/data`).
+    pub root_folder: String,
+    /// Where the transfer goes as typed (`/srv/data/srv/data/photos`).
+    pub resolved: String,
+    /// The box's text with the repeated root folder taken off (`/photos`).
+    pub stripped: String,
+}
+
+/// Whether the destination box's path repeats the place's own root folder, so
+/// the dialog can warn. ❌ Never rewrites anything: the transfer still anchors
+/// the path as typed (`resolve_dest_path`), because the doubled folder can be
+/// real. `None` for an unregistered volume and for any path that reads one way.
+#[tauri::command]
+#[specta::specta]
+pub async fn destination_root_echo(dest_volume_id: String, dest_path: String) -> Option<DestinationRootEcho> {
+    let dest_volume = get_volume_manager()
+        .resolve(&dest_volume_id, Path::new(&dest_path))
+        .await
+        .volume?;
+    let echo = cmdr_fs::volume::root_echo(dest_volume.root(), Path::new(&dest_path))?;
+    Some(DestinationRootEcho {
+        root_folder: echo.root_folder.to_string_lossy().into_owned(),
+        resolved: echo.resolved.to_string_lossy().into_owned(),
+        stripped: echo.stripped.to_string_lossy().into_owned(),
+    })
+}
+
 /// Checks which source items already exist at the destination. Returns conflict details for UI.
 ///
 /// When `source_volume_id` and `source_paths` are both provided, each item's
@@ -209,3 +243,7 @@ pub async fn scan_volume_for_conflicts(
     )
     .await
 }
+
+#[cfg(test)]
+#[path = "destination_root_echo_test.rs"]
+mod destination_root_echo_test;

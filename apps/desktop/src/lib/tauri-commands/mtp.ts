@@ -4,6 +4,7 @@ import { type UnlistenFn } from '@tauri-apps/api/event'
 import {
   commands,
   events,
+  type DestinationRootEcho,
   type Initiator,
   type MtpDeviceConnected,
   type MtpDeviceDisconnected,
@@ -553,6 +554,16 @@ export async function scanVolumeForCopy(
  */
 export async function destinationWriteAccess(destVolumeId: string, destPath: string): Promise<WriteAccess> {
   return commands.destinationWriteAccess(destVolumeId, destPath)
+}
+
+/**
+ * Both readings of a destination that starts with the place's own root folder
+ * (`/srv/data/photos` on a place rooted at `/srv/data`), for the transfer
+ * dialog's warning, or `null` when the path reads only one way. Never rewrites
+ * anything: the transfer goes where the box says.
+ */
+export async function destinationRootEcho(destVolumeId: string, destPath: string): Promise<DestinationRootEcho | null> {
+  return commands.destinationRootEcho(destVolumeId, destPath)
 }
 
 /**

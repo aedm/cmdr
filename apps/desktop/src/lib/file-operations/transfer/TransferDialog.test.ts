@@ -68,6 +68,17 @@ const destinationWriteAccessMock = vi.fn<(payload: { volumeId: string; path: str
   () => Promise.resolve({ kind: 'unknown' }),
 )
 
+// Both readings of a destination that repeats the place's own root folder (#164).
+// Defaults to "reads one way" so most tests see no warning.
+interface RootEchoAnswer {
+  rootFolder: string
+  resolved: string
+  stripped: string
+}
+const destinationRootEchoMock = vi.fn<(payload: { volumeId: string; path: string }) => Promise<RootEchoAnswer | null>>(
+  () => Promise.resolve(null),
+)
+
 // Home dir resolution for the long-form display of a bare `~` destination.
 vi.mock('@tauri-apps/api/path', () => ({
   homeDir: () => Promise.resolve('/Users/test'),
@@ -103,6 +114,7 @@ vi.mock('$lib/tauri-commands', () => ({
   ) => scanVolumeForConflictsMock({ volumeId, sourceItems, destPath, sourceVolumeId, sourcePaths }),
   destinationExists: (path: string, volumeId?: string) => destinationExistsMock({ path, volumeId }),
   destinationWriteAccess: (volumeId: string, path: string) => destinationWriteAccessMock({ volumeId, path }),
+  destinationRootEcho: (volumeId: string, path: string) => destinationRootEchoMock({ volumeId, path }),
   DEFAULT_VOLUME_ID: 'root',
 }))
 
@@ -225,6 +237,8 @@ beforeEach(() => {
   destinationExistsMock.mockResolvedValue({ data: true, timedOut: false })
   destinationWriteAccessMock.mockReset()
   destinationWriteAccessMock.mockResolvedValue({ kind: 'unknown' })
+  destinationRootEchoMock.mockReset()
+  destinationRootEchoMock.mockResolvedValue(null)
   startScanPreviewMock.mockClear()
   startScanPreviewMock.mockResolvedValue({ previewId: 'preview-1' })
   cancelScanPreviewMock.mockClear()
@@ -798,6 +812,69 @@ describe('TransferDialog destination path', () => {
     // Structurally invalid → red error shows, yellow warning suppressed.
     expect(target.querySelector('.path-error')).not.toBeNull()
     expect(target.querySelector('.path-warning')).toBeNull()
+  })
+
+  describe('a path repeating the place’s own root folder (#164)', () => {
+    const ECHO = { rootFolder: '/srv/data', resolved: '/srv/data/srv/data/photos', stripped: '/photos' }
+
+    function rootEchoWarning(target: HTMLElement): HTMLElement | null {
+      return target.querySelector('.root-echo')
+    }
+
+    function stripButton(target: HTMLElement): HTMLButtonElement {
+      const btn = rootEchoWarning(target)?.querySelector<HTMLButtonElement>('button')
+      if (!btn) throw new Error('strip button not rendered')
+      return btn
+    }
+
+    it('names where the path goes and offers the stripped reading, prefilled or typed', async () => {
+      // A prefilled path is ambiguous the same way a typed one is: a place rooted
+      // at `/home/bob` can really hold `/home/bob/home/bob/folder`.
+      destinationRootEchoMock.mockResolvedValue(ECHO)
+      const target = mountDialog({ destinationPath: '/srv/data/photos' })
+      await settleExistsCheck()
+
+      expect(destinationRootEchoMock).toHaveBeenCalledWith({ volumeId: 'root', path: '/srv/data/photos' })
+      const warning = rootEchoWarning(target)
+      expect(warning?.textContent).toContain('/srv/data/srv/data/photos')
+      expect(warning?.textContent).toContain('/photos')
+      // Nothing rewrites the field on its own.
+      expect(pathInput(target).value).toBe('/srv/data/photos')
+    })
+
+    it('rewrites the field only when the button is pressed', async () => {
+      destinationRootEchoMock.mockImplementation(({ path }) =>
+        Promise.resolve(path === '/srv/data/photos' ? ECHO : null),
+      )
+      const target = mountDialog({ destinationPath: '/srv/data/photos' })
+      await settleExistsCheck()
+
+      stripButton(target).click()
+      await settleExistsCheck()
+
+      expect(pathInput(target).value).toBe('/photos')
+      expect(rootEchoWarning(target)).toBeNull()
+    })
+
+    it('lets Enter send the path exactly as typed', async () => {
+      destinationRootEchoMock.mockResolvedValue(ECHO)
+      const onConfirm = vi.fn<ConfirmFn>()
+      const target = mountDialog({ destinationPath: '/srv/data/photos', onConfirm })
+      await settleExistsCheck()
+
+      pathInput(target).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await flushMicrotasks()
+
+      expect(onConfirm).toHaveBeenCalledTimes(1)
+      expect(onConfirm.mock.calls[0][0].destination).toBe('/srv/data/photos')
+    })
+
+    it('shows nothing for a path that reads one way', async () => {
+      const target = mountDialog({ destinationPath: '/Users/test/dest' })
+      await settleExistsCheck()
+
+      expect(rootEchoWarning(target)).toBeNull()
+    })
   })
 
   it('says plainly when the destination folder takes no writes, instead of promising to create it', async () => {

@@ -50,6 +50,7 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => ({
   pathExistsChecked: vi.fn(() => Promise.resolve({ data: true, timedOut: false })),
   destinationExists: vi.fn(() => Promise.resolve({ data: true, timedOut: false })),
   destinationWriteAccess: vi.fn(() => Promise.resolve({ kind: 'unknown' })),
+  destinationRootEcho: vi.fn(() => Promise.resolve(null)),
 }))
 
 vi.mock('$lib/settings', async (importOriginal) => ({
