@@ -186,3 +186,32 @@ The first open question above is resolved: a Wasabi account root now routes each
 - ❗ **A server-side copy across Wasabi regions is refused**: `400 NotImplemented`, "Operation not supported across
   regions". Cmdr reads it as `NotSupported`, so the engine streams the bytes instead; nothing reports a copy that didn't
   land. The live cell now fails if a copy answers `Ok` with nothing at the destination.
+
+## Outcome: the crate speaks HTTP/2 like the app
+
+The "HTTP/1.1 only" caveat in § Setup no longer holds.
+
+- **Why they differed**: `cmdr-s3` declared reqwest with `rustls` and `stream` only. The app build also pulls `genai`,
+  which turns on reqwest's `http2` (plus `gzip`, `charset`, and `system-proxy`), and Cargo unifies features only across
+  what's built together. So the app negotiated HTTP/2 while the crate alone, `live.sh` included, spoke HTTP/1.1.
+- **The change**: `cmdr-s3/Cargo.toml` declares `http2` itself. `transport_test.rs::the_client_is_built_with_http2`
+  calls `ClientBuilder::http2_prior_knowledge`, which exists only with the feature, so dropping it fails to compile
+  (seen red first). A test-only record of each answer's HTTP version backs `live_connect_speaks_http2_where_offered`.
+- **Who offers HTTP/2** (that cell and `curl --http2`, 2026-10-02): Hetzner, GCS, and Spaces negotiate HTTP/2; R2, AWS,
+  B2, and Wasabi answer over HTTP/1.1 only, so for them nothing changes.
+- **Rerun over HTTP/2** (every live cell, the siblings' hostile cells included; B2 not rerun, see below):
+  - GCS 33 of 33, Hetzner and Wasabi 33 of 33, R2 32 of 32, AWS green apart from the version cell's first, wrong blanket
+    assertion (S3 doesn't offer HTTP/2), since fixed.
+  - Spaces 32 of 33: one rename of the key `%20literal.txt` hit `ConnectionTimeout` in the full run and passed when
+    rerun alone, with three runners loading the link. Not reproducible, so not a finding.
+  - No provider-specific HTTP/2 problem surfaced, so no behavior changed.
+- **B2: not rerun, download cap.** Every B2 read and copy answered `403 AccessDenied` "Cannot download file, download
+  bandwidth or transaction (Class B) cap exceeded" after a day of three live runners (mostly a 1,005-object rename). B2
+  doesn't negotiate HTTP/2 anyway. The cap resets at 00:00 UTC or on B2's Caps & Alerts page. Note for the app: Cmdr
+  reads that refusal as `PermissionDenied`, which says nothing about a cap.
+- **Still reaching only the app build**: reqwest's `gzip` (an automatic `Accept-Encoding: gzip` and transparent
+  decompression), `charset`, and `system-proxy`, all from `genai`. `gzip` deserves a look: an object stored with
+  `Content-Encoding: gzip` would come back decompressed in the app (its length no longer the object's), and not in these
+  tests. `cmdr-webdav` has the same HTTP/2 gap as `cmdr-s3` had.
+- **Also fixed on the way, f1a9969ed**: 865680063 left `batch.rs` tripping clippy's `while_immutable_condition`, which
+  failed every session's clippy lane.
