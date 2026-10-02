@@ -71,10 +71,10 @@ impl S3Volume {
         // itself): S3 has no folders, only the slashes in keys and markers.
         let mut folders: HashSet<String> = HashSet::from([String::new()]);
         // A prefix past the key ceiling holds nothing (`listing::can_hold_keys`).
-        let listable = can_hold_keys(&client.profile().normalize_key(&prefix));
+        let mut more = can_hold_keys(&client.profile().normalize_key(&prefix));
         let mut found = false;
         let mut token: Option<String> = None;
-        while listable {
+        while more {
             // One past the cap is all it takes to know there's more.
             let room = cap.saturating_sub(tally.files).saturating_add(1);
             let params = ListObjectsParams {
@@ -107,9 +107,7 @@ impl S3Volume {
                 });
             }
             token = page.next_continuation_token.filter(|_| page.is_truncated);
-            if token.is_none() {
-                break;
-            }
+            more = token.is_some();
         }
         if found {
             tally.folders = folders.len() as u64;
