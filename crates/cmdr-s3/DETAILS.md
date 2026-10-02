@@ -343,8 +343,12 @@ stays `false`: a request is open while the source drains.
   so S3 never stores a truncated prefix (WebDAV removes its truncated file afterwards; on S3 that file would already be
   the user's). ❗ The last piece also waits for a go-ahead from the upload, which asks the progress callback, where a
   Cancel arrives: with only the 200 ms tick, a cancel landing between ticks lost to a fast finish and published the
-  object (found by the shared `a_cancelled_upload_leaves_nothing_behind` scenario). A cancel after the last piece went
-  out is too late to stop the publish, and the write reports the file it finished.
+  object (found by the shared `a_cancelled_upload_leaves_nothing_behind` scenario). ❗ A cancel after the last piece is
+  released is too late to stop the publish: the PUT waits for its answer and reports the file it finished. Dropping the
+  request there reported `Cancelled` over an already replaced object, and the cut-off cleanup then found our token on it
+  and deleted it, losing the original AND the new bytes (verified on R2, `live_hostile_cancel_uploads`, 2026-10-02;
+  pinned by `late_cancel_test.rs`, a fake S3 that commits then answers slowly). An empty body has no last piece, so its
+  only Cancel check is before the request.
 - ❗ **A cut-off PUT is cleaned up after**, because not every server keeps S3's promise to publish nothing short of
   `Content-Length`: VersityGW stores whatever arrived before the connection dropped (fixture README). Every PUT carries
   a token of its own (`x-amz-meta-cmdr-write`, `metadata::write_token`), and a PUT that was cancelled or cut off HEADs

@@ -367,6 +367,8 @@ mod integration_test;
 #[cfg(test)]
 mod live_flow_test;
 #[cfg(test)]
+mod late_cancel_test;
+#[cfg(test)]
 mod live_protocol_test;
 #[cfg(test)]
 mod live_support;

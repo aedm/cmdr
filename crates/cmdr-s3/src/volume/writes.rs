@@ -321,6 +321,18 @@ impl S3Volume {
             std::sync::Arc::clone(client.liveness()),
             last_piece,
         );
+        // An empty body has no last piece to hold, so the request itself is
+        // the point of no return: a Cancel lands only before it goes.
+        if size == 0 && progress.at(0).is_break() {
+            return Err(VolumeError::Cancelled(self.volume_id().to_string()));
+        }
+        // ❗ Once the last piece is released the server may publish at any
+        // moment, so a Cancel after that is too late: dropping the request
+        // then would report `Cancelled` over a replaced object, and the
+        // cut-off cleanup would find our token on it and delete it (R2 answers
+        // slowly enough to hit this, live). The write waits for the answer and
+        // reports the file it finished (`late_cancel_test.rs`).
+        let mut released = size == 0;
         // The block scopes the in-flight request: leaving it drops the request,
         // which is what stops a cancelled upload on the wire.
         let sent = {
@@ -340,9 +352,11 @@ impl S3Volume {
                             stop.cancel();
                             break None;
                         }
+                        released = true;
                     }
                     _ = tick.tick() => {
-                        if progress.at(counts.handed.load(Ordering::Relaxed).min(size)).is_break() {
+                        let asked_to_stop = progress.at(counts.handed.load(Ordering::Relaxed).min(size)).is_break();
+                        if asked_to_stop && !released {
                             stop.cancel();
                             break None;
                         }
