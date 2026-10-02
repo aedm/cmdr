@@ -249,7 +249,7 @@
   "@fileOperations.transferDialog.targetWillBeCreatedCopy": {
     "sourceHash": "4e8d166"
   },
-  "fileOperations.transferDialog.renameByMoveHint": "Renaming this copies everything inside it on the server, so it runs as a move you can pause or cancel.",
+  "fileOperations.transferDialog.renameByMoveHint": "Renomear este item copia tudo o que há dentro dele no servidor, então a renomeação é feita como uma movimentação que você pode pausar ou cancelar.",
   "@fileOperations.transferDialog.renameByMoveHint": {
     "sourceHash": "31987cc"
   },
@@ -305,15 +305,15 @@
   "@fileOperations.transferDialog.estimatedSizeTooltip": {
     "sourceHash": "2e8ba70"
   },
-  "fileOperations.s3Cost.line": "About {amount} at {provider} list prices",
+  "fileOperations.s3Cost.line": "Cerca de {amount} pelos preços de tabela de {provider}",
   "@fileOperations.s3Cost.line": {
     "sourceHash": "e8db02b"
   },
-  "fileOperations.s3Cost.infoLabel": "About this estimate",
+  "fileOperations.s3Cost.infoLabel": "Sobre esta estimativa",
   "@fileOperations.s3Cost.infoLabel": {
     "sourceHash": "19637c5"
   },
-  "fileOperations.s3Cost.infoText": "This uses the provider’s public list prices. Free tiers, discounts, included allowances, and minimum charges can make your bill lower or higher.",
+  "fileOperations.s3Cost.infoText": "A estimativa usa os preços de tabela públicos do provedor. Níveis gratuitos, descontos, cotas incluídas e cobranças mínimas podem deixar sua fatura mais baixa ou mais alta.",
   "@fileOperations.s3Cost.infoText": {
     "sourceHash": "379665c"
   },

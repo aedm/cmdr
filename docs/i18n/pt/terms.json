@@ -310,7 +310,10 @@
     "confidence": "high",
     "sources": "MS terminology pt-BR (id 28521 → 28529, BRA)",
     "note": "The accessible name must contain the visible label (WCAG 2.5.3): move queryUi.scope.toggle.caseSensitive and its Aria together.",
-    "decision": "One thing, one name"
+    "decision": "One thing, one name",
+    "exceptions": {
+      "servers.refusal.s3FieldMalformed": "“lowercase letters” names a character class (letras minúsculas), not case sensitivity."
+    }
   },
   "certificate": {
     "chosen": "certificado",
@@ -420,7 +423,11 @@
     "accept": ["nuvem"],
     "forms": "cloud folders → pastas na nuvem",
     "confidence": "high",
-    "sources": "shipped pt catalog"
+    "sources": "shipped pt catalog",
+    "exceptions": {
+      "servers.sheet.s3ProviderGcs": "Google Cloud Storage is a product name kept verbatim, not a sync service.",
+      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google’s product name kept verbatim, not a sync service."
+    }
   },
   "column": {
     "chosen": "coluna",
@@ -1359,7 +1366,11 @@
     "chosen": "lista",
     "forms": "the Servers list → a lista Servidores (the row name after the noun, like grupo Rede)",
     "confidence": "high",
-    "sources": "macOS pt-BR Finder “Lista” (view as List); Microsoft pt-BR terminology list → lista; Nautilus pt_BR “Visão em lista”"
+    "sources": "macOS pt-BR Finder “Lista” (view as List); Microsoft pt-BR terminology list → lista; Nautilus pt_BR “Visão em lista”",
+    "exceptions": {
+      "fileOperations.s3Cost.line": "“list prices” is a price list, not a UI list: pt-BR says preços de tabela.",
+      "fileOperations.s3Cost.infoText": "“list prices” is a price list, not a UI list: pt-BR says preços de tabela."
+    }
   },
   "local": {
     "chosen": "local",
@@ -1491,7 +1502,10 @@
     "chosen": "Nome",
     "forms": "New name / Current name → Novo nome / Nome atual",
     "confidence": "confirmed",
-    "sources": "macOS Finder pt-BR"
+    "sources": "macOS Finder pt-BR",
+    "exceptions": {
+      "servers.sheet.identityLockedS3": "English “name” is a verb here (“are what name this place”); identificam, like the sibling servers.sheet.identityLocked."
+    }
   },
   "nas": {
     "chosen": "NAS",
@@ -2283,7 +2297,8 @@
     "sources": "System Settings.app InfoPlist (Settings → Ajustes)",
     "exceptions": {
       "errors.mount.mountRefused": "A NAS's own admin settings are configurações do servidor; Ajustes is only Cmdr's or Apple's window.",
-      "errors.mount.unsupportedProtocol": "A NAS's own admin settings are configurações do servidor; Ajustes is only Cmdr's or Apple's window."
+      "errors.mount.unsupportedProtocol": "A NAS's own admin settings are configurações do servidor; Ajustes is only Cmdr's or Apple's window.",
+      "servers.sheet.s3GcsKeyHelp": "Quotes Google Cloud console’s own pt-BR page, Configurações; Ajustes is only Cmdr’s or Apple’s window."
     }
   },
   "share-menu": {
@@ -2875,5 +2890,64 @@
     ],
     "confidence": "tentative",
     "sources": "Cmdr's license is the BSL (docs/business/README.md); catalog (onboarding.stepFda.con.body)"
+  },
+  "restore": {
+    "chosen": "restaurar",
+    "accept": ["restaur"],
+    "forms": "noun restauração; a file back out of cold storage → Restaure o arquivo",
+    "confidence": "high",
+    "sources": "macOS Finder pt-BR (Restaurar “^1” para…); MS terminology pt-BR restore → restaurar; Nautilus and Dolphin pt-BR Restore → Restaurar"
+  },
+  "storage": {
+    "chosen": "armazenamento",
+    "accept": ["armazen"],
+    "forms": "cold storage → armazenamento frio; storage provider → provedor de armazenamento",
+    "confidence": "high",
+    "sources": "MS terminology pt-BR (cold storage → armazenamento frio, id 2266289); shipped pt catalog (armazenamento do iCloud, armazenamento de celulares)",
+    "exceptions": {
+      "servers.refusal.notAnS3Endpoint": "Follows the sibling servers.refusal.notAWebdavServer frame (Nenhum serviço … responde neste endereço).",
+      "servers.sheet.s3ProviderGcs": "Product name kept verbatim (Google Cloud Storage, Hetzner Object Storage).",
+      "servers.sheet.s3ProviderHetzner": "Product name kept verbatim (Google Cloud Storage, Hetzner Object Storage).",
+      "servers.sheet.s3GcsKeyHelp": "Product name kept verbatim (Google Cloud Storage, Hetzner Object Storage)."
+    }
+  },
+  "cursor": {
+    "chosen": "cursor",
+    "confidence": "high",
+    "sources": "shipped pt catalog (10× o cursor, Abrir item sob o cursor); MS terminology pt-BR cursor → cursor"
+  },
+  "dialog": {
+    "chosen": "caixa de diálogo",
+    "accept": ["diálogo", "janela"],
+    "forms": "a named dialog in running text → o diálogo Mover / a caixa de diálogo Selecionar arquivos",
+    "confidence": "high",
+    "sources": "MS terminology pt-BR dialog box → caixa de diálogo; shipped pt catalog (commands.dialogConfirm.label, settings.advanced.exitFullScreenOnEscape.description)"
+  },
+  "example": {
+    "chosen": "Exemplo:",
+    "accept": ["Exemplo", "ex.:"],
+    "confidence": "high",
+    "sources": "shipped pt catalog (servers.sheet.usernamePlaceholder Exemplo: barry, ai.cloud.modelPlaceholderExample)"
+  },
+  "tint": {
+    "chosen": "matiz",
+    "accept": ["Matizar", "matiz"],
+    "forms": "the setting label → Matizar painéis …; the help text → Matiz de fundo aplicado a painéis …",
+    "confidence": "tentative",
+    "sources": "shipped pt catalog (settings.appearance.tint*); MS terminology pt-BR tint → tonalidade (not adopted: the catalog’s six tint keys already say matiz)"
+  },
+  "grant": {
+    "chosen": "conceder",
+    "accept": ["conced", "conceda", "receb"],
+    "forms": "grant Cmdr access → conceda acesso ao Cmdr",
+    "confidence": "high",
+    "sources": "shipped pt catalog (errors.listing.*.suggestion “conceda acesso ao Cmdr”)"
+  },
+  "owner": {
+    "chosen": "dono",
+    "accept": ["dono", "quem cuida do servidor"],
+    "forms": "a file’s owner → o dono; the person running a server → quem cuida do servidor (avoids a gendered o dono for a person)",
+    "confidence": "tentative",
+    "sources": "shipped pt catalog (errors.listing.*.suggestion “verificar o dono e as permissões”; servers decision “quem cuida do servidor”)"
   }
 }

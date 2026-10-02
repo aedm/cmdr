@@ -478,19 +478,19 @@
   "@menu.context.copyGoogleDriveLink": {
     "sourceHash": "070b383"
   },
-  "menu.context.copyShareLink": "Copy share link",
+  "menu.context.copyShareLink": "Copiar link de compartilhamento",
   "@menu.context.copyShareLink": {
     "sourceHash": "d31483e"
   },
-  "menu.context.shareLinkSevenDays": "Expires in seven days",
+  "menu.context.shareLinkSevenDays": "Expira em sete dias",
   "@menu.context.shareLinkSevenDays": {
     "sourceHash": "06949d8"
   },
-  "menu.context.shareLinkOneDay": "Expires in one day",
+  "menu.context.shareLinkOneDay": "Expira em um dia",
   "@menu.context.shareLinkOneDay": {
     "sourceHash": "5ff3dbc"
   },
-  "menu.context.shareLinkOneHour": "Expires in one hour",
+  "menu.context.shareLinkOneHour": "Expira em uma hora",
   "@menu.context.shareLinkOneHour": {
     "sourceHash": "faf9c50"
   },
