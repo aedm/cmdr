@@ -354,6 +354,12 @@ in two runs. Full per-cell findings: `docs/notes/s3/live-verification-2026-10.md
   accepted everywhere, and a WRONG crc32 is `BadDigest` on AWS, R2, B2, and Wasabi (Hetzner, GCS, and Spaces ignore it);
   we send none. Where one key reaches two buckets (AWS, B2, Wasabi, Hetzner), `CopyObject` and `UploadPartCopy` work
   between them.
+- **A one-request `CopyObject` and its ETag** (`live_protocol_test.rs::live_copy_object_etags`, 2026-10-02, six
+  providers, B2 not run): a single-part source's copy keeps its ETag everywhere (Spaces answers it unquoted). A
+  multipart source's copy keeps its `-N` ETag on Hetzner and Spaces, and gets a fresh whole-object ETag on AWS, R2, and
+  Wasabi, so there a lost answer reports a failure (§ "Server-side copy"). A wrong `x-amz-copy-source-if-match` is `412`
+  on AWS, R2, GCS, and Hetzner, and ignored on Spaces and Wasabi. ❗ GCS answers `400 InvalidArgument` to a pin naming a
+  multipart ETag, quoted or not, hence `refuses_multipart_copy_pin`.
 - **Connect refusals** (`live_connect_test.rs::live_connect_refusals`): a wrong secret or key id is `KeysRejected` on
   the bucket and the account root everywhere, except R2's wrong secret (`AccessDenied` / `BucketListRefused`: its
   bucket-scoped key gets `AccessDenied` on `ListBuckets` whatever the secret); a missing bucket is `NoSuchBucket`

@@ -39,7 +39,7 @@ cleanup.
   - AWS, Spaces, Wasabi, GCS: ok.
   - R2: ok; the 1,005-object rename takes 168 s, past the suite's old 120 s wait (now stretched on live runs).
   - Hetzner: ok in five of six runs; once the 1,005-object rename failed with `DestinationExists` on a fresh destination
-    key (`renamed/f0053.txt`). Diagnosed and fixed: § "The lead's four decisions", item 4.
+    key (`renamed/f0053.txt`). Diagnosed and fixed: § "The lead's decisions", item 4.
   - B2: unverified, cap hit. Four of five failed with `PermissionDenied` on the source once the account's daily Class B
     cap was used up (§ "Still open", item 6); pause then cancel passed before the cap was reached.
 - **Merges and moves** (merge under Skip, Overwrite, Rename (keep both), OverwriteSmaller; a move-merge onto that spares
@@ -53,7 +53,7 @@ cleanup.
   roll back a finished copy, cancel with rollback mid-tree, delete a folder of 1,005 objects):
   - R2, AWS, Spaces, Hetzner: 12 of 12.
   - Wasabi: 12 of 12 on the rerun; the first run's 1,005-object delete stopped at `f0530.txt` with `DeviceDisconnected`
-    (one transport blip ended the whole delete; now retried, § "The lead's four decisions", item 1).
+    (one transport blip ended the whole delete; now retried, § "The lead's decisions", item 1).
   - GCS: 11 of 11; the 1,005-object delete didn't finish inside the remaining seven minutes (614 objects gone).
   - B2: unverified, cap hit.
   - After every cancel: no object at the name, no unfinished upload on the server, no open record in the upload ledger.
@@ -86,7 +86,7 @@ cleanup.
 3. **Test infrastructure**: the gated source served the same bytes for every path (now per file, `gated_files`); live
    seeding at 32 concurrent PUTs drew `503 SlowDown` from Hetzner (now eight on a live account, a 503 sent again).
 
-## The lead's four decisions, carried out
+## The lead's decisions, carried out
 
 Measured with the request tally (`testing::take_sent_requests`, `RUST_LOG=s3_sent=trace` for the sequence) on VersityGW,
 whose "Other" profile is check-then-write everywhere, then rerun live on the six uncapped providers.
@@ -110,25 +110,19 @@ whose "Other" profile is check-then-write everywhere, then rerun live on the six
    - Each selected name at `D`: a HEAD and a capped LIST (free-name probe).
    - Each folder made (`create_directory`): a capped LIST and a HEAD proving the name free, a capped LIST proving the
      parent, the marker PUT, then a HEAD and a capped LIST.
-   - Each file: copy = the source HEAD + `CopyObject` + the verifying HEAD; upload = PUT + the verifying HEAD. The
-     per-object no-overwrite HEAD now goes only where it protects data: a write into a folder that already existed (a
-     merge, or files selected straight into `D`). Inside a folder this operation made, the typed fact
-     `WriteMode::CreateNewInFreshFolder` (handed down by the merge walker only for a level its own `create_directory`
-     made) skips it; the accepted window is in `crates/cmdr-s3/DETAILS.md` § "No-overwrite writes".
+   - Each file: copy = `CopyObject` + the verifying HEAD (its source facts from the walk's listing, item 5; a copy in
+     parts adds one source HEAD); upload = PUT + the verifying HEAD. The per-object no-overwrite HEAD now goes only
+     where it protects data: a write into a folder that already existed (a merge, or files selected straight into `D`).
+     Inside a folder this operation made, the typed fact `WriteMode::CreateNewInFreshFolder` (handed down by the merge
+     walker only for a level its own `create_directory` made) skips it; the accepted window is in
+     `crates/cmdr-s3/DETAILS.md` § "No-overwrite writes".
    - A move's sweep, per folder: a HEAD and a capped LIST (its kind), a full LIST, one `DeleteObjects`, a capped LIST
      and the marker's delete.
    - Kept for data safety: the per-object no-overwrite HEAD in a merge on check-then-write providers (Hetzner, Spaces,
      Wasabi, B2, GCS for completions, "Other"), every verifying HEAD, the folder-creation checks, and the sweep's kind
      check.
-   - **(b) not done, and why**: the source HEAD of a one-request copy can't come from the listing. `ListObjectsV2`
-     carries no user metadata and no content headers, so the listing can't say whether the source has its own
-     `x-amz-meta-mtime` (the `COPY`-or-`REPLACE` decision) or what Content-Type and Content-Encoding to restate. Since
-     item 4 every copy is `REPLACE`, which needs them. Dropping the HEAD would lose the date or the headers of objects
-     another tool wrote. The pin would still cover a stale listing on AWS, R2, and B2 (412 → `SourceChanged`); on the
-     unpinned providers a source replaced since the listing would copy as its new version, which is harmless for the
-     bytes (a move's sweep keeps a source whose size or date changed) but would write the old listing's size into the
-     landing check and fail it. So for B2 the 1,005-object rename to a new name is now ~2,016 HEADs (from 3,021), not
-     ~1,005.
+   - (b) first stayed undone because every copy restated the source's metadata, which a listing doesn't carry; item 5
+     carries it out under the lead's follow-up decision.
 3. **The estimate is exact** (`5f0e99c14`). `Workload` gained one method per engine step above; `s3_costs/plan.rs`
    composes them from the selection's shape (`ScanCostFacts::selected_folders` / `selected_file_sizes`). Ten operations
    (upload, download, same-bucket copy, move within, rename, move off, delete, and two selected files uploaded, copied,
@@ -139,20 +133,35 @@ whose "Other" profile is check-then-write everywhere, then rerun live on the six
    level, an existing destination with no folder clash, source folders with markers.
 4. **Hetzner's `DestinationExists`: confirmed and fixed** (`5182dc1ac`). Reproduced over `fake_s3.rs`: a `CopyObject`
    the server applied while its answer was lost failed as `DeviceDisconnected`; `try_server_side_copy` fell back to
-   streaming, and the streamed write's no-overwrite check refused the name the copy itself had taken. Every one-request
-   copy now goes as `REPLACE` with the source's restated metadata (mtime, Content-Type, Content-Encoding, Cache-Control,
-   Content-Disposition, Content-Language, user metadata) beside its own write token, and a lost answer or a server fault
-   asks `landed_whole` (one HEAD, never a delete). No extra request on the happy path: the source HEAD it restates from
-   was sent anyway. Lost by restating instead of `COPY`: `Expires` and a website redirect.
+   streaming, and the streamed write's no-overwrite check refused the name the copy itself had taken. First fixed with a
+   write token on a `REPLACE` copy; item 5 replaces that with a proof by the result.
+5. **A one-request copy sends no source HEAD** (`4e0793d65`, `513572868`; the lead's follow-up on (b)). The copy takes
+   the source's size and ETag from the walk's listing (or the scan's stat of a selected file; `cmdr-s3`'s `listed.rs`),
+   goes by `COPY` (the server carries metadata and content headers), pins `x-amz-copy-source-if-match`, and writes no
+   token. A lost answer is proven by the destination's size and ETag equal to the source's; the Hetzner repro stays
+   fixed under it (`copy_landed_test.rs`, Hetzner's shape). A copy in parts keeps its source HEAD (for the metadata it
+   restates) and its token path. Live, per provider (`live_copy_object_etags`):
+   - a single-part source's copy keeps its ETag on all six; a multipart source's keeps it on Hetzner and Spaces, and
+     gets a fresh one on AWS, R2, and Wasabi (there a lost answer reports a failure, safe: a move keeps its source);
+   - a wrong pin is `412` on AWS, R2, GCS, and Hetzner, ignored on Spaces and Wasabi;
+   - ❗ found and fixed on the way: GCS refuses (`400 InvalidArgument`) a pin naming a multipart ETag, which would have
+     failed every copy of a multipart-uploaded file there. GCS now sends those unpinned (`refuses_multipart_copy_pin`).
+   - Tradeoff, flagged to the lead: a source without its own `x-amz-meta-mtime` (another tool's upload) takes the copy's
+     time as its date in a one-request copy. B2's 1,005-object rename to a new folder: about 1,005 HEADs (from 2,016);
+     the fixture cell now bounds it at 1,025.
+6. **The walker's second listing**: not a contained refactor (the scan keeps no names; handing listings down crosses
+   `cmdr-fs`'s walk, the scan cache, and the merge walker, and the walker's own listing is what sees a file added after
+   the scan). Filed as issue #356 with the options.
 
-Live reruns after all four, on R2, GCS, Spaces, AWS, Wasabi, and Hetzner: renames 30 of 30, safety (cancel, rollback,
-delete) 72 of 72, merges and moves 90 of 90, the byte path 60 of 60, cross-bucket 9 of 9 (where a second bucket exists),
-requests against the estimate 6 of 6. B2 stays unverified (cap hit).
+Live reruns after item 5, on R2, GCS, Spaces, AWS, Wasabi, and Hetzner: renames 30 of 30 (one Spaces "reviewed batch"
+run ended `SourceNotRemoved` on a source delete and passed on rerun), safety all ok, merges and moves 90 of 90, the byte
+path all ok, cross-bucket 9 of 9 (where a second bucket exists), requests against the estimate 6 of 6 (one Hetzner run
+sent a retried `UploadPart` the estimate can't foresee; exact on rerun). B2 stays unverified (cap hit).
 
 ## Still open for the lead
 
-1. **The walker re-lists every source folder the scan already listed** (one full LIST per folder per copy or move).
-   Threading the scan's listings down would save it; an engine refactor, not made.
+1. **The walker re-lists every source folder the scan already listed** (one full LIST per folder per copy or move):
+   issue #356 (item 6).
 2. **Small-object throughput.** The 1,005-object rename now: AWS 30 s, Spaces 45 s, Hetzner 48 s, Wasabi 74 s, GCS 189
    s, R2 202 s. Per-request latency dominates; how many objects a folder rename copies at once is the lever.
 3. **IPv6 without a route.** On this network (ULA addresses only) GCS twice failed mid-run with "Network is unreachable
@@ -168,7 +177,7 @@ requests against the estimate 6 of 6. B2 stays unverified (cap hit).
    `403`; LIST, PUT, and `DeleteObjects` kept working. Cmdr maps both to `VolumeError::PermissionDenied` (a stat, a
    read, a delete's fallback HEAD); in a transfer that's `WriteOperationError::PermissionDenied` with
    `refusal: Unclassified` and `side: Source`, which the dialog words as a permission problem, now adding that it may be
-   a usage cap (a sibling's `16ee8a3b8`). With items 1 and 2 the 1,005-object delete sends 2 HEADs instead of 1,007 and
-   the rename 2,016 instead of 3,021.
+   a usage cap (a sibling's `16ee8a3b8`). With items 1, 2, and 5 the 1,005-object delete sends 2 HEADs instead of 1,007
+   and the rename about 1,005 instead of 3,021.
 7. **A name taken mid-upload on Wasabi** is overwritten silently (the documented check-then-write window); whether
    Wasabi honours `If-None-Match` on PUT is the profile owner's to verify.
