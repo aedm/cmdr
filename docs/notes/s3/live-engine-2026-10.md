@@ -39,13 +39,13 @@ cleanup.
   - AWS, Spaces, Wasabi, GCS: ok.
   - R2: ok; the 1,005-object rename takes 168 s, past the suite's old 120 s wait (now stretched on live runs).
   - Hetzner: ok in five of six runs; once the 1,005-object rename failed with `DestinationExists` on a fresh destination
-    key (`renamed/f0053.txt`). Open question 3.
+    key (`renamed/f0053.txt`). Diagnosed and fixed: § "The lead's four decisions", item 4.
   - B2: unverified, cap hit. Four of five failed with `PermissionDenied` on the source once the account's daily Class B
-    cap was used up (open question 4); pause then cancel passed before the cap was reached.
+    cap was used up (§ "Still open", item 6); pause then cancel passed before the cap was reached.
 - **Merges and moves** (merge under Skip, Overwrite, Rename (keep both), OverwriteSmaller; a move-merge onto that spares
   what it skipped; a folder moved onto and off; a file saved over or added mid-move off; same-bucket move-merge, folder
   move, and tree copy; a missing nested destination; a 6 MiB odd-length file; 40 files at full concurrency): 15 of 15 on
-  R2, AWS, Spaces, Wasabi, Hetzner, and GCS (GCS's first run lost the network mid-cell, open question 6; the rerun was
+  R2, AWS, Spaces, Wasabi, Hetzner, and GCS (GCS's first run lost the network mid-cell, open question 3; the rerun was
   clean). B2: unverified, cap hit.
 - **Safety, cancel, rollback, delete** (a failed merge copy or move onto the user's folder, a delete bound to a
   local-shaped preview, a recursive delete that takes exactly the selection, an unknown source type, cancel
@@ -53,7 +53,7 @@ cleanup.
   roll back a finished copy, cancel with rollback mid-tree, delete a folder of 1,005 objects):
   - R2, AWS, Spaces, Hetzner: 12 of 12.
   - Wasabi: 12 of 12 on the rerun; the first run's 1,005-object delete stopped at `f0530.txt` with `DeviceDisconnected`
-    (one transport blip ends the whole delete, open question 1).
+    (one transport blip ended the whole delete; now retried, § "The lead's four decisions", item 1).
   - GCS: 11 of 11; the 1,005-object delete didn't finish inside the remaining seven minutes (614 objects gone).
   - B2: unverified, cap hit.
   - After every cancel: no object at the name, no unfinished upload on the server, no open record in the upload ledger.
@@ -86,67 +86,88 @@ cleanup.
 3. **Test infrastructure**: the gated source served the same bytes for every path (now per file, `gated_files`); live
    seeding at 32 concurrent PUTs drew `503 SlowDown` from Hetzner (now eight on a live account, a 503 sent again).
 
-## Cost estimates
+## The lead's four decisions, carried out
 
-`s3_engine_integration_test.rs::requests_sent_against_the_estimate` counts every signed request by operation
-(`testing::take_sent_requests`) for four operations on one bucket and compares it with `s3_costs::planned_workloads`,
-the plan `estimate` prices. The fixture cells and the live cell assert the requests that move bytes and report the rest.
+Measured with the request tally (`testing::take_sent_requests`, `RUST_LOG=s3_sent=trace` for the sequence) on VersityGW,
+whose "Other" profile is check-then-write everywhere, then rerun live on the six uncapped providers.
 
-- **The write paths match exactly everywhere**: `PutObject`, `CreateMultipartUpload`, `UploadPart`,
-  `CompleteMultipartUpload`, `CopyObject`, `UploadPartCopy`, and `GetObject`, on both fixtures and R2, AWS, Wasabi, GCS,
-  Spaces, and Hetzner. GCS's same-bucket copy of a 70 MiB file is two `CopyObject`s, as estimated (no `UploadPartCopy`).
-- **Not counted by the estimate** (the same shape on every provider; a folder of a 200 KB and a 70 MiB file):
-  - Upload: 7 `ListObjectsV2` (estimated 0), and 2 HEADs more than estimated (1 on Wasabi).
-  - Download: 3 `ListObjectsV2` and 1 `HeadObject` (estimated 0).
-  - Same-bucket copy: 10 `ListObjectsV2` (estimated 0), 3 HEADs more (4 on Spaces and Hetzner).
-  - These are the engine's own reads (the scan, the destination pre-check, the folder-creation checks), which the
-    estimate counts only as `list_folder` for a tree it didn't scan. A LIST is a class A request at AWS (the price of a
-    PUT), so for a tree of many small folders it's a real share of the bill.
-- **The delete doesn't batch.** The estimate bills `DeleteObjects` 1,000 keys a request; the volume delete walker sends
-  one `Volume::delete` per object, which on S3 is a capped LIST, a HEAD, and a DELETE. A folder of 1,005 objects on
-  VersityGW: 1,009 `ListObjectsV2`, 1,007 `HeadObject`, 1,005 `DeleteObject` (3,021 requests, estimated about 5). Live
-  wall clock for that delete: AWS 74 s, Spaces 119 s, Hetzner 139 s, Wasabi 155 s, R2 343 s, GCS about 11 minutes. The
-  rename of the same folder, whose source sweep does batch (`delete_files`), takes 28 s on AWS.
+1. **The volume delete batches** (`80905b4b3`). New capability `Volume::delete_batch_size` (S3: 1,000); the walker sends
+   the scanned files through `delete_files` in chunks, pausing and checking Cancel between chunks; `cmdr-s3` sends a
+   throttled, faulted, or cut-off `DeleteObjects` again after 1 s and 2 s. A 1,005-object folder: 3,021 requests (1,009
+   LIST, 1,007 HEAD, 1,005 DELETE) → 8 (the top-level probe, two listing pages, two `DeleteObjects`, the folder's own
+   removal). Live, seeding included: AWS 74 s → 6 s, Spaces 119 → 15 s, Hetzner 139 → 9 s, Wasabi 155 → 29 s, R2 343 →
+   47 s, GCS about 11 minutes → 35 s.
+2. **The needless HEADs are gone where the folder's creation already proved what they asked** (`375a0f853`). Where each
+   remaining HEAD and LIST comes from, per operation (folder `F` of `n` files with subfolders, into an existing
+   destination `D`; check-then-write profile):
+   - The scan: a HEAD per selected item, plus a capped LIST for a folder (`get_metadata`: the HEAD answers nothing, the
+     LIST finds the folder); one full LIST per folder page.
+   - The walk: one full LIST per source folder page again (the merge walker re-lists each level it copies; the scan's
+     listing isn't handed down). Redundant, kept: removing it means threading the scan's listings into the walker, an
+     engine refactor with no data-safety stake. Candidate for later.
+   - Readying `D`: two capped LISTs (`create_directory_all` finding it) and one full LIST (the stale-temp reap). A move
+     or rename within the bucket adds three capped LISTs (its source and destination checks).
+   - Each selected name at `D`: a HEAD and a capped LIST (free-name probe).
+   - Each folder made (`create_directory`): a capped LIST and a HEAD proving the name free, a capped LIST proving the
+     parent, the marker PUT, then a HEAD and a capped LIST.
+   - Each file: copy = the source HEAD + `CopyObject` + the verifying HEAD; upload = PUT + the verifying HEAD. The
+     per-object no-overwrite HEAD now goes only where it protects data: a write into a folder that already existed (a
+     merge, or files selected straight into `D`). Inside a folder this operation made, the typed fact
+     `WriteMode::CreateNewInFreshFolder` (handed down by the merge walker only for a level its own `create_directory`
+     made) skips it; the accepted window is in `crates/cmdr-s3/DETAILS.md` § "No-overwrite writes".
+   - A move's sweep, per folder: a HEAD and a capped LIST (its kind), a full LIST, one `DeleteObjects`, a capped LIST
+     and the marker's delete.
+   - Kept for data safety: the per-object no-overwrite HEAD in a merge on check-then-write providers (Hetzner, Spaces,
+     Wasabi, B2, GCS for completions, "Other"), every verifying HEAD, the folder-creation checks, and the sweep's kind
+     check.
+   - **(b) not done, and why**: the source HEAD of a one-request copy can't come from the listing. `ListObjectsV2`
+     carries no user metadata and no content headers, so the listing can't say whether the source has its own
+     `x-amz-meta-mtime` (the `COPY`-or-`REPLACE` decision) or what Content-Type and Content-Encoding to restate. Since
+     item 4 every copy is `REPLACE`, which needs them. Dropping the HEAD would lose the date or the headers of objects
+     another tool wrote. The pin would still cover a stale listing on AWS, R2, and B2 (412 → `SourceChanged`); on the
+     unpinned providers a source replaced since the listing would copy as its new version, which is harmless for the
+     bytes (a move's sweep keeps a source whose size or date changed) but would write the old listing's size into the
+     landing check and fail it. So for B2 the 1,005-object rename to a new name is now ~2,016 HEADs (from 3,021), not
+     ~1,005.
+3. **The estimate is exact** (`5f0e99c14`). `Workload` gained one method per engine step above; `s3_costs/plan.rs`
+   composes them from the selection's shape (`ScanCostFacts::selected_folders` / `selected_file_sizes`). Ten operations
+   (upload, download, same-bucket copy, move within, rename, move off, delete, and two selected files uploaded, copied,
+   and deleted) match request kind for request kind on both fixtures (`the_engine_sends_what_the_estimate_counts`) and
+   live on R2, GCS, Spaces, AWS, Wasabi, and Hetzner (`s3_live_engine_sends_what_the_estimate_counts`). Also fixed on
+   the way (`6e9ad525e`): a multipart copy off the pin allowlist sends one more source HEAD, now counted. Approximate on
+   purpose, stated in `plan.rs`: listing pages (one per folder plus one per thousand files), one sweep batch per folder
+   level, an existing destination with no folder clash, source folders with markers.
+4. **Hetzner's `DestinationExists`: confirmed and fixed** (`5182dc1ac`). Reproduced over `fake_s3.rs`: a `CopyObject`
+   the server applied while its answer was lost failed as `DeviceDisconnected`; `try_server_side_copy` fell back to
+   streaming, and the streamed write's no-overwrite check refused the name the copy itself had taken. Every one-request
+   copy now goes as `REPLACE` with the source's restated metadata (mtime, Content-Type, Content-Encoding, Cache-Control,
+   Content-Disposition, Content-Language, user metadata) beside its own write token, and a lost answer or a server fault
+   asks `landed_whole` (one HEAD, never a delete). No extra request on the happy path: the source HEAD it restates from
+   was sent anyway. Lost by restating instead of `COPY`: `Expires` and a website redirect.
 
-## Open questions for the lead
+Live reruns after all four, on R2, GCS, Spaces, AWS, Wasabi, and Hetzner: renames 30 of 30, safety (cancel, rollback,
+delete) 72 of 72, merges and moves 90 of 90, the byte path 60 of 60, cross-bucket 9 of 9 (where a second bucket exists),
+requests against the estimate 6 of 6. B2 stays unverified (cap hit).
 
-1. **Batch the volume delete, or bill it per object?** Batching files through `Volume::delete_files` (S3's
-   `DeleteObjects`) in the volume delete walker would make the estimate true, cut a 1,005-object delete from ~3,000
-   requests to a handful, take minutes off R2 and GCS, and shrink the window in which one transport blip fails the whole
-   delete (seen once on Wasabi). The alternative is teaching `Workload` the per-object shape. An engine change, so not
-   made here.
-2. **Count the engine's LISTs and HEADs in the estimate?** Or trim them: 7–10 LISTs for a two-file folder looks like
-   more than the scan plus one pre-check needs.
-3. **Hetzner's intermittent `DestinationExists` on a server-side copy** (once in six 1,005-object renames, not
-   reproduced in five more with logging on). Two paths fit: a `CopyObject` that published and then failed to verify (a
-   throttled or cut-off HEAD; Hetzner does answer `503 SlowDown` under load) makes `try_server_side_copy` fall back to
-   streaming, whose `CreateNew` then refuses the name the copy itself took; or a transport error after Hetzner applied
-   the copy. No data lost (the source stays), but the rename stops with a wrong reason. Candidates: retry throttled
-   idempotent requests (HEAD, a 503'd `CopyObject`) in the backend, and have the fallback recognize its own landed copy.
-4. **B2's daily Class B cap.** The 1,005-object cells used up the account's cap. From then on every B2 GET answered
-   `403` with `<Code>AccessDenied</Code>` ("Cannot download file, download bandwidth or transaction (Class B) cap
-   exceeded", read with the AWS CLI), and every HEAD a bodyless `403`. Cmdr maps both to `VolumeError::PermissionDenied`
-   (a stat, a read, a delete's fallback HEAD); in a transfer that's `WriteOperationError::PermissionDenied` with
-   `refusal: Unclassified` and `side: Source`, which the dialog words as a permission problem (a sibling's `16ee8a3b8`
-   now adds that it may be a usage cap). LIST, PUT, and `DeleteObjects` kept working. B2's renames, merges, safety
-   cells, and cross-provider copies are unverified until a rerun after the reset. Where the HEADs come from, a
-   1,005-object folder rename counted on VersityGW (whose "Other" profile copies the way B2's does: check-then-write, no
-   conditional copy): 1,005 `CopyObject`, 3,021 `HeadObject`, 19 LISTs, 2 `DeleteObjects`, 1 PUT from the engine; the
-   test's own checks add 1 HEAD and 3 LISTs. Three HEADs per object, all in `server_copy.rs::copy_whole`: the source's,
-   the no-overwrite `refuse_if_taken` on the destination, and `verify_landing`. `Workload` counts 3,015 for B2 (the plan
-   3,017), so the estimate matches. A HEAD is Class B on B2, so this one rename exceeds B2's free 2,500 a day.
-   Recommendation (not made): one LIST of the destination prefix up front in place of the per-object no-overwrite HEAD
-   (the blind window grows from milliseconds per object to the whole operation), and each source's size, ETag, and
-   `LastModified` from the scan's listing instead of a HEAD for a one- request `COPY`-directive copy, keeping the verify
-   HEAD: about 1,000 HEADs in place of 3,000.
-5. **Small-object throughput.** The 1,005-object rename: AWS 28 s, Spaces 49 s, Hetzner 52 s, Wasabi 109 s, R2 168 s,
-   GCS 234 s; 40 small files at full concurrency: AWS 6 s, R2 52 s, GCS 64 s. Per-request latency from Stockholm
-   dominates, so how many requests run at once per object matters more than bandwidth here.
-6. **IPv6 without a route.** On this network (ULA addresses only, no global IPv6) GCS twice failed mid-run with "tcp
-   connect error: Network is unreachable (os error 51)", every later connect in that process too, while `curl` falls
-   back to IPv4 every time. Users with a half-configured IPv6 might see GCS drop out. Worth checking how `hyper-util`'s
-   happy eyeballs handles an address list that fails instantly.
-7. **The fixture lane got heavier.** The app crate now has 92 `s3_integration_` cells. At full parallelism under a load
-   average of 9 every one of them hit the 8 s cap; at `-j 2` all pass in under 8 s each. The contention re-run clears
-   that, but a test group or a thread cap for `s3_integration_` would keep the lane honest.
-8. **Second buckets** on R2, GCS, and Spaces would let the cross-bucket flows run there too.
+## Still open for the lead
+
+1. **The walker re-lists every source folder the scan already listed** (one full LIST per folder per copy or move).
+   Threading the scan's listings down would save it; an engine refactor, not made.
+2. **Small-object throughput.** The 1,005-object rename now: AWS 30 s, Spaces 45 s, Hetzner 48 s, Wasabi 74 s, GCS 189
+   s, R2 202 s. Per-request latency dominates; how many objects a folder rename copies at once is the lever.
+3. **IPv6 without a route.** On this network (ULA addresses only) GCS twice failed mid-run with "Network is unreachable
+   (os error 51)", every later connect in that process too, while `curl` falls back to IPv4. Worth checking how
+   `hyper-util`'s happy eyeballs handles an address list that fails instantly.
+4. **The fixture lane got heavier**: 94 app `s3_integration_` cells. At full parallelism under load they hit the 8 s cap
+   together; at `-j 2` all pass. A test group or a thread cap for `s3_integration_` would keep the lane honest.
+5. **Second buckets** on R2, GCS, and Spaces would let the cross-bucket flows run there too.
+6. **B2's daily Class B cap** needs a rerun of B2's read flows after it resets (or a raised cap). Once the cap was used
+   up (by the 1,005-object cells' HEADs), every B2 GET answered `403` with `<Code>AccessDenied</Code>` ("Cannot download
+   file, download bandwidth or transaction (Class B) cap exceeded", read with the AWS CLI) and every HEAD a bodyless
+   `403`; LIST, PUT, and `DeleteObjects` kept working. Cmdr maps both to `VolumeError::PermissionDenied` (a stat, a
+   read, a delete's fallback HEAD); in a transfer that's `WriteOperationError::PermissionDenied` with
+   `refusal: Unclassified` and `side: Source`, which the dialog words as a permission problem, now adding that it may be
+   a usage cap (a sibling's `16ee8a3b8`). With items 1 and 2 the 1,005-object delete sends 2 HEADs instead of 1,007 and
+   the rename 2,016 instead of 3,021.
+7. **A name taken mid-upload on Wasabi** is overwritten silently (the documented check-then-write window); whether
+   Wasabi honours `If-None-Match` on PUT is the profile owner's to verify.

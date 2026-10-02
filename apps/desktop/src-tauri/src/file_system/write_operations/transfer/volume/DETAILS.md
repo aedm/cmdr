@@ -412,8 +412,8 @@ Three answers, cheapest first, in `copy.rs`'s spawn loop:
 `NotSupported` "treat as fresh" fallback, which proved nothing) writes each child with
 `LandingName::FreeInFreshFolder` → `WriteStaging::StageInFreshFolder` → on a whole-publishing destination
 `WriteMode::CreateNewInFreshFolder`. Every backend treats that mode as `CreateNew` (`WriteMode::refuses_occupied`)
-except where its no-overwrite check is a request of its own: S3 then skips the HEAD before each object (`cmdr-s3`'s
-`DETAILS.md` § "No-overwrite writes" has the accepted window). A staged write lands exactly as `Stage` does. Top-level
+except where its no-overwrite check is a request of its own: S3 then skips the HEAD before each object (the
+"No-overwrite writes" section of `crates/cmdr-s3/DETAILS.md` has the accepted window). A staged write lands exactly as `Stage` does. Top-level
 files copied straight into a destination folder Phase 0.5 created keep `ExpectedFree` (the concurrent and serial
 drivers don't thread the fact yet); the folders a copy or a rename carries are where the requests were.
 

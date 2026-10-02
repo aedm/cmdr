@@ -445,9 +445,8 @@ async fn merge_level<'a>(
     // can't be trusted to error on collision) we pre-check existence with the
     // one listing the merge level pays anyway, and skip the create when present.
     let dest_prepare = async {
-        // Whether THIS walk's `create_directory` made the level, which proved it
-        // empty. ❌ Not the `NotSupported` "treat as fresh" case below: nothing
-        // proved anything there.
+        // THIS walk's `create_directory` made the level (proof it was empty),
+        // ❌ never the `NotSupported` "treat as fresh" case below.
         let mut made_here = false;
         let level_pre_existed = if backend_create_directory_detects_collisions(dest_volume) {
             match dest_volume.create_directory(dest_path).await {
@@ -573,20 +572,10 @@ async fn merge_level<'a>(
         let mut write_dest = child_dest.clone();
         let mut replaces = Replaces::Nothing;
         // Nothing has resolved a conflict for this child yet, so the name it is
-        // about to take is one we believe FREE. A resolver decision below is
-        // what turns that into a claim (`staged_write.rs::LandingName`).
-        //
-        // ❗ A level THIS walk created (its `create_directory` succeeded, so it
-        // held nothing at that moment) hands that fact down as
-        // `FreeInFreshFolder`, which lets an object store skip its per-object
-        // no-overwrite HEAD (`WriteMode::CreateNewInFreshFolder`). A merge into
-        // a level that pre-existed keeps `ExpectedFree` and its check: that's
-        // where another writer's files plausibly land.
-        let mut landing = if level_made_here {
-            LandingName::FreeInFreshFolder
-        } else {
-            LandingName::ExpectedFree
-        };
+        // about to take is one we believe FREE, and ❗ in a level this walk made,
+        // free by proof (`LandingName::free`). A resolver decision below is what
+        // turns that into a claim (`staged_write.rs::LandingName`).
+        let mut landing = LandingName::free(level_made_here);
         // Nothing has reserved anything for this child either, until a `Rename`
         // resolution below says otherwise.
         let mut reserved_placeholder = false;

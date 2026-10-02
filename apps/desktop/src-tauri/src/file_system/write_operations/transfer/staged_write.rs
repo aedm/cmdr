@@ -110,6 +110,21 @@ pub(super) enum LandingName {
     ClaimedByTheCaller,
 }
 
+impl LandingName {
+    /// A name nothing resolved: [`FreeInFreshFolder`](Self::FreeInFreshFolder)
+    /// in a folder this operation's own `create_directory` made (which proved
+    /// it empty), else [`ExpectedFree`](Self::ExpectedFree). A merge into a
+    /// folder that already existed keeps every no-overwrite check: that's
+    /// where another writer's files plausibly land.
+    pub(super) fn free(in_a_folder_this_operation_made: bool) -> Self {
+        if in_a_folder_this_operation_made {
+            Self::FreeInFreshFolder
+        } else {
+            Self::ExpectedFree
+        }
+    }
+}
+
 /// One file write's staging: where the bytes go, and how they get their final
 /// name.
 pub(in crate::file_system::write_operations) struct StagedWrite {
