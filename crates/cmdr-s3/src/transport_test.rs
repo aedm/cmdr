@@ -62,3 +62,16 @@ async fn a_bodyless_post_says_its_length_is_zero() {
     .await;
     assert!(head.contains("\r\ncontent-length: 0\r\n"), "{head}");
 }
+
+/// ❗ A folder marker is a PUT of zero bytes held in memory: R2, Hetzner, and
+/// GCS answer `411` when it says no length (live, 2026-10-02).
+#[tokio::test]
+async fn an_empty_put_body_says_its_length_is_zero() {
+    let head = one_request_head(async |client, host| {
+        let mut request = S3Request::new(Method::PUT, "http", &host, "/b/folder/".into());
+        request.body = crate::request::Body::Bytes(Vec::new());
+        client.exchange(request, Duration::from_secs(5)).await.unwrap();
+    })
+    .await;
+    assert!(head.contains("\r\ncontent-length: 0\r\n"), "{head}");
+}

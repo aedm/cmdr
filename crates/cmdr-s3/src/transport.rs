@@ -345,10 +345,15 @@ impl S3Client {
             .request(signed.method, signed.url)
             .headers(signed.headers)
             .timeout(budget);
+        // ❗ A write says its length even when it's zero: hyper sends none for
+        // an empty body, and GCS answers `411` to a bodyless POST
+        // (`CreateMultipartUpload`), R2, Hetzner, and GCS to an empty PUT (a
+        // folder marker) (live, 2026-10-02).
         match signed.body {
+            Body::Bytes(bytes) if bytes.is_empty() && writes => {
+                builder = builder.header(reqwest::header::CONTENT_LENGTH, 0);
+            }
             Body::Bytes(bytes) => builder = builder.body(bytes),
-            // ❗ GCS answers `411` to a bodyless POST (`CreateMultipartUpload`)
-            // that doesn't say its length (live, 2026-10-02).
             Body::Empty if writes => {
                 builder = builder.header(reqwest::header::CONTENT_LENGTH, 0);
             }
