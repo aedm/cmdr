@@ -14,7 +14,7 @@ use crate::file_system::volume::{BackendKind, Volume};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum StalledOn {
-    /// A network share or a direct server connection (SMB, NFS, AFP, WebDAV, SFTP, ...).
+    /// A network share or a direct server connection (SMB, NFS, AFP, WebDAV, SFTP, S3, ...).
     Server,
     /// A known local disk: a block device, or a local filesystem type.
     Drive,
@@ -56,7 +56,7 @@ pub(crate) async fn stalled_on(volume: &Arc<dyn Volume>, path: &Path) -> Stalled
 /// Exhaustive on purpose: a new backend doesn't compile until it answers.
 fn stalled_on_backend(backend: BackendKind) -> Option<StalledOn> {
     match backend {
-        BackendKind::Smb | BackendKind::Sftp | BackendKind::Webdav => Some(StalledOn::Server),
+        BackendKind::Smb | BackendKind::Sftp | BackendKind::Webdav | BackendKind::S3 => Some(StalledOn::Server),
         // MTP is a USB cable and ADB is a cable or Wi-Fi: neither word fits both.
         BackendKind::Mtp | BackendKind::Adb => Some(StalledOn::Unknown),
         // A real filesystem, or a view inside a file on one: the mount knows.
@@ -136,7 +136,12 @@ mod tests {
 
     #[test]
     fn direct_server_backends_are_servers() {
-        for backend in [BackendKind::Smb, BackendKind::Sftp, BackendKind::Webdav] {
+        for backend in [
+            BackendKind::Smb,
+            BackendKind::Sftp,
+            BackendKind::Webdav,
+            BackendKind::S3,
+        ] {
             assert_eq!(stalled_on_backend(backend), Some(StalledOn::Server), "{backend:?}");
         }
     }
