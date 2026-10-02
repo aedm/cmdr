@@ -150,13 +150,13 @@
   "@settings.appearance.tintLocal.description": {
     "sourceHash": "3c86b48"
   },
-  "settings.appearance.tintSmb.label": "Szerverpanelek színezése (SMB, SFTP, WebDAV)",
+  "settings.appearance.tintSmb.label": "Szerverpanelek színezése (SMB, SFTP, WebDAV, S3)",
   "@settings.appearance.tintSmb.label": {
-    "sourceHash": "d801804"
+    "sourceHash": "d912bcf"
   },
-  "settings.appearance.tintSmb.description": "Háttérszínezés az SMB-megosztást, SFTP- vagy WebDAV-szervert mutató paneleken.",
+  "settings.appearance.tintSmb.description": "Háttérszínezés az SMB-megosztást, SFTP- vagy WebDAV-szervert, illetve S3-tárhelyet mutató paneleken.",
   "@settings.appearance.tintSmb.description": {
-    "sourceHash": "2e071d3"
+    "sourceHash": "bddee40"
   },
   "settings.appearance.tintMtp.label": "MTP-panelek színezése",
   "@settings.appearance.tintMtp.label": {

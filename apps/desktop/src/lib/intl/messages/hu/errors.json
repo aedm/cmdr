@@ -623,15 +623,15 @@
   "@errors.listing.deletePending.suggestion": {
     "sourceHash": "0531cd8"
   },
-  "errors.listing.coldStorage.title": "This file is archived",
+  "errors.listing.coldStorage.title": "Ez a fájl archiválva van",
   "@errors.listing.coldStorage.title": {
     "sourceHash": "73da082"
   },
-  "errors.listing.coldStorage.explanation": "`{path}` is archived, so its contents can’t be read until it’s restored.",
+  "errors.listing.coldStorage.explanation": "`{path}` archiválva van, ezért a tartalma csak a visszaállítása után olvasható.",
   "@errors.listing.coldStorage.explanation": {
     "sourceHash": "78f52d7"
   },
-  "errors.listing.coldStorage.suggestion": "Here’s what to try:\n- Restore it in your storage provider’s console, then open it again\n- A restore can take anywhere from minutes to two days",
+  "errors.listing.coldStorage.suggestion": "Ezeket próbálhatod:\n- Állítsd vissza a tárhelyszolgáltatód konzolján, aztán nyisd meg újra\n- A visszaállítás percektől akár két napig is tarthat",
   "@errors.listing.coldStorage.suggestion": {
     "sourceHash": "0becf43"
   },
@@ -1689,27 +1689,27 @@
   "@errors.write.deletePending.suggestion": {
     "sourceHash": "39e64a9"
   },
-  "errors.write.sourceInColdStorage.title": "This file is archived",
+  "errors.write.sourceInColdStorage.title": "Ez a fájl archiválva van",
   "@errors.write.sourceInColdStorage.title": {
     "sourceHash": "73da082"
   },
-  "errors.write.sourceInColdStorage.message": "The file at {path} is archived, so it can’t be read until it’s restored.",
+  "errors.write.sourceInColdStorage.message": "Ez a fájl archiválva van, ezért a visszaállításáig nem olvasható: {path}",
   "@errors.write.sourceInColdStorage.message": {
     "sourceHash": "1015fe5"
   },
-  "errors.write.sourceInColdStorage.suggestion": "Restore it in your storage provider’s console, then try again. A restore can take anywhere from minutes to two days.",
+  "errors.write.sourceInColdStorage.suggestion": "Állítsd vissza a tárhelyszolgáltatód konzolján, aztán próbáld újra. A visszaállítás percektől akár két napig is tarthat.",
   "@errors.write.sourceInColdStorage.suggestion": {
     "sourceHash": "f279603"
   },
-  "errors.write.sourceChanged.title": "This file changed during the copy",
+  "errors.write.sourceChanged.title": "Ez a fájl megváltozott másolás közben",
   "@errors.write.sourceChanged.title": {
     "sourceHash": "1c63c8b"
   },
-  "errors.write.sourceChanged.message": "The file at {path} changed while Cmdr was copying it, so Cmdr saved nothing. The file stays where it was.",
+  "errors.write.sourceChanged.message": "Ez a fájl megváltozott, miközben a Cmdr másolta: {path}. A Cmdr ezért nem mentett semmit, és a fájl ott marad, ahol volt.",
   "@errors.write.sourceChanged.message": {
     "sourceHash": "4c404e0"
   },
-  "errors.write.sourceChanged.suggestion": "Try again to copy the version that’s there now.",
+  "errors.write.sourceChanged.suggestion": "Próbáld újra a most ott lévő változat másolásához.",
   "@errors.write.sourceChanged.suggestion": {
     "sourceHash": "97fc945"
   },
@@ -1909,11 +1909,11 @@
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
   },
-  "errors.volume.coldStorage": "“{path}” is archived. Restore it in your storage provider’s console first.",
+  "errors.volume.coldStorage": "„{path}” archiválva van. Előbb állítsd vissza a tárhelyszolgáltatód konzolján.",
   "@errors.volume.coldStorage": {
     "sourceHash": "c742f7c"
   },
-  "errors.volume.sourceChanged": "“{path}” changed while Cmdr was copying it, so Cmdr saved nothing. Try again to copy the new version.",
+  "errors.volume.sourceChanged": "„{path}” megváltozott, miközben a Cmdr másolta, ezért a Cmdr nem mentett semmit. Próbáld újra az új változat másolásához.",
   "@errors.volume.sourceChanged": {
     "sourceHash": "18062cb"
   },

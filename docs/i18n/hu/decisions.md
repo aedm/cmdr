@@ -382,25 +382,17 @@ Connect to server → `Kapcsolódás szerverre` (Finder `N84`, over `szerverhez`
 
 ## A megszakított visszagörgetés eredményértesítése (`fileOperations.cancelRollback.*`, `fileOperations.rollbackConfirm.body`)
 
-- Left X alone → `<alany> változatlan maradt: <indok>.`, the `askCmdr.renameUndo.skipReason.*` frame, in every reason
-  row: the `folderNotEmpty` pairs share their English, and one notice mustn't mix frames. The intro keeps `kihagyja`. ❌
-  Not `békén hagyja` / `érintetlenül hagyja`: zero pile hits.
-- Result rows say `visszahelyez`, progress rows `visszavitel`: `visz` is the motion, `helyez` the end state, and
-  `visszavíve` doesn't read.
-- Removed → `eltávolítva`, never `törölve`: the notice reassures.
-- Full vs partial lives in the sentence: `A Cmdr mindent eltávolított, amit létrehozott: {countText} elem.` vs
-  `{countText} elem eltávolítva.` The full notice's `one` branch drops the count: `A Cmdr eltávolította az elemet, …`.
-- it changed → `módosult` (macOS) over `megváltozott`; check → `ellenőriz`, apart from the `megerősít` (confirm) family.
-- Couldn't undo {name} → `Nem sikerült visszagörgetni: „{name}”.`: the per-item outcome word is `visszagörgetés`, and
-  `visszavonás` is for an operation.
-- `counted` rows agree singular with the numeral subject, and the clause after the colon may go plural.
-- put it there → `odatette` (tentative): true for copy and move alike, where `odamásolta` isn't.
-- A named item leads bare and quoted (`„{name}” változatlan maradt`), never with an article, which follows the name's
-  unknown first sound. Where English adds a noun (the folder {name}), the reason carries it:
-  `„{name}” változatlan maradt: a mappában már van valami.`
-- `askCmdr.renameUndo.undoJob` → `Az összes {csomag} visszavonása ({countText})`: the article agrees with `összes`, a
-  word we pick, and the number sits in parentheses (macOS `Az összes lemez (^0)`).
-- `rollbackConfirm.body`'s new third sentence copies `bodyUndoByDeleting`'s tail verbatim.
+- Left X alone → `<alany> változatlan maradt: <indok>.` (the `skipReason.*` frame) in every reason row; the intro keeps
+  `kihagyja`. ❌ Not `békén hagyja` / `érintetlenül hagyja`: zero pile hits.
+- Result rows `visszahelyez`, progress rows `visszavitel` (`visszavíve` doesn't read). Removed → `eltávolítva`, never
+  `törölve`: the notice reassures.
+- Full vs partial lives in the sentence (`A Cmdr mindent eltávolított, amit létrehozott: {countText} elem.` vs
+  `{countText} elem eltávolítva.`); the full `one` branch drops the count.
+- it changed → `módosult` (macOS); check → `ellenőriz`, apart from `megerősít` (confirm).
+- Couldn't undo {name} → `Nem sikerült visszagörgetni: „{name}”.`; `visszavonás` is for an operation.
+- put it there → `odatette` (tentative): true for copy and move alike.
+- A named item leads bare and quoted (`„{name}” változatlan maradt: a mappában már van valami.`).
+- `undoJob` → `Az összes {csomag} visszavonása ({countText})` (macOS `Az összes lemez (^0)`).
 
 ### `cancelRollback.stagedLeftover.*` (a Cmdr saját maradéka a célhelyen)
 
@@ -785,3 +777,11 @@ share options → `Nincs megosztási lehetőség`.
 
 - `{appName}` takes the menu's colon frame (`nem nyitható meg ezzel: {appName}`): a `-ban/-ben` or `a/az` on a runtime
   app name would be a guess. "Couldn't X" takes the possessor slot (`„{fileName}” kicsomagolása … nem sikerült`).
+
+## S3 (`servers.sheet.s3*`, `servers.refusal.*`, `servers.hub.*Account*`, `errors.*.coldStorage*`, `*shareLink*`)
+
+- bucket stays `bucket`, front suffixes (`bucketet`, `bucketben`): no console ships Hungarian, tech prose writes
+  `S3 bucketbe`; MS `gyűjtő` is another sense.
+- secret access key → `titkos hozzáférési kulcs`; region → `régió` (both MS).
+- cold-storage archived → `archiválva van`, restore → `visszaállít`, console → `konzol`.
+- share link → `Megosztási link` (macOS `Link másolása`); the submenu stays nominal: `Lejárat hét nap múlva`.

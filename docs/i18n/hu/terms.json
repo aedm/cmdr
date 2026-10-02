@@ -436,7 +436,10 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS (Kis- és nagybetűérzékeny; AppKit A kis- és nagybetűk azonosak)"
+    "sources": "macOS (Kis- és nagybetűérzékeny; AppKit A kis- és nagybetűk azonosak)",
+    "exceptions": {
+      "servers.refusal.s3FieldMalformed": "lowercase letters is a character class (kisbetűk), not case sensitivity."
+    }
   },
   "certificate": {
     "chosen": "tanúsítvány",
@@ -573,7 +576,11 @@
     "accept": ["felhő"],
     "forms": "your cloud provider → a felhőszolgáltatód; cloud service → felhőszolgáltatás; cloud folders → felhős mappák; cloud mount → Felhőcsatolás (tentative)",
     "confidence": "high",
-    "sources": "descriptive; catalog"
+    "sources": "descriptive; catalog",
+    "exceptions": {
+      "servers.sheet.s3ProviderGcs": "Google Cloud Storage is a product name, kept verbatim.",
+      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google’s product name, kept verbatim."
+    }
   },
   "column": {
     "chosen": "oszlop",
@@ -767,6 +774,11 @@
     "forms": "Aktuális mappa hozzáadása a kedvencekhez; a fókuszált panel aktuális mappája",
     "confidence": "high",
     "sources": "catalog (commands.editPaste.description, commands.favoritesAdd.description)"
+  },
+  "cursor": {
+    "chosen": "kurzor",
+    "confidence": "high",
+    "sources": "ms (cursor → kurzor); catalog (kurzor 9×, Panelkurzor)"
   },
   "custom": {
     "chosen": "egyéni",
@@ -1089,6 +1101,14 @@
     "confidence": "tentative",
     "sources": "descriptive"
   },
+  "example": {
+    "chosen": "Példa:",
+    "accept": ["Példa", "például", "pl."],
+    "forms": "Example: {x} → Példa: {x}; \"like …\" inside a sentence → például",
+    "avoid": [{ "form": "Például: (as the prefix)", "why": "the catalog’s placeholders all say Példa:" }],
+    "confidence": "high",
+    "sources": "catalog (servers.sheet.usernamePlaceholder, ai.cloud.modelPlaceholderExample, onboarding.cloudSetup.step.endpointPlaceholder)"
+  },
   "exclude": {
     "chosen": "kizár",
     "accept": ["kizárva", "kizárt", "kizárás"],
@@ -1354,11 +1374,39 @@
     "forms": "the whole-run time-left label → Összesen: {eta}",
     "sources": "GN összesen, DC Összesen:; catalog servers.paneState.retryKeepsTrying"
   },
+  "restore": {
+    "chosen": "visszaállítás",
+    "accept": ["visszaállít", "állítsd vissza"],
+    "forms": "restore it (a cold-storage file) → állítsd vissza; until it’s restored → a visszaállításáig; A restore → A visszaállítás",
+    "confidence": "high",
+    "sources": "macOS AppKit Revisions (Restore → Visszaállítás); ms (restore → visszaállítás); catalog (Visszaállítás 3×)",
+    "decision": "S3"
+  },
   "step": {
     "chosen": "lépés",
     "confidence": "high",
     "forms": "Step 1 of 2: X → 1/2. lépés: X (the AI install steps); the onboarding counter reads Lépés: 1/2",
     "sources": "MS terminology (step → lépés); shipped catalog (onboarding.wizard.stepProgress, ai.local.installStepExtracting)"
+  },
+  "storage": {
+    "chosen": "tárhely",
+    "accept": ["tárhely", "tárolás"],
+    "forms": "S3 storage → S3-tárhely; storage provider → tárhelyszolgáltató; cold storage → offline tárolás (ms)",
+    "confidence": "high",
+    "sources": "catalog (fileExplorer.mtp.noStorage, fileExplorer.diskSpace.noLimitNote, telefontárhely); ms (storage → tár / tárterület; cold storage → offline tárolás)",
+    "exceptions": {
+      "servers.sheet.s3ProviderGcs": "Google Cloud Storage is a product name, kept verbatim.",
+      "servers.sheet.s3ProviderHetzner": "Hetzner Object Storage is a product name, kept verbatim.",
+      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google’s product name, kept verbatim."
+    }
+  },
+  "tint": {
+    "chosen": "színezés",
+    "accept": ["színez"],
+    "forms": "Tint X panes → X-panelek színezése; Background tint → Háttérszínezés",
+    "avoid": [{ "form": "tónus", "why": "Microsoft’s color-mixing sense, not a pane background" }],
+    "confidence": "high",
+    "sources": "catalog (… színezése 6×, Háttérszínezés 3×); ms tint → tónus (other sense)"
   },
   "worktree": {
     "chosen": "worktree",
@@ -1943,7 +1991,10 @@
     "accept": ["áthelyez", "helyezd át", "mozgat", "helyez", "mozg"],
     "forms": "label Áthelyezés; result áthelyezve; Move it instead → Helyezd át inkább; files being moved in prose → mozgat",
     "confidence": "high",
-    "sources": "macOS; ms"
+    "sources": "macOS; ms",
+    "exceptions": {
+      "commands.handler.shareLinkUnavailable": "Move the cursor is cursor movement, not a file move: vidd a kurzort."
+    }
   },
   "move-to-trash": {
     "chosen": "Áthelyezés a Kukába",
@@ -1957,7 +2008,10 @@
     "accept": ["nev", "fájlnév"],
     "forms": "the Name column → Név; filename → fájlnév; that name can't be used → A fájlnév nem használható / A mappa neve nem használható",
     "confidence": "high",
-    "sources": "macOS; catalog"
+    "sources": "macOS; catalog",
+    "exceptions": {
+      "servers.sheet.identityLockedS3": "name (a verb, what identifies the place) → azonosítja, like servers.sheet.identityLocked."
+    }
   },
   "nas": {
     "chosen": "NAS",

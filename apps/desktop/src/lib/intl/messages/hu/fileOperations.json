@@ -249,7 +249,7 @@
   "@fileOperations.transferDialog.targetWillBeCreatedCopy": {
     "sourceHash": "4e8d166"
   },
-  "fileOperations.transferDialog.renameByMoveHint": "Renaming this copies everything inside it on the server, so it runs as a move you can pause or cancel.",
+  "fileOperations.transferDialog.renameByMoveHint": "Ennek az átnevezése a szerveren a teljes tartalmát átmásolja, ezért áthelyezésként fut: szüneteltetheted vagy megszakíthatod.",
   "@fileOperations.transferDialog.renameByMoveHint": {
     "sourceHash": "31987cc"
   },
@@ -305,15 +305,15 @@
   "@fileOperations.transferDialog.estimatedSizeTooltip": {
     "sourceHash": "2e8ba70"
   },
-  "fileOperations.s3Cost.line": "About {amount} at {provider} list prices",
+  "fileOperations.s3Cost.line": "Kb. {amount}, {provider} listaárai alapján",
   "@fileOperations.s3Cost.line": {
     "sourceHash": "e8db02b"
   },
-  "fileOperations.s3Cost.infoLabel": "About this estimate",
+  "fileOperations.s3Cost.infoLabel": "Tudnivalók a becslésről",
   "@fileOperations.s3Cost.infoLabel": {
     "sourceHash": "19637c5"
   },
-  "fileOperations.s3Cost.infoText": "This uses the provider’s public list prices. Free tiers, discounts, included allowances, and minimum charges can make your bill lower or higher.",
+  "fileOperations.s3Cost.infoText": "A becslés a szolgáltató nyilvános listaárain alapul. Az ingyenes szintek, a kedvezmények, a díjban foglalt keretek és a minimális díjak miatt a számlád alacsonyabb vagy magasabb is lehet.",
   "@fileOperations.s3Cost.infoText": {
     "sourceHash": "379665c"
   },
