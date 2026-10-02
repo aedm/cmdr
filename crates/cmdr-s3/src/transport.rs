@@ -67,6 +67,19 @@ impl Answer {
     pub(crate) fn header(&self, name: &str) -> Option<&str> {
         self.headers.get(name).and_then(|value| value.to_str().ok())
     }
+
+    /// The object's length ([`object_length`]).
+    pub(crate) fn object_length(&self) -> Option<u64> {
+        object_length(&self.headers)
+    }
+}
+
+/// An object's length off a HEAD or GET: `Content-Length`, else GCS's
+/// `x-goog-stored-content-length`, which is all GCS sends for a HEAD of an
+/// object stored with `Content-Encoding: gzip` (live, 2026-10-02).
+fn object_length(headers: &HeaderMap) -> Option<u64> {
+    let read = |name: &str| headers.get(name)?.to_str().ok()?.parse().ok();
+    read("content-length").or_else(|| read("x-goog-stored-content-length"))
 }
 
 /// What [`S3Client::relearn`] reads off an answer.
@@ -94,6 +107,11 @@ impl Opened {
     /// A header's value, when it's there and printable.
     pub(crate) fn header(&self, name: &str) -> Option<&str> {
         self.headers.get(name).and_then(|value| value.to_str().ok())
+    }
+
+    /// The object's length ([`object_length`]).
+    pub(crate) fn object_length(&self) -> Option<u64> {
+        object_length(&self.headers)
     }
 
     /// The next piece of the body as it arrives, `None` at its end. A
@@ -186,7 +204,16 @@ impl S3Client {
                 reqwest::Client::builder()
                     .user_agent("Cmdr")
                     .connect_timeout(REQUEST_BUDGET)
-                    .redirect(reqwest::redirect::Policy::none()),
+                    .redirect(reqwest::redirect::Policy::none())
+                    // ❗ Bytes as stored, never decoded: an object kept with a
+                    // `Content-Encoding` must copy as itself, at the length its
+                    // `Content-Length` and ETag describe. Whatever decoders
+                    // other crates unify into the app's reqwest (`genai` brings
+                    // `gzip`), each is off here (`transport_test.rs`).
+                    .no_gzip()
+                    .no_brotli()
+                    .no_deflate()
+                    .no_zstd(),
             )
         };
         let build_failed = |e: reqwest::Error| S3ConnectError::Transport(e.to_string());
@@ -349,6 +376,15 @@ impl S3Client {
         std::mem::take(&mut *self.sent.lock().unwrap_or_else(std::sync::PoisonError::into_inner))
     }
 
+    /// Whether a request with `method` must ask for the stored bytes with
+    /// `Accept-Encoding: gzip` (a read on a provider that transcodes, GCS).
+    /// ❗ Added after signing, never signed: GCS's front end rewrites the
+    /// header before it checks the signature (`SignatureDoesNotMatch`, live,
+    /// 2026-10-02). The client's decoders are off, so the body stays verbatim.
+    fn asks_for_stored_bytes(&self, method: &Method) -> bool {
+        self.profile.transcodes_gzip && (*method == Method::GET || *method == Method::HEAD)
+    }
+
     /// The provider profile every request is built against.
     pub(crate) fn profile(&self) -> &ProviderProfile {
         &self.profile
@@ -401,11 +437,15 @@ impl S3Client {
         self.note_sent(&request);
         let signed = sign(request, &scope);
         let writes = signed.method == Method::POST || signed.method == Method::PUT;
+        let reads = self.asks_for_stored_bytes(&signed.method);
         let mut builder = self
             .http
             .request(signed.method, signed.url)
             .headers(signed.headers)
             .timeout(budget);
+        if reads {
+            builder = builder.header(reqwest::header::ACCEPT_ENCODING, "gzip");
+        }
         // ❗ A write says its length even when it's zero: hyper sends none for
         // an empty body, and GCS answers `411` to a bodyless POST
         // (`CreateMultipartUpload`), R2, Hetzner, and GCS to an empty PUT (a
@@ -533,11 +573,12 @@ impl S3Client {
         };
         self.note_sent(&request);
         let signed = sign(request, &scope);
-        let sent = self
-            .http
-            .request(signed.method, signed.url)
-            .headers(signed.headers)
-            .send();
+        let reads = self.asks_for_stored_bytes(&signed.method);
+        let mut builder = self.http.request(signed.method, signed.url).headers(signed.headers);
+        if reads {
+            builder = builder.header(reqwest::header::ACCEPT_ENCODING, "gzip");
+        }
+        let sent = builder.send();
         let response = match tokio::time::timeout(QUERY_BUDGET, sent).await {
             Ok(Ok(response)) => response,
             Ok(Err(e)) => return Err(map_transport_error(&e, volume_id, path)),

@@ -244,7 +244,7 @@ impl S3Volume {
         };
         let app_path = self.root.to_app_path(&shown)?;
         let mut entry = FileEntry::new(name, app_path.to_string_lossy().into_owned(), false, false);
-        entry.size = head.header("content-length").and_then(|length| length.parse().ok());
+        entry.size = head.object_length();
         entry.modified_at = modified_from_head(head.header(MTIME_HEADER), head.header("last-modified"));
         entry.in_cold_storage = cold_from_head(head.header("x-amz-storage-class"), head.header("x-amz-archive-status"));
         Some(entry)

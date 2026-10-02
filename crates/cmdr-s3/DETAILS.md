@@ -41,7 +41,16 @@ silence probe), and probes. On success it records the PII-free `s3_connected` wi
 while the app negotiated HTTP/2, and GCS reset every app request over a header only HTTP/2 refuses, invisible to the
 live suite. `transport_test.rs::the_client_is_built_with_http2` fails to compile without the feature;
 `live_connect_test.rs::live_connect_speaks_http2_where_offered` pins each provider's negotiated version. The app's other
-unified reqwest features (`gzip`, `charset`, `system-proxy`, from `genai`) still reach only the app build.
+unified reqwest features (`charset`, `system-proxy`, from `genai`) still reach only the app build.
+
+**Decision: every response decoder is off in the client builder** (`no_gzip`, `no_brotli`, `no_deflate`, `no_zstd`).
+**Why**: a file manager copies bytes, it doesn't decode them. The app's reqwest has `gzip` unified in (through `genai`),
+so an object stored with `Content-Encoding: gzip` (web assets often are) downloaded decompressed in the app, and its
+HEAD lost `Content-Length`, so a stat had no size: every provider, every encoding the decoders know (live, the crate
+built with the app's decoders, 2026-10-02). The test build turns every decoder on through a dev-dependency, so
+`transport_test.rs::an_encoded_object_reads_back_as_its_stored_bytes` (a fake answering `Content-Encoding: gzip`) and
+`live_flow_test.rs::live_encoded_objects_read_back_verbatim` (gzip, br, zstd, and deflate objects on every provider)
+read through the client the app ships.
 
 **The probe is `ListBuckets` first, then `HeadBucket` for a bucket place.** `ListBuckets` goes first even for a bucket
 because its error BODY is the only thing that can tell a wrong secret from a key without rights; a HEAD has no body. The
@@ -232,7 +241,12 @@ they can't be reached over HTTP through this stack.
   `x-goog-if-generation-match: 0` (`NoOverwrite::GoogGenerationMatch`), which GCS refuses beside any `x-amz-*` header
   (400 `ExcessHeaderValues`), so such a request goes out in GCS's own dialect (§ "Signing"). Complete checks then
   writes: GCS's completion ignores the precondition and its initiate refuses it (`400 NotImplemented`). No
-  `UploadPartCopy` (`copies_in_parts` is false; § "Server-side copy").
+  `UploadPartCopy` (`copies_in_parts` is false; § "Server-side copy"). ❗ **GCS transcodes**: a read without
+  `Accept-Encoding: gzip` gets a gzip-stored object decompressed (33 B for 51 stored, `Range` ignored, no
+  `Content-Length`), so every GET and HEAD to GCS carries that header (`transcodes_gzip`), added AFTER signing: GCS's
+  front end rewrites it before checking the signature (`SignatureDoesNotMatch` when signed). A HEAD there still sends no
+  `Content-Length` for such an object, only `x-goog-stored-content-length`, which `Answer::object_length` falls back to
+  (verified on GCS, live.sh and curl, 2026-10-02).
 - **Spaces**: `<region>.digitaloceanspaces.com`, region = region, path style. Put takes `If-None-Match`; Complete and
   Copy check then write. `cross_bucket_copy()` is false: Spaces documents no cross-cluster copy, and two buckets of one
   region may sit on two clusters, so the builders refuse a cross-bucket copy with `BuildError::CrossBucketCopy` before

@@ -128,7 +128,7 @@ impl S3Volume {
         let answered = judge_get(
             opened.status,
             opened.header("content-range"),
-            opened.header("content-length").and_then(|length| length.parse().ok()),
+            opened.object_length(),
             offset,
         );
         let modified_at = stored_mtime(opened.header(MTIME_HEADER), opened.header("last-modified"));
@@ -171,7 +171,7 @@ impl S3Volume {
         let answered = judge_get(
             opened.status,
             opened.header("content-range"),
-            opened.header("content-length").and_then(|length| length.parse().ok()),
+            opened.object_length(),
             offset,
         );
         let skip = match answered {

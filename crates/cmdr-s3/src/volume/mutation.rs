@@ -275,10 +275,7 @@ impl S3Volume {
                 },
             );
         };
-        let size: u64 = head
-            .header("content-length")
-            .and_then(|length| length.parse().ok())
-            .unwrap_or(0);
+        let size: u64 = head.object_length().unwrap_or(0);
         if !self.copies_whole(size) {
             return Err(VolumeError::NotSupported);
         }
@@ -315,7 +312,7 @@ impl S3Volume {
             .head_object(&client, to_bucket, to_key, &remote_to)
             .await?
             .map(|answer| Landed {
-                size: answer.header("content-length").and_then(|length| length.parse().ok()),
+                size: answer.object_length(),
                 etag: answer.header("etag").map(str::to_string),
             });
         match judge_landing(size, copied.etag.as_deref(), landed.as_ref(), mode) {
@@ -359,10 +356,7 @@ impl S3Volume {
         let Some(head) = self.head_object(&client, bucket, key, &remote).await? else {
             return Err(VolumeError::NotFound(remote));
         };
-        let size: u64 = head
-            .header("content-length")
-            .and_then(|length| length.parse().ok())
-            .unwrap_or(u64::MAX);
+        let size: u64 = head.object_length().unwrap_or(u64::MAX);
         Ok(if self.copies_whole(size) {
             RenameWork::OneCall
         } else {

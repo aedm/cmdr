@@ -117,10 +117,7 @@ impl S3Volume {
         match self.head_object(&client, bucket, key, &remote).await? {
             Some(head) => {
                 let file = ScannedFile {
-                    size: head
-                        .header("content-length")
-                        .and_then(|length| length.parse().ok())
-                        .unwrap_or(0),
+                    size: head.object_length().unwrap_or(0),
                     // The upload time, ❌ never `x-amz-meta-mtime`: early
                     // deletion bills from when the object landed.
                     modified_at: head

@@ -254,6 +254,82 @@ async fn live_volume_flows_end_to_end() {
     }
 }
 
+/// `cmdr stores these bytes verbatim\n`, compressed by the `gzip`, `brotli`,
+/// `zstd`, and Perl `Compress::Zlib` command-line tools.
+const GZIP: &[u8] = &[
+    0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x03, 0x4b, 0xce, 0x4d, 0x29, 0x52, 0x28, 0x2e, 0xc9, 0x2f,
+    0x4a, 0x2d, 0x56, 0x28, 0xc9, 0x48, 0x2d, 0x4e, 0x55, 0x48, 0xaa, 0x2c, 0x01, 0xb2, 0xcb, 0x52, 0x8b, 0x92, 0x12,
+    0x4b, 0x32, 0x73, 0xb9, 0x00, 0xce, 0xed, 0x88, 0x3e, 0x21, 0x00, 0x00, 0x00,
+];
+const BROTLI: &[u8] = &[
+    0x1f, 0x20, 0x00, 0xf8, 0xc5, 0x1d, 0xec, 0x37, 0xce, 0x13, 0x86, 0xd1, 0xa1, 0xa3, 0x07, 0x21, 0xe5, 0x15, 0x59,
+    0x64, 0x37, 0xf8, 0xcc, 0x64, 0xaa, 0x36, 0x1d, 0x70, 0xf1, 0xdd, 0x77, 0xf4, 0xc7, 0xf0, 0x08,
+];
+const ZSTD: &[u8] = &[
+    0x28, 0xb5, 0x2f, 0xfd, 0x04, 0x58, 0x09, 0x01, 0x00, 0x63, 0x6d, 0x64, 0x72, 0x20, 0x73, 0x74, 0x6f, 0x72, 0x65,
+    0x73, 0x20, 0x74, 0x68, 0x65, 0x73, 0x65, 0x20, 0x62, 0x79, 0x74, 0x65, 0x73, 0x20, 0x76, 0x65, 0x72, 0x62, 0x61,
+    0x74, 0x69, 0x6d, 0x0a, 0xc5, 0x69, 0xed, 0x25,
+];
+const DEFLATE: &[u8] = &[
+    0x78, 0x9c, 0x4b, 0xce, 0x4d, 0x29, 0x52, 0x28, 0x2e, 0xc9, 0x2f, 0x4a, 0x2d, 0x56, 0x28, 0xc9, 0x48, 0x2d, 0x4e,
+    0x55, 0x48, 0xaa, 0x2c, 0x01, 0xb2, 0xcb, 0x52, 0x8b, 0x92, 0x12, 0x4b, 0x32, 0x73, 0xb9, 0x00, 0xd7, 0x08, 0x0c,
+    0x6b,
+];
+
+/// ❗ An object stored with a `Content-Encoding` (web assets on S3 often are)
+/// reads back as its STORED bytes, the length its `Content-Length` and ETag
+/// describe: a file manager copies files, it doesn't decode them.
+#[tokio::test(flavor = "multi_thread")]
+async fn live_encoded_objects_read_back_verbatim() {
+    let mut misses = Vec::new();
+    for live in live_targets() {
+        let client = live.client();
+        let prefix = live_prefix("encoded");
+        let volume = live
+            .connect(Some(&live.bucket))
+            .await
+            .unwrap_or_else(|e| panic!("[{}] the bucket didn't connect: {e:?}", live.name));
+        for (encoding, stored) in [("gzip", GZIP), ("br", BROTLI), ("zstd", ZSTD), ("deflate", DEFLATE)] {
+            let key = format!("{prefix}page.{encoding}");
+            let put = live.put(&client, &key, stored, &[("content-encoding", encoding)]).await;
+            if !put.status.is_success() {
+                report(
+                    &live,
+                    &format!("{encoding} object"),
+                    format!("PUT refused: {}", verdict(&put)),
+                );
+                continue;
+            }
+            let head = live.head(&client, &key).await;
+            let back = read_back(&volume, &at(&volume, &key)).await;
+            let verbatim = back == stored;
+            report(
+                &live,
+                &format!("{encoding} object"),
+                format!(
+                    "stored {} B as {:?} (HEAD: {} {:?} B); read back {} B, verbatim: {verbatim}",
+                    stored.len(),
+                    head.header("content-encoding"),
+                    head.status.as_u16(),
+                    head.header("content-length"),
+                    back.len()
+                ),
+            );
+            let size = volume.get_metadata(&at(&volume, &key)).await.ok().and_then(|m| m.size);
+            if !verbatim || size != Some(stored.len() as u64) {
+                misses.push(format!(
+                    "[{}] {encoding}: {} B back, stat says {size:?}, for {} B stored",
+                    live.name,
+                    back.len(),
+                    stored.len()
+                ));
+            }
+        }
+        live.clean(&client, &prefix).await;
+    }
+    assert!(misses.is_empty(), "{misses:#?}");
+}
+
 /// Uploads at two, four, and eight parts in flight, and server-side copies at
 /// four, eight, and 16, timed, each deleted right after.
 /// ❗ Off the short-body allowlist ("Other"), an overwrite goes as a one-part

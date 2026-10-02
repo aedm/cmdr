@@ -234,6 +234,11 @@ pub(crate) struct ProviderProfile {
     /// The characters the provider refuses in a key, refused here before a
     /// request goes out ([`Self::refused_key_char`]).
     pub refused_key_chars: KeyChars,
+    /// Whether the provider serves an object stored with `Content-Encoding:
+    /// gzip` decompressed unless the read says `Accept-Encoding: gzip` (GCS's
+    /// "decompressive transcoding"; live, 2026-10-02). The transport then adds
+    /// that header, unsigned, to every GET and HEAD.
+    pub transcodes_gzip: bool,
     /// What a multipart plan does with a tail under 5 MiB: R2 refuses a last
     /// part larger than the rest, Garage a small `UploadPartCopy` source.
     pub short_tail: ShortTail,
@@ -345,6 +350,7 @@ impl ProviderProfile {
                 gcs.refuses_short_body = true;
                 gcs.copies_in_parts = false;
                 gcs.refused_key_chars = KeyChars::LineBreaks;
+                gcs.transcodes_gzip = true;
                 gcs
             }
             Preset::DigitalOcean { region } => {
@@ -407,6 +413,7 @@ impl ProviderProfile {
             enforces_copy_source_pin: false,
             nfc_keys: false,
             refused_key_chars: KeyChars::Any,
+            transcodes_gzip: false,
             short_tail: ShortTail::Keep,
             copies_in_parts: true,
             copy_concurrency: AtomicUsize::new(DEFAULT_COPY_CONCURRENCY),

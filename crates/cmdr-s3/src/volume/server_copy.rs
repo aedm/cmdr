@@ -82,10 +82,7 @@ impl SourceObject {
             }
         }
         Self {
-            size: head
-                .header("content-length")
-                .and_then(|length| length.parse().ok())
-                .unwrap_or(0),
+            size: head.object_length().unwrap_or(0),
             etag: head.header("etag").map(str::to_string),
             has_mtime: head.header(MTIME_HEADER).is_some(),
             mtime: stored_mtime(head.header(MTIME_HEADER), head.header("last-modified")),

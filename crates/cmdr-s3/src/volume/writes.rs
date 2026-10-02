@@ -155,8 +155,7 @@ pub(super) fn refuse_unstorable(client: &S3Client, key: &str, remote: &str) -> R
 /// Whether a HEAD shows this write's own object (`token`) at the full `size`:
 /// what a write that lost its answer left when it landed whole.
 fn is_ours_whole(head: &Answer, token: &str, size: u64) -> bool {
-    head.header(crate::metadata::WRITE_TOKEN_HEADER) == Some(token)
-        && head.header("content-length").and_then(|len| len.parse::<u64>().ok()) == Some(size)
+    head.header(crate::metadata::WRITE_TOKEN_HEADER) == Some(token) && head.object_length() == Some(size)
 }
 
 pub(super) fn normalize_etag(etag: &str) -> String {
@@ -575,7 +574,7 @@ impl S3Volume {
             .head_object(client, target.bucket, target.key, target.remote)
             .await?;
         let landed = head.as_ref().map(|answer| Landed {
-            size: answer.header("content-length").and_then(|length| length.parse().ok()),
+            size: answer.object_length(),
             etag: answer.header("etag").map(str::to_string),
         });
         match judge_landing(size, ours, landed.as_ref(), target.mode) {

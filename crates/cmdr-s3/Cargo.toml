@@ -98,3 +98,8 @@ cmdr-fs = { path = "../cmdr-fs", features = ["testing"] }
 # `io-util` serve the fake AWS in `transport_routing_test.rs` (`cmdr-fs`'s
 # dev set has both).
 tokio = { version = "1", features = ["rt-multi-thread", "test-util", "net", "io-util"] }
+# Every response decoder reqwest has, on in the TEST build only: the app's graph
+# unifies `gzip` in (through `genai`), and any crate may add another. With them
+# on, `transport_test.rs` proves the client still hands back an encoded body
+# verbatim, and the live suite reads through the client the app ships.
+reqwest = { version = "0.13", default-features = false, features = ["gzip", "brotli", "deflate", "zstd"] }
