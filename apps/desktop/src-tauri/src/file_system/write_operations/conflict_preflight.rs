@@ -72,16 +72,8 @@ pub enum VolumeScanError {
 }
 
 impl VolumeScanError {
-    /// The refusal for a source id the registry had nothing for: not connected
-    /// yet, or gone (`crate::unregistered_volumes`).
-    pub(crate) async fn source_missing(volume_id: String) -> Self {
-        match why_unregistered(&volume_id).await {
-            Unregistered::NotConnected => Self::SourceVolumeNotConnected { volume_id },
-            Unregistered::Gone => Self::SourceVolumeNotFound { volume_id },
-        }
-    }
-
-    /// The same, for the destination.
+    /// The refusal for a destination id the registry had nothing for: not
+    /// connected yet, or gone (`crate::unregistered_volumes`).
     pub(crate) async fn destination_missing(volume_id: String) -> Self {
         match why_unregistered(&volume_id).await {
             Unregistered::NotConnected => Self::DestinationVolumeNotConnected { volume_id },

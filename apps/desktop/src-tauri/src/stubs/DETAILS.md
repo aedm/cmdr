@@ -5,8 +5,9 @@ Per-stub behavior and rationale. `CLAUDE.md` holds the invariants; the catalog b
 ## Per-stub behavior (non-macOS, non-Linux unless noted)
 
 - **`accent_color.rs`**: `get_accent_color` returns `"#d4a006"` (brand gold fallback).
-- **`mtp.rs`**: all MTP commands return `MtpConnectionError::NotSupported`. Defines a local `FileEntry` subset plus stub
-  types `ConnectedDeviceInfo`, `MtpObjectInfo`, `MtpScanResult`.
+- **`mtp.rs`**: `connect_mtp_device` returns `MtpConnectionError::NotSupported`, `set_mtp_enabled` is a no-op, and
+  `get_ptpcamerad_workaround_command` returns an empty string. Stub types `MtpDeviceInfo`, `MtpStorageInfo`,
+  `ConnectedDeviceInfo`.
 - **`network.rs`**: all network commands return empty results or errors; types mirror the macOS shapes for JSON
   compatibility. A mount answers `MountError::Unexpected`, and the three "Connect directly" commands answer
   `UpgradeResult::NotSmbMount`: nothing on these platforms is an SMB mount, so that's the one real variant that holds.
@@ -24,13 +25,6 @@ Per-stub behavior and rationale. `CLAUDE.md` holds the invariants; the catalog b
   `libc::statvfs`; `start_volume_watcher` is a no-op.
 
 ## Decisions
-
-### Duplicate `FileEntry` in `mtp.rs` rather than importing `crate::file_system::FileEntry`
-
-Stubs compile on platforms where the real `file_system` module may carry platform-specific dependencies or conditional
-compilation that differs. A dependency-free stub avoids pulling in code that may not compile on the target and keeps
-stub compilation fast by minimizing the dependency graph. Cost: when the real `FileEntry` changes, the stub needs manual
-alignment (see the `CLAUDE.md` JSON-shape invariant).
 
 ### Hardcoded success values rather than errors
 

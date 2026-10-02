@@ -33,7 +33,7 @@ The full top-level inventory is here:
   (`WriteOperationRegistry`, `WriteOperationState`, the settle guard, plus `state/controls.rs`:
   the by-id cancel / abort / pause / resume / conflict-answer entry points, re-exported through `state`),
   `status_cache.rs` (the status cache, the busy-volumes set it derives, the external drag-out seam, and
-  `list_active_operations` / `get_operation_status`), `operation_intent.rs` (`OperationIntent`, `PauseGate`), `human_wait.rs` (how long a person has kept the operation waiting),
+  `get_operation_status`), `operation_intent.rs` (`OperationIntent`, `PauseGate`), `human_wait.rs` (how long a person has kept the operation waiting),
   `archive_edit/` (the zip-edit driver).
 - The in-flight ledgers and what reverses them: `ledger.rs` (`CopyTransaction` and `WrittenFile`, the vocabulary of what
   an operation currently has at the destination, plus the `Drop` panic net) and `reversal.rs` (the policy over it: the
@@ -1002,7 +1002,7 @@ a set number of milliseconds. Per-test rather than per-process, so one spec's wi
 ## The pre-flight conflict check
 
 `conflict_preflight.rs` is the transfer dialog's "which of these would already collide at the destination?" check:
-`VolumeScanError` (the refusal vocabulary, shared with `scan_for_volume_copy`), `SourceItemInput` (the FE's per-item
+`VolumeScanError` (the refusal vocabulary), `SourceItemInput` (the FE's per-item
 input), and `scan_volume_for_conflicts_within`, the whole budgeted check. `commands/file_system/volume_copy.rs`'s
 `scan_volume_for_conflicts` is a thin `#[tauri::command]` wrapper that calls it with the production
 `CONFLICT_CHECK_BUDGET` (30 s); the split exists so a test can hand the inner function a budget it can wait out
@@ -1118,9 +1118,9 @@ add a second feed site (see `../../priority/CLAUDE.md`).
 
 - The manager registers an op's volume IDs busy (`register_operation_status(op_id, type, volume_ids)`) **only when it admits the op (Running)** — a Queued op isn't touching the device, so it marks nothing busy. Source **and** destination go in (a download from a phone is as corruptible as an upload to it). The manager's `on_settled` / `ManagedTaskGuard` Drop unregisters on every exit (including panic), so a finished or panicking op can't leave a volume stuck busy.
 - The busy set is the union of every Running op's `volume_ids` **∪ external registrations**, minus `root` (never ejectable). `recompute_and_emit_busy_volumes` fires `volumes-busy-changed` only when membership changes — progress ticks don't churn it (`LAST_EMITTED_BUSY`). Membership-by-union means two concurrent transfers to one device keep it busy until both finish, with no manual refcount.
-- **Where `volume_ids` come from**: the `OperationDescriptor` each spawn site hands the manager. The cross-volume entry points (`copy_between_volumes`, `move_between_volumes`, `move_within_same_volume`) and the volume-aware delete carry the IDs; the both-local branch of `copy_between_volumes` (a local→USB / DMG copy) passes both IDs through `copy_files_start` / `move_files_start` so the ejectable destination is still marked. The plain `copy_files` / `move_files` / `trash` commands pass an empty list — the unified transfer dialog only routes through them for same-`root` ops, where no ejectable volume is involved.
+- **Where `volume_ids` come from**: the `OperationDescriptor` each spawn site hands the manager. The cross-volume entry points (`copy_between_volumes`, `move_between_volumes`, `move_within_same_volume`) and the volume-aware delete carry the IDs; the both-local branch of `copy_between_volumes` (a local→USB / DMG copy) passes both IDs through `copy_files_start` / `move_files_start` so the ejectable destination is still marked. The plain `move_files` / `trash` commands pass an empty list — the unified transfer dialog only routes through them for same-`root` ops, where no ejectable volume is involved.
 - **Consumers**: `busy_volume_ids()` backs the `get_busy_volume_ids` bootstrap command, the `eject_volume` server-side guard (refuses a busy volume — the real safety net, since the picker's disable is only UX), and the native breadcrumb-menu builder (renders the Eject item disabled with a ` (busy)` suffix). The frontend `volume-busy-store.svelte.ts` subscribes to `volumes-busy-changed` and exposes `isVolumeBusy(id)` to disable the picker's eject controls. `init_busy_volume_emitter(app)` wires the emitter at startup (`lib.rs`).
-- **External (non-write-op) seam**: the drag-out file-promise fulfillment service (`native_drag::fulfillment`) marks the source volume busy while it streams a promise to a Finder destination, but it isn't a real write op (no `WRITE_OPERATION_STATE`, no progress events, no settle). The `pub(crate)` `register_external_volume_op(op_id, volume_ids)` / `release_external_volume_op(op_id)` pair (in `status_cache.rs`, surfaced through `state::` and re-exported from `mod.rs`) is the seam: it touches only the `OPERATION_STATUS_CACHE` half that `recompute_and_emit_busy_volumes` reads, registering under `WriteOperationType::Copy` (the type only affects `list_active_operations` diagnostics; the busy set is type-agnostic). The fulfillment side wraps it in an RAII guard so release fires on every exit path.
+- **External (non-write-op) seam**: the drag-out file-promise fulfillment service (`native_drag::fulfillment`) marks the source volume busy while it streams a promise to a Finder destination, but it isn't a real write op (no `WRITE_OPERATION_STATE`, no progress events, no settle). The `pub(crate)` `register_external_volume_op(op_id, volume_ids)` / `release_external_volume_op(op_id)` pair (in `status_cache.rs`, surfaced through `state::` and re-exported from `mod.rs`) is the seam: it touches only the `OPERATION_STATUS_CACHE` half that `recompute_and_emit_busy_volumes` reads, registering under `WriteOperationType::Copy` (the type only affects `get_operation_status` diagnostics; the busy set is type-agnostic). The fulfillment side wraps it in an RAII guard so release fires on every exit path.
 
 ## Settle contract
 
@@ -1130,7 +1130,7 @@ add a second feed site (see `../../priority/CLAUDE.md`).
 
 **Guard pattern**: every op's deferred start (the future the manager spawns from each of the five entry points) constructs a `WriteSettledGuard` at the top, from the same injected `Arc<dyn OperationEventSink>` the rest of the op emits through. The guard's `Drop` impl calls `sink.emit_settled(...)`. This makes the emit panic-safe: even if the op body panics and the task exits via `JoinError`, the guard still drops during stack unwinding, so the FE never hangs waiting for a settle that never comes. `emit_settled` is a required `OperationEventSink` method (no default no-op), so a new sink can't silently swallow settle. See `settle_event_tests.rs::settled_fires_on_panic_unwind` for the safety-net pin.
 
-**Cache-cleanup panic safety**: removal from `WRITE_OPERATION_STATE` + `OPERATION_STATUS_CACHE` must survive a panic, or the op lingers forever in `list_active_operations`. The manager owns this: `on_settled` removes both maps on the happy path, and the `ManagedTaskGuard` Drop (held by every spawned task, declared so it drops AFTER the `WriteSettledGuard`'s scope cleanup runs but frees caches before the settle emit) does it on unwind. The guard NEVER spawns in Drop — see [Operation manager](#operation-manager) § "Dequeue on settle". Pinned by `manager::tests::panicking_op_releases_its_lane_without_spawning_next`.
+**Cache-cleanup panic safety**: removal from `WRITE_OPERATION_STATE` + `OPERATION_STATUS_CACHE` must survive a panic, or the op lingers forever in the status cache. The manager owns this: `on_settled` removes both maps on the happy path, and the `ManagedTaskGuard` Drop (held by every spawned task, declared so it drops AFTER the `WriteSettledGuard`'s scope cleanup runs but frees caches before the settle emit) does it on unwind. The guard NEVER spawns in Drop — see [Operation manager](#operation-manager) § "Dequeue on settle". Pinned by `manager::tests::panicking_op_releases_its_lane_without_spawning_next`.
 
 **Payload**: `{ operationId: String, operationType, volumeId: Option<String> }`. The `volume_id` is best-effort: filled with the source volume's display name for volume-aware ops (copy/move between volumes, volume delete), `None` for pure local-FS operations. The FE currently filters only by `operationId`; `volume_id` is for diagnostics and forward compatibility.
 
@@ -1227,7 +1227,7 @@ write-op test at once. `test_support::TestOperationGuard` owns one entry per tes
   hardcoded literal can't collide with a sibling test. `register_as(op_id, state)` adopts an id the suite already
   generated (`transfer_driver`'s `unique_op_id`), for tests that thread the id through the call under test.
 - **Panic-safe teardown.** `Drop` removes the entry, so an assertion that fails before a hand-rolled `remove` can't
-  leave a corpse for the next test's `cancel_all_write_operations` to walk or `list_active_operations` to count. Pinned
+  leave a corpse for the next test's `cancel_all_write_operations` to walk or `get_operation_status` to answer for. Pinned
   by `state::tests::guard_unregisters_its_state_even_when_the_test_body_panics`. Keep the guard on the stack: a
   `std::mem::forget` or a clone that outlives the test defeats it.
 

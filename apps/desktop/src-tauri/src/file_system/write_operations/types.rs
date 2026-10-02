@@ -12,8 +12,6 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::file_system::volume::{ScanConflict, SpaceInfo};
-
 mod errors;
 mod events;
 pub use errors::*;
@@ -355,19 +353,6 @@ pub struct OperationStatus {
     pub activity: Option<TransferActivity>,
 }
 
-/// Summary of an active operation for list view.
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub struct OperationSummary {
-    pub operation_id: String,
-    pub operation_type: WriteOperationType,
-    pub phase: WriteOperationPhase,
-    /// 0-100.
-    pub percent_complete: u8,
-    /// Unix timestamp in milliseconds.
-    pub started_at: u64,
-}
-
 // ============================================================================
 // Result types
 // ============================================================================
@@ -556,22 +541,4 @@ impl From<&WriteOperationConfig> for VolumeCopyConfig {
             space_shortfall: config.space_shortfall,
         }
     }
-}
-
-/// Result of a pre-flight scan for volume copy.
-#[derive(Debug, Clone, Serialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub struct VolumeCopyScanResult {
-    pub file_count: usize,
-    pub dir_count: usize,
-    pub total_bytes: u64,
-    /// What the destination reports it has room for, or `None` when the backend
-    /// genuinely can't answer (an SFTP server without `statvfs@openssh.com`). ❗
-    /// `None` is "can't tell", ❌ never "no room" — a preview must still open.
-    pub dest_space: Option<SpaceInfo>,
-    /// Whether the destination folder takes writes, asked BEFORE its space. An
-    /// unwritable one is reported here rather than as a space shortfall, so a
-    /// read-only place never reads as a full one.
-    pub dest_write_access: crate::file_system::volume::WriteAccess,
-    pub conflicts: Vec<ScanConflict>,
 }

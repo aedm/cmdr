@@ -12,27 +12,6 @@ export const commands = {
    *  foundational smoke test for the specta wiring.
    */
   greet: (name: string) => __TAURI_INVOKE<string>('greet', { name }),
-  // Synchronous version. Prefer `list_directory_start_streaming` for non-blocking operation.
-  listDirectoryStart: (
-    path: string,
-    includeHidden: boolean,
-    sortBy: SortColumn,
-    sortOrder: SortOrder,
-    directorySortMode:
-      // Directories sort by the same column as files (using recursive_size for Size column).
-      | 'likeFiles'
-      // Directories always sort by name, regardless of the active sort column.
-      | 'alwaysByName'
-      /**
-       *  Directories don't lead: they sort among the files by the same column ("Show
-       *  folders first" off). Size ranks a directory by its `recursive_size`.
-       */
-      | 'mixedWithFiles'
-      | null,
-  ) =>
-    typedError<ListingStartResult, ListingStartError>(
-      __TAURI_INVOKE('list_directory_start', { path, includeHidden, sortBy, sortOrder, directorySortMode }),
-    ),
   /**
    *  Returns immediately; reads in background.
    *  Emits listing-progress, listing-complete, listing-error, listing-cancelled.
@@ -620,41 +599,9 @@ export const commands = {
    *  Only logs if RUSTY_COMMANDER_BENCHMARK=1 is set.
    */
   benchmarkLog: (message: string) => __TAURI_INVOKE<void>('benchmark_log', { message }),
-  // Emits write-progress, write-complete, write-error, write-cancelled.
-  copyFiles: (
-    sources: string[],
-    destination: string,
-    config: {
-      // Progress update interval in milliseconds (default: 200)
-      progressIntervalMs?: number
-      conflictResolution?: ConflictResolution
-      /**
-       *  If true, only scan and detect conflicts without executing the operation.
-       *  Returns a DryRunResult with totals and conflicts.
-       */
-      dryRun?: boolean
-      sortColumn?: SortColumn
-      sortOrder?: SortOrder
-      // Preview scan ID to reuse cached scan results (from start_scan_preview)
-      previewId?: string | null
-      // Maximum number of conflicts to include in DryRunResult (default: 100)
-      maxConflictsToShow?: number
-      /**
-       *  Source filenames already known to conflict at the destination. See
-       *  `VolumeCopyConfig::pre_known_conflicts` for the full rationale.
-       */
-      preKnownConflicts?: string[]
-      // What a copy does when the destination looks too small. See [`SpaceShortfall`].
-      spaceShortfall?: SpaceShortfall
-    } | null,
-    initiator: 'user' | 'aiClient' | 'agent' | 'agentEdited' | null,
-  ) =>
-    typedError<WriteOperationStartResult, WriteOperationError>(
-      __TAURI_INVOKE('copy_files', { sources, destination, config, initiator }),
-    ),
   /**
    *  Uses rename() for same-filesystem (instant), copy+delete for cross-filesystem.
-   *  Same events as `copy_files`.
+   *  Emits write-progress, write-complete, write-error, write-cancelled.
    */
   moveFiles: (
     sources: string[],
@@ -688,7 +635,7 @@ export const commands = {
       __TAURI_INVOKE('move_files', { sources, destination, config, initiator }),
     ),
   /**
-   *  Recursively deletes files and directories. Same events as `copy_files`.
+   *  Recursively deletes files and directories. Same events as `move_files`.
    *  When `volume_id` is provided and is not "root", routes through the Volume trait.
    */
   deleteFiles: (
@@ -722,7 +669,7 @@ export const commands = {
     typedError<WriteOperationStartResult, WriteOperationError>(
       __TAURI_INVOKE('delete_files', { sources, volumeId, config, initiator }),
     ),
-  // Moves files to macOS Trash. Same events as `copy_files` but with `operationType: trash`.
+  // Moves files to macOS Trash. Same events as `move_files` but with `operationType: trash`.
   trashFiles: (
     sources: string[],
     itemSizes: number[] | null,
@@ -769,7 +716,6 @@ export const commands = {
     __TAURI_INVOKE<TrashRoutingAnswer>('trash_routing_for_paths', { sources }),
   cancelWriteOperation: (operationId: string, rollback: boolean) =>
     __TAURI_INVOKE<void>('cancel_write_operation', { operationId, rollback }),
-  cancelAllWriteOperations: () => __TAURI_INVOKE<void>('cancel_all_write_operations'),
   /**
    *  Scans source files for Copy dialog stats. Results are cached for reuse by the actual copy.
    *  Emits scan-preview-progress, scan-preview-complete, scan-preview-error, scan-preview-cancelled.
@@ -844,44 +790,6 @@ export const commands = {
       resolution,
       applyToAll,
     }),
-  listActiveOperations: () => __TAURI_INVOKE<OperationSummary[]>('list_active_operations'),
-  getOperationStatus: (operationId: string) =>
-    __TAURI_INVOKE<{
-      operationId: string
-      operationType: WriteOperationType
-      phase: WriteOperationPhase
-      /**
-       *  The manager's own lifecycle status. `None` once the operation has left the
-       *  registry and only its status-cache row survives.
-       *
-       *  ❌ Never re-derive one from `WRITE_OPERATION_STATE.contains` or any other
-       *  presence test: the entry lands at spawn and survives a pause, so presence
-       *  is `true` for queued, running, and parked alike. DETAILS § "Lifecycle
-       *  status and `operations-changed`".
-       */
-      lifecycle: LifecycleStatus | null
-      // Filename only.
-      currentFile: string | null
-      filesDone: number
-      // 0 if unknown/scanning.
-      filesTotal: number
-      bytesDone: number
-      // 0 if unknown/scanning.
-      bytesTotal: number
-      // Unix timestamp in milliseconds.
-      startedAt: number
-      /**
-       *  What the operation is waiting on right now, classified live at read time
-       *  (`WriteOperationState::activity`) rather than cached: a stale wait is
-       *  worse than none.
-       *
-       *  `None` means the operation can't classify itself, ❌ never "it's moving":
-       *  it has settled (the cache row outlives the state entry), or it's a backend
-       *  that keeps no in-flight table and has nobody parked on a decision (a local
-       *  copy, a delete, a trash).
-       */
-      activity: TransferActivity | null
-    } | null>('get_operation_status', { operationId }),
   /**
    *  Returns the thin operation registry snapshot (membership + lifecycle
    *  status) for the queue window. Live per-row progress comes from the separate
@@ -939,7 +847,7 @@ export const commands = {
   dismissAllFailedOperations: () => __TAURI_INVOKE<void>('dismiss_all_failed_operations'),
   /**
    *  Unified copy across volume types (local, MTP, extract out of a `.zip`).
-   *  Same events as `copy_files`.
+   *  Emits write-progress, write-complete, write-error, write-cancelled.
    */
   copyBetweenVolumes: (
     sourceVolumeId: string,
@@ -1130,17 +1038,6 @@ export const commands = {
   ) =>
     typedError<WriteOperationStartResult, WriteOperationError>(
       __TAURI_INVOKE('compress_files', { sourceVolumeId, sourcePaths, destVolumeId, destZipPath, config, initiator }),
-    ),
-  // Pre-flight scan: total count/bytes, available space, conflicts. Doesn't copy anything.
-  scanVolumeForCopy: (
-    sourceVolumeId: string,
-    sourcePaths: string[],
-    destVolumeId: string,
-    destPath: string,
-    maxConflicts: number | null,
-  ) =>
-    typedError<VolumeCopyScanResult, VolumeScanError>(
-      __TAURI_INVOKE('scan_volume_for_copy', { sourceVolumeId, sourcePaths, destVolumeId, destPath, maxConflicts }),
     ),
   /**
    *  Checks which source items already exist at the destination. Returns conflict details for UI.
@@ -2032,13 +1929,6 @@ export const commands = {
   // Get the current app status (personal, commercial, or expired).
   getLicenseStatus: () => __TAURI_INVOKE<AppStatus>('get_license_status'),
   /**
-   *  Activate a license key or short code (verify + commit in one call).
-   *  If the input is a short code (CMDR-XXXX-XXXX-XXXX), it first exchanges it for the full key.
-   *  Kept for backward compatibility; new code should use verify_license + commit_license.
-   */
-  activateLicense: (licenseKey: string) =>
-    typedError<LicenseInfo, LicenseActivationError>(__TAURI_INVOKE('activate_license', { licenseKey })),
-  /**
    *  Verify a license key or short code without writing anything to disk.
    *  Returns the verify result (LicenseInfo + full key) for the frontend to inspect
    *  before deciding whether to commit.
@@ -2158,15 +2048,6 @@ export const commands = {
     typedError<AiApiKeyStatus, AiApiKeyError>(__TAURI_INVOKE('get_ai_api_key_status', { providerId })),
   deleteAiApiKey: (providerId: string) =>
     typedError<null, AiApiKeyError>(__TAURI_INVOKE('delete_ai_api_key', { providerId })),
-  /**
-   *  Generates folder name suggestions for the given directory.
-   *
-   *  Suggestions are a nice-to-have enhancement: every "no backend" case (provider off,
-   *  cloud AI not allowed, missing key, local server not running) silently returns `Ok(Vec::new())`. UI hides
-   *  the feature instead of surfacing an error.
-   */
-  getFolderSuggestions: (listingId: string, currentPath: string, includeHidden: boolean) =>
-    typedError<string[], string>(__TAURI_INVOKE('get_folder_suggestions', { listingId, currentPath, includeHidden })),
   // Returns whether the MCP server is currently running.
   getMcpRunning: () => __TAURI_INVOKE<boolean>('get_mcp_running'),
   // Returns the port the MCP server is actually listening on, or null if not running.
@@ -2372,7 +2253,6 @@ export const commands = {
       __TAURI_INVOKE('set_global_go_to_latest_shortcut', { enabled, binding }),
     ),
   startDriveIndex: () => typedError<null, string>(__TAURI_INVOKE('start_drive_index')),
-  stopDriveIndex: () => typedError<null, string>(__TAURI_INVOKE('stop_drive_index')),
   getIndexStatus: () => typedError<IndexStatusResponse, string>(__TAURI_INVOKE('get_index_status')),
   getDirStats: (path: string) =>
     typedError<
@@ -2493,24 +2373,11 @@ export const commands = {
   // Extended debug status for the debug window (dev only).
   getIndexDebugStatus: () => typedError<IndexDebugStatusResponse, string>(__TAURI_INVOKE('get_index_debug_status')),
   /**
-   *  Per-volume index status for the freshness badge (the per-drive freshness UX).
-   *
-   *  Returns the volume's freshness color plus the last completed scan's facts
-   *  (`scan_completed_at`, `scan_duration_ms`). Resolves the owning volume from
-   *  the path so the FE can pass a listing path; an SMB path maps to its SMB
-   *  volume id, everything else to `root`. A not-indexed volume reports
-   *  `enabled: false`, `freshness: None` (gray).
-   */
-  getVolumeIndexStatus: (path: string) =>
-    typedError<VolumeIndexStatus, string>(__TAURI_INVOKE('get_volume_index_status', { path })),
-  /**
    *  Per-volume index status keyed by volume id (the per-drive badge surface).
    *
    *  The dropdown renders one badge per drive ROW, and the FE identifies drives by
-   *  `volume.id` (`"root"`, `smb-…`, `mtp-…`), not by a path. This is the id-keyed
-   *  sibling of `get_volume_index_status` (which takes a listing path for the
-   *  always-visible active-drive badge). Both return the same [`VolumeIndexStatus`]
-   *  shape; a not-indexed volume reports `enabled: false`, `freshness: None` (gray).
+   *  `volume.id` (`"root"`, `smb-…`, `mtp-…`), not by a path. A not-indexed volume
+   *  reports `enabled: false`, `freshness: None` (gray).
    */
   getVolumeIndexStatusById: (volumeId: string) =>
     typedError<VolumeIndexStatus, string>(__TAURI_INVOKE('get_volume_index_status_by_id', { volumeId })),
@@ -3530,17 +3397,6 @@ export const commands = {
    */
   setMtpEnabled: (enabled: boolean) => __TAURI_INVOKE<void>('set_mtp_enabled', { enabled }),
   /**
-   *  Lists all connected MTP devices.
-   *
-   *  This returns devices detected via USB that support MTP protocol.
-   *  Use this to populate the "Mobile" section in the volume picker.
-   *
-   *  # Returns
-   *
-   *  A vector of device info structs. Empty if no devices are connected.
-   */
-  listMtpDevices: () => __TAURI_INVOKE<MtpDeviceInfo[]>('list_mtp_devices'),
-  /**
    *  Connects to an MTP device by ID.
    *
    *  Opens an MTP session to the device and retrieves storage information.
@@ -3549,7 +3405,7 @@ export const commands = {
    *
    *  # Arguments
    *
-   *  * `device_id` - The device ID from `list_mtp_devices` (format: "mtp-{bus}-{address}")
+   *  * `device_id` - The device ID (format: "mtp-{bus}-{address}")
    *
    *  # Returns
    *
@@ -3558,65 +3414,6 @@ export const commands = {
   connectMtpDevice: (deviceId: string) =>
     typedError<ConnectedDeviceInfo, MtpConnectionError>(__TAURI_INVOKE('connect_mtp_device', { deviceId })),
   /**
-   *  Gets information about a connected MTP device.
-   *
-   *  Returns device metadata and storage information for a currently connected device.
-   *  Returns `None` if the device is not connected.
-   *
-   *  # Arguments
-   *
-   *  * `device_id` - The device ID to query
-   */
-  getMtpDeviceInfo: (deviceId: string) =>
-    __TAURI_INVOKE<{
-      // Device information.
-      device: MtpDeviceInfo
-      // Available storages on the device.
-      storages: MtpStorageInfo[]
-    } | null>('get_mtp_device_info', { deviceId }),
-  /**
-   *  Disconnects from an MTP device.
-   *
-   *  Closes the MTP session gracefully. The device remains available in
-   *  `list_mtp_devices` for reconnection.
-   *
-   *  # Arguments
-   *
-   *  * `device_id` - The device ID to disconnect from
-   */
-  disconnectMtpDevice: (deviceId: string) =>
-    typedError<null, MtpConnectionError>(__TAURI_INVOKE('disconnect_mtp_device', { deviceId })),
-  /**
-   *  Gets storage information for all storages on a connected device.
-   *
-   *  # Arguments
-   *
-   *  * `device_id` - The connected device ID
-   *
-   *  # Returns
-   *
-   *  A vector of storage info, or empty if device is not connected.
-   */
-  getMtpStorages: (deviceId: string) => __TAURI_INVOKE<MtpStorageInfo[]>('get_mtp_storages', { deviceId }),
-  /**
-   *  Lists the contents of a directory on a connected MTP device.
-   *
-   *  Returns file entries in the same format as local directory listings,
-   *  allowing the frontend to use the same file list components.
-   *
-   *  # Arguments
-   *
-   *  * `device_id` - The connected device ID
-   *  * `storage_id` - The storage ID within the device
-   *  * `path` - Virtual path to list (for example, "/" or "/DCIM")
-   *
-   *  # Returns
-   *
-   *  A vector of FileEntry objects, sorted with directories first.
-   */
-  listMtpDirectory: (deviceId: string, storageId: number, path: string) =>
-    typedError<FileEntry[], MtpConnectionError>(__TAURI_INVOKE('list_mtp_directory', { deviceId, storageId, path })),
-  /**
    *  Gets the ptpcamerad workaround command for macOS.
    *
    *  Returns the Terminal command that users can run to work around
@@ -3624,94 +3421,12 @@ export const commands = {
    */
   getPtpcameradWorkaroundCommand: () => __TAURI_INVOKE<string>('get_ptpcamerad_workaround_command'),
   /**
-   *  Deletes an object (file or folder) from an MTP device.
-   *
-   *  For folders, this recursively deletes all contents first since MTP requires
-   *  folders to be empty before deletion.
-   *
-   *  **The only `MtpDeleteScope::Tree` caller in the repo.** Every other delete
-   *  goes through `MtpVolume::delete`, which is bound by `Volume::delete`'s
-   *  "one file or one EMPTY directory" contract and passes `SingleNode`; the
-   *  tree-shaped deletes (the delete walker, the transfer engine's cleanup) walk
-   *  the tree themselves so each node gets its own error attribution and its own
-   *  chance to be preserved. This command exists as a direct recursive-delete
-   *  entry point, so it names that intent explicitly rather than inheriting it.
-   *
-   *  # Arguments
-   *
-   *  * `device_id` - The connected device ID
-   *  * `storage_id` - The storage ID within the device
-   *  * `object_path` - Virtual path on the device
-   */
-  deleteMtpObject: (deviceId: string, storageId: number, objectPath: string) =>
-    typedError<null, MtpConnectionError>(__TAURI_INVOKE('delete_mtp_object', { deviceId, storageId, objectPath })),
-  /**
-   *  Creates a new folder on an MTP device.
-   *
-   *  # Arguments
-   *
-   *  * `device_id` - The connected device ID
-   *  * `storage_id` - The storage ID within the device
-   *  * `parent_path` - Parent folder path (for example, "/DCIM")
-   *  * `folder_name` - Name of the new folder
-   */
-  createMtpFolder: (deviceId: string, storageId: number, parentPath: string, folderName: string) =>
-    typedError<MtpObjectInfo, MtpConnectionError>(
-      __TAURI_INVOKE('create_mtp_folder', { deviceId, storageId, parentPath, folderName }),
-    ),
-  /**
-   *  Renames an object on an MTP device.
-   *
-   *  # Arguments
-   *
-   *  * `device_id` - The connected device ID
-   *  * `storage_id` - The storage ID within the device
-   *  * `object_path` - Current path of the object
-   *  * `new_name` - New name for the object
-   */
-  renameMtpObject: (deviceId: string, storageId: number, objectPath: string, newName: string) =>
-    typedError<MtpObjectInfo, MtpConnectionError>(
-      __TAURI_INVOKE('rename_mtp_object', { deviceId, storageId, objectPath, newName }),
-    ),
-  /**
-   *  Moves an object to a new parent folder on an MTP device.
-   *
-   *  May fail if the device doesn't support MoveObject operation.
-   *
-   *  # Arguments
-   *
-   *  * `device_id` - The connected device ID
-   *  * `storage_id` - The storage ID within the device
-   *  * `object_path` - Current path of the object
-   *  * `new_parent_path` - New parent folder path
-   */
-  moveMtpObject: (deviceId: string, storageId: number, objectPath: string, newParentPath: string) =>
-    typedError<MtpObjectInfo, MtpConnectionError>(
-      __TAURI_INVOKE('move_mtp_object', { deviceId, storageId, objectPath, newParentPath }),
-    ),
-  /**
-   *  Scans an MTP path for copy statistics.
-   *
-   *  Recursively scans the specified path to get file count, directory count,
-   *  and total bytes. Useful for showing progress during copy operations.
-   *
-   *  # Arguments
-   *
-   *  * `device_id` - The connected device ID
-   *  * `storage_id` - The storage ID within the device
-   *  * `path` - Virtual path on the device to scan
-   */
-  scanMtpForCopy: (deviceId: string, storageId: number, path: string) =>
-    typedError<MtpScanResult, MtpConnectionError>(__TAURI_INVOKE('scan_mtp_for_copy', { deviceId, storageId, path })),
-  /**
    *  Applies `fileOperations.adbEnabled` and `fileOperations.adbBinaryPath`
    *  without a restart: the tracker restarts under the new binary, or stops and
    *  takes its device rows with it.
    */
   setAdbSettings: (enabled: boolean, binaryPath: string | null) =>
     __TAURI_INVOKE<void>('set_adb_settings', { enabled, binaryPath }),
-  // The ADB devices the server last reported, from the cache the tracker keeps.
-  listAdbDevices: () => __TAURI_INVOKE<AdbDevice[]>('list_adb_devices'),
   /**
    *  Dials the device with `serial` and answers its volume id.
    *
@@ -3861,10 +3576,6 @@ export const commands = {
     timeoutMs: number | null,
     cacheTtlMs: number | null,
   ) => __TAURI_INVOKE<void>('prefetch_shares', { hostId, hostname, ipAddress, port, timeoutMs, cacheTtlMs }),
-  // Gets auth mode detected for a host (from cached share list if available).
-  getHostAuthMode: (hostId: string) => __TAURI_INVOKE<AuthMode>('get_host_auth_mode', { hostId }),
-  // Gets all known network shares (previously connected).
-  getKnownShares: () => __TAURI_INVOKE<KnownNetworkShare[]>('get_known_shares'),
   // Gets a specific known share by server and share name.
   getKnownShareByName: (serverName: string, shareName: string) =>
     __TAURI_INVOKE<{
@@ -3943,9 +3654,6 @@ export const commands = {
    */
   getSmbCredentials: (server: string, share: string | null) =>
     typedError<SmbCredentials, KeychainError>(__TAURI_INVOKE('get_smb_credentials', { server, share })),
-  // Checks if credentials exist in the Keychain for a server/share.
-  hasSmbCredentials: (server: string, share: string | null) =>
-    __TAURI_INVOKE<boolean>('has_smb_credentials', { server, share }),
   /**
    *  Whether a server-level password was already read this session, from the
    *  in-memory cache only. ❗ Never touches the Keychain (`keychain::has_cached_credentials`):
@@ -4195,9 +3903,6 @@ export const commands = {
    */
   setSmbAccountPreference: (serverName: string, username: string | null) =>
     __TAURI_INVOKE<boolean>('set_smb_account_preference', { serverName, username }),
-  // Removes a manually-added server by ID.
-  removeManualServer: (serverId: string) =>
-    typedError<null, string>(__TAURI_INVOKE('remove_manual_server', { serverId })),
   /**
    *  Unmounts all SMB shares mounted from `host`, answering the mount paths that went.
    *  Uses a 15s timeout because `statfs` on hung mounts can block indefinitely
@@ -4236,14 +3941,6 @@ export const commands = {
    *  browse resumes if the Servers view is holding it.
    */
   setNetworkEnabled: (enabled: boolean) => __TAURI_INVOKE<void>('set_network_enabled', { enabled }),
-  /**
-   *  Drops an SFTP volume's session and takes it out of the volume registry.
-   *
-   *  Answers whether there was an SFTP volume under that id. ❗ Dropping the
-   *  session IS the shutdown; there is no `close()` to call, and the one the
-   *  protocol crate offers hangs forever over an SSH channel.
-   */
-  disconnectSftpVolume: (volumeId: string) => __TAURI_INVOKE<boolean>('disconnect_sftp_volume', { volumeId }),
   /**
    *  Records a host key the user approved, ❗ only if the server still presents it.
    *
@@ -4293,33 +3990,8 @@ export const commands = {
    */
   saveSftpCredentials: (host: string, port: number, username: string, secret: string) =>
     typedError<null, KeychainError>(__TAURI_INVOKE('save_sftp_credentials', { host, port, username, secret })),
-  /**
-   *  Whether a secret is stored for one account on one server.
-   *
-   *  ❗ There is deliberately no command that HANDS the secret to the frontend: the
-   *  backend reads the store itself at the moment it builds a session, and a
-   *  secret that crosses IPC is a secret in a renderer process.
-   *
-   *  A store that didn't answer in time reads as `false`, which is the one place
-   *  collapsing a timeout into its fallback is harmless: both answers send the
-   *  frontend to the same place, which is to ask.
-   */
-  hasSftpCredentials: (host: string, port: number, username: string) =>
-    __TAURI_INVOKE<boolean>('has_sftp_credentials', { host, port, username }),
-  // Forgets the stored secret for one account on one server.
-  deleteSftpCredentials: (host: string, port: number, username: string) =>
-    typedError<null, KeychainError>(__TAURI_INVOKE('delete_sftp_credentials', { host, port, username })),
   // Every SFTP server the user has connected to.
   getKnownSftpServers: () => __TAURI_INVOKE<KnownSftpServer[]>('get_known_sftp_servers'),
-  /**
-   *  Drops a server from the list, answering whether one was there.
-   *
-   *  ❌ Leaves the stored secret and the trusted host key alone: forgetting a
-   *  server from a list isn't the same request as revoking its credential or its
-   *  identity. `delete_sftp_credentials` and `forget_sftp_host_key` are those.
-   */
-  forgetKnownSftpServer: (host: string, port: number, username: string) =>
-    __TAURI_INVOKE<boolean>('forget_known_sftp_server', { host, port, username }),
   /**
    *  Whether an SFTP volume can actually come back on its own as it stands.
    *
@@ -4360,48 +4032,12 @@ export const commands = {
       | null
     >('get_sftp_unattended_reconnect', { volumeId }),
   /**
-   *  Calls off the connect running under `attempt_id`, answering whether one was.
-   *
-   *  ❗ The way out of a connect that is going nowhere. A dial can hold for up to
-   *  30 s across its three phases, and this ends the user's wait at once: the key
-   *  exchange and the auth ladder stop where they stand, and a cancel landing in
-   *  the SFTP hello lets the engine finish quietly on its own and throws away what
-   *  it built (`crates/cmdr-sftp/DETAILS.md` § "Cancelling a connect").
-   *
-   *  ❗ A cancelled connect leaves ❌ no volume registered, ❌ no server remembered,
-   *  and ❌ no secret written. The connect command (`connectServer` /
-   *  `connectSavedPlace`) answers `cancelled`.
-   *
-   *  An id nobody is connecting under answers `false`: a cancel racing a connect
-   *  that just finished is ordinary, and there is nothing wrong to report.
-   */
-  cancelSftpConnect: (attemptId: string) => __TAURI_INVOKE<boolean>('cancel_sftp_connect', { attemptId }),
-  /**
-   *  Calls off the connect running under `attempt_id`, answering whether one was.
-   *
-   *  ❗ The way out of a connect that is going nowhere. The probe stops where it
-   *  stands, and the connect command (`connectServer` / `connectSavedPlace`)
-   *  answers `cancelled`.
-   *
-   *  ❗ A cancelled connect leaves ❌ no volume registered, ❌ no server remembered,
-   *  and ❌ no secret written.
-   *
-   *  An id nobody is connecting under answers `false`: a cancel racing a connect
-   *  that just finished is ordinary, and there is nothing wrong to report.
-   */
-  cancelWebdavConnect: (attemptId: string) => __TAURI_INVOKE<boolean>('cancel_webdav_connect', { attemptId }),
-  /**
-   *  Drops a WebDAV volume's client and takes it out of the volume registry.
-   *
-   *  Answers whether there was a WebDAV volume under that id.
-   */
-  disconnectWebdavVolume: (volumeId: string) => __TAURI_INVOKE<boolean>('disconnect_webdav_volume', { volumeId }),
-  /**
    *  Saves the secret for one account on one server.
    *
    *  ❗ **This command IS the "remember the secret" switch.** Its meaning is exactly
    *  "put this in the Keychain" and ❌ nothing else: `has_webdav_credentials` reads
-   *  the switch back and `delete_webdav_credentials` turns it off, so there is no
+   *  the switch back and `delete_webdav_credentials` turns it off (the frontend
+   *  reaches both through `servers.rs`), so there is no
    *  second flag anywhere that could disagree with the store.
    *
    *  ❗ Remembering a secret is what makes unattended reconnects POSSIBLE; it
@@ -4414,32 +4050,8 @@ export const commands = {
    */
   saveWebdavCredentials: (url: string, username: string, secret: string) =>
     typedError<null, KeychainError>(__TAURI_INVOKE('save_webdav_credentials', { url, username, secret })),
-  /**
-   *  Whether a secret is stored for one account on one server.
-   *
-   *  ❗ There is deliberately no command that HANDS the secret to the frontend: the
-   *  backend reads the store itself at the moment it builds a client, and a secret
-   *  that crosses IPC is a secret in a renderer process.
-   *
-   *  A store that didn't answer in time reads as `false`, which is the one place
-   *  collapsing a timeout into its fallback is harmless: both answers send the
-   *  frontend to the same place, which is to ask.
-   */
-  hasWebdavCredentials: (url: string, username: string) =>
-    __TAURI_INVOKE<boolean>('has_webdav_credentials', { url, username }),
-  // Forgets the stored secret for one account on one server.
-  deleteWebdavCredentials: (url: string, username: string) =>
-    typedError<null, KeychainError>(__TAURI_INVOKE('delete_webdav_credentials', { url, username })),
   // Every WebDAV server the user has connected to.
   getKnownWebdavServers: () => __TAURI_INVOKE<KnownWebdavServer[]>('get_known_webdav_servers'),
-  /**
-   *  Drops a server from the list, answering whether one was there.
-   *
-   *  ❌ Leaves the stored secret alone: forgetting a server from a list isn't the
-   *  same request as revoking its credential. `delete_webdav_credentials` is that.
-   */
-  forgetKnownWebdavServer: (url: string, username: string) =>
-    __TAURI_INVOKE<boolean>('forget_known_webdav_server', { url, username }),
   /**
    *  Whether a WebDAV volume can actually come back on its own as it stands.
    *
@@ -4479,15 +4091,6 @@ export const commands = {
    */
   saveS3Credentials: (provider: S3ProviderChoice, accessKeyId: string, secret: string) =>
     typedError<null, KeychainError>(__TAURI_INVOKE('save_s3_credentials', { provider, accessKeyId, secret })),
-  /**
-   *  Whether a secret is stored for one account. ❗ No command hands the secret
-   *  itself to the frontend. A store that didn't answer in time reads as `false`.
-   */
-  hasS3Credentials: (provider: S3ProviderChoice, accessKeyId: string) =>
-    __TAURI_INVOKE<boolean>('has_s3_credentials', { provider, accessKeyId }),
-  // Forgets the stored secret for one account, and so for every place under it.
-  deleteS3Credentials: (provider: S3ProviderChoice, accessKeyId: string) =>
-    typedError<null, KeychainError>(__TAURI_INVOKE('delete_s3_credentials', { provider, accessKeyId })),
   /**
    *  Whether an S3 volume can come back on its own as it stands. `null` when
    *  nothing S3 is registered under that id. ❗ Reads the store: ask when a
@@ -5272,45 +4875,6 @@ export type AdbConnectOutcomeError =
   | { type: 'cancelled' }
   // The transport refused or broke in a way none of the above names.
   | { type: 'transport' }
-
-// One device the server knows about.
-export type AdbDevice = {
-  // The serial (`host:devices` column one). Identity of the volume.
-  serial: string
-  // What the server can do with it. Only [`AdbDeviceState::Ready`] mounts.
-  state: AdbDeviceState
-  // `ro.product.name`, when the server reports it.
-  product: string | null
-  // `ro.product.model`, when the server reports it. Underscores for spaces.
-  model: string | null
-  // `ro.product.device`, when the server reports it.
-  device: string | null
-  // The server's transport id, for telling two identical serials apart.
-  transportId: number | null
-}
-
-// The server's state word for a device.
-export type AdbDeviceState =
-  // `device`: authorized and online. The only mountable state.
-  | 'ready'
-  // `unauthorized`: waiting on the phone's "Allow USB debugging" prompt.
-  | 'unauthorized'
-  // `offline`: attached but `adbd` isn't answering.
-  | 'offline'
-  // `no permissions`: the host can't open the USB device (udev on Linux).
-  | 'noPermissions'
-  // `connecting`: a TCP device mid-handshake.
-  | 'connecting'
-  // `authorizing`: mid RSA handshake.
-  | 'authorizing'
-  // `recovery`: booted to recovery.
-  | 'recovery'
-  // `bootloader`: in fastboot.
-  | 'bootloader'
-  // `sideload`: recovery's sideload mode.
-  | 'sideload'
-  // A word this crate doesn't know.
-  | 'unknown'
 
 /**
  *  Where Cmdr found the `adb` binary, and whether it is following the server.
@@ -9822,31 +9386,6 @@ export type ListingStalledEvent = {
   stalledOn: StalledOn
 }
 
-/**
- *  Why a synchronous listing start didn't produce a listing.
- *
- *  ❌ Not prose: `VolumeError` is the wire type the frontend's listing-error
- *  factory already words, in every locale.
- */
-export type ListingStartError =
-  // The volume refused, and said why in its own vocabulary.
-  | {
-      type: 'volume'
-      // The backend's typed answer, errno and path intact.
-      error: VolumeError
-    }
-  /**
-   *  The read didn't finish inside the command's wait. ❗ It was NOT
-   *  cancelled.
-   */
-  | { type: 'timedOut' }
-
-// Result of starting a new directory listing.
-export type ListingStartResult = {
-  listingId: string
-  totalCount: number
-}
-
 // Statistics about a directory listing.
 export type ListingStats = {
   // Not including directories.
@@ -10962,20 +10501,6 @@ export type MtpExclusiveAccessError = {
   blockingProcess: string | null
 }
 
-// Information about an object on the device (returned after creation).
-export type MtpObjectInfo = {
-  // Object handle.
-  handle: number
-  // Object name.
-  name: string
-  // Virtual path on device.
-  path: string
-  // Whether it's a directory.
-  isDirectory: boolean
-  // Size in bytes (None for directories).
-  size: number | null
-}
-
 /**
  *  Emitted when opening a device fails for lack of USB permission (Linux:
  *  missing udev rules). The frontend shows a copyable udev install command.
@@ -10992,16 +10517,6 @@ export type MtpPtpcameradRestored = null
 
 // Emitted (macOS) when Cmdr suppresses `ptpcamerad` to claim a device.
 export type MtpPtpcameradSuppressed = null
-
-// Result of scanning an MTP path for copy operation.
-export type MtpScanResult = {
-  // Number of files found.
-  fileCount: number
-  // Number of directories found.
-  dirCount: number
-  // Total bytes of all files.
-  totalBytes: number
-}
 
 /**
  *  Information about a storage area on an MTP device.
@@ -11532,67 +11047,6 @@ export type OperationSnapshot = {
    *  failures".
    */
   error: WriteOperationError | null
-}
-
-/**
- *  Current status of an operation for query APIs.
- *
- *  Two INDEPENDENT axes: [`Self::lifecycle`] is what the operation is doing,
- *  [`Self::phase`] is what KIND of work. A paused op is mid-`Copying`; a scanning
- *  one is `Running`. ❌ Neither may be inferred from the other.
- *
- *  A snapshot, ❌ not an event: a reader that never caught a `write-progress`
- *  (an agent polling `cmdr://state`, a window that opened mid-transfer) gets the
- *  same answers a subscriber does, [`activity`](Self::activity) included.
- *  Otherwise "a slow copy", "a wedged mount", "parked on a conflict prompt", and
- *  "queued behind a lane" all read as `running` with frozen counters.
- */
-export type OperationStatus = {
-  operationId: string
-  operationType: WriteOperationType
-  phase: WriteOperationPhase
-  /**
-   *  The manager's own lifecycle status. `None` once the operation has left the
-   *  registry and only its status-cache row survives.
-   *
-   *  ❌ Never re-derive one from `WRITE_OPERATION_STATE.contains` or any other
-   *  presence test: the entry lands at spawn and survives a pause, so presence
-   *  is `true` for queued, running, and parked alike. DETAILS § "Lifecycle
-   *  status and `operations-changed`".
-   */
-  lifecycle: LifecycleStatus | null
-  // Filename only.
-  currentFile: string | null
-  filesDone: number
-  // 0 if unknown/scanning.
-  filesTotal: number
-  bytesDone: number
-  // 0 if unknown/scanning.
-  bytesTotal: number
-  // Unix timestamp in milliseconds.
-  startedAt: number
-  /**
-   *  What the operation is waiting on right now, classified live at read time
-   *  (`WriteOperationState::activity`) rather than cached: a stale wait is
-   *  worse than none.
-   *
-   *  `None` means the operation can't classify itself, ❌ never "it's moving":
-   *  it has settled (the cache row outlives the state entry), or it's a backend
-   *  that keeps no in-flight table and has nobody parked on a decision (a local
-   *  copy, a delete, a trash).
-   */
-  activity: TransferActivity | null
-}
-
-// Summary of an active operation for list view.
-export type OperationSummary = {
-  operationId: string
-  operationType: WriteOperationType
-  phase: WriteOperationPhase
-  // 0-100.
-  percentComplete: number
-  // Unix timestamp in milliseconds.
-  startedAt: number
 }
 
 /**
@@ -16157,26 +15611,6 @@ export type VolumeCopyConfig = {
   compressionLevel?: number | null
   // What a copy does when the destination looks too small. See [`SpaceShortfall`].
   spaceShortfall?: SpaceShortfall
-}
-
-// Result of a pre-flight scan for volume copy.
-export type VolumeCopyScanResult = {
-  fileCount: number
-  dirCount: number
-  totalBytes: number
-  /**
-   *  What the destination reports it has room for, or `None` when the backend
-   *  genuinely can't answer (an SFTP server without `statvfs@openssh.com`). ❗
-   *  `None` is "can't tell", ❌ never "no room" — a preview must still open.
-   */
-  destSpace: SpaceInfo | null
-  /**
-   *  Whether the destination folder takes writes, asked BEFORE its space. An
-   *  unwritable one is reported here rather than as a space shortfall, so a
-   *  read-only place never reads as a full one.
-   */
-  destWriteAccess: WriteAccess
-  conflicts: ScanConflict[]
 }
 
 /**

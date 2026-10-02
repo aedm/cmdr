@@ -350,7 +350,7 @@ async fn test_list_directory_start_with_volume_caches_entries() {
 
     get_volume_manager().register(&volume_id, volume);
 
-    let result = super::list_directory_start_with_volume(
+    let result = super::operations::list_directory_start_with_volume(
         &volume_id,
         &dir_path,
         true,
@@ -391,7 +391,7 @@ async fn test_list_directory_start_with_volume_unknown_volume() {
     use crate::file_system::listing::sorting::{DirectorySortMode, SortColumn, SortOrder};
     use std::path::PathBuf;
 
-    let result = super::list_directory_start_with_volume(
+    let result = super::operations::list_directory_start_with_volume(
         "nonexistent-volume-id",
         &PathBuf::from("/some/path"),
         true,

@@ -4,7 +4,7 @@ Typed TypeScript wrappers for every Tauri IPC command and event. This is the can
 communication.
 
 ```ts
-import { listDirectoryStart, copyFiles } from '$lib/tauri-commands' // correct
+import { listDirectoryStart, copyBetweenVolumes } from '$lib/tauri-commands' // correct
 import { listDirectoryStart } from '$lib/tauri-commands/file-listing' // wrong: never import sub-files directly
 ```
 

@@ -90,8 +90,9 @@ gets `STATUS_DIRECTORY_NOT_EMPTY` from the server, but MTP has to choose.
   `MtpConnectionError::DirectoryNotEmpty` and deletes nothing — not the object, and not its path-cache bookkeeping,
   which still describes a live object. `MtpVolume::delete` / `delete_with_cancel` pass this, because `Volume::delete`
   means one node on every backend (`crates/cmdr-fs/src/volume/mod.rs`).
-- **`Tree`**: the whole subtree, children first, with the cancel token checked between children.
-  `commands::mtp::delete_mtp_object` is the ONLY caller in the repo, and says so in its own doc comment.
+- **`Tree`**: the whole subtree, children first, with the cancel token checked between children. Nothing in the app
+  calls it today: every delete goes through `MtpVolume`, which walks the tree itself so each node gets its own error
+  attribution.
 
 **The enum is fieldless with no `Default` and no `From<bool>`**, so a new caller has to decide rather than inherit.
 Both entry points (`delete_object` and `delete_object_with_cancel`) take it, or the split would have a hole in it.

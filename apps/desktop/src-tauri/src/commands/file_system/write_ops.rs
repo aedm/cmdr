@@ -9,14 +9,12 @@ use crate::file_system::write_operations::{
     start_scan_preview as ops_start_scan_preview, trash_routing_for_selection as ops_trash_routing_for_selection,
 };
 use crate::file_system::{
-    OperationEventSink, OperationSnapshot, OperationStatus, OperationSummary, PauseAllOutcome, PauseOutcome,
-    ReadOnlySide, SortColumn, SortOrder, TauriEventSink, WriteOperationConfig, WriteOperationError,
-    WriteOperationStartResult, cancel_all_write_operations as ops_cancel_all_write_operations,
+    OperationEventSink, OperationSnapshot, PauseAllOutcome, PauseOutcome, ReadOnlySide, SortColumn, SortOrder,
+    TauriEventSink, WriteOperationConfig, WriteOperationError, WriteOperationStartResult,
     cancel_operation as ops_cancel_operation, cancel_operations as ops_cancel_operations,
-    cancel_write_operation as ops_cancel_write_operation, copy_files_start as ops_copy_files_start,
-    delete_files_start as ops_delete_files_start, dismiss_all_failed_operations as ops_dismiss_all_failed_operations,
-    dismiss_failed_operation as ops_dismiss_failed_operation, get_operation_status as ops_get_operation_status,
-    list_active_operations as ops_list_active_operations, list_operations as ops_list_operations,
+    cancel_write_operation as ops_cancel_write_operation, delete_files_start as ops_delete_files_start,
+    dismiss_all_failed_operations as ops_dismiss_all_failed_operations,
+    dismiss_failed_operation as ops_dismiss_failed_operation, list_operations as ops_list_operations,
     move_files_start as ops_move_files_start, pause_all as ops_pause_all, pause_operation as ops_pause_operation,
     resume_all as ops_resume_all, resume_operation as ops_resume_operation, trash_files_start as ops_trash_files_start,
 };
@@ -187,7 +185,7 @@ fn expand_parent(volume_id: Option<&str>, parent_path: &str) -> String {
 // Write operations (copy, move, delete)
 // ============================================================================
 
-/// Turns a same-`root` copy or move request into backend arguments: tilde-expanded
+/// Turns a same-`root` move request into backend arguments: tilde-expanded
 /// paths and the default config. A transfer that touches a routed namespace on
 /// either end doesn't belong on the local fast path (a copy out of a zip or a
 /// snapshot routes through `copy_between_volumes`; writing INTO either is
@@ -206,41 +204,8 @@ fn local_transfer_request(
     Ok((sources, destination, config.unwrap_or_default()))
 }
 
-/// Emits write-progress, write-complete, write-error, write-cancelled.
-#[tauri::command]
-#[specta::specta]
-pub async fn copy_files(
-    app: tauri::AppHandle,
-    sources: Vec<String>,
-    destination: String,
-    config: Option<WriteOperationConfig>,
-    initiator: Option<Initiator>,
-) -> Result<WriteOperationStartResult, WriteOperationError> {
-    let (sources, destination, config) = local_transfer_request(&sources, &destination, config)?;
-
-    // The unified transfer dialog routes every cross-device copy through
-    // `copy_between_volumes`; this plain command is the same-`root` local path,
-    // so no ejectable volume is involved (empty busy set).
-    let events: Arc<dyn OperationEventSink> = Arc::new(TauriEventSink::new(app));
-    ops_copy_files_start(
-        events,
-        sources,
-        destination,
-        config,
-        vec![],
-        None,
-        initiator.unwrap_or(Initiator::User),
-        // No source binding: the user picked these in the pane they are looking at.
-        None,
-        // No typed sides: this is the same-`root` path, where both ends are the
-        // boot volume and no drive can leave under it.
-        None,
-    )
-    .await
-}
-
 /// Uses rename() for same-filesystem (instant), copy+delete for cross-filesystem.
-/// Same events as `copy_files`.
+/// Emits write-progress, write-complete, write-error, write-cancelled.
 #[tauri::command]
 #[specta::specta]
 pub async fn move_files(
@@ -272,7 +237,7 @@ pub async fn move_files(
     .await
 }
 
-/// Recursively deletes files and directories. Same events as `copy_files`.
+/// Recursively deletes files and directories. Same events as `move_files`.
 /// When `volume_id` is provided and is not "root", routes through the Volume trait.
 #[tauri::command]
 #[specta::specta]
@@ -306,7 +271,7 @@ pub async fn delete_files(
     .await
 }
 
-/// Moves files to macOS Trash. Same events as `copy_files` but with `operationType: trash`.
+/// Moves files to macOS Trash. Same events as `move_files` but with `operationType: trash`.
 #[tauri::command]
 #[specta::specta]
 pub async fn trash_files(
@@ -364,12 +329,6 @@ pub async fn trash_routing_for_paths(sources: Vec<String>) -> TrashRoutingAnswer
 #[specta::specta]
 pub fn cancel_write_operation(operation_id: String, rollback: bool) {
     ops_cancel_write_operation(&operation_id, rollback);
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn cancel_all_write_operations() {
-    ops_cancel_all_write_operations();
 }
 
 // ============================================================================
@@ -456,18 +415,6 @@ pub fn resolve_write_conflict(
     apply_to_all: bool,
 ) -> ConflictResolutionOutcome {
     ops_resolve_write_conflict(&operation_id, conflict_id, resolution, apply_to_all)
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn list_active_operations() -> Vec<OperationSummary> {
-    ops_list_active_operations()
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn get_operation_status(operation_id: String) -> Option<OperationStatus> {
-    ops_get_operation_status(&operation_id)
 }
 
 // ============================================================================

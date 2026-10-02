@@ -11,11 +11,10 @@ import {
   type MtpExclusiveAccessError,
   type MtpPermissionError,
   type MtpStorageInfo as MtpStorageInfoBinding,
-  type SpaceInfo,
   type SpaceShortfall,
   type WriteAccess,
 } from '$lib/ipc/bindings'
-import type { ConflictResolution, FileEntry, WriteOperationStartResult } from '../file-explorer/types'
+import type { ConflictResolution, WriteOperationStartResult } from '../file-explorer/types'
 import { throwIpcError } from './ipc-types'
 
 /**
@@ -42,20 +41,6 @@ export interface MtpDeviceInfo {
   product?: string
   /** USB serial number, if available. */
   serialNumber?: string
-}
-
-/**
- * Lists all connected MTP devices.
- * Only available on macOS.
- * @returns Array of MtpDeviceInfo objects
- */
-export async function listMtpDevices(): Promise<MtpDeviceInfo[]> {
-  try {
-    return (await commands.listMtpDevices()) as MtpDeviceInfo[]
-  } catch {
-    // Command not available (non-macOS) - return empty array
-    return []
-  }
 }
 
 /**
@@ -86,42 +71,21 @@ export type MtpConnectionError =
   | { type: 'notSupported'; message: string }
 
 /**
- * Checks if an error is an MTP connection error.
- */
-export function isMtpConnectionError(error: unknown): error is MtpConnectionError {
-  return typeof error === 'object' && error !== null && 'type' in error && typeof error.type === 'string'
-}
-
-/**
  * Connects to an MTP device by ID.
  * Opens an MTP session and retrieves storage information.
  * If another process has exclusive access, an 'mtp-exclusive-access-error' event is emitted.
- * @param deviceId - The device ID from listMtpDevices
+ * @param deviceId - The device ID (`mtp-{locationId}`)
  * @returns Information about the connected device including storages
  */
 export async function connectMtpDevice(deviceId: string): Promise<ConnectedMtpDeviceInfo> {
   const res = await commands.connectMtpDevice(deviceId)
   if (res.status === 'error') {
-    // The error is a tagged-union MtpConnectionError, not an Error object. Callers use
-    // `isMtpConnectionError()` to discriminate. Lint can't see that pattern.
-    // eslint-disable-next-line @typescript-eslint/only-throw-error -- tagged-union error consumed via isMtpConnectionError() guard
+    // The error is a tagged-union MtpConnectionError, not an Error object; callers read its
+    // `type`. Lint can't see that pattern.
+    // eslint-disable-next-line @typescript-eslint/only-throw-error -- tagged-union MtpConnectionError, discriminated on `type` by the caller
     throw res.error
   }
   return res.data as ConnectedMtpDeviceInfo
-}
-
-/**
- * Gets information about a connected MTP device.
- * Returns null if the device is not connected.
- * @param deviceId - The device ID to query
- */
-export async function getMtpDeviceInfo(deviceId: string): Promise<ConnectedMtpDeviceInfo | null> {
-  try {
-    const result = await commands.getMtpDeviceInfo(deviceId)
-    return result as ConnectedMtpDeviceInfo | null
-  } catch {
-    return null
-  }
 }
 
 /**
@@ -133,20 +97,6 @@ export async function getPtpcameradWorkaroundCommand(): Promise<string> {
     return await commands.getPtpcameradWorkaroundCommand()
   } catch {
     return ''
-  }
-}
-
-/**
- * Gets storage information for all storages on a connected device.
- * @param deviceId - The connected device ID
- * @returns Array of storage info, or empty if device is not connected
- */
-export async function getMtpStorages(deviceId: string): Promise<MtpStorageInfo[]> {
-  try {
-    const result = await commands.getMtpStorages(deviceId)
-    return result
-  } catch {
-    return []
   }
 }
 
@@ -199,133 +149,6 @@ export async function onMtpDeviceDisconnected(
   })
 }
 
-// NOTE: MTP file watching now uses the unified directory-diff event system (same as local volumes).
-// The mtp-directory-changed event and onMtpDirectoryChanged function have been removed.
-// MTP events are now handled by the existing directory-diff listener in FilePane.svelte.
-
-/**
- * Lists the contents of a directory on a connected MTP device.
- * Returns file entries in the same format as local directory listings.
- * @param deviceId - The connected device ID
- * @param storageId - The storage ID within the device
- * @param path - Virtual path to list (for example, "/" or "/DCIM")
- * @returns Array of FileEntry objects, sorted with directories first
- */
-export async function listMtpDirectory(deviceId: string, storageId: number, path: string): Promise<FileEntry[]> {
-  const res = await commands.listMtpDirectory(deviceId, storageId, path)
-  if (res.status === 'error') {
-    // eslint-disable-next-line @typescript-eslint/only-throw-error -- tagged-union error consumed via isMtpConnectionError() guard
-    throw res.error
-  }
-  return res.data as FileEntry[]
-}
-
-// ============================================================================
-// MTP File Operations (Phase 4)
-// ============================================================================
-
-/** Information about an object on the device. */
-export interface MtpObjectInfo {
-  /** Object handle. */
-  handle: number
-  /** Object name. */
-  name: string
-  /** Virtual path on device. */
-  path: string
-  /** Whether it's a directory. */
-  isDirectory: boolean
-  /** Size in bytes (null for directories). */
-  size: number | null
-}
-
-/**
- * Deletes an object (file or folder) from an MTP device.
- * For folders, this recursively deletes all contents first.
- * @param deviceId - The connected device ID
- * @param storageId - The storage ID within the device
- * @param objectPath - Virtual path on the device
- */
-export async function deleteMtpObject(deviceId: string, storageId: number, objectPath: string): Promise<void> {
-  const res = await commands.deleteMtpObject(deviceId, storageId, objectPath)
-  if (res.status === 'error') throwIpcError(res.error)
-}
-
-/**
- * Creates a new folder on an MTP device.
- * @param deviceId - The connected device ID
- * @param storageId - The storage ID within the device
- * @param parentPath - Parent folder path (for example, "/DCIM")
- * @param folderName - Name of the new folder
- */
-export async function createMtpFolder(
-  deviceId: string,
-  storageId: number,
-  parentPath: string,
-  folderName: string,
-): Promise<MtpObjectInfo> {
-  const res = await commands.createMtpFolder(deviceId, storageId, parentPath, folderName)
-  if (res.status === 'error') throwIpcError(res.error)
-  return res.data
-}
-
-/**
- * Renames an object on an MTP device.
- * @param deviceId - The connected device ID
- * @param storageId - The storage ID within the device
- * @param objectPath - Current path of the object
- * @param newName - New name for the object
- */
-export async function renameMtpObject(
-  deviceId: string,
-  storageId: number,
-  objectPath: string,
-  newName: string,
-): Promise<MtpObjectInfo> {
-  const res = await commands.renameMtpObject(deviceId, storageId, objectPath, newName)
-  if (res.status === 'error') throwIpcError(res.error)
-  return res.data
-}
-
-/**
- * Moves an object to a new parent folder on an MTP device.
- * May fail if the device doesn't support MoveObject operation.
- * @param deviceId - The connected device ID
- * @param storageId - The storage ID within the device
- * @param objectPath - Current path of the object
- * @param newParentPath - New parent folder path
- */
-export async function moveMtpObject(
-  deviceId: string,
-  storageId: number,
-  objectPath: string,
-  newParentPath: string,
-): Promise<MtpObjectInfo> {
-  const res = await commands.moveMtpObject(deviceId, storageId, objectPath, newParentPath)
-  if (res.status === 'error') throwIpcError(res.error)
-  return res.data
-}
-
-/** Result of scanning MTP files/directories for copy operation. */
-export interface MtpScanResult {
-  fileCount: number
-  dirCount: number
-  totalBytes: number
-}
-
-/**
- * Scans MTP files/directories to get total counts and size before copying.
- * For directories, recursively scans all contents.
- * @param deviceId - The connected device ID
- * @param storageId - The storage ID within the device
- * @param path - Virtual path on the device to scan
- * @returns Scan result with file/dir counts and total bytes
- */
-export async function scanMtpForCopy(deviceId: string, storageId: number, path: string): Promise<MtpScanResult> {
-  const res = await commands.scanMtpForCopy(deviceId, storageId, path)
-  if (res.status === 'error') throwIpcError(res.error)
-  return res.data
-}
-
 // ============================================================================
 // Unified volume copy operations
 // ============================================================================
@@ -344,23 +167,6 @@ export interface VolumeConflictInfo {
   sourceIsDirectory: boolean
   /** `true` when the destination item is a directory. See `sourceIsDirectory`. */
   destIsDirectory: boolean
-}
-
-/** Result of scanning for a volume copy operation. */
-export interface VolumeCopyScanResult {
-  fileCount: number
-  dirCount: number
-  totalBytes: number
-  /** What the destination reports about its room, or `null` when the backend
-   *  genuinely can't answer (an SFTP server without `statvfs@openssh.com`). `null`
-   *  means "can't tell", never "no room"; nor does an `unbounded` reading, which
-   *  is storage with no ceiling. */
-  destSpace: SpaceInfo | null
-  /** Whether the destination folder takes writes, asked before its space. An
-   *  `unwritable` answer is why nothing can land there, whatever `destSpace` says;
-   *  `unknown` means "can't tell", never "no". */
-  destWriteAccess: WriteAccess
-  conflicts: VolumeConflictInfo[]
 }
 
 /** Configuration for volume copy operations. */
@@ -504,38 +310,6 @@ export async function compressFiles(
     destZipPath,
     config ?? null,
     initiator ?? null,
-  )
-  if (res.status === 'error') throwIpcError(res.error)
-  return res.data
-}
-
-/**
- * Scans source files for a volume copy operation without executing it.
- * Performs a "pre-flight" scan to determine:
- * - Total file count and bytes to copy
- * - Available space on destination
- * - Any conflicts (files that already exist at destination)
- *
- * @param sourceVolumeId - ID of the source volume
- * @param sourcePaths - List of source file/directory paths
- * @param destVolumeId - ID of the destination volume
- * @param destPath - Destination directory path
- * @param maxConflicts - Maximum number of conflicts to return (default: 100)
- * @returns Scan result with file counts, space info, and conflicts
- */
-export async function scanVolumeForCopy(
-  sourceVolumeId: string,
-  sourcePaths: string[],
-  destVolumeId: string,
-  destPath: string,
-  maxConflicts?: number,
-): Promise<VolumeCopyScanResult> {
-  const res = await commands.scanVolumeForCopy(
-    sourceVolumeId,
-    sourcePaths,
-    destVolumeId,
-    destPath,
-    maxConflicts ?? null,
   )
   if (res.status === 'error') throwIpcError(res.error)
   return res.data

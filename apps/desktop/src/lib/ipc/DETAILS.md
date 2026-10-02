@@ -321,9 +321,9 @@ import { installIpcMock } from './test-helpers'
 import { commands } from './bindings'
 
 const ipc = installIpcMock()
-ipc.mock('copy_files', () => null)
-await commands.copyFiles({ sources, destination, volumeId, itemSizes, config })
-const call = ipc.lastCall('copy_files')
+ipc.mock('move_files', () => null)
+await commands.moveFiles(sources, destination, config, null)
+const call = ipc.lastCall('move_files')
 expect(call?.payload).toMatchObject({ sources, destination /* ... */ })
 ```
 

@@ -946,22 +946,21 @@ a sign-in UI genuinely branches on all of it.
 
 ### The commands
 
-- `cancelSftpConnect(attemptId)` / `cancelServerConnect(attemptId)` → `boolean`, the dialog's cancel button. See §
-  "Wiring the cancel button" below.
-- `disconnectSftpVolume(volumeId)` → `boolean` (whether there was an SFTP volume under that id). Drops the session and
-  unregisters the volume.
+- `cancelServerConnect(attemptId)` → `boolean`, the dialog's cancel button. See § "Wiring the cancel button" below.
+- `disconnectPlace(volumeId)` → `boolean` (whether there was a place under that id). Drops the session and unregisters
+  the volume.
 - `approveSftpHostKey({ host, port, algorithm, fingerprint })` → `SftpHostKeyApprovalResult`.
 - `forgetSftpHostKey(host, port, algorithm)` → `boolean`. The next connection to that server is first contact again.
 - `listTrustedSftpHostKeys()` → `TrustedHostKey[]` (`host`, `port`, `algorithm`, `fingerprint`, `approvedAt`), for a
   settings screen.
-- `saveSftpCredentials(host, port, username, secret)` / `hasSftpCredentials(...)` → `boolean` /
-  `deleteSftpCredentials(...)`. The two writing ones throw a `KeychainFailure` carrying the `KeychainError`
+- `saveSftpCredentials(host, port, username, secret)`, plus the protocol-agnostic `hasServerSecret(id)` → `boolean` and
+  `forgetServerSecret(id)` → `boolean` (`servers.ts`). Saving throws a `KeychainFailure` carrying the `KeychainError`
   (`apps/desktop/src/lib/servers/keychain-failure.ts`). ❗ There is deliberately **no** command that hands a secret
   back: the backend reads the store itself when it builds a session. ❗ **One entry per account, whatever the rung uses
   it for** — see § "The one secret entry" below. ❗ **These three ARE the "remember the secret" switch**: save turns it
-  on, `hasSftpCredentials` reads it, delete turns it off, and there is no fourth flag to keep in sync (§ "The two
-  switches").
-- `getKnownSftpServers()` → `KnownSftpServer[]` / `forgetKnownSftpServer(host, port, username)` → `boolean`. Editing a
+  on, `hasServerSecret` reads it, `forgetServerSecret` turns it off, and there is no fourth flag to keep in sync (§ "The
+  two switches").
+- `getKnownSftpServers()` → `KnownSftpServer[]`; forgetting one is the protocol-agnostic `forgetServer(id)`. Editing a
   server without connecting (renaming it, changing its root or key file, or moving the `autoReconnect` switch) goes
   through the protocol-agnostic `updateSavedServer` (`commands/servers.rs`), which calls
   `sftp_volume_wiring::save_without_connecting` directly rather than through a per-protocol command; a successful
@@ -975,7 +974,7 @@ a sign-in UI genuinely branches on all of it.
   `tauri-commands/sftp.ts` is the one place both defaults are spelled on the frontend.
 - `getSftpUnattendedReconnect(volumeId)` → `SftpUnattendedReconnect | null`, the backend's answer to "the switch is on
   and nothing comes back". ❗ Ask it when the banner renders, the same way `getVolumeSignInState` is asked, and ❌ never
-  derive it in the frontend from a rung plus a `hasSftpCredentials` call: the rung is decided per DIAL, so a derivation
+  derive it in the frontend from a rung plus a `hasServerSecret` call: the rung is decided per DIAL, so a derivation
   goes stale the moment a reconnect lands somewhere else. `null` means nothing SFTP is mounted under that id — an honest
   "there's no rung to reason about" rather than a guess.
 

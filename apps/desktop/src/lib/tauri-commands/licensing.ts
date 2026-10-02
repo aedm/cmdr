@@ -96,16 +96,6 @@ export async function getLicenseStatus(): Promise<LicenseStatus> {
   return commands.getLicenseStatus()
 }
 
-/**
- * Activates a license key (verify + commit in one call).
- * Kept for backward compatibility. New code should use verifyLicense + commitLicense.
- */
-export async function activateLicense(licenseKey: string): Promise<LicenseInfo> {
-  const res = await commands.activateLicense(licenseKey)
-  if (res.status === 'error') throwIpcError(res.error)
-  return res.data
-}
-
 /** Verifies a license key offline without writing anything to disk. */
 export async function verifyLicense(licenseKey: string): Promise<VerifyResult> {
   const res = await commands.verifyLicense(licenseKey)

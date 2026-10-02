@@ -120,7 +120,7 @@ pub(crate) use scan_cache::{ScanCostFacts, cached_cost_facts};
 pub use scan_preview::{cancel_scan_preview, get_scan_preview_totals, start_scan_preview};
 pub use state::{
     VolumesBusyChanged, busy_volume_ids, cancel_all_write_operations, cancel_write_operation, get_operation_status,
-    init_busy_volume_emitter, list_active_operations, pending_write_conflict, resolve_write_conflict,
+    init_busy_volume_emitter, pending_write_conflict, resolve_write_conflict,
 };
 // The hard-abort tier. Exactly one legitimate caller: the quit deadline
 // (`crate::quit`), which fires it only after the cooperative cancel has had its
@@ -181,12 +181,12 @@ pub(crate) use state::{register_external_volume_op, release_external_volume_op};
 #[allow(unused_imports, reason = "Public API re-exports for consumers of this module")]
 pub use types::{
     ConflictId, ConflictInfo, ConflictResolution, ConflictResolutionOutcome, DryRunResult, LifecycleStatus,
-    MoveLeftoversKeptEvent, OperationStatus, OperationSummary, ReadOnlySide, ScanPreviewCancelledEvent,
-    ScanPreviewCompleteEvent, ScanPreviewErrorEvent, ScanPreviewProgressEvent, ScanPreviewRefusal,
-    ScanPreviewStartResult, ScanPreviewTotals, ScanProgressEvent, SortColumn, SortOrder, SourceItemOutcome,
-    SpaceShortfall, TransferActivity, TransferWaitReason, WriteCancelledEvent, WriteCompleteEvent, WriteConflictEvent,
-    WriteConflictResolvedEvent, WriteErrorEvent, WriteOperationConfig, WriteOperationError, WriteOperationPhase,
-    WriteOperationStartResult, WriteOperationType, WriteProgressEvent, WriteSettledEvent, WriteSourceItemDoneEvent,
+    MoveLeftoversKeptEvent, OperationStatus, ReadOnlySide, ScanPreviewCancelledEvent, ScanPreviewCompleteEvent,
+    ScanPreviewErrorEvent, ScanPreviewProgressEvent, ScanPreviewRefusal, ScanPreviewStartResult, ScanPreviewTotals,
+    ScanProgressEvent, SortColumn, SortOrder, SourceItemOutcome, SpaceShortfall, TransferActivity, TransferWaitReason,
+    WriteCancelledEvent, WriteCompleteEvent, WriteConflictEvent, WriteConflictResolvedEvent, WriteErrorEvent,
+    WriteOperationConfig, WriteOperationError, WriteOperationPhase, WriteOperationStartResult, WriteOperationType,
+    WriteProgressEvent, WriteSettledEvent, WriteSourceItemDoneEvent,
 };
 
 // Re-export for tests (these are pub(crate) in validation.rs and state.rs)
@@ -242,8 +242,7 @@ pub(crate) fn test_retain_failure(operation_id: &str, operation_type: WriteOpera
 // reached through `super::` inside this module and are NOT re-exported: one
 // routing, one place to keep it right.
 pub use mutation_error::MutationError;
-pub use transfer::volume::scan_for_volume_copy;
-pub use types::{VolumeCopyConfig, VolumeCopyScanResult};
+pub use types::VolumeCopyConfig;
 // The transfer dialog's pre-flight conflict check: `commands/file_system/
 // volume_copy.rs`'s `scan_volume_for_conflicts` is a thin wrapper around
 // `scan_volume_for_conflicts_within`, budgeted the same way as every other

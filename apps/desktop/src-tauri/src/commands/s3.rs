@@ -80,10 +80,9 @@ pub async fn save_s3_credentials(
 }
 
 /// Whether a secret is stored for one account. ❗ No command hands the secret
-/// itself to the frontend. A store that didn't answer in time reads as `false`.
-#[tauri::command]
-#[specta::specta]
-pub async fn has_s3_credentials(provider: S3ProviderChoice, access_key_id: String) -> bool {
+/// itself to the frontend, which asks through `servers.rs`'s `has_server_secret`.
+/// A store that didn't answer in time reads as `false`.
+pub(crate) async fn has_s3_credentials(provider: S3ProviderChoice, access_key_id: String) -> bool {
     let access_key_id = access_key_id.trim().to_string();
     let Some(service) = s3_volume_wiring::credential_service(&provider, &access_key_id) else {
         return false;
@@ -95,9 +94,11 @@ pub async fn has_s3_credentials(provider: S3ProviderChoice, access_key_id: Strin
 }
 
 /// Forgets the stored secret for one account, and so for every place under it.
-#[tauri::command]
-#[specta::specta]
-pub async fn delete_s3_credentials(provider: S3ProviderChoice, access_key_id: String) -> Result<(), KeychainError> {
+/// The frontend asks through `servers.rs`'s `forget_server_secret`.
+pub(crate) async fn delete_s3_credentials(
+    provider: S3ProviderChoice,
+    access_key_id: String,
+) -> Result<(), KeychainError> {
     let access_key_id = access_key_id.trim().to_string();
     let Some(service) = s3_volume_wiring::credential_service(&provider, &access_key_id) else {
         return Err(not_an_account());

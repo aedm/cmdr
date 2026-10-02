@@ -40,9 +40,6 @@ Network error                → commitLicense(fullKey, shortCode) → persist +
 - `LicenseInfo` fields: `email`, `transaction_id`, `issued_at`, `organization_name`, `license_type`, `short_code`.
 - The frontend uses `license_type` to construct a fallback `LicenseStatus` when the server is unavailable.
 
-Legacy `activate_license` / `activate_license_async` wrappers still exist for backward compatibility; they call
-`commit_license` internally (verify + commit in one call).
-
 ## Key patterns
 
 - Key format: `base64(JSON).base64(signature)`, split on a single `.`.

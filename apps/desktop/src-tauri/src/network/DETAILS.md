@@ -874,8 +874,8 @@ reason for agents.
 `sftp_host_keys.rs` holds what this machine TRUSTS (`known-sftp-hosts.json`), `sftp_known_servers.rs` holds what the
 user has CONNECTED TO (`known-sftp-servers.json`), and the secret store holds the passwords. Three files because they
 answer three different questions and have three different lifetimes: forgetting a server from a list is not revoking its
-password, and neither is deciding its identity changed. The commands keep that split (`forget_known_sftp_server`,
-`delete_sftp_credentials`, `forget_sftp_host_key`), so the UI can ask exactly what it means.
+password, and neither is deciding its identity changed. The commands keep that split (`forget_server`, `forget_server_secret`, `forget_sftp_host_key`), so the UI can ask
+exactly what it means.
 
 ❗ **A server entry is keyed `(host, port, username)`**, the same triple `cmdr_fs::volume::sftp_volume_id` derives from,
 with the same case rules (the host folds, the account doesn't). A drift there files one volume under two entries. A host

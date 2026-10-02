@@ -311,10 +311,10 @@ already saved) in `apps/desktop/src-tauri/src/commands/servers.rs`, documented e
 answers with outcomes (`ServerConnectOutcome`, widened across protocols)
 `connected | authentication_rejected | needs_credentials | auth_method_unsupported | certificate_untrusted | not_a_webdav_server | timed_out | unreachable | cancelled`
 (`AuthMethodUnsupported` is its own variant, ❌ never folded into `AuthenticationRejected`: a Digest-only server never
-saw the password). The rest of the app's commands: `cancelServerConnect`, `disconnectWebdavVolume`,
-`saveWebdavCredentials(url, username, secret)` / `hasWebdavCredentials` / `deleteWebdavCredentials`,
-`getKnownWebdavServers` / `forgetKnownWebdavServer`. Editing a saved server without connecting goes through the
-protocol-agnostic `updateSavedServer` (`commands/servers.rs`), which calls
+saw the password). The rest of the app's commands: `cancelServerConnect`, `disconnectPlace`,
+`saveWebdavCredentials(url, username, secret)` / `hasServerSecret` / `forgetServerSecret`, `getKnownWebdavServers` /
+`forgetServer` (the unsuffixed ones are the protocol-agnostic `servers.ts`). Editing a saved server without connecting
+goes through the protocol-agnostic `updateSavedServer` (`commands/servers.rs`), which calls
 `webdav_volume_wiring::save_without_connecting` directly. ❗ Neither that edit nor a connect can change `pinned`:
 `webdav_known_servers::remember` honors it only for a NEW entry and carries the stored value across on a replace, so a
 reconnect can't undo an unpin; it defaults to FALSE, and `getKnownWebdavServers` in `tauri-commands/webdav.ts` is the

@@ -120,7 +120,7 @@ pub use events::{
     NetworkHostLost, NetworkHostResolved, SmbFellBackToOsMount, SmbOsMountNoticeWithdrawn, VolumeConnection,
     VolumeConnectionChanged,
 };
-pub use smb_client::{AuthMode, ShareListError, ShareListResult};
+pub use smb_client::{ShareListError, ShareListResult};
 
 /// Runtime mirror of the `network.enabled` setting. Default `true` matches the
 /// settings default. `lib.rs::setup` updates this from the persisted settings;

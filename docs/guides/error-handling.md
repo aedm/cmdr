@@ -68,8 +68,8 @@ The rule that replaced it:
   `ViewerError`, anything volume-shaped nests `VolumeError` (already the wire type). A new vocabulary is the last
   resort, not the first move.
 - **A small enum beside the family** when none fits: `EjectError`, `ReconnectError`, `GitSubscribeError`,
-  `VolumeScanError`, `FontMetricsError`, `SuggestedOpsError`, `BulkRenameError`, `FuzzyJumpError`, `ListingStartError`.
-  Each is `specta::Type`, internally tagged
+  `VolumeScanError`, `FontMetricsError`, `SuggestedOpsError`, `BulkRenameError`, `FuzzyJumpError`. Each is
+  `specta::Type`, internally tagged
   (`#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]`), and carries the fields a caller
   acts on.
 - **Two types are shared, each because it exhausts the failure modes of what it wraps.** `DeadlineError` only where the

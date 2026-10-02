@@ -655,8 +655,7 @@ the hosts it found, so a view opens on them at once and the fresh browse adds an
 
 - `$lib/tauri-commands`: `listNetworkHosts`, `resolveNetworkHost`, `listSharesOnHost`, `listSharesWithCredentials`,
   `prefetchShares`, `getSmbCredentials`, `saveSmbCredentials`, `deleteSmbCredentials`, `getUsernameHint`,
-  `getKnownShareByName`, `updateKnownShare`, `updateLeftPaneState`, `updateRightPaneState`, `connectToServer`,
-  `removeManualServer`
+  `getKnownShareByName`, `updateKnownShare`, `updateLeftPaneState`, `updateRightPaneState`, `connectToServer`
 - `$lib/settings/network-settings`: `getNetworkTimeoutMs`, `getShareCacheTtlMs`
 - `$lib/utils/confirm-dialog`: `confirmDialog`
 - `$lib/ui/toast`: `addToast`

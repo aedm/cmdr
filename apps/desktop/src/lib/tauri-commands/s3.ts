@@ -30,29 +30,23 @@ export type {
 }
 
 /**
- * Every saved S3 place, one per bucket (or account root), with the provider the
- * listing doesn't carry: what an edit form and a secret writer need.
- */
-export async function getKnownS3Places(): Promise<SavedS3Place[]> {
-  return await commands.getKnownS3Places()
-}
-
-/**
- * The saved S3 place a volume id names, or `null` when none does.
+ * The saved S3 place a volume id names, or `null` when none does. A saved place
+ * carries the provider the listing doesn't: what an edit form and a secret writer
+ * need.
  *
  * ❗ By the `volumeId` the backend published, ❌ never a frontend twin of the hash
  * Rust mints from `(host, port, key id, bucket)`: an id spelled twice can drift.
  */
 export async function knownS3PlaceOf(volumeId: string): Promise<SavedS3Place | null> {
-  return (await getKnownS3Places()).find((place) => place.volumeId === volumeId) ?? null
+  return (await commands.getKnownS3Places()).find((place) => place.volumeId === volumeId) ?? null
 }
 
 /**
  * Saves the secret access key for one ACCOUNT (a provider's endpoint plus an
  * access key id), so every bucket under that key connects silently.
  *
- * This call is the "remember the secret" switch: `hasS3Credentials` reads it
- * back, `deleteS3Credentials` turns it off, and there's no second flag that could
+ * This call is the "remember the secret" switch: `hasServerSecret` reads it
+ * back, `forgetServerSecret` turns it off (both in `servers.ts`), and there's no second flag that could
  * disagree with the store.
  *
  * Throws a `KeychainFailure` if the store refused, or if the provider's fields
@@ -64,23 +58,6 @@ export async function saveS3Credentials(
   secret: string,
 ): Promise<void> {
   const res = await commands.saveS3Credentials(provider, accessKeyId, secret)
-  if (res.status === 'error') throwKeychainError(res.error)
-}
-
-/**
- * Whether a secret is stored for one account. There's deliberately no command
- * that returns the secret itself.
- */
-export async function hasS3Credentials(provider: S3ProviderChoice, accessKeyId: string): Promise<boolean> {
-  return await commands.hasS3Credentials(provider, accessKeyId)
-}
-
-/**
- * Forgets the stored secret for one account, and so for every place under it.
- * Throws a `KeychainFailure` if the store refused.
- */
-export async function deleteS3Credentials(provider: S3ProviderChoice, accessKeyId: string): Promise<void> {
-  const res = await commands.deleteS3Credentials(provider, accessKeyId)
   if (res.status === 'error') throwKeychainError(res.error)
 }
 

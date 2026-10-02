@@ -49,7 +49,7 @@ mod transfer_error;
 
 // The public surface. Everything else in here is an implementation detail of
 // `volume/`; add a re-export rather than widening a submodule's visibility.
-pub use copy::{copy_between_volumes, scan_for_volume_copy};
+pub use copy::copy_between_volumes;
 pub use r#move::move_between_volumes;
 
 pub(crate) use copy::copy_volumes_with_progress;

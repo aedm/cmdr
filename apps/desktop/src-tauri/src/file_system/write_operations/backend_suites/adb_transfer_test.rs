@@ -35,7 +35,7 @@ use super::network_transfer_test_support::{
 };
 use crate::adb::device_provider::apply_device_list;
 use crate::adb::test_support::{a_listed_phone, dial, dials_seen, phone, retire_phone};
-use crate::commands::file_system::scan_volume_for_copy;
+use crate::commands::file_system::scan_volume_for_conflicts;
 use crate::file_system::volume::LocalPosixVolume;
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::ignore_poison::IgnorePoison;
@@ -356,38 +356,6 @@ async fn settle(events: &CollectorEventSink, what: &str) {
         .map(|e| format!("{:?}", e.error))
         .collect();
     assert!(errors.is_empty(), "{what}: the operation reported {errors:?}");
-}
-
-/// ❗ The copy dialog previews a destination folder before the copy makes it
-/// (`copy_volumes_with_progress` creates a missing destination). A phone answers
-/// for the storage that folder will land on, so the preview still checks for
-/// room, and it opens: `dest_space_if_known` tolerates only `NotSupported`, so a
-/// `NotFound` about the missing folder would refuse the preview outright.
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn a_preview_into_a_phone_folder_the_copy_will_create_checks_the_room_on_its_shared_storage() {
-    let phone = recorded_phone("PREVIEWNEWDIR01", FakeTree::new()).await;
-    let source = crate::file_system::volume::InMemoryVolume::new("Source");
-    source
-        .create_file(Path::new("/photo.jpg"), b"a photo's worth of bytes")
-        .await
-        .expect("the source file");
-    let destination = phone.sdcard.join("New album").join("Deeper");
-
-    let preview = crate::file_system::scan_for_volume_copy(
-        &source,
-        &[PathBuf::from("/photo.jpg")],
-        phone.volume.as_ref(),
-        &destination,
-        10,
-    )
-    .await
-    .expect("a preview into a folder the copy will create opens");
-    // The Pixel's own `df -k /sdcard` figure (`cmdr_adb::testing::pixel_captures`).
-    assert_eq!(
-        preview.dest_space.and_then(|space| space.available_bytes()),
-        Some(26_956_476 * 1024),
-        "the preview judges the copy against the shared storage it lands on"
-    );
 }
 
 /// ❗ The bug a real Pixel showed: a copy onto the phone's `/` said "Not enough
@@ -716,20 +684,20 @@ async fn mkdir_on_a_phone_nobody_dialed_is_refused_as_not_connected() {
     assert!(!phone.holds("/sdcard/album"), "no folder appeared on the phone");
 }
 
-/// The copy preview scan names the unconnected destination the same way the copy
-/// does, so the two can't disagree about why nothing can land.
+/// The transfer dialog's conflict preflight names the unconnected destination the
+/// same way the copy does, so the two can't disagree about why nothing can land.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn a_copy_preview_onto_a_phone_nobody_dialed_says_it_is_not_connected() {
+async fn a_copy_preflight_onto_a_phone_nobody_dialed_says_it_is_not_connected() {
     let phone = undialed_phone("R58M-Undialed-Scan", FakeTree::new()).await;
     let local = registered_local("adb_scan_onto_undialed_phone");
     std::fs::write(local.dir.join("photo.jpg"), b"a photo's worth of bytes").expect("seeding the local file");
 
-    let refused = scan_volume_for_copy(
-        local.volume_id.clone(),
-        vec!["photo.jpg".to_string()],
+    let refused = scan_volume_for_conflicts(
         phone.volume_id.clone(),
+        vec![],
         phone.sdcard.to_string_lossy().into_owned(),
-        None,
+        Some(local.volume_id.clone()),
+        Some(vec!["photo.jpg".to_string()]),
     )
     .await
     .err();

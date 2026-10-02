@@ -23,8 +23,6 @@ import type {
   DryRunResult,
   Initiator,
   MoveLeftoversKeptEvent,
-  OperationStatus,
-  OperationSummary,
   ProgressAtStop,
   ScanPreviewCancelledEvent,
   ScanPreviewCompleteEvent,
@@ -68,8 +66,6 @@ export type {
   ConflictResolutionOutcome,
   DryRunResult,
   Initiator,
-  OperationStatus,
-  OperationSummary,
   ProgressAtStop,
   ScanProgressEvent,
   ScanPreviewStartResult,
@@ -156,19 +152,7 @@ export async function onScanPreviewCancelled(
 // Write operations (copy, move, delete)
 // ============================================================================
 
-/** Emits write-progress, write-complete, write-error, write-cancelled events. */
-export async function copyFiles(
-  sources: string[],
-  destination: string,
-  config?: WriteOperationConfig,
-  initiator?: Initiator,
-): Promise<WriteOperationStartResult> {
-  const res = await commands.copyFiles(sources, destination, config ?? null, initiator ?? null)
-  if (res.status === 'error') throwIpcError(res.error)
-  return res.data
-}
-
-/** Uses instant rename for same-filesystem, copy+delete for cross-filesystem. Same events as copyFiles. */
+/** Uses instant rename for same-filesystem, copy+delete for cross-filesystem. Same events as copyBetweenVolumes. */
 export async function moveFiles(
   sources: string[],
   destination: string,
@@ -180,7 +164,7 @@ export async function moveFiles(
   return res.data
 }
 
-/** Recursively deletes files and directories. Same events as copyFiles. */
+/** Recursively deletes files and directories. Same events as copyBetweenVolumes. */
 export async function deleteFiles(
   sources: string[],
   config?: WriteOperationConfig,
@@ -192,7 +176,7 @@ export async function deleteFiles(
   return res.data
 }
 
-/** Moves files to macOS Trash. Same events as copyFiles but with operationType: trash. */
+/** Moves files to macOS Trash. Same events as copyBetweenVolumes but with operationType: trash. */
 export async function trashFiles(
   sources: string[],
   itemSizes?: number[],

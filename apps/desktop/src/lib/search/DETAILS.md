@@ -779,8 +779,8 @@ cursor row alone for a while, so Cmd+A then delete took one file (ERR-Q373S). Wi
   capabilities" carries the mechanism.
 - **F5 / F6** route through `openUnifiedTransferDialog`, which routes off the kind's `hasBackendListing` capability and
   calls `transfer-operations::buildTransferPropsFromSnapshot` instead of the listing-id-driven builders. The resolved
-  entries feed the same `TransferDialogPropsData` shape every transfer uses, and the existing `copy_files` /
-  `move_files` IPCs run with `sources: Vec<String>`.
+  entries feed the same `TransferDialogPropsData` shape every transfer uses, and the existing transfer IPCs run with
+  `sources: Vec<String>`.
 - **F8 / Shift+F8** route through `file-operation-commands::openDeleteFromSearchResults`, on the same
   `hasBackendListing` gate. The resolved entries become the dialog's `DeleteSourceItem[]`, `isFromCursor` is true only
   on the cursor fallback (it picks the dialog's title), and `sourceFolderPath` is the COMMON PARENT of the resolved

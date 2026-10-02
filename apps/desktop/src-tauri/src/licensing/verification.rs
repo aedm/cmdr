@@ -191,29 +191,6 @@ pub fn commit_license(
     Ok(info)
 }
 
-/// Activate a license key (full key, not short code). Verifies + commits in one call.
-/// Kept for backward compatibility with periodic validation and internal callers.
-pub fn activate_license(app: &tauri::AppHandle, license_key: &str) -> Result<LicenseInfo, LicenseActivationError> {
-    commit_license(app, license_key, None)
-}
-
-/// Activate a license key or short code (async version). Verifies + commits in one call.
-/// If the input is a short code (CMDR-XXXX-XXXX-XXXX), it first exchanges it for the full key.
-/// Kept for backward compatibility.
-pub async fn activate_license_async(
-    app: &tauri::AppHandle,
-    input: &str,
-) -> Result<LicenseInfo, LicenseActivationError> {
-    let (full_key, short_code) = if is_short_code(input) {
-        let key = activate_short_code(input).await?;
-        (key, Some(input))
-    } else {
-        (input.to_string(), None)
-    };
-
-    commit_license(app, &full_key, short_code)
-}
-
 /// Get stored license info, if any. Returns a cached result after the first successful
 /// verification.
 pub fn get_license_info(app: &tauri::AppHandle) -> Option<LicenseInfo> {

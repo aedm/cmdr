@@ -3,15 +3,14 @@
 use crate::file_system::get_files_at_indices as ops_get_files_at_indices;
 use crate::file_system::get_paths_at_indices as ops_get_paths_at_indices;
 use crate::file_system::{
-    BriefColumnWidths, BriefColumnsIpcError, DirectorySortMode, FileEntry, ListingStartResult, ListingStats,
-    ResortResult, RowBeside, SortColumn, SortOrder, StreamingListingStartResult, cancel_listing as ops_cancel_listing,
+    BriefColumnWidths, BriefColumnsIpcError, DirectorySortMode, FileEntry, ListingStats, ResortResult, RowBeside,
+    SortColumn, SortOrder, StreamingListingStartResult, cancel_listing as ops_cancel_listing,
     compute_brief_column_text_widths as ops_compute_brief_column_text_widths, find_file_index as ops_find_file_index,
     find_file_indices as ops_find_file_indices,
     fuzzy_find_first_match_in_listing as ops_fuzzy_find_first_match_in_listing, get_file_at as ops_get_file_at,
     get_file_beside as ops_get_file_beside, get_file_range as ops_get_file_range,
     get_listing_stats as ops_get_listing_stats, get_total_count as ops_get_total_count,
     list_directory_end as ops_list_directory_end, list_directory_start_streaming as ops_list_directory_start_streaming,
-    list_directory_start_with_volume as ops_list_directory_start_with_volume,
     refresh_listing_index_sizes as ops_refresh_listing_index_sizes, resort_listing as ops_resort_listing,
     set_listing_include_hidden as ops_set_listing_include_hidden,
 };
@@ -271,58 +270,6 @@ async fn exists_on_volume(volume_id: Option<String>, path: String, spelling: Spe
 // ============================================================================
 // On-demand virtual scrolling API
 // ============================================================================
-
-/// Synchronous version. Prefer `list_directory_start_streaming` for non-blocking operation.
-#[tauri::command]
-#[specta::specta]
-pub async fn list_directory_start(
-    path: String,
-    include_hidden: bool,
-    sort_by: SortColumn,
-    sort_order: SortOrder,
-    directory_sort_mode: Option<DirectorySortMode>,
-) -> Result<ListingStartResult, ListingStartError> {
-    // Foreground activity: the user navigated. This command is the local-volume
-    // path, so attribute it to "root" — the same volume id the FE uses for local.
-    // Background work yields to this: media enrichment (app-wide), and the local
-    // volume's own index scan and transfers (per-volume).
-    crate::priority::foreground::note_foreground_activity_on("root");
-    let expanded_path = expand_tilde(&path);
-    let path_buf = PathBuf::from(&expanded_path);
-    let dir_sort_mode = directory_sort_mode.unwrap_or_default();
-    match tokio::time::timeout(
-        Duration::from_secs(2),
-        ops_list_directory_start_with_volume("root", &path_buf, include_hidden, sort_by, sort_order, dir_sort_mode),
-    )
-    .await
-    {
-        Ok(Ok(result)) => Ok(result),
-        // `VolumeError` carries the errno AND the path, which is what the
-        // frontend's listing-error factory renders from; a formatted sentence
-        // would throw both away.
-        Ok(Err(e)) => Err(ListingStartError::Volume {
-            error: cmdr_fs::volume::VolumeError::from_io_at(&e, &path_buf),
-        }),
-        Err(_) => Err(ListingStartError::TimedOut),
-    }
-}
-
-/// Why a synchronous listing start didn't produce a listing.
-///
-/// ❌ Not prose: `VolumeError` is the wire type the frontend's listing-error
-/// factory already words, in every locale.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
-#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum ListingStartError {
-    /// The volume refused, and said why in its own vocabulary.
-    Volume {
-        /// The backend's typed answer, errno and path intact.
-        error: cmdr_fs::volume::VolumeError,
-    },
-    /// The read didn't finish inside the command's wait. ❗ It was NOT
-    /// cancelled.
-    TimedOut,
-}
 
 /// Returns immediately; reads in background.
 /// Emits listing-progress, listing-complete, listing-error, listing-cancelled.

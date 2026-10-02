@@ -280,20 +280,6 @@ pub async fn prefetch_shares(
     // No-op
 }
 
-/// Gets auth mode detected for a host (stub: returns Unknown).
-#[tauri::command]
-#[specta::specta]
-pub fn get_host_auth_mode(_host_id: String) -> AuthMode {
-    AuthMode::Unknown
-}
-
-/// Gets all known network shares (stub: returns empty).
-#[tauri::command]
-#[specta::specta]
-pub fn get_known_shares() -> Vec<KnownNetworkShare> {
-    vec![]
-}
-
 /// Gets a specific known share by server and share name (stub: returns None).
 #[tauri::command]
 #[specta::specta]
@@ -338,13 +324,6 @@ pub fn save_smb_credentials(
 #[specta::specta]
 pub fn get_smb_credentials(_server: String, _share: Option<String>) -> Result<SmbCredentials, KeychainError> {
     Err(KeychainError::NotFound("Keychain not supported on Linux".to_string()))
-}
-
-/// Checks if credentials exist (stub: returns false).
-#[tauri::command]
-#[specta::specta]
-pub fn has_smb_credentials(_server: String, _share: Option<String>) -> bool {
-    false
 }
 
 /// Whether a password was already read this session (stub: false).
@@ -523,13 +502,6 @@ pub async fn connect_to_server(
     _app_handle: tauri::AppHandle,
 ) -> Result<ManualConnectResult, String> {
     Err("Manual server connection not supported on this platform".to_string())
-}
-
-/// Removes a manual server (stub: returns error).
-#[tauri::command]
-#[specta::specta]
-pub fn remove_manual_server(_server_id: String, _app_handle: tauri::AppHandle) -> Result<(), String> {
-    Err("Manual server removal not supported on this platform".to_string())
 }
 
 /// Sets the account an SMB server is used with (stub: nothing to set).

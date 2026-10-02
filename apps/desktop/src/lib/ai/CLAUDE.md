@@ -54,8 +54,8 @@ No circular dependency: `ai-state.svelte.ts` never imports from the sync or cont
   a tooltip (gated on `AiRuntimeStatus.localAiSupported`).
 - **llama-server is not auto-restarted**: a crash leaves AI down until app restart ("AI unavailable").
 - **Switching the selected model needs download + app restart** (no hot-swap).
-- **Folder suggestions degrade gracefully**: `getFolderSuggestions()` returns `[]` after a 10s timeout; the UI hides the
-  section with no error.
+- **Folder suggestions degrade gracefully**: a failed suggestion stream ends quietly, and the UI hides the section with
+  no error.
 
 Full details (settings registry and config push, wizard reuse of the cloud pipeline, model registry, download
 resumption, dev commands): `DETAILS.md`.

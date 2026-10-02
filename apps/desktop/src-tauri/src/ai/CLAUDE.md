@@ -51,7 +51,7 @@ Cloud-side: `client.rs` is the `genai` chat client (`AiBackend`), tapped for log
 - **Cancellation needs the explicit `cancel_folder_suggestions` command** + `CancellationToken`, never `Channel::send`
   failure: `send` succeeds silently after the JS handler is GC'd, so the backend streams on (billing cloud, pegging
   local compute) past dialog close.
-- **`get_folder_suggestions` returns `Ok(Vec::new())` on AI errors** (folder suggestions are nice-to-have).
+- **A failed suggestion stream ends in `Failed`**, never `Err` (suggestions are optional).
 
 Architecture, flows, and decision detail: `DETAILS.md`. Read it before any non-trivial work here: editing,
 planning, reorganizing, or advising.

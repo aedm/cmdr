@@ -22,7 +22,6 @@ vi.mock('$lib/tauri-commands', () => ({
   findFileIndex: vi.fn(() => Promise.resolve(null)),
   getAiStatus: vi.fn(() => Promise.resolve('unavailable')),
   getFileAt: vi.fn(() => Promise.resolve(null)),
-  getFolderSuggestions: vi.fn(() => Promise.resolve([])),
   streamFolderSuggestions: vi.fn(() => ({ promise: Promise.resolve(), cancel: () => Promise.resolve() })),
   onDirectoryDiff: vi.fn(() => Promise.resolve(() => {})),
   refreshListing: vi.fn(() => Promise.resolve({ data: null, timedOut: false })),

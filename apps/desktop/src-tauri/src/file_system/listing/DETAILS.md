@@ -208,7 +208,7 @@ neighbour doesn't compose two calls; reach for those instead of a loop.
 
 A `directory-diff` index is a row of the pane showing the listing, the same space `get_file_range` reads, ❌ never an
 index into `entries`. The pane's rows are `CachedListing::pane_rows()`: the row map at the listing's own
-`include_hidden`, recorded at `list_directory_start` and updated by `set_listing_include_hidden`, which the pane calls
+`include_hidden`, recorded at `list_directory_start_streaming` and updated by `set_listing_include_hidden`, which the pane calls
 first thing in `hidden-files-resync.ts` (after every load and every toggle). It's per listing, and each pane holds its
 own listing, so two panes on one folder each get their own rows.
 

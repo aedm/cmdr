@@ -52,12 +52,15 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   `resolve_path_volume_fast` alone would return `None` for `smb://` / `mtp://` paths, so don't bypass the shared body.
 - **`volumes_linux.rs`** (Linux): same interface as `volumes.rs` (including `resolve_location`), delegates to the
   `volumes_linux` module.
-- **`mtp.rs`**: full MTP command surface (connect, disconnect, list, download, upload, delete, rename, move, scan).
+- **`mtp.rs`**: the MTP on/off switch, the dial (`connect_mtp_device`), and the ptpcamerad workaround text. Browsing
+  and file operations go through `MtpVolume`, and the device list reaches the frontend as volumes.
 - **`sftp.rs`**: the SFTP surface minus connecting (that's `servers.rs`, below) and minus editing a saved entry
   without connecting (`servers.rs`'s `update_saved_server` calls `sftp_volume_wiring::save_without_connecting`
-  directly now): `cancel_sftp_connect`, `disconnect_sftp_volume`, `approve_sftp_host_key` / `forget_sftp_host_key` /
-  `list_trusted_sftp_host_keys`, the credential trio (`save` / `has` / `delete`, keyed `host:port` + username, each on
-  a blocking task because the Keychain can prompt), and the known-servers pair (`get` / `forget`). ❗ There is
+  directly now): `approve_sftp_host_key` / `forget_sftp_host_key` / `list_trusted_sftp_host_keys`,
+  `save_sftp_credentials` (keyed `host:port` + username, on a blocking task because the Keychain can prompt; its
+  `has` / `delete` siblings are crate-internal, reached through `servers.rs`'s `has_server_secret` /
+  `forget_server_secret`), and `get_known_sftp_servers`. Cancelling, disconnecting, and forgetting are `servers.rs`'s
+  protocol-agnostic `cancel_server_connect` / `disconnect_place` / `forget_server`. ❗ There is
   deliberately no command that returns a stored secret. The flow behind the commands is `network::sftp_volume_wiring`;
   the frontend contract is `crates/cmdr-sftp/DETAILS.md` § "Connecting from the frontend".
   - ❗ **Reconnecting an SFTP volume, and asking what a sign-in would want, both go through `network.rs`**:
@@ -66,13 +69,12 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   - ❗ **The connect outcome (`ServerConnectOutcome`, below) carries no rung**, and nothing about a later sign-in: the
     rung is a fact about that dial, and what a sign-in would ask for is decided per dial too, so it is a query
     (`get_sftp_unattended_reconnect`), not a payload.
-  - ❗ **`cancel_sftp_connect` takes the CALLER's own `attempt_id`, made before the connect call.** The connect command
+  - ❗ **`cancel_server_connect` takes the CALLER's own `attempt_id`, made before the connect call.** The connect command
     doesn't answer for up to 30 s, so an id it returned would be useless for arming a cancel button. The table behind
     it: `network/DETAILS.md` § "The attempt table, and why the id is the caller's".
 - **`webdav.rs`**: the WebDAV surface minus connecting and minus editing without connecting, shaped like `sftp.rs`
-  minus host keys: `cancel_webdav_connect`, `disconnect_webdav_volume`, the credential trio (`save` / `has` /
-  `delete`, keyed `scheme://host:port` + username), the known-servers pair (`get` / `forget`), and
-  `get_webdav_unattended_reconnect`. Same rules as SFTP: the `attempt_id` is the caller's, reconnect and sign-in go
+  minus host keys: `save_webdav_credentials` (keyed `scheme://host:port` + username; `has` / `delete` are
+  crate-internal, like SFTP's), `get_known_webdav_servers`, and `get_webdav_unattended_reconnect`. Same rules as SFTP: the `attempt_id` is the caller's, reconnect and sign-in go
   through `network.rs`, and no command returns a stored secret. The flow is `network::webdav_volume_wiring`; the
   contract is `crates/cmdr-webdav/DETAILS.md` § "Connecting from the frontend".
 - **`s3.rs`**: the S3 surface the facade has no reason to widen: the ACCOUNT's secret (`save` / `has` / `delete`, keyed
@@ -319,7 +321,7 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
 - **`licensing.rs`**: status query, activation, expiry, reminder, key validation.
 - **`whats_new.rs`**: `get_whats_new(since_version, max)` (release entries for the What's New dialog) and
   `whats_new_dev_override` (dev-only).
-- **`indexing.rs`**: `start_drive_index`, `stop_drive_index`, `get_index_status`, `get_dir_stats`,
+- **`indexing.rs`**: `start_drive_index`, `get_index_status`, `get_dir_stats`,
   `get_dir_stats_batch`, `clear_drive_index`, `set_indexing_enabled`, `get_index_debug_status` (dev-only). Uses
   `State<IndexManagerState>`. Two of these carry the MASTER drive-indexing switch (the model lives in
   `indexing/lifecycle/DETAILS.md` § The two indexing switches): `set_indexing_enabled` moves the gate first, then stops
@@ -485,7 +487,7 @@ An IPC deadline is a promise about the REPLY, not permission to abandon half-wri
 fut)` breaks that: when the deadline fires it drops `fut` wherever it happens to be.
 
 For anything that can reach a device backend (any command taking a `volume_id`: `rename_file`,
-`check_rename_validity`, `scan_for_volume_copy`, `scan_volume_for_conflicts`), dropping mid-flight means dropping a PTP
+`check_rename_validity`, `scan_volume_for_conflicts`), dropping mid-flight means dropping a PTP
 transaction mid-data-phase on MTP, which leaves the phone expecting bytes nobody will send and wedges it until replug.
 See `crates/cmdr-mtp/src/connection/DETAILS.md` § "No dropping timeouts".
 

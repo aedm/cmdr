@@ -14,8 +14,7 @@ pub use app_status::{
     validate_license_async, write_cached_status_without_validation,
 };
 pub use verification::{
-    LicenseActivationError, LicenseInfo, VerifyResult, activate_license, activate_license_async, commit_license,
-    get_license_info, verify_license_async,
+    LicenseActivationError, LicenseInfo, VerifyResult, commit_license, get_license_info, verify_license_async,
 };
 
 use serde::{Deserialize, Serialize};

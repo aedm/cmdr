@@ -54,12 +54,12 @@ Each concern module's Tauri commands are registered from their real module path 
 - **`client_real_openai_test.rs`**: `#[ignore]`-gated smoke tests against `api.openai.com`, including streaming variants for `gpt-4o-mini`, `gpt-5-mini`, `o3-mini`. Run with `OPENAI_API_KEY=$(secret OPENAI_API_KEY) cargo nextest run --lib --run-ignored only ai::client_real_openai_test`. Costs ~$0.001 per full run.
 - **`client_real_anthropic_test.rs`**: `#[ignore]`-gated smoke tests against `api.anthropic.com` (chat + streaming variants of `claude-3-5-haiku-latest`). Anthropic's native streaming protocol differs from OpenAI's SSE shape; without this we'd only test the OpenAI lineage. Run with `ANTHROPIC_API_KEY=$(secret ANTHROPIC_API_KEY) cargo nextest run --lib --run-ignored only ai::client_real_anthropic_test`.
 - **`client_real_gemini_test.rs`**: `#[ignore]`-gated smokes against `generativelanguage.googleapis.com/v1/` (adapter routing + chat + streaming). Free tier, so a run costs nothing but Google's patience. The retry / triage / inconclusive design and the empirical evidence behind it are in the smoke bullets above; read them before touching this file. Run with `GEMINI_API_KEY=$(secret GEMINI_API_KEY) cargo nextest run --lib --run-ignored only ai::client_real_gemini_test`.
-- **`suggestions.rs`**: Builds few-shot prompt from listing cache, routes to configured backend, sanitizes response. Also exposes `stream_folder_suggestions` + `cancel_folder_suggestions` Tauri commands and a `StreamingSanitizer` that runs the per-line sanitizer on streamed chunks (line-buffers across chunk boundaries, dedupes case-insensitively against existing names + already-emitted, caps at `MAX_SUGGESTIONS`).
+- **`suggestions.rs`**: Builds few-shot prompt from listing cache, routes to configured backend, sanitizes response. Exposes `stream_folder_suggestions` + `cancel_folder_suggestions` Tauri commands and a `StreamingSanitizer` that runs the per-line sanitizer on streamed chunks (line-buffers across chunk boundaries, dedupes case-insensitively against existing names + already-emitted, caps at `MAX_SUGGESTIONS`).
 - **`suggestions_streaming_test.rs`**: Tests for the `manager::register_stream`/`unregister_stream`/`cancel_stream` registry: concurrent ids don't interfere, double-cancel is idempotent, missing id is a no-op.
 
 ### Tauri commands
 
-Core: `get_ai_status`, `get_ai_model_info`, `get_ai_runtime_status`, `configure_ai`, `start_ai_server`, `stop_ai_server`, `check_ai_connection`, `start_ai_download`, `cancel_ai_download`, `get_folder_suggestions`, `stream_folder_suggestions`, `cancel_folder_suggestions`. Note: `get_system_memory_info` moved to top-level `system_memory.rs`.
+Core: `get_ai_status`, `get_ai_model_info`, `get_ai_runtime_status`, `configure_ai`, `start_ai_server`, `stop_ai_server`, `check_ai_connection`, `start_ai_download`, `cancel_ai_download`, `stream_folder_suggestions`, `cancel_folder_suggestions`. Note: `get_system_memory_info` moved to top-level `system_memory.rs`.
 API keys: `save_ai_api_key`, `get_ai_api_key_status`, `delete_ai_api_key` (in `api_keys.rs`).
 Also: `uninstall_ai` (the Uninstall button in `AiLocalSection.svelte`). The dead opt-out machinery (`opt_in_ai`, `is_ai_opted_out`, `dismiss_ai_offer`, `opt_out_ai`, and the `AiState.opted_out` field) was removed with the onboarding revamp — `ai.provider` is the single source of truth for whether AI is on.
 
@@ -245,8 +245,8 @@ privacy-focused users. The architecture doesn't fight this switch: it's just a d
 **Gotcha**: `tauri::async_runtime::spawn` is used in `configure_ai` and `start_ai_server` instead of `tokio::spawn`.
 **Why**: These may run during Tauri setup before the tokio runtime is fully available. `tauri::async_runtime::spawn` uses Tauri's own runtime which is always ready at that point.
 
-**Gotcha**: `get_folder_suggestions` returns `Ok(Vec::new())` on AI errors, not `Err`.
-**Why**: AI suggestions are a nice-to-have enhancement. Returning empty gracefully hides the failure.
+**Gotcha**: `stream_folder_suggestions` ends a failed stream with a bare `Failed` event, never an `Err` or a message.
+**Why**: AI suggestions are a nice-to-have enhancement. Ending quietly hides the failure; the cause goes to the log.
 
 **Gotcha**: `configure_ai` must NOT block. Only the health check runs async via `tauri::async_runtime::spawn`.
 **Why**: Health check polling takes 5-60s. Blocking would freeze the frontend on startup.

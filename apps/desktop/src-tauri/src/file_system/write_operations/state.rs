@@ -757,9 +757,7 @@ pub(super) fn forget_operation(operation_id: &str) {
 // `state::register_operation_status`, `state::busy_volume_ids`, etc. paths keep
 // resolving for every caller, the same way `operation_intent` and `scan_cache`
 // are surfaced above.
-pub use super::status_cache::{
-    VolumesBusyChanged, busy_volume_ids, get_operation_status, init_busy_volume_emitter, list_active_operations,
-};
+pub use super::status_cache::{VolumesBusyChanged, busy_volume_ids, get_operation_status, init_busy_volume_emitter};
 #[cfg(target_os = "macos")]
 pub(crate) use super::status_cache::{register_external_volume_op, release_external_volume_op};
 pub(super) use super::status_cache::{register_operation_status, unregister_operation_status, update_operation_status};

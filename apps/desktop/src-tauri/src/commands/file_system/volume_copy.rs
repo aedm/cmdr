@@ -7,9 +7,9 @@
 
 use crate::file_system::{
     CONFLICT_CHECK_BUDGET, OperationEventSink, ScanConflict, SourceItemInput, TauriEventSink, VolumeCopyConfig,
-    VolumeCopyScanResult, VolumeScanError, WriteOperationError, WriteOperationStartResult, resolve_dest_path,
-    resolve_source_volume, scan_for_volume_copy as ops_scan_for_volume_copy, scan_volume_for_conflicts_within,
-    start_rename_by_move, start_volume_compress, start_volume_copy, start_volume_move,
+    VolumeScanError, WriteOperationError, WriteOperationStartResult, resolve_dest_path,
+    scan_volume_for_conflicts_within, start_rename_by_move, start_volume_compress, start_volume_copy,
+    start_volume_move,
 };
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -20,7 +20,7 @@ use crate::file_system::volume::manager::get_volume_manager;
 use crate::operation_log::types::Initiator;
 
 /// Unified copy across volume types (local, MTP, extract out of a `.zip`).
-/// Same events as `copy_files`.
+/// Emits write-progress, write-complete, write-error, write-cancelled.
 #[tauri::command]
 #[specta::specta]
 pub async fn copy_between_volumes(
@@ -128,50 +128,6 @@ pub async fn compress_files(
         dest_zip_path,
         config.unwrap_or_default(),
         initiator.unwrap_or(Initiator::User),
-    )
-    .await
-}
-
-/// Pre-flight scan: total count/bytes, available space, conflicts. Doesn't copy anything.
-#[tauri::command]
-#[specta::specta]
-pub async fn scan_volume_for_copy(
-    source_volume_id: String,
-    source_paths: Vec<String>,
-    dest_volume_id: String,
-    dest_path: String,
-    max_conflicts: Option<usize>,
-) -> Result<VolumeCopyScanResult, VolumeScanError> {
-    let source_paths: Vec<PathBuf> = source_paths.iter().map(PathBuf::from).collect();
-    let dest_path = PathBuf::from(dest_path);
-
-    // Resolve both so an archive-inner source scans through its ArchiveVolume
-    // (sizing an extract-out) and the dest routes consistently with the copy op.
-    let Some((source_volume, _)) = resolve_source_volume(&source_volume_id, source_paths.first()).await else {
-        return Err(VolumeScanError::source_missing(source_volume_id).await);
-    };
-
-    let Some(dest_volume) = get_volume_manager().resolve(&dest_volume_id, &dest_path).await.volume else {
-        return Err(VolumeScanError::destination_missing(dest_volume_id).await);
-    };
-
-    let max_conflicts = max_conflicts.unwrap_or(100);
-    // Same anchoring the copy op applies, so the scan sizes and counts conflicts
-    // at the folder the copy will actually write to.
-    let dest_path = resolve_dest_path(&dest_volume, dest_path.to_string_lossy().into_owned());
-
-    // Run scan (now async). Detached: a copy scan of an MTP source is a recursive
-    // listing that outlives 30 s on any photo-heavy folder, and dropping it
-    // mid-`GetObjectInfo` wedges the phone.
-    timeout_detached_typed(
-        Duration::from_secs(30),
-        || VolumeScanError::TimedOut,
-        |detail| VolumeScanError::Unexpected { detail },
-        async move {
-            ops_scan_for_volume_copy(&*source_volume, &source_paths, &*dest_volume, &dest_path, max_conflicts)
-                .await
-                .map_err(|error| VolumeScanError::Volume { error })
-        },
     )
     .await
 }

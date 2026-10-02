@@ -170,10 +170,10 @@ writes it, so a checked box promises nothing that hasn't been shown.
 
 ❗ **The read is not cheaper for SFTP, and ❌ don't reason as if it were.** `has_sftp_credentials` is
 `network::keychain::has_credentials`, which is literally `get_credentials(server, share).is_ok()` — the same call
-`has_smb_credentials` makes. So the cost argument is about WHEN it is worth paying, ❌ never about which protocol. On a
-right-click it is not worth paying: `../file-explorer/navigation/server-row-actions.ts` offers "Forget saved password"
-on every server row and lets `forgetServerSecret`'s own answer word the empty case, rather than reading the Keychain to
-decide whether to draw a menu item.
+`has_server_secret` makes for an SMB host. So the cost argument is about WHEN it is worth paying, ❌ never about which
+protocol. On a right-click it is not worth paying: `../file-explorer/navigation/server-row-actions.ts` offers "Forget
+saved password" on every server row and lets `forgetServerSecret`'s own answer word the empty case, rather than reading
+the Keychain to decide whether to draw a menu item.
 
 **A flip is WRITTEN, before the round it belongs to.** `open-sign-in.ts`'s `withRememberFlip` wraps whichever attempt
 the standing picked, compares the box against what `hasServerSecret` answered, and writes once per flip: OFF →

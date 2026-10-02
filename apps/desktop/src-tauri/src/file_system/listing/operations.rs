@@ -5,34 +5,42 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+#[cfg(test)]
+use std::path::Path;
+use std::path::PathBuf;
+#[cfg(test)]
 use uuid::Uuid;
 
 use cmdr_fs::ignore_poison::RwLockIgnorePoison;
 
+#[cfg(test)]
 use crate::benchmark;
 use crate::file_system::listing::cached_listing::{CachedListing, LISTING_CACHE, OverlayRows};
 use crate::file_system::listing::metadata::FileEntry;
 use crate::file_system::listing::sorting::{DirectorySortMode, SortColumn, SortOrder, sort_entries};
 use crate::file_system::listing::visible_rows::VisibleRows;
-use crate::file_system::watcher::{start_watching_detached, stop_watching};
+#[cfg(test)]
+use crate::file_system::watcher::start_watching_detached;
+use crate::file_system::watcher::stop_watching;
 use crate::index_host::index;
 
 // ============================================================================
 // Listing lifecycle
 // ============================================================================
 
-/// Result of starting a new directory listing.
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
+/// Result of starting a new directory listing synchronously.
+#[cfg(test)]
+#[derive(Debug, Clone)]
 pub struct ListingStartResult {
     pub listing_id: String,
     pub total_count: usize,
 }
 
-/// Starts a new directory listing using a specific volume.
-///
-/// This is the internal implementation that supports multi-volume access.
+/// Starts a directory listing on a volume and returns once it's cached: the
+/// synchronous twin of `list_directory_start_streaming`, which needs a Tauri
+/// runtime for its events. A test seam only; every pane lists through the
+/// streaming path.
+#[cfg(test)]
 pub async fn list_directory_start_with_volume(
     volume_id: &str,
     path: &Path,

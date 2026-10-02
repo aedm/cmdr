@@ -133,7 +133,6 @@ vi.mock('$lib/stores/volume-busy-store.svelte', () => ({ isVolumeBusy: () => fal
 vi.mock('$lib/tauri-commands', () => ({
   updateLeftPaneState: vi.fn(() => Promise.resolve()),
   updateRightPaneState: vi.fn(() => Promise.resolve()),
-  removeManualServer: vi.fn(() => Promise.resolve()),
   showNetworkHostContextMenu: h.showNetworkHostContextMenu,
   onNetworkHostContextAction: vi.fn(() => Promise.resolve(() => {})),
   disconnectNetworkHost: vi.fn(() => Promise.resolve()),

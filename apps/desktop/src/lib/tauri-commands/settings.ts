@@ -558,21 +558,6 @@ export async function isForceOnboarding(): Promise<boolean> {
   }
 }
 
-/** Gets AI-generated folder name suggestions for the current directory. */
-export async function getFolderSuggestions(
-  listingId: string,
-  currentPath: string,
-  includeHidden: boolean,
-): Promise<string[]> {
-  try {
-    const res = await commands.getFolderSuggestions(listingId, currentPath, includeHidden)
-    if (res.status === 'error') return []
-    return res.data
-  } catch {
-    return []
-  }
-}
-
 /** Wire-format event for streaming folder suggestions. Mirrors the Rust enum. */
 export type SuggestionStreamEvent =
   | { type: 'suggestion'; name: string }

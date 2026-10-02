@@ -31,7 +31,7 @@ rules (`resources/99-cmdr-mtp.rules`). The frontend (`src/lib/mtp/CLAUDE.md`) is
 - **❌ The session layer never registers volumes.** `connect()` attaches storages through its `MtpVolumeRegistrar`
   (`volume_wiring::volume_registrar`), synchronously: the attach must finish before the event loop starts. ❌ The
   `volumes-changed` broadcast lives in that hook and nowhere else. New backends copy this.
-- **`delete` has two scopes; only `delete_mtp_object` may recurse.** `MtpVolume::delete` passes
+- **`delete` has two scopes, and nothing in the app recurses.** `MtpVolume::delete` passes
   `MtpDeleteScope::SingleNode`, so a folder with children is refused (`DirectoryNotEmpty`) and nothing is deleted. ❌
   Never widen a caller to `Tree`: the same-volume move's "a Skipped child keeps its only copy" guarantee IS that
   refusal.

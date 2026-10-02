@@ -269,7 +269,6 @@ export {
   type SignInShape,
   type UpgradeResult,
   connectToServer,
-  removeManualServer,
   setSmbAccountPreference,
   showNetworkHostContextMenu,
   onNetworkHostContextAction,
@@ -298,7 +297,6 @@ export {
   onScanPreviewComplete,
   onScanPreviewError,
   onScanPreviewCancelled,
-  copyFiles,
   moveFiles,
   deleteFiles,
   trashFiles,
@@ -367,8 +365,6 @@ export type {
   ConflictResolutionOutcome,
   DryRunResult,
   Initiator,
-  OperationStatus,
-  OperationSummary,
   ScanProgressEvent,
   ScanPreviewStartResult,
   ScanPreviewStart,
@@ -598,7 +594,6 @@ export {
 // Licensing
 export {
   getLicenseStatus,
-  activateLicense,
   verifyLicense,
   commitLicense,
   getLicenseInfo,
@@ -622,27 +617,16 @@ export type {
 // MTP (Android device support)
 export {
   setMtpEnabled,
-  listMtpDevices,
-  isMtpConnectionError,
   connectMtpDevice,
-  getMtpDeviceInfo,
   getPtpcameradWorkaroundCommand,
-  getMtpStorages,
   onMtpExclusiveAccessError,
   onMtpPermissionError,
   onMtpDeviceConnected,
   onMtpDeviceDisconnected,
-  listMtpDirectory,
-  deleteMtpObject,
-  createMtpFolder,
-  renameMtpObject,
-  moveMtpObject,
-  scanMtpForCopy,
   copyBetweenVolumes,
   moveBetweenVolumes,
   renameByMove,
   compressFiles,
-  scanVolumeForCopy,
   scanVolumeForConflicts,
   destinationWriteAccess,
   destinationRootEcho,
@@ -650,7 +634,6 @@ export {
 // Android devices over ADB (device list, connect, cancel, settings)
 export {
   setAdbSettings,
-  listAdbDevices,
   connectAdbDevice,
   cancelAdbConnect,
   newAdbAttemptId,
@@ -659,7 +642,7 @@ export {
   AdbConnectFailure,
   asAdbConnectError,
 } from './adb'
-export type { AdbDevice, AdbDeviceState, AdbConnectOutcomeError, AdbInstallStatus } from './adb'
+export type { AdbConnectOutcomeError, AdbInstallStatus } from './adb'
 
 // Archive-password commands (encrypted-archive unlock)
 export {
@@ -678,10 +661,7 @@ export type {
   MtpPermissionErrorEvent,
   MtpDeviceConnectedEvent,
   MtpDeviceDisconnectedEvent,
-  MtpObjectInfo,
-  MtpScanResult,
   VolumeConflictInfo,
-  VolumeCopyScanResult,
   VolumeCopyConfig,
   SourceItemInput,
 } from './mtp'
@@ -721,7 +701,6 @@ export {
   startAiDownload,
   cancelAiDownload,
   uninstallAi,
-  getFolderSuggestions,
   streamFolderSuggestions,
   getAiRuntimeStatus,
   configureAi,
@@ -934,16 +913,11 @@ export { benchmarkLog } from './debug'
 // SFTP servers: host-key trust, secrets, and the saved-server list. Connecting
 // goes through the protocol-agnostic servers family below.
 export {
-  cancelSftpConnect,
-  disconnectSftpVolume,
   approveSftpHostKey,
   forgetSftpHostKey,
   listTrustedSftpHostKeys,
   saveSftpCredentials,
-  hasSftpCredentials,
-  deleteSftpCredentials,
   getKnownSftpServers,
-  forgetKnownSftpServer,
   getSftpUnattendedReconnect,
 } from './sftp'
 export type {
@@ -989,29 +963,12 @@ export type {
 
 // WebDAV servers: secrets and the saved-server list. Connecting goes through
 // the protocol-agnostic servers family above.
-export {
-  cancelWebdavConnect,
-  disconnectWebdavVolume,
-  saveWebdavCredentials,
-  hasWebdavCredentials,
-  deleteWebdavCredentials,
-  getKnownWebdavServers,
-  forgetKnownWebdavServer,
-  getWebdavUnattendedReconnect,
-} from './webdav'
+export { saveWebdavCredentials, getKnownWebdavServers, getWebdavUnattendedReconnect } from './webdav'
 export type { KnownWebdavServer, SavedWebdavServer, WebdavUnattendedReconnect } from './webdav'
 
 // S3 accounts: the account's secret, the unattended-reconnect query, and the
 // list-price cost estimate for a planned operation. Everything else goes through the protocol-agnostic servers family above.
-export {
-  saveS3Credentials,
-  hasS3Credentials,
-  deleteS3Credentials,
-  getS3UnattendedReconnect,
-  getKnownS3Places,
-  knownS3PlaceOf,
-  estimateOperationCost,
-} from './s3'
+export { saveS3Credentials, getS3UnattendedReconnect, knownS3PlaceOf, estimateOperationCost } from './s3'
 export type {
   ClashPlan,
   CostEstimate,

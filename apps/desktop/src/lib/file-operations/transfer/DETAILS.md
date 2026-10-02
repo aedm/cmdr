@@ -405,7 +405,7 @@ the single-source path.
 Copy and Move share 95%+ of UI/flow. Differences:
 
 - Labels ("Copy" vs "Move")
-- Backend command (`copyFiles()` vs `moveFiles()`)
+- Backend command (`copyBetweenVolumes()` vs `moveBetweenVolumes()` / same-volume `moveFiles()`)
 - Post-completion: move refreshes both panes (source files gone)
 - Cross-FS move has an extra closing stage, § "Removing the originals"
 
@@ -614,9 +614,9 @@ reaches for a fixed `sleep`. `waitForConflictCheck` in `conflict-helpers.ts` pol
 
 The destination box (`editedPath`) accepts the home shortcut as well as absolute paths: `validateDirectoryPath` passes a
 leading `/`, a bare `~`, or `~/…`. `~` is the app's internal stand-in for the home dir; the backend expands it on
-execution (the local `copy_files`/`move_files` commands always did, and `copy_between_volumes`/`move_between_volumes`
-expand a leading `~` for a destination volume with a local path via `write_operations/routing.rs::resolve_dest_path`,
-which the write-access probe below anchors through too).
+execution (the local `move_files` command always did, and `copy_between_volumes`/`move_between_volumes` expand a leading
+`~` for a destination volume with a local path via `write_operations/routing.rs::resolve_dest_path`, which the
+write-access probe below anchors through too).
 
 Two niceties on top:
 

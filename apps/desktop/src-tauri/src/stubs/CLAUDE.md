@@ -20,10 +20,10 @@ Per-stub behavior is cataloged in `DETAILS.md`.
 ## Invariants
 
 - **JSON shape must match macOS.** The frontend doesn't branch on platform; it calls the same commands everywhere. If a
-  macOS type gains or loses a field, align the corresponding stub type by hand. Most fragile in `mtp.rs`, which keeps a
-  local `FileEntry` duplicating `crate::file_system::FileEntry`.
-- **`mtp.rs` deliberately doesn't import `crate::file_system`**: that keeps the stub dependency-free and fast to compile
-  on targets where the real module's platform-specific deps may not build. The duplicated `FileEntry` is intentional.
+  macOS type gains or loses a field, align the corresponding stub type by hand.
+- **Stubs import nothing from the real modules** (`mtp.rs` doesn't import `cmdr_mtp`): that keeps them dependency-free
+  and fast to compile on targets where the real module's platform-specific deps may not build. The duplicated types are
+  intentional.
 - **Stubs return hardcoded success** (empty vecs, `true` for permissions), never errors: the frontend doesn't branch on
   platform, so an error would trigger error UI; empty/success makes the feature silently not appear, the correct UX for
   "not available here."

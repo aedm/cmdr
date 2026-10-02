@@ -128,8 +128,8 @@ registered volume), and a pane standing on it holds its listing and dials again 
   - `offline` → `unavailable { offline }`; `no permissions` → `unavailable { no_permissions }`. The row is there so
     the reason can be its tooltip.
   - `recovery`, `bootloader`, `sideload`, and a state word the crate can't read are NOT listed: a phone that isn't
-    running Android has no filesystem, and a row that can never open is worse than no row. `list_adb_devices` still
-    returns them with their typed state.
+    running Android has no filesystem, and a row that can never open is worse than no row. The device cache
+    (`device_provider::cached_devices`) still holds them with their typed state.
 
   ❗ `device_readiness` is PRESENCE, never session health: `connection_state` stays `None` on a device row, so nothing
   enrolls a phone waiting for its Allow tap in the reconnect backoff (`cmdr_fs::volume::connection` carries the split).
@@ -145,7 +145,6 @@ registered volume), and a pane standing on it holds its listing and dials again 
 
 ## IPC and frontend
 
-- `list_adb_devices() -> Vec<AdbDevice>`: the cached list, typed states included.
 - `connect_adb_device(serial, attempt_id) -> Result<volume_id, AdbConnectOutcomeError>`, and
   `cancel_adb_connect(attempt_id) -> bool`.
 - `set_adb_settings(enabled, binary_path)`: the live apply above.

@@ -111,7 +111,6 @@ vi.mock('$lib/tauri-commands', () => ({
   getNetworkDiscoveryState: vi.fn().mockResolvedValue('idle'),
   resolveNetworkHost: vi.fn().mockResolvedValue(null),
   // MTP device mocks
-  listMtpDevices: vi.fn().mockResolvedValue([]),
   onMtpDeviceConnected: vi.fn().mockResolvedValue(() => {}),
   onMtpDeviceDisconnected: vi.fn().mockResolvedValue(() => {}),
   onVolumeSpaceChanged: vi.fn().mockResolvedValue(() => {}),
