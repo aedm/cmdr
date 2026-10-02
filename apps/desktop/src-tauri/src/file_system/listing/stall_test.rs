@@ -19,6 +19,7 @@ use crate::file_system::listing::caching_test_support::{TestListingGuard, unique
 use crate::file_system::listing::metadata::FileEntry;
 use crate::file_system::listing::sorting::{DirectorySortMode, SortColumn, SortOrder};
 use crate::file_system::listing::stall::{HungReads, StallPolicy, StallWatch};
+use crate::file_system::listing::stalled_on::StalledOn;
 use crate::file_system::listing::streaming::{
     CollectorListingEventSink, ListingEventSink, StreamingListingState, read_directory_with_progress,
 };
@@ -234,7 +235,11 @@ impl Rig {
 
     async fn wait_for_stall(&self, listing_id: &str) {
         wait_until_async(WITHIN, "the listing to report itself stalled", || {
-            self.sink.stalled.lock_ignore_poison().iter().any(|id| id == listing_id)
+            self.sink
+                .stalled
+                .lock_ignore_poison()
+                .iter()
+                .any(|(id, _)| id == listing_id)
         })
         .await;
     }
@@ -279,6 +284,12 @@ async fn a_read_that_never_answers_reports_the_listing_stalled_within_the_deadli
 
     assert!(rig.sink.complete.lock_ignore_poison().is_empty());
     assert!(rig.sink.errors.lock_ignore_poison().is_empty());
+    // The event names what the folder lives on: this volume is a plain filesystem
+    // backend reading `/`, which is a local disk on every machine the tests run on.
+    assert_eq!(
+        rig.sink.stalled.lock_ignore_poison().as_slice(),
+        [(listing.id().to_string(), StalledOn::Drive)]
+    );
 
     state.cancel.cancel();
     let result = task.await.expect("listing task must not panic");

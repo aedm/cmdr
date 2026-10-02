@@ -39,7 +39,7 @@ pub use live_space::{expect_space_change, live_volume_space};
 pub use mounts::get_attached_volumes;
 pub(crate) use mounts::{
     has_mount_identity, is_mount_point, is_private_to_another_user, mount_identity_at, mount_roots,
-    registrable_mount_roots, smb_mounts,
+    mount_type_and_source_for, registrable_mount_roots, smb_mounts,
 };
 pub use nsurl::get_volume_space;
 pub(crate) use nsurl::{

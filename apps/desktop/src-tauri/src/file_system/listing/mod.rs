@@ -16,6 +16,7 @@ pub(crate) mod path_index;
 pub(crate) mod reading;
 pub(crate) mod sorting;
 pub(crate) mod stall;
+pub(crate) mod stalled_on;
 pub(crate) mod streaming;
 pub(crate) mod visible_rows;
 

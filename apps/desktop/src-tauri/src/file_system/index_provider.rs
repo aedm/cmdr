@@ -49,7 +49,7 @@ fn is_network(probe: &super::filesystem_kind::MountProbe) -> bool {
 /// ❌ Don't trust `MNT_LOCAL` instead: Xcode's `devicefs` is flagged local.
 /// ❌ Don't fold this into `volumes::is_network_fs_type`: that one also picks the
 /// volume-ID derivation, so widening it would re-ID existing FUSE volumes.
-fn mount_is_local_disk(source: Option<&str>, fs_type: Option<&str>) -> bool {
+pub(crate) fn mount_is_local_disk(source: Option<&str>, fs_type: Option<&str>) -> bool {
     if source.is_some_and(|s| s.starts_with("/dev/")) {
         return true;
     }

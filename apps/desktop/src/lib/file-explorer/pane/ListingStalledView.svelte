@@ -3,6 +3,8 @@
     import ShortcutChip from '$lib/ui/ShortcutChip.svelte'
     import Spinner from '$lib/ui/Spinner.svelte'
     import { tString } from '$lib/intl/messages.svelte'
+    import type { MessageKey } from '$lib/intl/keys.gen'
+    import type { StalledOn } from '$lib/ipc/bindings'
 
     /**
      * What a pane shows while its listing is stalled: the folder's volume has gone
@@ -12,11 +14,20 @@
      */
     interface Props {
         folderPath: string
+        /** What the folder lives on, as the backend proved it from the mount: picks the wording. */
+        stalledOn: StalledOn
         onRetry: () => void
         onGoBack: () => void
     }
 
-    const { folderPath, onRetry, onGoBack }: Props = $props()
+    const { folderPath, stalledOn, onRetry, onGoBack }: Props = $props()
+
+    // `unknown` (a phone, a FUSE or cloud mount) keeps the line that names both.
+    const detailKey: Record<StalledOn, MessageKey> = {
+        server: 'fileExplorer.listingStalled.detailServer',
+        drive: 'fileExplorer.listingStalled.detailDrive',
+        unknown: 'fileExplorer.listingStalled.detail',
+    }
 </script>
 
 <div class="stalled" role="status" aria-live="polite">
@@ -24,7 +35,7 @@
         <Spinner size="lg" />
         <h2 class="title">{tString('fileExplorer.listingStalled.title')}</h2>
         <p class="folder-path">{folderPath}</p>
-        <p class="detail">{tString('fileExplorer.listingStalled.detail')}</p>
+        <p class="detail">{tString(detailKey[stalledOn])}</p>
         <div class="actions">
             <Button variant="primary" onclick={onRetry}>{tString('fileExplorer.listingStalled.tryAgain')}</Button>
             <Button onclick={onGoBack}>

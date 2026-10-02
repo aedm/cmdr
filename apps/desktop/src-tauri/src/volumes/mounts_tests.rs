@@ -399,3 +399,32 @@ fn is_mount_point_answers_from_the_mount_table() {
     // A folder ON a mount is not one: an eject can't mistake it for a live mount.
     assert_eq!(is_mount_point("/usr/bin"), Some(false));
 }
+
+#[test]
+fn mount_under_picks_the_deepest_whole_component_mount() {
+    let mounts = vec![
+        mount("/", "apfs", "/dev/disk3s1s1", true),
+        mount("/System/Volumes/Data", "apfs", "/dev/disk3s5", false),
+        mount("/Volumes/naspi", "smbfs", "//david@192.0.2.9/naspi", false),
+        mount("/Volumes/naspi-1", "exfat", "/dev/disk6s1", false),
+    ];
+    let fs_type = |path: &str| mount_under(&mounts, Path::new(path)).map(|m| m.fs_type.as_str());
+    assert_eq!(fs_type("/Volumes/naspi/photos/2024"), Some("smbfs"));
+    assert_eq!(fs_type("/Volumes/naspi"), Some("smbfs"));
+    // A sibling whose name extends the share's is its own mount, not the share's subfolder.
+    assert_eq!(fs_type("/Volumes/naspi-1/backup"), Some("exfat"));
+    assert_eq!(fs_type("/Users/david"), Some("apfs"));
+}
+
+#[test]
+fn mount_under_reaches_the_last_of_stacked_mounts() {
+    let mounts = vec![
+        mount("/", "apfs", "/dev/disk3s1s1", true),
+        mount("/Volumes/stack", "apfs", "/dev/disk4s1", false),
+        mount("/Volumes/stack", "smbfs", "//server/share", false),
+    ];
+    assert_eq!(
+        mount_under(&mounts, Path::new("/Volumes/stack/x")).map(|m| m.fs_type.as_str()),
+        Some("smbfs")
+    );
+}

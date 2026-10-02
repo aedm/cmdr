@@ -1341,6 +1341,8 @@ export type MessageKey =
   | 'fileExplorer.list.fileListAriaLabel'
   | 'fileExplorer.list.sortColumnsAriaLabel'
   | 'fileExplorer.listingStalled.detail'
+  | 'fileExplorer.listingStalled.detailDrive'
+  | 'fileExplorer.listingStalled.detailServer'
   | 'fileExplorer.listingStalled.goBack'
   | 'fileExplorer.listingStalled.title'
   | 'fileExplorer.listingStalled.tryAgain'

@@ -181,6 +181,24 @@ pub(crate) fn mount_identity_at(path: &str) -> Option<u64> {
         .map(|m| m.fsid)
 }
 
+/// The filesystem type and source of the mount `path` lies on: the deepest mount
+/// point that's a whole-component prefix of it, from the same non-blocking table, so
+/// a hung mount can't stall it. Lexical: a symlink on the way isn't followed. `None`
+/// when the table couldn't be read. With mounts stacked on one path, the last one
+/// listed is the one a lookup reaches.
+pub(crate) fn mount_type_and_source_for(path: &Path) -> Option<(String, String)> {
+    mount_under(&enumerate_mounts()?, path).map(|m| (m.fs_type.clone(), m.mount_from.clone()))
+}
+
+/// [`mount_type_and_source_for`] over a table already read.
+fn mount_under<'a>(mounts: &'a [MountEntry], path: &Path) -> Option<&'a MountEntry> {
+    // `max_by_key` keeps the LAST of equal keys, so a stacked mount wins.
+    mounts
+        .iter()
+        .filter(|m| path.starts_with(&m.mount_point))
+        .max_by_key(|m| m.mount_point.len())
+}
+
 /// Every mount point the kernel currently lists, from the same non-blocking snapshot.
 ///
 /// What the INDEX cuts its boot-tree scan at, so it's every row, another account's

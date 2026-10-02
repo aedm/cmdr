@@ -980,7 +980,15 @@
   },
   "fileExplorer.listingStalled.detail": "The server or drive it’s on isn’t answering. Cmdr keeps trying in the background and opens the folder as soon as it answers.",
   "@fileExplorer.listingStalled.detail": {
-    "description": "Explanation under the “Still waiting for this folder” heading. “it” is the folder. The server is usually a NAS or file server; the drive is a disk. Promises that the folder opens by itself once the server or drive responds again, with no action needed."
+    "description": "Explanation under the “Still waiting for this folder” heading, shown when Cmdr can’t tell whether the folder is on a network server or a local drive (for example a phone, or a cloud or other add-on mount). “it” is the folder. The server is usually a NAS or file server; the drive is a disk. Promises that the folder opens by itself once the server or drive responds again, with no action needed. Sibling lines name only the server (fileExplorer.listingStalled.detailServer) or only the drive (fileExplorer.listingStalled.detailDrive); keep the three worded alike."
+  },
+  "fileExplorer.listingStalled.detailServer": "The server it’s on isn’t answering. Cmdr keeps trying in the background and opens the folder as soon as it answers.",
+  "@fileExplorer.listingStalled.detailServer": {
+    "description": "Explanation under the “Still waiting for this folder” heading, shown when the folder is on a network server: a NAS or file server reached over SMB, NFS, AFP, WebDAV, SFTP, and so on. “it” is the folder; the second “it” is the server. Promises that the folder opens by itself once the server responds again, with no action needed. Word it like fileExplorer.listingStalled.detail, naming only the server."
+  },
+  "fileExplorer.listingStalled.detailDrive": "The drive it’s on isn’t answering. Cmdr keeps trying in the background and opens the folder as soon as it answers.",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "description": "Explanation under the “Still waiting for this folder” heading, shown when the folder is on a local drive: the Mac’s own disk or one plugged into it (USB, Thunderbolt, an SD card). “it” is the folder; the second “it” is the drive. Promises that the folder opens by itself once the drive responds again, with no action needed. Word it like fileExplorer.listingStalled.detail, naming only the drive."
   },
   "fileExplorer.listingStalled.tryAgain": "Try again",
   "@fileExplorer.listingStalled.tryAgain": {

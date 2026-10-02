@@ -17,7 +17,7 @@ describe('ListingStalledView a11y', () => {
     document.body.appendChild(target)
     mount(ListingStalledView, {
       target,
-      props: { folderPath: '/Volumes/nas/photos', onRetry: vi.fn(), onGoBack: vi.fn() },
+      props: { folderPath: '/Volumes/nas/photos', stalledOn: 'server', onRetry: vi.fn(), onGoBack: vi.fn() },
     })
     await tick()
     await expectNoA11yViolations(target)

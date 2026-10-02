@@ -28,6 +28,7 @@
  */
 import { tick } from 'svelte'
 import type { ConnectionState, FriendlyError } from '../types'
+import type { StalledOn } from '$lib/ipc/bindings'
 import type { CancelLoadingPayload, ListingLoad, LoadDirectoryArgs, SwapState, VolumeChangePayload } from './types'
 import {
   type Location,
@@ -126,8 +127,9 @@ export interface ListingLoaderDeps {
   setError: (error: string | null) => void
   setFriendlyError: (friendly: FriendlyError | null) => void
   setOpeningFolder: (opening: boolean) => void
-  /** The volume stopped answering mid-read (`listing-stalled`); cleared by anything else heard for the load. */
-  setStalled: (stalled: boolean) => void
+  /** What the folder waits on once its volume stopped answering mid-read (`listing-stalled`), or `null`;
+   *  cleared by anything else heard for the load. */
+  setStalled: (stalledOn: StalledOn | null) => void
   setLoadingCount: (count: number | undefined) => void
   setFinalizingCount: (count: number | undefined) => void
   setVolumeRootFromEvent: (root: string | undefined) => void
@@ -275,7 +277,7 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
     if (!preserveTotalCount) deps.setTotalCount(0)
     deps.setLoading(false)
     deps.setOpeningFolder(false)
-    deps.setStalled(false)
+    deps.setStalled(null)
     deps.setLoadingCount(undefined)
     deps.setFinalizingCount(undefined)
     // Reject pending load promise on error/cancel
@@ -388,7 +390,7 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
     // This ensures the UI shows the loading spinner immediately
     deps.setLoading(true)
     deps.setOpeningFolder(false)
-    deps.setStalled(false)
+    deps.setStalled(null)
     deps.setLoadingCount(undefined)
     deps.setFinalizingCount(undefined)
     deps.setError(null)
@@ -443,19 +445,19 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
         // SAYS: the load stays in flight and lands through the handlers below.
         onListingStalled((payload) => {
           if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
-            deps.setStalled(true)
+            deps.setStalled(payload.stalledOn)
             deps.syncMcp()
           }
         }),
         onListingProgress((payload) => {
           if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
-            deps.setStalled(false)
+            deps.setStalled(null)
             deps.setLoadingCount(payload.loadedCount)
           }
         }),
         onListingReadComplete((payload) => {
           if (isEventForCurrentLoad(payload.listingId, captured, loadGeneration)) {
-            deps.setStalled(false)
+            deps.setStalled(null)
             deps.setFinalizingCount(payload.totalCount)
           }
         }),
@@ -644,7 +646,7 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
 
     deps.setLoading(false)
     deps.setOpeningFolder(false)
-    deps.setStalled(false)
+    deps.setStalled(null)
     deps.setLoadingCount(undefined)
     deps.setFinalizingCount(undefined)
     benchmark.logEvent('loading = false (UI can render)')

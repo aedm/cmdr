@@ -15,6 +15,7 @@ use crate::file_system::listing::cached_listing::{CachedListing, LISTING_CACHE};
 use crate::file_system::listing::foreign_path::{Listed, respell_if_read_by_a_replaced_backend};
 use crate::file_system::listing::sorting::{DirectorySortMode, SortColumn, SortOrder, sort_entries};
 use crate::file_system::listing::stall::{ListingRead, ReadOutcome, StallWatch, read_until_answered};
+use crate::file_system::listing::stalled_on::StalledOn;
 use crate::file_system::volume::friendly_error::{
     ListingError, archive_needs_password_listing_error, archive_unreadable_listing_error, enrich_with_provider,
     listing_error_for_restricted_empty_root, listing_error_from_volume_error,
@@ -121,6 +122,8 @@ pub struct ListingOpeningEvent {
 #[tauri_specta(event_name = "listing-stalled")]
 pub struct ListingStalledEvent {
     pub listing_id: String,
+    /// What the folder lives on, which picks the screen's wording (`stalled_on.rs`).
+    pub stalled_on: StalledOn,
 }
 
 /// State for an in-progress streaming listing
@@ -161,7 +164,7 @@ pub(crate) static STREAMING_STATE: LazyLock<RwLock<HashMap<String, Arc<Streaming
 /// Tests: `CollectorListingEventSink` stores events for assertion.
 pub(crate) trait ListingEventSink: Send + Sync {
     fn emit_opening(&self, listing_id: &str);
-    fn emit_stalled(&self, listing_id: &str);
+    fn emit_stalled(&self, listing_id: &str, stalled_on: StalledOn);
     fn emit_progress(&self, listing_id: &str, loaded_count: usize);
     fn emit_read_complete(&self, listing_id: &str, total_count: usize);
     fn emit_complete(&self, listing_id: &str, total_count: usize, volume_root: String, stored_path: Option<String>);
@@ -188,9 +191,10 @@ impl ListingEventSink for TauriListingEventSink {
         .emit(&self.app);
     }
 
-    fn emit_stalled(&self, listing_id: &str) {
+    fn emit_stalled(&self, listing_id: &str, stalled_on: StalledOn) {
         let _ = ListingStalledEvent {
             listing_id: listing_id.to_string(),
+            stalled_on,
         }
         .emit(&self.app);
     }
@@ -252,7 +256,7 @@ impl ListingEventSink for TauriListingEventSink {
 #[cfg(test)]
 pub(crate) struct CollectorListingEventSink {
     pub opening: std::sync::Mutex<Vec<String>>,
-    pub stalled: std::sync::Mutex<Vec<String>>,
+    pub stalled: std::sync::Mutex<Vec<(String, StalledOn)>>,
     pub progress: std::sync::Mutex<Vec<(String, usize)>>,
     pub read_complete: std::sync::Mutex<Vec<(String, usize)>>,
     pub complete: std::sync::Mutex<Vec<(String, usize)>>,
@@ -284,8 +288,10 @@ impl ListingEventSink for CollectorListingEventSink {
         self.opening.lock_ignore_poison().push(listing_id.to_string());
     }
 
-    fn emit_stalled(&self, listing_id: &str) {
-        self.stalled.lock_ignore_poison().push(listing_id.to_string());
+    fn emit_stalled(&self, listing_id: &str, stalled_on: StalledOn) {
+        self.stalled
+            .lock_ignore_poison()
+            .push((listing_id.to_string(), stalled_on));
     }
 
     fn emit_progress(&self, listing_id: &str, loaded_count: usize) {
@@ -572,7 +578,7 @@ pub(crate) async fn read_directory_with_progress(
     // answers again (`stall.rs`).
     let total_start = std::time::Instant::now();
     let read_start = std::time::Instant::now();
-    let on_stalled = || events.emit_stalled(listing_id);
+    let on_stalled = |stalled_on| events.emit_stalled(listing_id, stalled_on);
     let on_progress: Arc<dyn Fn(usize) + Send + Sync> = {
         let events = Arc::clone(events);
         let listing_id = listing_id.to_string();

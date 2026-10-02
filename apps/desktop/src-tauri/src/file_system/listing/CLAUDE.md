@@ -5,7 +5,7 @@ Backend directory reading, caching, sorting, and streaming: 100k+ entries, non-b
 ## Module map
 
 - Read and serve: **reading.rs** disk I/O, **streaming.rs** async progress and cancellation (`ListingEventSink`),
-  **stall.rs** reads that go quiet, **operations.rs** the sync API, **cached_listing.rs** `CachedListing` + `LISTING_CACHE`, **caching.rs** patch helpers,
+  **stall.rs** + **stalled_on.rs** reads that go quiet, **operations.rs** the sync API, **cached_listing.rs** `CachedListing` + `LISTING_CACHE`, **caching.rs** patch helpers,
   **orphan_reaper.rs** the 6 h backstop, **mutation.rs**, **foreign_path.rs** stored spellings.
 - Derive and emit: **diff.rs** `compute_diff`, **diff_emitter.rs** 50 ms coalescing, **visible_rows.rs** /
   **path_index.rs** the row and path maps, **sorting.rs** the one comparator, **collation.rs** the one name order, plus

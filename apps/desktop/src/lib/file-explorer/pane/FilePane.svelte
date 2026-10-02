@@ -47,6 +47,7 @@
     import { createVolumeSpace } from './volume-space.svelte'
     import ErrorPane from './ErrorPane.svelte'
     import ListingStalledView from './ListingStalledView.svelte'
+    import type { StalledOn } from '$lib/ipc/bindings'
     import VolumeUnreachableBanner from './VolumeUnreachableBanner.svelte'
     import NetworkMountView from './NetworkMountView.svelte'
     import SearchResultsView from './SearchResultsView.svelte'
@@ -1283,8 +1284,9 @@
     let lastSequence = 0
     // Opening folder state (before read_dir starts - slow for network folders)
     let openingFolder = $state(false)
-    // The folder's volume stopped answering mid-read; the load stays in flight (`listing-loader.ts`)
-    let stalled = $state(false)
+    // What the folder waits on once its volume stopped answering mid-read, else `null`;
+    // the load stays in flight (`listing-loader.ts`)
+    let stalled = $state<StalledOn | null>(null)
     // Loading progress state for streaming
     let loadingCount = $state<number | undefined>(undefined)
     // Finalizing state (read_dir done, now sorting/caching)
@@ -1331,7 +1333,7 @@
             indicatorStale: jump.indicatorStale,
         }),
         getLastJumpMatchedName: () => jump.lastMatchedName,
-        getListing: () => paneListingOf({ hasError: Boolean(friendlyError || error), loading, stalled }),
+        getListing: () => paneListingOf({ hasError: Boolean(friendlyError || error), loading, stalled: stalled !== null }),
     })
     const syncPaneStateToMcp = mcpSync.syncPaneStateToMcp
 
@@ -2032,9 +2034,10 @@
             />
         {:else if paneViewKind === 'mtp-connect'}
             <MtpConnectionView {volumeId} {onVolumeChange} />
-        {:else if loading && stalled}
+        {:else if loading && stalled !== null}
             <ListingStalledView
                 folderPath={currentPath}
+                stalledOn={stalled}
                 onRetry={() => navigateToPath(currentPath)}
                 onGoBack={() => { loader.handleCancelLoading() }}
             />

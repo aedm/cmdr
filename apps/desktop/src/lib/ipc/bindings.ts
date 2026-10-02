@@ -9539,6 +9539,8 @@ export type ListingRespelledEvent = {
  */
 export type ListingStalledEvent = {
   listingId: string
+  // What the folder lives on, which picks the screen's wording (`stalled_on.rs`).
+  stalledOn: StalledOn
 }
 
 /**
@@ -14339,6 +14341,15 @@ export type StagedLeftovers = {
    */
   exampleName: string
 }
+
+// What a stalled listing's folder lives on, as far as the mount proves it.
+export type StalledOn =
+  // A network share or a direct server connection (SMB, NFS, AFP, WebDAV, SFTP, ...).
+  | 'server'
+  // A known local disk: a block device, or a local filesystem type.
+  | 'drive'
+  // Anything else: a phone, a FUSE or cloud mount, or a mount we couldn't read.
+  | 'unknown'
 
 /**
  *  The remembered time left after each checklist step finishes, keyed by the

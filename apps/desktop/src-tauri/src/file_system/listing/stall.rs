@@ -21,6 +21,7 @@ use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
 use crate::file_system::listing::foreign_path::{Listed, list_as_stored};
+use crate::file_system::listing::stalled_on::StalledOn;
 use crate::file_system::volume::friendly_error::{ErrorCategory, listing_error_from_volume_error};
 use crate::file_system::volume::{BackendKind, ListingProgress, Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
@@ -272,8 +273,8 @@ type AttemptFuture = Pin<Box<dyn Future<Output = (u64, Result<Listed, VolumeErro
 /// streaming listing calls in here, so naming its sink would weld the two modules
 /// into a cycle (`module-cycles`).
 pub(crate) struct ListingRead<'a> {
-    /// The read went `stall_after` without a new entry.
-    pub on_stalled: &'a (dyn Fn() + Sync),
+    /// The read went `stall_after` without a new entry, with what the folder lives on.
+    pub on_stalled: &'a (dyn Fn(StalledOn) + Sync),
     /// A read's running entry count, for the pane's "Loaded N files…" line.
     pub on_progress: Arc<dyn Fn(usize) + Send + Sync>,
     pub listing_id: &'a str,
@@ -304,6 +305,7 @@ pub(crate) async fn read_until_answered(read: ListingRead<'_>, watch: &StallWatc
     let mut attempts: HashMap<u64, Attempt> = HashMap::new();
     let mut stalled = false;
     let mut ever_stalled = false;
+    let mut stalled_on: Option<StalledOn> = None;
     let mut next_attempt_at: Option<Instant> = None;
     // Every attempt's stop signal: the listing's own cancel, plus this function
     // returning. A read still waiting at the gate when a sibling answers would
@@ -386,7 +388,18 @@ pub(crate) async fn read_until_answered(read: ListingRead<'_>, watch: &StallWatc
                         read.volume_id,
                         policy.stall_after,
                     );
-                    (read.on_stalled)();
+                    // Classified once per listing, and only once it stalls: the
+                    // answer can't change mid-read, and a listing that never
+                    // stalls never pays for it.
+                    let on = match stalled_on {
+                        Some(on) => on,
+                        None => {
+                            let on = super::stalled_on::stalled_on(read.volume, read.path).await;
+                            stalled_on = Some(on);
+                            on
+                        }
+                    };
+                    (read.on_stalled)(on);
                     if probes && next_attempt_at.is_none() {
                         next_attempt_at = Some(now + backoff.step());
                     }

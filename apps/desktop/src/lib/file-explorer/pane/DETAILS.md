@@ -1316,11 +1316,12 @@ subscriber. Two behaviors the fold preserves byte-for-byte:
 
 When a listing's volume goes quiet mid-read (a NAS whose server stopped answering), the backend emits `listing-stalled`
 after 8 s and keeps the listing alive, retrying on its own (`apps/desktop/src-tauri/src/file_system/listing/DETAILS.md`
-§ "Stalled listings"). `listing-loader.ts` turns that into the pane's `stalled` flag, and `FilePane` renders
-`ListingStalledView` in place of the spinner: the folder, a sentence saying the server or drive isn't answering, Try
-again (a fresh `navigateToPath` of the same folder), and Go back (the same step as Esc, so § "Escape during a load"
-decides where). The load stays in flight underneath: the listing lands through the ordinary handlers, and any progress,
-read-complete, complete, error, or cancel for that load clears the flag, as does the next `loadDirectory`.
+§ "Stalled listings"). `listing-loader.ts` turns that into the pane's `stalled` state (the event's `stalledOn`, `null`
+when not stalled), and `FilePane` renders `ListingStalledView` in place of the spinner: the folder, a sentence saying
+the server isn't answering, the drive isn't, or (for `unknown`) "the server or drive", Try again (a fresh
+`navigateToPath` of the same folder), and Go back (the same step as Esc, so § "Escape during a load" decides where). The
+load stays in flight underneath: the listing lands through the ordinary handlers, and any progress, read-complete,
+complete, error, or cancel for that load clears it, as does the next `loadDirectory`.
 
 - **A load that ends never renders as an empty list.** An error event shows the error screen (`showListingError`); a
   cancel goes back. Both push to MCP, and `cmdr://state` carries `listing: loading | stalled | error` (from

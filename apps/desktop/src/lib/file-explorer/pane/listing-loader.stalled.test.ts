@@ -82,7 +82,7 @@ beforeEach(() => {
 async function stalledLoad() {
   const harness = makeHarness()
   await harness.loader.loadDirectory({ path: '/Volumes/nas' })
-  h.listeners.stalled[0]({ listingId: harness.state.listingId })
+  h.listeners.stalled[0]({ listingId: harness.state.listingId, stalledOn: 'server' })
   return harness
 }
 
@@ -90,7 +90,8 @@ describe('createListingLoader: a stalled listing', () => {
   it('marks the pane stalled while it keeps loading, and tells MCP', async () => {
     const { state, spies } = await stalledLoad()
 
-    expect(state.stalled).toBe(true)
+    // What the folder is waiting on rides along, for the screen's wording.
+    expect(state.stalled).toBe('server')
     expect(state.loading).toBe(true)
     expect(spies.syncMcp).toHaveBeenCalled()
   })
@@ -101,9 +102,9 @@ describe('createListingLoader: a stalled listing', () => {
     const oldId = state.listingId
     await loader.loadDirectory({ path: '/Users/me' })
 
-    h.listeners.stalled[1]({ listingId: oldId })
+    h.listeners.stalled[1]({ listingId: oldId, stalledOn: 'server' })
 
-    expect(state.stalled).toBe(false)
+    expect(state.stalled).toBeNull()
   })
 
   it('drops the notice as soon as entries start arriving', async () => {
@@ -111,7 +112,7 @@ describe('createListingLoader: a stalled listing', () => {
 
     h.listeners.progress[0]({ listingId: state.listingId, loadedCount: 12 })
 
-    expect(state.stalled).toBe(false)
+    expect(state.stalled).toBeNull()
     expect(state.loadingCount).toBe(12)
   })
 
@@ -123,7 +124,7 @@ describe('createListingLoader: a stalled listing', () => {
       expect(state.loading).toBe(false)
     })
 
-    expect(state.stalled).toBe(false)
+    expect(state.stalled).toBeNull()
     expect(state.totalCount).toBe(3)
   })
 
@@ -139,7 +140,7 @@ describe('createListingLoader: a stalled listing', () => {
       expect(state.loading).toBe(false)
     })
 
-    expect(state.stalled).toBe(false)
+    expect(state.stalled).toBeNull()
     expect(state.friendlyError).not.toBeNull()
     expect(state.error).toBe('Socket is not connected')
     expect(spies.syncMcp).toHaveBeenCalled()
@@ -150,6 +151,6 @@ describe('createListingLoader: a stalled listing', () => {
 
     await loader.loadDirectory({ path: '/Users/me' })
 
-    expect(state.stalled).toBe(false)
+    expect(state.stalled).toBeNull()
   })
 })

@@ -793,6 +793,25 @@ never a thread. That leaves a stalled listing's two reads plus a user's Retry ro
 back, and caps what mashing Retry or opening one folder after another can pin. A read's slot lives in its own task,
 so it frees when the KERNEL lets go, however long after its listing moved on.
 
+**What it's stalled on (`stalled_on.rs`).** The event carries `stalled_on: StalledOn` (`server` / `drive` /
+`unknown`), which picks the screen's wording, so it says "server" or "drive" only when the mount proves it and keeps the
+combined line otherwise. Classified once per listing, at its first stall:
+
+- **Direct backends name themselves**: SMB direct, SFTP, and WebDAV are `server`; MTP and ADB are `unknown` (a USB
+  cable for one, a cable or Wi-Fi for the other, so neither word fits both).
+- **A filesystem path** (`Local`, and an archive or `.git` portal inside one) reads the mount it lies on off the kernel's
+  table, ❌ never a `statfs` on the path, which blocks on the very mount that just stalled. macOS uses the
+  `getfsstat(MNT_NOWAIT)` snapshot (`volumes::mount_type_and_source_for`), Linux `/proc/mounts`
+  (`linux_mounts::mount_entry_for_path`). Network types on an explicit allowlist (`smbfs`, `nfs`, `afpfs`, `webdav`,
+  `ftp`; `cifs`, `smb3`, `nfs4`, `fuse.sshfs`, `fuse.rclone`, `fuse.s3fs`, …) are `server`; a known local disk
+  (`index_provider::mount_is_local_disk`) is `drive`; anything else (GVFS's `fuse.gvfsd-fuse`, which holds phones and
+  shares alike, macFUSE, cloud clients' mounts, autofs, `9p`) is `unknown`.
+- **The table lookup is lexical**, so a path that reads as a local disk is resolved through its symlinks first
+  (`~/nas` → `/Volumes/nas`) on a blocking thread, bounded at 500 ms. A timeout means the probe hit the hung mount,
+  which reads as `unknown`. That probe can pin one blocking thread per stalled listing for as long as the kernel holds
+  it, outside the `HungReads` gate below; it only runs when the lexical answer was `drive`.
+- Not followed: a symlink INSIDE a network share pointing back onto a local disk (still reads `server`).
+
 **Decision: a gate that closes only on a hung volume, not a `BlockingBudget`.** A budget caps a family's reads always,
 which would throttle the healthy concurrent listings of a busy pane pair, two tabs, and a refresh on the boot disk. The
 gate costs nothing until a read on that volume has actually gone quiet. The bound is loose for the first 8 s (nobody

@@ -10,6 +10,7 @@
 import { vi } from 'vitest'
 import { createListingLoader, type ListingLoaderDeps } from './listing-loader'
 import type { ConnectionState } from '../types'
+import type { StalledOn } from '$lib/ipc/bindings'
 import type { HistoryCursor } from '../navigation/navigation-history'
 
 export interface Deferred<T> {
@@ -42,7 +43,7 @@ interface PaneState {
   error: string | null
   friendlyError: unknown
   openingFolder: boolean
-  stalled: boolean
+  stalled: StalledOn | null
   loadingCount: number | undefined
   finalizingCount: number | undefined
   volumeRootFromEvent: string | undefined
@@ -71,7 +72,7 @@ export function makeHarness(over: Partial<PaneState> = {}) {
     error: null,
     friendlyError: null,
     openingFolder: false,
-    stalled: false,
+    stalled: null,
     loadingCount: undefined,
     finalizingCount: undefined,
     volumeRootFromEvent: undefined,
