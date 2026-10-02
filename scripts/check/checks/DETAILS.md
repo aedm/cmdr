@@ -900,9 +900,9 @@ commands"; this is how the scan reads it.
   when a production file outside the folder names it in an import clause whose module path ends in `tauri-commands` (or
   a sub-file of it), or a sibling sub-file imports it from `./x`.
 - **Commands** are the 2-space-indented keys of `export const commands = {`, each paired with the first string its
-  `__TAURI_INVOKE` call passes. A wrapper file is cut into top-level declarations; `commands.<key>` and raw invokes count
-  only inside a LIVE one (a used or allowlisted export, or any non-exported helper). Raw `invoke('snake')` in production
-  code and in `apps/desktop/test/e2e-*` counts too.
+  `__TAURI_INVOKE` call passes. A wrapper file is cut into top-level declarations; `commands.<key>` and raw invokes
+  count only inside a LIVE one (a used or allowlisted export, or any non-exported helper). Raw `invoke('snake')` in
+  production code and in `apps/desktop/test/e2e-*` counts too.
 - **The allowlist** has `wrappers` (by name) and `commands` (by snake_case name), each value a mandatory reason; a blank
   reason fails. Shrink-wrap drops an entry whose wrapper or command is gone or now has a caller; CI only warns. Adding
   one needs David's OK (`.claude/rules/file-length-allowlist.md`).
@@ -1982,15 +1982,15 @@ doubles as production code.
   directory-level `*.a11y.test.ts` that imports it), ui-primitive-coverage (every top-level `lib/ui/*.svelte` primitive
   has a Debug > Components catalog section), dialog-gallery-coverage (every `SOFT_DIALOG_REGISTRY` id has a row in the
   Debug > Soft dialogs gallery, and every row names a registered id), btn-restyle, bare-poll, ipc-unused (every
-  `tauri-commands` wrapper and `commands.*` binding has a caller; § "IPC dead code"), e2e-stale-selector (ERROR;
-  a Playwright selector naming a class or `data-*` attribute that appears nowhere in `apps/desktop/src`, see § "E2E
-  stale selectors"), svelte-check, import-cycles, jscpd (the frontend clone list, TypeScript and Svelte),
-  message-keys-fresh (regenerate-and-diff `keys.gen.ts` from the message catalogs), message-key-naming (the
-  `area.feature.leaf` shape + known-area first segment), message-keys-unused (catalog keys never referenced in `src/`;
-  error-level, with a closed dynamic-prefix allowlist for runtime-built keys), message-screenshots-fresh (ERROR on a
-  structural break: a representative rule reaching no catalog key, or a rule or `@key.screenshot` naming an image the
-  committed capture report lacks; warns on stale couplings and on a rule every key of which has its own capture; runs
-  the coupler's `--check` and maps its exit code, reads no PNGs), i18n-stale (warn-only; a non-`en` translation whose
+  `tauri-commands` wrapper and `commands.*` binding has a caller; § "IPC dead code"), e2e-stale-selector (ERROR; a
+  Playwright selector naming a class or `data-*` attribute that appears nowhere in `apps/desktop/src`, see § "E2E stale
+  selectors"), svelte-check, import-cycles, jscpd (the frontend clone list, TypeScript and Svelte), message-keys-fresh
+  (regenerate-and-diff `keys.gen.ts` from the message catalogs), message-key-naming (the `area.feature.leaf` shape +
+  known-area first segment), message-keys-unused (catalog keys never referenced in `src/`; error-level, with a closed
+  dynamic-prefix allowlist for runtime-built keys), message-screenshots-fresh (ERROR on a structural break: a
+  representative rule reaching no catalog key, or a rule or `@key.screenshot` naming an image the committed capture
+  report lacks; warns on stale couplings and on a rule every key of which has its own capture; runs the coupler's
+  `--check` and maps its exit code, reads no PNGs), i18n-stale (warn-only; a non-`en` translation whose
   `@key.sourceHash` no longer matches the value it was translated from), i18n-parity (ERROR; each locale key's
   `{placeholder}`+`<tag>` set, or raw `{token}` set for `errors.*`, must equal that of the value it renders instead of,
   since a mismatch crashes at runtime), i18n-icu (ERROR; every message is written in its own family's grammar: an ICU

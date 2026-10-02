@@ -29,8 +29,8 @@ contents and the "where to put a new command" routing map.
   Rust's `serde(rename_all = "camelCase")` and carry an `// eslint-disable-next-line cmdr/no-raw-tauri-invoke -- …`
   comment naming the conversion blocker. Only fall back to raw `invoke` if the signature hits a documented specta
   blocker.
-- **A wrapper or command needs a production caller, or an allowlist entry with a reason.** Tests and mocks don't
-  count. `desktop-ipc-unused` enforces it; `DETAILS.md` § "Unused wrappers and commands".
+- **A wrapper or command needs a production caller, or an allowlist entry with a reason.** Tests and mocks don't count.
+  `desktop-ipc-unused` enforces it; `DETAILS.md` § "Unused wrappers and commands".
 - **Event listeners return `UnlistenFn`; call it in `onDestroy` or you leak.**
 
   ```ts
