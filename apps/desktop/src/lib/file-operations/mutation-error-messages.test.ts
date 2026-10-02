@@ -122,6 +122,14 @@ describe('renderMutationError', () => {
     expect(renderMutationError({ type: 'nameEmpty' }, 'file')).toBe('Filename can’t be empty')
   })
 
+  it('names the refused name when the caller knows it, since a toast has no field beside it', () => {
+    const refused: MutationError = { type: 'volume', error: { type: 'invalidName', data: 'U+0009' } }
+    const named = renderMutationError(refused, 'file', 'tab\there.txt')
+    expect(named).toContain('“tab\there.txt”')
+    assertErrorCopyRules(named, 'mutation volume invalidName (named)')
+    expect(renderMutationError(refused, 'file')).toBe(renderVolumeError(refused.error))
+  })
+
   it('says a timeout may still land, because the backend’s deadline detaches rather than cancels', () => {
     expect(renderMutationError({ type: 'timedOut' }).toLowerCase()).toContain('may still')
   })

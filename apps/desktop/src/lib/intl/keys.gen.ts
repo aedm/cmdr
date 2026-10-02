@@ -1006,6 +1006,7 @@ export type MessageKey =
   | 'errors.volume.deviceDisconnected'
   | 'errors.volume.deviceSessionReset'
   | 'errors.volume.invalidName'
+  | 'errors.volume.invalidNameNamed'
   | 'errors.volume.ioError'
   | 'errors.volume.isADirectory'
   | 'errors.volume.needsPassword'

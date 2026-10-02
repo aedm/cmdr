@@ -295,7 +295,7 @@ const cases: Case[] = [
       title: 'Invalid file name',
       message: '/p has a name the destination can’t store.',
       suggestion:
-        'Rename it to something shorter and plainer, then try again. Some destinations also refuse reserved names like CON, NUL, or LPT1.',
+        'Rename it to something shorter and plainer, then try again. Some destinations refuse tabs or line breaks in a name, and some refuse reserved names like CON, NUL, or LPT1.',
     },
   },
   {
@@ -309,7 +309,7 @@ const cases: Case[] = [
       title: 'Invalid file name',
       message: '/share/&lt;b&gt;"a&amp;b"&lt;/b&gt;.json has a name the destination can’t store.',
       suggestion:
-        'Rename it to something shorter and plainer, then try again. Some destinations also refuse reserved names like CON, NUL, or LPT1.',
+        'Rename it to something shorter and plainer, then try again. Some destinations refuse tabs or line breaks in a name, and some refuse reserved names like CON, NUL, or LPT1.',
     },
   },
   {

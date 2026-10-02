@@ -43,7 +43,7 @@
             onCreated(trimmed)
         } catch (e) {
             const failure = asMutationError(e)
-            check.errorMessage = failure ? renderMutationError(failure, 'file') : String(e)
+            check.errorMessage = failure ? renderMutationError(failure, 'file', trimmed) : String(e)
         }
     }
 

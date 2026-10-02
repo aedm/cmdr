@@ -130,7 +130,7 @@
                 timeoutError = true
                 check.errorMessage = ''
             } else {
-                check.errorMessage = failure ? renderMutationError(failure, 'folder') : String(e)
+                check.errorMessage = failure ? renderMutationError(failure, 'folder', trimmed) : String(e)
             }
         }
     }

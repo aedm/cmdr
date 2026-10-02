@@ -2082,7 +2082,7 @@
   },
   "errors.write.invalidName.title": "Invalid file name",
   "errors.write.invalidName.message": "{path} has a name the destination can’t store.",
-  "errors.write.invalidName.suggestion": "Rename it to something shorter and plainer, then try again. Some destinations also refuse reserved names like CON, NUL, or LPT1.",
+  "errors.write.invalidName.suggestion": "Rename it to something shorter and plainer, then try again. Some destinations refuse tabs or line breaks in a name, and some refuse reserved names like CON, NUL, or LPT1.",
   "@errors.write.invalidName.title": {
     "description": "Title of the copy/move error dialog when the destination can't store the file's name: too long for it, or characters or a reserved name it rejects. Plain text.",
     "screenshot": "transfer-error-invalid_name.png"
@@ -2097,7 +2097,7 @@
     "screenshot": "transfer-error-invalid_name.png"
   },
   "@errors.write.invalidName.suggestion": {
-    "description": "Recovery suggestion when the destination can't store the file's name. Plain text. \"Some destinations\" covers disks, phones, and servers alike. CON, NUL, and LPT1 are reserved Windows device names; keep them as-is, do NOT translate them.",
+    "description": "Recovery suggestion when the destination can't store the file's name. Plain text. \"Some destinations\" covers disks, phones, servers, and cloud storage alike: cloud storage such as Google Cloud Storage or Backblaze B2 refuses tabs and line breaks inside a file name. CON, NUL, and LPT1 are reserved Windows device names; keep them as-is, do NOT translate them.",
     "screenshot": "transfer-error-invalid_name.png"
   },
   "errors.write.trashRefused.title": "Couldn’t move to trash",
@@ -2855,6 +2855,13 @@
     },
     "screenshot": "mkdir-confirmation-too-long.png",
     "screenshotNote": "This one is NOT the error panel. Your string is the single red line under the name field in the Rename / New folder / New file box, exactly where the validation message sits in this screenshot (which shows a DIFFERENT message). One sentence, plain text, no markdown, and it has to fit a narrow dialog."
+  },
+  "errors.volume.invalidNameNamed": "“{name}” can’t be stored here. Pick a different name.",
+  "@errors.volume.invalidNameNamed": {
+    "description": "Shown when the drive, server, or cloud storage rejects the name the user typed in Rename, New folder, or New file (a character it can't store, like a tab or a line break, a reserved name, or a name that's too long). The fix is always a different name, never a retry, so keep that clear. Inline under the name field or in a brief toast after a rename, which is why it repeats the name. Plain text, one sentence, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",
+    "placeholders": {
+      "name": "the name the user typed (uncontrolled user text, may hold a tab; keep it verbatim in quotes)"
+    }
   },
   "errors.volume.invalidName": "The destination can’t hold that name. Pick a different one.",
   "@errors.volume.invalidName": {

@@ -104,7 +104,7 @@ export async function executeRenameSave(
   } catch (e) {
     // Same typed vocabulary as the rename itself, so a validity check that can't
     // run reads in the user's own language rather than in `diskutil` English.
-    return { type: 'error', message: renameFailureMessage(e, target.isDirectory) }
+    return { type: 'error', message: renameFailureMessage(e, target.isDirectory, trimmedName) }
   }
 
   if (!validity.valid) {
@@ -147,7 +147,7 @@ export async function performRename(
     // The caller words this one: it aggregates a run of them into a single
     // toast, so the sentence depends on how many are waiting to be reported.
     if (isMutationTimeout(e)) return { type: 'timeout' }
-    return { type: 'error', message: renameFailureMessage(e, target.isDirectory) }
+    return { type: 'error', message: renameFailureMessage(e, target.isDirectory, newName) }
   }
 }
 
@@ -159,9 +159,9 @@ export async function performRename(
  * thrown `Error` from the IPC layer itself) reads as the same honest fallback
  * the backend would have sent, with the raw value logged instead of shown.
  */
-function renameFailureMessage(e: unknown, isDirectory: boolean): string {
+function renameFailureMessage(e: unknown, isDirectory: boolean, newName?: string): string {
   const failure = asMutationError(e)
-  if (failure) return renderMutationError(failure, isDirectory ? 'folder' : 'file')
+  if (failure) return renderMutationError(failure, isDirectory ? 'folder' : 'file', newName)
   log.warn('A rename call threw an untyped value: {error}', { error: String(e) })
   return renderMutationError({ type: 'unexpected', detail: '' }, isDirectory ? 'folder' : 'file')
 }
