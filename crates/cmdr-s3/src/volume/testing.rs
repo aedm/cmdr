@@ -397,6 +397,17 @@ pub async fn stored_write_token(service: FixtureService, bucket: &str, key: &str
     answer.header(crate::metadata::WRITE_TOKEN_HEADER).map(str::to_string)
 }
 
+/// The ETag an object carries, as stored: a multipart upload's ends in `-<parts>`.
+pub async fn stored_etag(service: FixtureService, bucket: &str, key: &str) -> Option<String> {
+    let client = seeding_client(service);
+    let request = ops::head_object(client.profile(), bucket, key).expect("a fixture key builds");
+    let answer = client
+        .exchange(request, QUERY_BUDGET)
+        .await
+        .unwrap_or_else(|e| panic!("probing {key:?}: {e}"));
+    answer.header("etag").map(str::to_string)
+}
+
 /// Bytes as a copy's source: in pieces of `piece` bytes, with a known length
 /// or not, and the modification time a destination should keep.
 pub struct BytesSource {

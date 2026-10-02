@@ -314,7 +314,13 @@ async fn a_cancel_mid_multipart_leaves_no_upload_behind(service: FixtureService)
         unfinished_uploads(service, FIXTURE_BUCKET, &prefix).await.is_empty(),
         "a cancelled upload must be aborted on the server"
     );
-    assert!(volume.inner.ledger.leftovers(&volume.inner.account()).is_empty());
+    assert!(
+        volume
+            .inner
+            .ledger
+            .open_under(&volume.inner.account(), &prefix)
+            .is_empty()
+    );
     assert!(!volume.exists(&path).await, "nothing was published");
 }
 
@@ -495,7 +501,7 @@ async fn the_sweep_aborts_only_recorded_uploads(service: FixtureService) {
         "an upload Cmdr didn't record must be left alone: {left:?}"
     );
     assert!(
-        ledger.leftovers(&volume.inner.account()).is_empty(),
+        ledger.open_under(&volume.inner.account(), &prefix).is_empty(),
         "the aborted record is forgotten"
     );
     abort_foreign_upload(service, FIXTURE_BUCKET, &theirs_key, &theirs_id).await;

@@ -153,6 +153,26 @@ fn a_ledger_without_a_directory_still_serves_the_session() {
     assert!(ledger.leftovers("acct-memory").is_empty());
 }
 
+/// ❗ A fixture cell asks whether ITS writes left a record, while another cell
+/// of the same account (the registry is process-wide) may hold one open right
+/// then, the sweep cell's planted record for one: the question is scoped to
+/// the cell's own key prefix.
+#[test]
+fn a_cells_question_sees_only_the_records_under_its_own_prefix() {
+    let ledger = UploadLedger::at(None);
+    let neighbours = upload("acct-shared", "cell-a/stuck.bin", "id-a");
+    ledger.started(&neighbours);
+    ledger.abandoned(&neighbours);
+
+    assert!(
+        ledger.open_under("acct-shared", "cell-b/").is_empty(),
+        "cell b sees cell a's record"
+    );
+    assert_eq!(ledger.open_under("acct-shared", "cell-a/"), vec![neighbours.clone()]);
+    ledger.finished(&neighbours);
+    assert!(ledger.open_under("acct-shared", "cell-a/").is_empty());
+}
+
 fn temp(account: &str, key: &str, token: &str) -> TempObject {
     TempObject {
         account: account.to_string(),

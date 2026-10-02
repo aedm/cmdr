@@ -269,7 +269,13 @@ async fn a_cancel_mid_copy_leaves_no_upload_and_the_source_intact(service: Fixtu
         unfinished_uploads(service, FIXTURE_BUCKET, &prefix).await.is_empty(),
         "a cancelled copy must be aborted on the server"
     );
-    assert!(volume.inner.ledger.leftovers(&volume.inner.account()).is_empty());
+    assert!(
+        volume
+            .inner
+            .ledger
+            .open_under(&volume.inner.account(), &prefix)
+            .is_empty()
+    );
     assert!(!volume.exists(&at(&volume, &to)).await, "nothing was published");
     assert!(
         read_back(&volume, &at(&volume, &from)).await == bytes,

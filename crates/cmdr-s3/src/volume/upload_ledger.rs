@@ -219,6 +219,34 @@ impl UploadLedger {
         }
     }
 
+    /// Every open upload record of `account` whose key starts with `prefix`,
+    /// in flight or not. A fixture cell asks it about its own scratch prefix:
+    /// the registry is process-wide, so an unscoped question would see
+    /// another cell's records of the same account.
+    #[cfg(test)]
+    pub(super) fn open_under(&self, account: &str, prefix: &str) -> Vec<UnfinishedUpload> {
+        let mut guard = registry();
+        let registry = guard.get_or_insert_with(Registry::default);
+        let mut open: Vec<UnfinishedUpload> = self
+            .log
+            .as_deref()
+            .map(replay)
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|record| match record {
+                Record::Upload(upload) => Some(upload),
+                Record::Temp(_) => None,
+            })
+            .collect();
+        for record in registry.open.iter().chain(&registry.in_flight) {
+            if !open.contains(record) {
+                open.push(record.clone());
+            }
+        }
+        open.retain(|record| record.account == account && record.key.starts_with(prefix));
+        open
+    }
+
     /// What a crash does to a record: the in-flight mark goes with the process
     /// and only the log remains.
     #[cfg(test)]
