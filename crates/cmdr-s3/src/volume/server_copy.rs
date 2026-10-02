@@ -38,7 +38,7 @@ use super::multipart_upload::{abort_upload, retry_after, upload_refusal};
 use super::paths::{Target, target_of};
 use super::query::{body_error, stored_mtime};
 use super::writes::{WriteTarget, normalize_etag, overwrite_for};
-use crate::error::S3Error;
+use crate::error::{S3Error, S3ErrorCode};
 use crate::metadata::{MTIME_HEADER, WRITE_TOKEN_HEADER};
 use crate::multipart::{MAX_COPY_OBJECT_SIZE, PartPlan, TooLarge, plan_parts_with_floor};
 use crate::ops::{self, BuildError, CopySource, MetadataDirective, ObjectMetadata};
@@ -245,15 +245,34 @@ impl PartCopy {
         }
     }
 
-    /// A refused part in the `Volume` vocabulary. ❗ A failed precondition is
-    /// the source's ETag pin (the only precondition a part copy carries): the
-    /// source changed since its HEAD, ❌ never the destination being taken.
     fn refusal(&self, error: &S3Error) -> VolumeError {
-        if self.source_etag.is_some() && error.is_precondition_failed() {
-            return VolumeError::SourceChanged(self.source_remote.clone());
-        }
-        upload_refusal(error, &self.remote, &self.gone)
+        part_refusal(
+            error,
+            self.source_etag.is_some(),
+            &self.source_remote,
+            &self.remote,
+            &self.gone,
+        )
     }
+}
+
+/// A refused part copy in the `Volume` vocabulary. ❗ A failed precondition is
+/// the source's ETag pin (the only precondition a part copy carries): the
+/// source changed since its HEAD, ❌ never the destination being taken. So is
+/// `InvalidRange`: every range comes from that HEAD's size, so the source
+/// shrank, and on a provider that ignores the pin (Spaces, Hetzner) that's how
+/// a smaller replacement shows.
+pub(super) fn part_refusal(
+    error: &S3Error,
+    pinned: bool,
+    source_remote: &str,
+    remote: &str,
+    gone: &AtomicBool,
+) -> VolumeError {
+    if (pinned && error.is_precondition_failed()) || error.code == S3ErrorCode::InvalidRange {
+        return VolumeError::SourceChanged(source_remote.to_string());
+    }
+    upload_refusal(error, remote, gone)
 }
 
 /// Where a copy reads from, resolved to a bucket, a key, and what its HEAD said.

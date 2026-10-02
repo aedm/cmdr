@@ -5,7 +5,9 @@ use std::time::{Duration, UNIX_EPOCH};
 
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 
-use super::{SourceObject, Window};
+use cmdr_fs::volume::VolumeError;
+
+use super::{SourceObject, Window, part_refusal};
 use crate::ops::MetadataDirective;
 use crate::transport::Answer;
 
@@ -99,4 +101,28 @@ fn the_window_halves_on_a_throttle_and_grows_back_one_part_at_a_time() {
         window.landed();
     }
     assert_eq!(window.width, 16, "never past the ceiling");
+}
+
+fn refused(status: u16, code: &str) -> crate::error::S3Error {
+    crate::error::S3Error::from_response(
+        StatusCode::from_u16(status).unwrap(),
+        &format!("<Error><Code>{code}</Code><Message>m</Message></Error>"),
+    )
+}
+
+/// ❗ A part copy's range comes from the source's HEAD, so a 416 means the
+/// source shrank since: Spaces ignores the ETag pin and answers that way when
+/// a smaller object replaced the source mid-copy (live, 2026-10-02).
+#[test]
+fn a_part_copy_past_the_sources_end_is_the_source_changing() {
+    let gone = std::sync::atomic::AtomicBool::new(false);
+    let shrank = part_refusal(&refused(416, "InvalidRange"), true, "/b/src", "/b/dst", &gone);
+    assert!(
+        matches!(&shrank, VolumeError::SourceChanged(path) if path == "/b/src"),
+        "{shrank:?}"
+    );
+    let pinned = part_refusal(&refused(412, "PreconditionFailed"), true, "/b/src", "/b/dst", &gone);
+    assert!(matches!(pinned, VolumeError::SourceChanged(_)), "{pinned:?}");
+    let denied = part_refusal(&refused(403, "AccessDenied"), true, "/b/src", "/b/dst", &gone);
+    assert!(matches!(denied, VolumeError::PermissionDenied { .. }), "{denied:?}");
 }
