@@ -36,6 +36,9 @@ fn hetzner() -> S3Provider {
         location: "fsn1".into(),
     }
 }
+fn spaces() -> S3Provider {
+    S3Provider::DigitalOcean { region: "fra1".into() }
+}
 
 fn workload(provider: &S3Provider) -> Workload {
     Workload::for_provider_at(provider, NOW)
@@ -67,7 +70,7 @@ fn requests_in(estimate: &Estimate, class: &str) -> u64 {
 #[test]
 fn bundled_table_parses_and_prices_every_preset() {
     let table = PriceTable::bundled();
-    for provider in [aws(), r2(), b2(), wasabi(), hetzner()] {
+    for provider in [aws(), r2(), b2(), wasabi(), hetzner(), S3Provider::Gcs, spaces()] {
         assert!(
             table.estimate(&workload(&provider)).is_some(),
             "{} has no prices",
@@ -366,6 +369,50 @@ fn a_short_tail_counts_as_its_own_part() {
     let mut work = workload(&r2());
     work.upload(130 * MIB);
     assert_eq!(work.requests.get(&RequestKind::UploadPart), Some(&3));
+}
+
+// ---------------------------------------------------------------------------
+// GCS: Class A $5/M (every XML PUT and POST, a batch delete included), Class B
+// $0.40/M, a single delete free, egress $0.12/GB. No `UploadPartCopy`.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn gcs_copies_a_big_object_in_one_request() {
+    let mut work = workload(&S3Provider::Gcs);
+    work.copy_on_server(GIB);
+    let estimate = estimate(&work);
+    // One `CopyObject` (no parts there): 1 Class A. HEAD source, the HEAD
+    // before (GCS ignores `If-None-Match` on a copy), and the verifying HEAD:
+    // 3 Class B. 1 × $5/M + 3 × $0.40/M.
+    assert_eq!(requests_in(&estimate, "Class A"), 1);
+    assert_eq!(requests_in(&estimate, "Class B"), 3);
+    close(estimate.total, 0.0000062);
+}
+
+#[test]
+fn gcs_bills_a_batch_delete_as_class_a_and_downloads_as_egress() {
+    let mut work = workload(&S3Provider::Gcs);
+    work.delete_object(MIB, None);
+    work.download(GIB);
+    let estimate = estimate(&work);
+    // One `DeleteObjects` ($5/M) and one GET ($0.40/M), plus 1 GiB at $0.12.
+    assert_eq!(requests_in(&estimate, "Class A"), 1);
+    close(estimate.total, 0.12 + 0.000005 + 0.0000004);
+}
+
+// ---------------------------------------------------------------------------
+// Spaces: requests free, storage and downloads inside the $5 base price.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn spaces_charges_nothing_per_operation() {
+    let mut work = workload(&spaces());
+    work.upload(GIB);
+    work.download(GIB);
+    work.copy_on_server(GIB);
+    let estimate = estimate(&work);
+    assert_eq!(estimate.provider_label, "DigitalOcean Spaces");
+    close(estimate.total, 0.0);
 }
 
 // ---------------------------------------------------------------------------

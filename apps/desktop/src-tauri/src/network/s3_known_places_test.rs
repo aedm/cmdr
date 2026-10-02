@@ -107,3 +107,17 @@ fn a_store_from_disk_reads_its_provider_by_kind() {
     let params = entry.params().expect("a usable provider");
     assert_eq!(params.port(), 14480);
 }
+
+/// The wire names match the crate's `kind_name`, which the price table and the
+/// `s3_connected` counter key on.
+#[test]
+fn gcs_and_spaces_travel_by_their_kind_names() {
+    let gcs = serde_json::to_value(S3ProviderChoice::Gcs).unwrap();
+    assert_eq!(gcs, serde_json::json!({ "kind": "gcs" }));
+    let spaces: S3ProviderChoice =
+        serde_json::from_value(serde_json::json!({ "kind": "digitalocean", "region": " fra1 " })).unwrap();
+    let provider = spaces.to_provider().unwrap();
+    assert_eq!(provider, S3Provider::DigitalOcean { region: "fra1".into() });
+    assert_eq!(provider.kind_name(), "digitalocean");
+    assert_eq!(S3ProviderChoice::Gcs.to_provider().unwrap().kind_name(), "gcs");
+}

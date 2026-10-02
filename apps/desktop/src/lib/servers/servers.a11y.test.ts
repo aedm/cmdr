@@ -268,6 +268,22 @@ describe('the three renderers on their own', () => {
     await expectNoA11yViolations(target)
   })
 
+  it('the S3 provider block on Spaces and on GCS has no violations', async () => {
+    for (const fields of [
+      { ...emptyS3Fields(), provider: 'digitalocean' as const, spacesRegion: 'fra1' },
+      { ...emptyS3Fields(), provider: 'gcs' as const },
+    ]) {
+      const target = document.createElement('div')
+      document.body.appendChild(target)
+      mount(S3EndpointFields, {
+        target,
+        props: { fields, disabled: false, identityEditable: true, onChange: () => {} },
+      })
+      await tick()
+      await expectNoA11yViolations(target)
+    }
+  })
+
   it('the access_keys credential fields with a refusal have no violations', async () => {
     const target = document.createElement('div')
     document.body.appendChild(target)

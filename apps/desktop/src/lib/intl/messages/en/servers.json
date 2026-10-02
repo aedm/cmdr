@@ -598,6 +598,18 @@
   "@servers.sheet.s3ProviderHetzner": {
     "description": "One choice in the S3 Provider dropdown. A product name; keep it as-is."
   },
+  "servers.sheet.s3ProviderGcs": "Google Cloud Storage",
+  "@servers.sheet.s3ProviderGcs": {
+    "description": "One choice in the S3 Provider dropdown. A product name; keep it as-is."
+  },
+  "servers.sheet.s3ProviderDigitalOcean": "DigitalOcean Spaces",
+  "@servers.sheet.s3ProviderDigitalOcean": {
+    "description": "One choice in the S3 Provider dropdown. A product name; keep it as-is."
+  },
+  "servers.sheet.s3GcsKeyHelp": "Sign in with an HMAC key from the Interoperability tab of your Cloud Storage settings.",
+  "@servers.sheet.s3GcsKeyHelp": {
+    "description": "One line under the S3 Provider dropdown when Google Cloud Storage is picked: the access key ID and secret it asks for are an HMAC key, made in the Google Cloud console under Cloud Storage › Settings › Interoperability. “HMAC”, “Interoperability”, and “Cloud Storage” are Google’s own terms: keep “HMAC” as-is, and use the console’s own wording in your language for the tab and the settings if it has one."
+  },
   "servers.sheet.s3ProviderOther": "Other S3-compatible",
   "@servers.sheet.s3ProviderOther": {
     "description": "The last choice in the S3 Provider dropdown: any other storage server that speaks the S3 protocol (a self-hosted MinIO or Garage, for example). Picking it asks for the server’s web address. “S3” is a protocol name; keep it as-is."

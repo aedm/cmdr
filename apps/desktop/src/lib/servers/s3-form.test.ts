@@ -14,6 +14,7 @@ import {
   s3FieldsFromTarget,
   s3HostOf,
   s3ProviderFrom,
+  s3RequiredFieldOf,
   type S3FormFields,
 } from './s3-form'
 
@@ -144,6 +145,40 @@ describe('s3FieldsFromTarget', () => {
     )
     expect(s3FieldsFromTarget({ kind: 'hetzner', location: 'nbg1' }, null)).toEqual(
       fields({ provider: 'hetzner', location: 'nbg1' }),
+    )
+  })
+})
+
+describe('Google Cloud Storage and DigitalOcean Spaces', () => {
+  it('sends GCS with no field at all, and Spaces with its region from the picker', () => {
+    expect(s3ProviderFrom(fields({ provider: 'gcs' }))).toEqual({ kind: 'gcs' })
+    expect(s3ProviderFrom(fields({ provider: 'digitalocean', spacesRegion: 'ams3' }))).toEqual({
+      kind: 'digitalocean',
+      region: 'ams3',
+    })
+  })
+
+  it('needs nothing typed for GCS, so it can submit and nothing is malformed', () => {
+    expect(s3RequiredFieldOf(fields({ provider: 'gcs' }))).toBeNull()
+    expect(s3FieldProblem(fields({ provider: 'gcs' }))).toBeNull()
+    expect(s3FieldProblem(fields({ provider: 'digitalocean', spacesRegion: 'fra1' }))).toBeNull()
+  })
+
+  it('makes the hosts cmdr_s3::profile makes, and reads them back from a pasted path', () => {
+    expect(s3HostOf(fields({ provider: 'gcs' }))).toBe('storage.googleapis.com')
+    expect(s3HostOf(fields({ provider: 'digitalocean', spacesRegion: 'fra1' }))).toBe('fra1.digitaloceanspaces.com')
+    expect(s3FieldsFromAppPath('s3://GOOG1EKEY@storage.googleapis.com:443/my.photos_2026')?.fields).toEqual(
+      fields({ provider: 'gcs', bucket: 'my.photos_2026' }),
+    )
+    expect(s3FieldsFromAppPath('s3://key@sgp1.digitaloceanspaces.com:443/b')?.fields).toEqual(
+      fields({ provider: 'digitalocean', spacesRegion: 'sgp1', bucket: 'b' }),
+    )
+  })
+
+  it('holds a saved GCS or Spaces place for the edit form', () => {
+    expect(s3FieldsFromTarget({ kind: 'gcs' }, 'b')).toEqual(fields({ provider: 'gcs', bucket: 'b' }))
+    expect(s3FieldsFromTarget({ kind: 'digitalocean', region: 'nyc3' }, null)).toEqual(
+      fields({ provider: 'digitalocean', spacesRegion: 'nyc3' }),
     )
   })
 })

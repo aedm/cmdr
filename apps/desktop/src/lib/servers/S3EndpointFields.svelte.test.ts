@@ -50,6 +50,19 @@ describe('S3EndpointFields', () => {
     expect(document.body.textContent).toContain('Location')
   })
 
+  it('gives Spaces a region picker rather than a text field', async () => {
+    await render({ provider: 'digitalocean', spacesRegion: 'fra1' })
+    expect(field('server-s3-region')).toBeNull()
+    expect(document.body.textContent).toContain('Region')
+  })
+
+  it('asks GCS for nothing but says the keys are an HMAC key', async () => {
+    await render({ provider: 'gcs' })
+    expect(field('server-s3-region')).toBeNull()
+    expect(field('server-s3-endpoint')).toBeNull()
+    expect(document.body.textContent).toContain('HMAC key')
+  })
+
   it('asks Other for an endpoint, an optional region, and path-style, on by default', async () => {
     await render({ provider: 'other' })
     expect(field('server-s3-endpoint')?.placeholder).toBe('Example: https://s3.example.com')

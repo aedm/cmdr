@@ -34,7 +34,7 @@ describe('GET /s3-prices/v1', () => {
 
     const body: PriceTableShape = await res.json()
     expect(body.schemaVersion).toBe(1)
-    expect(Object.keys(body.providers).sort()).toEqual(['aws', 'b2', 'hetzner', 'r2', 'wasabi'])
+    expect(Object.keys(body.providers).sort()).toEqual(['aws', 'b2', 'digitalocean', 'gcs', 'hetzner', 'r2', 'wasabi'])
   })
 
   it('serves the same table the file holds', async () => {

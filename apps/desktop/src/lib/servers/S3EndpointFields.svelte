@@ -5,7 +5,8 @@
      *
      * ❗ **The preset decides the endpoint** (`s3-form.ts`), so only "Other
      * S3-compatible" asks for a URL. AWS, B2, and Wasabi take a region, R2 an
-     * account ID, and Hetzner a location from its own short list.
+     * account ID, Hetzner a location and Spaces a region from their own lists,
+     * and GCS nothing at all (one global endpoint), just a line on its keys.
      *
      * ❗ **Two refusal slots, one input for a preset.** `address` is the field
      * that makes the endpoint (the Other URL, else the preset's own field) and
@@ -18,7 +19,13 @@
     import TextInput from '$lib/ui/TextInput.svelte'
     import { tString } from '$lib/intl/messages.svelte'
     import type { MessageKey } from '$lib/intl/keys.gen'
-    import { HETZNER_LOCATIONS, S3_PROVIDERS, type S3FormFields, type S3ProviderKind } from './s3-form'
+    import {
+        HETZNER_LOCATIONS,
+        S3_PROVIDERS,
+        SPACES_REGIONS,
+        type S3FormFields,
+        type S3ProviderKind,
+    } from './s3-form'
 
     const PROVIDER_LABEL_KEY: Record<S3ProviderKind, MessageKey> = {
         aws: 'servers.sheet.s3ProviderAws',
@@ -26,6 +33,8 @@
         b2: 'servers.sheet.s3ProviderB2',
         wasabi: 'servers.sheet.s3ProviderWasabi',
         hetzner: 'servers.sheet.s3ProviderHetzner',
+        gcs: 'servers.sheet.s3ProviderGcs',
+        digitalocean: 'servers.sheet.s3ProviderDigitalOcean',
         other: 'servers.sheet.s3ProviderOther',
     }
 
@@ -79,6 +88,7 @@
         S3_PROVIDERS.map((provider) => ({ value: provider, label: tString(PROVIDER_LABEL_KEY[provider]) })),
     )
     const locationItems: SelectItem[] = HETZNER_LOCATIONS.map((location) => ({ value: location, label: location }))
+    const spacesRegionItems: SelectItem[] = SPACES_REGIONS.map((region) => ({ value: region, label: region }))
 
     const identityDisabled = $derived(disabled || !identityEditable)
     /** A preset's one field carries both sentences; Other splits them. */
@@ -177,6 +187,25 @@
             disabled={identityDisabled}
             ariaLabel={tString('servers.sheet.s3Location')}
         />
+        {@render zoneRefusal(presetRefusal)}
+    </div>
+{:else if fields.provider === 'digitalocean'}
+    <div class="field">
+        <span class="field-label">{tString('servers.sheet.s3Region')}</span>
+        <Select
+            items={spacesRegionItems}
+            value={fields.spacesRegion}
+            onChange={(value: string) => {
+                onChange({ spacesRegion: value })
+            }}
+            disabled={identityDisabled}
+            ariaLabel={tString('servers.sheet.s3Region')}
+        />
+        {@render zoneRefusal(presetRefusal)}
+    </div>
+{:else if fields.provider === 'gcs'}
+    <div class="field">
+        <p class="field-help">{tString('servers.sheet.s3GcsKeyHelp')}</p>
         {@render zoneRefusal(presetRefusal)}
     </div>
 {:else}

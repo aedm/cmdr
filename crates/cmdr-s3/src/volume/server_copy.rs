@@ -40,15 +40,12 @@ use super::query::{body_error, stored_mtime};
 use super::writes::{WriteTarget, overwrite_for};
 use crate::error::S3Error;
 use crate::metadata::{MTIME_HEADER, WRITE_TOKEN_HEADER};
-use crate::multipart::{PartPlan, TooLarge, plan_parts_with_floor};
+use crate::multipart::{MAX_COPY_OBJECT_SIZE, PartPlan, TooLarge, plan_parts_with_floor};
 use crate::ops::{self, BuildError, CopySource, MetadataDirective, ObjectMetadata};
 use crate::profile::ConditionalOp;
 use crate::transport::{Answer, COMPLETE_BUDGET, S3Client, map_transport_error};
 use crate::xml::build::CompletedPart;
 use crate::xml::parse_copy_result;
-
-/// S3's ceiling on one `CopyObject`: 5 GiB.
-const MAX_COPY_OBJECT_SIZE: u64 = 5 * 1024 * 1024 * 1024;
 
 /// The system headers a copy restates when it can't keep them by `COPY`.
 const CARRIED_SYSTEM_HEADERS: [&str; 5] = [

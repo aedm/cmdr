@@ -10,7 +10,7 @@ use std::collections::HashMap;
 
 use super::prices::RequestKind;
 use crate::S3Provider;
-use crate::multipart::{MAX_PARTS, MIN_PART_SIZE, ShortTail, plan_parts_with_floor};
+use crate::multipart::{MAX_COPY_OBJECT_SIZE, MAX_PARTS, MIN_PART_SIZE, ShortTail, plan_parts_with_floor};
 use crate::profile::{ConditionalOp, NoOverwrite};
 
 /// The billed work of one planned operation on one provider.
@@ -25,6 +25,9 @@ pub struct Workload {
     pub(crate) checks: Checks,
     /// How the provider's multipart plans cut a short tail.
     pub(crate) short_tail: ShortTail,
+    /// Whether a big server-side copy goes in `UploadPartCopy` parts; GCS
+    /// has none, so it's one `CopyObject` there.
+    pub(crate) copies_in_parts: bool,
     /// Whether a one-PUT overwrite of an existing object lands through a temp
     /// key, because the provider is off the `refuses_short_body` allowlist
     /// (`volume/temp_overwrite.rs`).
@@ -59,6 +62,7 @@ impl Workload {
             },
             checks: Checks::of(provider),
             short_tail: profile.as_ref().map_or(ShortTail::Fold, |profile| profile.short_tail),
+            copies_in_parts: profile.as_ref().is_ok_and(|profile| profile.copies_in_parts),
             // A profile that won't build is the temp-key side, the safe one.
             overwrites_through_temp: !profile.as_ref().is_ok_and(|profile| profile.refuses_short_body),
             requests: HashMap::new(),
@@ -95,12 +99,20 @@ impl Workload {
 
     /// One object copied within the account, without its bytes leaving
     /// (`volume/server_copy.rs`): a HEAD of the source, one `CopyObject` up to
-    /// the part floor, else Create, an `UploadPartCopy` per part, and Complete;
-    /// then the verifying HEAD, and the no-overwrite HEADs where needed.
+    /// the part floor (or any size where the provider has no `UploadPartCopy`),
+    /// else Create, an `UploadPartCopy` per part, and Complete; then the
+    /// verifying HEAD, and the no-overwrite HEADs where needed. Past one
+    /// `CopyObject`'s ceiling without parts, the engine streams it: a download
+    /// and an upload.
     pub fn copy_on_server(&mut self, size: u64) {
+        if !self.copies_in_parts && size > MAX_COPY_OBJECT_SIZE {
+            self.download(size);
+            self.upload(size);
+            return;
+        }
         // `copies_whole` is `size <= part floor`, which differs from the
         // upload's one-part plan just past the floor, where a small tail folds.
-        let whole = size <= MIN_PART_SIZE;
+        let whole = size <= MIN_PART_SIZE || !self.copies_in_parts;
         if whole {
             self.add(RequestKind::CopyObject, 1);
         } else {

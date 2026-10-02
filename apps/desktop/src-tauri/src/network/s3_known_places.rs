@@ -56,6 +56,14 @@ pub enum S3ProviderChoice {
         /// The endpoint's location.
         location: String,
     },
+    /// Google Cloud Storage, through its S3-compatible XML API with HMAC keys.
+    Gcs,
+    /// DigitalOcean Spaces, in one region (`fra1`).
+    #[serde(rename = "digitalocean")]
+    DigitalOcean {
+        /// The endpoint's region.
+        region: String,
+    },
     /// Any other S3-compatible server.
     Other {
         /// `http(s)://host[:port]`, nothing after it.
@@ -87,6 +95,10 @@ impl S3ProviderChoice {
             },
             Self::Hetzner { location } => S3Provider::Hetzner {
                 location: trimmed(location),
+            },
+            Self::Gcs => S3Provider::Gcs,
+            Self::DigitalOcean { region } => S3Provider::DigitalOcean {
+                region: trimmed(region),
             },
             Self::Other {
                 endpoint,

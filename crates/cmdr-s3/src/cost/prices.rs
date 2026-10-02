@@ -89,7 +89,8 @@ impl RequestKind {
 /// Every provider's list prices, validated.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PriceTable {
-    /// By the table's provider key (`aws`, `r2`, `b2`, `wasabi`, `hetzner`).
+    /// By the table's provider key (`S3Provider::kind_name`: `aws`, `r2`, `b2`,
+    /// `wasabi`, `hetzner`, `gcs`, `digitalocean`).
     providers: HashMap<String, ProviderPrices>,
 }
 

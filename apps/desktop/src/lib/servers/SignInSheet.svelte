@@ -268,22 +268,28 @@
     const canSubmit = $derived.by(() => {
         if (busy) return false
         if (request.mode === 'sign-in') return credentials.guest || credentials.secret !== ''
-        // S3 can't dial without a key and the one field its preset makes the endpoint from.
-        if (form.protocol === 's3') return form.username.trim() !== '' && s3RequiredFieldOf(form.s3).trim() !== ''
+        // S3 can't dial without a key and the one field its preset makes the endpoint from
+        // (GCS needs none: one global endpoint).
+        if (form.protocol === 's3') {
+            const required = s3RequiredFieldOf(form.s3)
+            return form.username.trim() !== '' && (required === null || required.trim() !== '')
+        }
         return form.address.trim() !== ''
     })
 
     /**
      * "Use us-east-2", offered once a bucket turned out to live in a region the server
-     * named, on a preset that takes a region. One press switches and tries again.
+     * named, on a preset that takes a TYPED region. One press switches and tries again.
      */
     const offersUseRegion = $derived(
         request.mode === 'add' &&
             refusal === 'region_mismatch' &&
             refusalRegion !== null &&
             form.protocol === 's3' &&
-            form.s3.provider !== 'r2' &&
-            form.s3.provider !== 'hetzner',
+            (form.s3.provider === 'aws' ||
+                form.s3.provider === 'b2' ||
+                form.s3.provider === 'wasabi' ||
+                form.s3.provider === 'other'),
     )
 
     onMount(() => {

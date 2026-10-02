@@ -12899,6 +12899,14 @@ export type S3ProviderChoice =
       // The endpoint's location.
       location: string
     }
+  // Google Cloud Storage, through its S3-compatible XML API with HMAC keys.
+  | { kind: 'gcs' }
+  // DigitalOcean Spaces, in one region (`fra1`).
+  | {
+      kind: 'digitalocean'
+      // The endpoint's region.
+      region: string
+    }
   // Any other S3-compatible server.
   | {
       kind: 'other'

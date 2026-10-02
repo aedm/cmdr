@@ -26,6 +26,10 @@ pub(crate) const MAX_PARTS: u64 = 10_000;
 /// S3's ceiling on one part.
 pub(crate) const MAX_PART_SIZE: u64 = 5 * 1024 * MIB;
 
+/// S3's ceiling on one `CopyObject`, which is all a provider without
+/// `UploadPartCopy` (GCS) has.
+pub(crate) const MAX_COPY_OBJECT_SIZE: u64 = 5 * 1024 * MIB;
+
 /// What a tail under 5 MiB does, per provider (`ProviderProfile::short_tail`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ShortTail {
