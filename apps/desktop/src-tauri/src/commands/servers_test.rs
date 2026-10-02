@@ -212,15 +212,12 @@ fn an_sftp_account_has_one_place_carrying_the_volume_id() {
     assert!(!place.connected, "nothing is registered under that id");
 }
 
-/// ❗ **An SMB host lists NO places and cannot be pinned in this effort.**
-///
-/// `known_shares.rs` stores no share rows (its only writer leaves `share_name`
-/// empty) and carries no port, and a mounted share's id comes from `statfs`,
-/// which normalizes an mDNS name to an IP. So no id derivable from the store
-/// would match the mounted volume, and a pin here would point at nothing. SMB
-/// places keep reaching the switcher as mounted volumes.
+/// ❗ **An SMB host with no saved share lists no places, and the host row itself is
+/// never pinned**: its places are its saved SHARES, each carrying its own pin
+/// (`a_saved_share_is_a_place_under_its_host_with_its_account` below). A manual
+/// entry alone saves no share.
 #[test]
-fn an_smb_host_lists_no_places_and_is_never_pinned() {
+fn an_smb_host_with_no_saved_share_lists_no_places_and_is_never_pinned() {
     let smb_host = "192.0.2.35";
 
     let servers = saved_servers_of(vec![manual_entry(smb_host)]);

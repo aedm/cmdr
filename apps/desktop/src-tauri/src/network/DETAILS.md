@@ -664,6 +664,13 @@ the migration, and what Forget does). What the code has to defend:
   password for the host, and answers `NeedsCredentials` rather than trying guest when there is none. Cancel stops the
   wait; a kernel mount under way may still finish. A password the sheet offered is stored only after the mount went
   through.
+- **Known gap: a Linux GVFS mount saves no place.** `smb_upgrade::mounted_volume_id` reads only `/proc/mounts` CIFS rows
+  (`volumes_linux::get_smb_mount_info`), so a `gio mount` share is recorded with no volume id: listed in the hub, never
+  pinned, no `saved` row. The mount row's own id comes off the GVFS dirname (`volumes_linux/ids.rs`), which carries no
+  port. The SMB E2E specs run on Linux only, so they can't cover pins until this closes.
+- **Known gap: a restored tab on an unmounted share lands at the share's root.** Launch probes a `/Volumes/<share>/…`
+  path like any local one (`app-status-store.ts::resolvePersistedPath`), and with the share gone the walk climbs to
+  `/Volumes`. The tab keeps the share's id, so its `saved` row dials and the pane enters the share, at its root.
 
 ## Telling the user about a kernel-mount fallback
 

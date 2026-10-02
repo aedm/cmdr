@@ -13606,7 +13606,7 @@ export type ServerNameSource =
 
 // Which protocol an account speaks.
 export type ServerProtocol =
-  // An SMB host. ❗ Listed, never pinned in this effort; see [`SavedServer`].
+  // An SMB host. ❗ The host row is never pinned; its saved shares are, see [`SavedServer`].
   | 'smb'
   // An SFTP server, one account per entry.
   | 'sftp'

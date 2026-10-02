@@ -58,8 +58,8 @@ export function asSavedPlaceRefusal(error: unknown): SavedPlaceRefusal | null {
  * Every server the user has saved, across all three stores.
  *
  * Cached state only, so calling it on a `volumes-changed` refresh costs no
- * network traffic. An SMB host lists no places and can't be pinned; see the
- * type's own note.
+ * network traffic. An SMB host's places are its saved shares, which carry the
+ * pins; the host row never does. See the type's own note.
  */
 export async function listSavedServers(): Promise<SavedServer[]> {
   return await commands.listSavedServers()
