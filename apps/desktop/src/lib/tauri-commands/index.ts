@@ -570,7 +570,6 @@ export {
   onOpenSettings,
   requestOpenSettings,
   onOpenFileViewer,
-  onFocusSettings,
   onFocusFileViewer,
   onFocusAbout,
   onFocusConfirmation,

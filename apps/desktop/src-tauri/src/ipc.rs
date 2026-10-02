@@ -87,8 +87,8 @@ use crate::volume_broadcast::{VolumeContextAction, VolumeMounted, VolumeRootChan
 // Window-management events: emit_to-targeted window lifecycle.
 use crate::window_events::{
     CloseAbout, CloseAllFileViewers, CloseConfirmation, CloseFileViewer, ExecuteCommand, FocusAbout, FocusConfirmation,
-    FocusFileViewer, FocusSettings, ForegroundOperation, FunctionKeyBarHideRequested, McpSettingsClose, MouseNav,
-    OpenFileViewer, OpenSettings, PersistRestrictedSetting, RevealPath, ShowSearchResultInFolder, TabContextAction,
+    FocusFileViewer, ForegroundOperation, FunctionKeyBarHideRequested, McpSettingsClose, MouseNav, OpenFileViewer,
+    OpenSettings, PersistRestrictedSetting, RevealPath, ShowSearchResultInFolder, TabContextAction,
     ViewerContextMenuAction, ViewerEditAction, ViewerWordWrapToggled,
 };
 // AI + system/misc events.
@@ -1162,7 +1162,6 @@ pub fn builder() -> Builder<tauri::Wry> {
             ShowSearchResultInFolder,
             OpenSettings,
             OpenFileViewer,
-            FocusSettings,
             FocusFileViewer,
             FocusAbout,
             FocusConfirmation,

@@ -84,13 +84,6 @@ export function onOpenFileViewer(handler: (payload: OpenFileViewer) => void): Pr
   })
 }
 
-/** MCP `dialog focus settings`: bring the settings window forward. */
-export function onFocusSettings(handler: () => void): Promise<UnlistenFn> {
-  return events.focusSettings.listen(() => {
-    handler()
-  })
-}
-
 /** MCP `dialog focus file-viewer`: `path` present → that file's viewer; absent → the most recent. */
 export function onFocusFileViewer(handler: (payload: FocusFileViewer) => void): Promise<UnlistenFn> {
   return events.focusFileViewer.listen((event) => {

@@ -4689,7 +4689,6 @@ export const events = {
   focusAbout: makeEvent<FocusAbout>('focus-about'),
   focusConfirmation: makeEvent<FocusConfirmation>('focus-confirmation'),
   focusFileViewer: makeEvent<FocusFileViewer>('focus-file-viewer'),
-  focusSettings: makeEvent<FocusSettings>('focus-settings'),
   foregroundOperation: makeEvent<ForegroundOperation>('foreground-operation'),
   functionKeyBarHideRequested: makeEvent<FunctionKeyBarHideRequested>('function-key-bar-hide-requested'),
   gitStateChanged: makeEvent<GitStateChangedPayload>('git-state-changed'),
@@ -7611,9 +7610,6 @@ export type FocusConfirmation = null
 export type FocusFileViewer = {
   path: string | null
 }
-
-// `focus-settings`: bring the settings window forward (MCP `dialog focus`).
-export type FocusSettings = null
 
 /**
  *  One folder's index coverage: the eligible denominator and accounted numerator, each a

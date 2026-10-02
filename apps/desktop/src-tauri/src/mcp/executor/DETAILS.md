@@ -147,7 +147,8 @@ budget on timeout.
   `confirm_open_dialog` checks the tracker FIRST and refuses a confirm of nothing with `invalid_params`. A confirm the
   dialog declines (an invalid path in its box) leaves the dialog up and times out, which is the honest answer.
 - **`WindowAppeared(label)`**: fires when a `webview_windows()` entry matches (exact, or `viewer-*`). Used by
-  `dialog open settings|file-viewer` and `dialog focus`.
+  `dialog open settings|file-viewer` and `dialog focus file-viewer`. `dialog focus settings` needs no ack: the backend
+  raises that window itself (`set_focus`), and a closed one is `invalid_params`.
 - **`WindowDisappeared(label)`**: fires when the matching `webview_windows()` entry is gone. Used by
   `dialog close settings` (single-window family).
 - **`WindowCountBelow {prefix, threshold}`**: fires when the matching window count is `< threshold`. Used by

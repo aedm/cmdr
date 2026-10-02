@@ -16,9 +16,10 @@
 //!   lose the id. The main window routes the id to the dialog's own close via the close registry
 //!   (`ModalDialog` / `QueryDialog`). An unregistered id is an honest `invalid_params`, and an
 //!   already-closed dialog acks immediately (the tracker doesn't hold it).
-//! - `focus settings|file-viewer|about` → window is present (no-op fast path; if the window isn't
-//!   there, the wait_for_ack times out, which is the correct contract for focusing a non-existent
-//!   dialog).
+//! - `focus settings` → no ack: the backend raises the settings window itself, and a closed one is
+//!   an `invalid_params` up front.
+//! - `focus file-viewer|about` → window is present (no-op fast path; if the window isn't there, the
+//!   wait_for_ack times out, which is the correct contract for focusing a non-existent dialog).
 //! - `confirm <transfer|delete>` → the soft dialog is no longer in `SoftDialogTracker`: the FE takes
 //!   the confirmation down in the same tick it starts the operation. ❌ Not a pane-generation wait:
 //!   a compress, or a copy onto a slow volume, changes nothing in either pane until its first file
@@ -40,7 +41,7 @@ use tauri_specta::Event as _;
 
 use crate::window_events::{
     CloseAbout, CloseAllFileViewers, CloseConfirmation, CloseFileViewer, ExecuteCommand, FocusAbout, FocusConfirmation,
-    FocusFileViewer, FocusSettings, McpSettingsClose, OpenFileViewer, OpenSettings,
+    FocusFileViewer, McpSettingsClose, OpenFileViewer, OpenSettings,
 };
 
 use super::{
@@ -172,8 +173,14 @@ async fn execute_dialog_focus<R: Runtime>(app: &AppHandle<R>, dialog_type: &str,
     // message; that's the correct contract (you can't focus what isn't there).
     match dialog_type {
         "settings" => {
-            FocusSettings.emit_to(app, "main")?;
-            wait_for_ack(app, AckSignal::WindowAppeared("settings"), DEFAULT_ACK_TIMEOUT).await?;
+            // Settings is its own window, so the backend raises it directly: no
+            // frontend hop, and nothing that can listen or not.
+            let window = app.get_webview_window("settings").ok_or_else(|| {
+                ToolError::invalid_params("Settings isn't open. Open it first with `dialog open settings`.")
+            })?;
+            window
+                .set_focus()
+                .map_err(|e| ToolError::internal(format!("Couldn't focus the settings window: {e}")))?;
             Ok(json!("OK: Focused settings"))
         }
         "file-viewer" => {
@@ -561,6 +568,32 @@ mod tests {
         )
         .await;
         let error = outcome.expect_err("nothing is open to confirm");
+        assert_eq!(error.code, ToolError::invalid_params("").code);
+        assert!(
+            started.elapsed() < DEFAULT_ACK_TIMEOUT,
+            "it must not wait out the ack budget"
+        );
+    }
+
+    #[tokio::test]
+    async fn focusing_an_open_settings_window_answers_ok() {
+        let app = app_with_stores();
+        let handle = app.handle().clone();
+        tauri::WebviewWindowBuilder::new(&handle, "settings", tauri::WebviewUrl::default())
+            .build()
+            .expect("a mock settings window");
+
+        let outcome = execute_dialog_command(&handle, &json!({ "action": "focus", "type": "settings" })).await;
+        assert!(outcome.is_ok(), "{:?}", outcome.err().map(|e| e.message));
+    }
+
+    #[tokio::test]
+    async fn focusing_settings_when_it_isnt_open_is_refused_up_front() {
+        let app = app_with_stores();
+        let handle = app.handle().clone();
+        let started = std::time::Instant::now();
+        let outcome = execute_dialog_command(&handle, &json!({ "action": "focus", "type": "settings" })).await;
+        let error = outcome.expect_err("there's no settings window to focus");
         assert_eq!(error.code, ToolError::invalid_params("").code);
         assert!(
             started.elapsed() < DEFAULT_ACK_TIMEOUT,

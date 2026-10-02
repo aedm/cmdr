@@ -56,10 +56,6 @@ pub struct OpenFileViewer {
     pub path: Option<String>,
 }
 
-/// `focus-settings`: bring the settings window forward (MCP `dialog focus`).
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Event)]
-pub struct FocusSettings;
-
 /// `focus-file-viewer`: focus a viewer. `path` present → that file's viewer;
 /// absent → the most recently opened viewer (MCP `dialog focus`).
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Event)]
