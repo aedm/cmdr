@@ -486,8 +486,8 @@ values write the catalog's `’`.
 ## Le hub des serveurs : panneau de connexion, refus et oubli (`servers.refusal.*`, `servers.paneState.*`, `fileExplorer.navigation.forget*`, `fileExplorer.navigation.disconnect*`, `menu.network.forgetServer`, `.forgetSavedPassword`)
 
 - Keychain Access (the app) → `Trousseaux d’accès` (Apple’s plural); the store → `le trousseau`.
-- trust → `approuver` (Security.framework) over `faire confiance à`. Host key → `la clé du serveur {host}` (`de` would
-  elide; tentative).
+- trust → `approuver` (Security.framework) over `faire confiance à` and the device-pairing `Se fier`. Host key →
+  `la clé du serveur {host}` (`de` would elide; tentative).
 - Signed out → `Session fermée`: the session carries the agreement, never `Déconnecté(e)`.
 - Confirm titles repeat the menu labels verbatim (`Oublier le serveur`, `Oublier le mot de passe enregistré`).
 - `disconnectPlaceAriaLabel` → `Se déconnecter de {name}`, containing the visible `Se déconnecter`, never Finder’s
@@ -517,10 +517,9 @@ values write the catalog's `’`.
 
 ## Le hub des serveurs : la feuille de connexion et la clé d'hôte SSH (`servers.sheet.*`, `servers.hostKey.*`, `servers.paneState.*`, `goToPath.dialog.opensServer`, `.addsServer`, `commands.serversConnect.label`)
 
-- `Protocole`; SMB / SFTP / WebDAV stay (Apple keeps them, justified). passphrase → `phrase secrète`
-  (`Phrase secrète de la clé`), distinct from the account’s `mot de passe`.
-- fingerprint → `empreinte` (feminine, so `Je l’ai vérifiée` agrees with it). trust a key → `approuver`, never Apple’s
-  device-pairing `Se fier`.
+- `Protocole`; SMB / SFTP / WebDAV stay (Apple keeps them). passphrase → `phrase secrète` (`Phrase secrète de la clé`),
+  distinct from the account’s `mot de passe`.
+- fingerprint → `empreinte` (feminine, so `Je l’ai vérifiée` agrees with it); trusting a key is `approuver` (above).
 - remote → `distant`, postposed (`Dossier distant`). Key file → `Fichier de clé`.
 - Connect to server… → `Se connecter au serveur…` (the Go menu item) on every action surface; `Connexion au serveur` is
   only Apple’s window title.
