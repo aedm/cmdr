@@ -10,7 +10,7 @@ estimates". The product decision: `docs/specs/s3-support-plan.md` § "Product de
    (`CachedScanResult::keeping_files`). A local walk's own per-file list gives sizes.
 2. The dialog calls `estimate_operation_cost` with the preview id, the operation, and both volume ids.
 3. `estimate` downcasts each end to `S3Volume`; neither is S3 means no estimate, before the cache is touched.
-4. `plan` builds the workloads, `price_source::current` hands over the table, and `PriceTable::estimate` prices each.
+4. `plan` builds the workloads, `price_source::current` hands over the table, and `Estimate::of` prices each.
    The line items go to the debug log (`RUST_LOG=cmdr_lib::s3_costs=debug`); the dialog gets one amount per provider.
 
 ## What each operation plans

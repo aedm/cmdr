@@ -4,7 +4,7 @@
 //! $4.50/M, Class B $0.36/M; Wasabi storage $0.00780273/GB-month, 90 days.
 
 use cmdr_s3::S3Provider;
-use cmdr_s3::cost::{PriceTable, Workload};
+use cmdr_s3::cost::{Estimate, PriceTable, Workload};
 
 use super::plan::{ClashPlan, CostedOperation, KnownClash, Overwrite, Sides, overwritten, plan};
 use crate::file_system::volume::ScannedFile;
@@ -58,7 +58,7 @@ fn totals(workloads: &[Workload]) -> Vec<f64> {
     let table = PriceTable::bundled();
     workloads
         .iter()
-        .map(|work| table.estimate(work).expect("a priced provider").total)
+        .map(|work| Estimate::of(&table, work).expect("a priced provider").total)
         .collect()
 }
 

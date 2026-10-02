@@ -48,11 +48,11 @@ pub enum LineItem {
     },
 }
 
-impl PriceTable {
-    /// What `workload` costs at its provider's list prices, or `None` when the
-    /// table has no prices for that provider.
-    pub fn estimate(&self, workload: &Workload) -> Option<Estimate> {
-        let prices = self.provider(workload.price_key?)?;
+impl Estimate {
+    /// What `workload` costs at its provider's list prices in `table`, or `None`
+    /// when the table has no prices for that provider.
+    pub fn of(table: &PriceTable, workload: &Workload) -> Option<Self> {
+        let prices = table.provider(workload.price_key?)?;
         let mut line_items = Vec::new();
 
         let mut counts = vec![0_u64; prices.request_classes.len()];
@@ -103,7 +103,7 @@ impl PriceTable {
         }
 
         let total = line_items.iter().map(LineItem::amount).sum();
-        Some(Estimate {
+        Some(Self {
             provider_label: prices.label.clone(),
             currency: prices.currency.clone(),
             total,

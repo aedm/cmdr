@@ -12,7 +12,7 @@ mod price_source;
 use std::path::Path;
 
 use cmdr_s3::S3Volume;
-use cmdr_s3::cost::PriceTable;
+use cmdr_s3::cost::{Estimate, PriceTable};
 use serde::{Deserialize, Serialize};
 
 pub use plan::{ClashPlan, CostedOperation};
@@ -115,7 +115,7 @@ fn priced(
 ) -> Vec<CostEstimate> {
     plan(operation, sides, facts, overwrites)
         .iter()
-        .filter_map(|work| table.estimate(work))
+        .filter_map(|work| Estimate::of(table, work))
         .map(|estimate| {
             log::debug!(target: "s3_costs", "{operation:?} at {}: {:?}", estimate.provider_label, estimate.line_items);
             CostEstimate {

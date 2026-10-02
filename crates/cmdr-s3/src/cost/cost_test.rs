@@ -45,7 +45,7 @@ fn workload(provider: &S3Provider) -> Workload {
 }
 
 fn estimate(work: &Workload) -> Estimate {
-    PriceTable::bundled().estimate(work).expect("a priced provider")
+    Estimate::of(&PriceTable::bundled(), work).expect("a priced provider")
 }
 
 fn close(actual: f64, expected: f64) {
@@ -72,7 +72,7 @@ fn bundled_table_parses_and_prices_every_preset() {
     let table = PriceTable::bundled();
     for provider in [aws(), r2(), b2(), wasabi(), hetzner(), S3Provider::Gcs, spaces()] {
         assert!(
-            table.estimate(&workload(&provider)).is_some(),
+            Estimate::of(&table, &workload(&provider)).is_some(),
             "{} has no prices",
             provider.kind_name()
         );
@@ -88,7 +88,7 @@ fn other_provider_has_no_estimate() {
     };
     let mut work = workload(&other);
     work.upload(MIB);
-    assert_eq!(PriceTable::bundled().estimate(&work), None);
+    assert_eq!(Estimate::of(&PriceTable::bundled(), &work), None);
 }
 
 // ---------------------------------------------------------------------------
@@ -451,7 +451,7 @@ fn a_minimal_table_parses() {
     let table = PriceTable::parse(&json).expect("valid");
     let mut work = workload(&aws());
     work.download(GIB);
-    close(table.estimate(&work).unwrap().total, 0.09);
+    close(Estimate::of(&table, &work).unwrap().total, 0.09);
 }
 
 #[test]
