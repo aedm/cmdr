@@ -19,9 +19,3 @@ into neutral slots rather than guessing gender or case.
 
 Use «Спросить Cmdr» and «ИИ» consistently. Cmdr and provider/model brands stay recognizable; API keys are «API-ключи».
 External evidence for these newer technical labels remains tentative.
-
-&nbsp;
-
----
-
-_02.10.2026_

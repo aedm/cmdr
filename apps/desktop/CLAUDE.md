@@ -51,9 +51,3 @@ in `DETAILS.md`. Feature must-knows in the colocated `CLAUDE.md`s.
 - `scripts/`: dev/build scripts, mainly `tauri-wrapper.ts`; see its `scripts/CLAUDE.md`.
 - `test/`: Vitest unit tests, plus `test/e2e-playwright/`, `test/e2e-linux/`, and the two Docker fixture stacks,
   `test/smb-servers/` and `test/sftp-servers/`.
-
-&nbsp;
-
----
-
-_02.10.2026_

@@ -128,9 +128,3 @@ that extraction are marked tentative rather than presented as externally verifie
 See the [distilled decisions](decisions.md), [typography rules](mechanics.json) and
 [native review queue](review-queue.md). Native review improves quality opportunistically and does not block shipping
 under the project translation guide.
-
-&nbsp;
-
----
-
-_02.10.2026_

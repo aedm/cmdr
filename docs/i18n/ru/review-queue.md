@@ -10,9 +10,3 @@
   available for this translation pass.
 
 These checks improve terminology and do not block shipping, following the project translation guide.
-
-&nbsp;
-
----
-
-_02.10.2026_
