@@ -1553,17 +1553,17 @@
   "@errors.write.permissionDenied.suggestion.sourceRead": {
     "sourceHash": "978e180"
   },
-  "errors.write.insufficientSpace.title": "Nincs elég hely",
+  "errors.write.insufficientSpace.title": "Lehet, hogy nincs elég szabad hely a célhelyen",
   "@errors.write.insufficientSpace.title": {
-    "sourceHash": "c5f8c45"
+    "sourceHash": "9db6685"
   },
-  "errors.write.insufficientSpace.message": "A célhelynek {required} kell, de csak {available} érhető el.",
+  "errors.write.insufficientSpace.message": "Ehhez legfeljebb {required} kell, a célhelyen pedig {available} szabad.",
   "@errors.write.insufficientSpace.message": {
-    "sourceHash": "582f30a"
+    "sourceHash": "931f1e0"
   },
-  "errors.write.insufficientSpace.suggestion": "Szabadíts fel helyet a célhelyen a felesleges fájlok törlésével, vagy válassz másik helyet.",
+  "errors.write.insufficientSpace.suggestion": "Ha a célhelyen már vannak fájlok, lehet, hogy kevesebb hely is elég. Ha pedig a célhely megtelik, a Cmdr leáll és szól. A biztonság kedvéért szabadíts fel helyet, vagy válassz másik helyet.",
   "@errors.write.insufficientSpace.suggestion": {
-    "sourceHash": "257f1d9"
+    "sourceHash": "a5308c8"
   },
   "errors.write.destinationFull.title": "A célhely megtelt",
   "@errors.write.destinationFull.title": {

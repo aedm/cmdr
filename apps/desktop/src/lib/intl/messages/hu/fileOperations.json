@@ -253,6 +253,14 @@
   "@fileOperations.transferDialog.targetWillBeCreatedMove": {
     "sourceHash": "1246331"
   },
+  "fileOperations.transferDialog.rootEchoWarning": "Ez a hely már ebben a mappában kezdődik: {rootFolder}. Így ez az útvonal ide vezet: {resolvedPath}. Erre gondoltál: {strippedPath}?",
+  "@fileOperations.transferDialog.rootEchoWarning": {
+    "sourceHash": "b692d10"
+  },
+  "fileOperations.transferDialog.rootEchoUseStripped": "Rövidebb útvonal használata",
+  "@fileOperations.transferDialog.rootEchoUseStripped": {
+    "sourceHash": "66972e3"
+  },
   "fileOperations.transferDialog.destinationReadOnly": "Ez a mappa csak olvasható, ide semmit nem lehet tenni.",
   "@fileOperations.transferDialog.destinationReadOnly": {
     "sourceHash": "f30522f"
@@ -892,6 +900,10 @@
   "fileOperations.errorDialog.retry": "Újra",
   "@fileOperations.errorDialog.retry": {
     "sourceHash": "942087c"
+  },
+  "fileOperations.errorDialog.copyAnyway": "Másolás mindenképp",
+  "@fileOperations.errorDialog.copyAnyway": {
+    "sourceHash": "f794181"
   },
   "fileOperations.errorDialog.close": "Bezárás",
   "@fileOperations.errorDialog.close": {

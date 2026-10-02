@@ -1553,17 +1553,17 @@
   "@errors.write.permissionDenied.suggestion.sourceRead": {
     "sourceHash": "978e180"
   },
-  "errors.write.insufficientSpace.title": "Nicht genügend Speicher",
+  "errors.write.insufficientSpace.title": "Am Ziel ist vielleicht nicht genügend Speicherplatz frei",
   "@errors.write.insufficientSpace.title": {
-    "sourceHash": "c5f8c45"
+    "sourceHash": "9db6685"
   },
-  "errors.write.insufficientSpace.message": "Das Ziel braucht {required}, hat aber nur {available} frei.",
+  "errors.write.insufficientSpace.message": "Das braucht bis zu {required}, und am Ziel sind {available} frei.",
   "@errors.write.insufficientSpace.message": {
-    "sourceHash": "582f30a"
+    "sourceHash": "931f1e0"
   },
-  "errors.write.insufficientSpace.suggestion": "Gib am Ziel etwas Speicher frei, indem du nicht benötigte Dateien löschst, oder wähle einen anderen Ort.",
+  "errors.write.insufficientSpace.suggestion": "Wenn am Ziel schon Dateien liegen, braucht der Vorgang vielleicht weniger. Wird das Ziel voll, stoppt Cmdr und sagt dir Bescheid. Zur Sicherheit gib etwas Speicherplatz frei oder wähle einen anderen Ort.",
   "@errors.write.insufficientSpace.suggestion": {
-    "sourceHash": "257f1d9"
+    "sourceHash": "a5308c8"
   },
   "errors.write.destinationFull.title": "Ziel ist voll",
   "@errors.write.destinationFull.title": {

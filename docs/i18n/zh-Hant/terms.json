@@ -2468,6 +2468,13 @@
     "forms": "a prefix → 最近; a standalone heading → 最近使用; the most recent file → 最新的檔案",
     "sources": "AP-TW = AP-HK Finder (Recents → 最近使用)"
   },
+  "reclaim": {
+    "accept": ["騰出", "釋放"],
+    "chosen": "釋出",
+    "confidence": "high",
+    "forms": "Cmdr frees what it stored → 釋出 (刪除模型（釋出 {size}）, 已釋出約 {size}); the user clearing room on a drive → 騰出空間",
+    "sources": "catalog (settings.mediaIndex.clip.deleteButton, reclaim.button, reclaim.freed: 釋出 ×8; errors.write.*.suggestion: 騰出空間 ×4); AP-TW 清空垃圾桶可釋放…的空間 (one hit, zh-HK none)"
+  },
   "reconnect": {
     "accept": ["重新連接", "重新接上", "重新連上"],
     "avoid": [

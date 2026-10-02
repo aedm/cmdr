@@ -1553,17 +1553,17 @@
   "@errors.write.permissionDenied.suggestion.sourceRead": {
     "sourceHash": "978e180"
   },
-  "errors.write.insufficientSpace.title": "Inte tillräckligt med utrymme",
+  "errors.write.insufficientSpace.title": "Målet kanske inte har tillräckligt med utrymme",
   "@errors.write.insufficientSpace.title": {
-    "sourceHash": "c5f8c45"
+    "sourceHash": "9db6685"
   },
-  "errors.write.insufficientSpace.message": "Målet behöver {required} men har bara {available} tillgängligt.",
+  "errors.write.insufficientSpace.message": "Det här behöver upp till {required} och målet har {available} ledigt.",
   "@errors.write.insufficientSpace.message": {
-    "sourceHash": "582f30a"
+    "sourceHash": "931f1e0"
   },
-  "errors.write.insufficientSpace.suggestion": "Frigör utrymme på målet genom att radera onödiga filer, eller välj en annan plats.",
+  "errors.write.insufficientSpace.suggestion": "Filer som redan finns på målet kan göra att det behövs mindre, och om målet blir fullt stoppar Cmdr och säger till. Säkrast är att frigöra utrymme eller välja en annan plats.",
   "@errors.write.insufficientSpace.suggestion": {
-    "sourceHash": "257f1d9"
+    "sourceHash": "a5308c8"
   },
   "errors.write.destinationFull.title": "Målet är fullt",
   "@errors.write.destinationFull.title": {

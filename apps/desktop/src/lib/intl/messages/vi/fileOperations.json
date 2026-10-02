@@ -252,6 +252,14 @@
   "@fileOperations.transferDialog.targetWillBeCreatedMove": {
     "sourceHash": "1246331"
   },
+  "fileOperations.transferDialog.rootEchoWarning": "Vị trí này vốn đã bắt đầu ở {rootFolder}, nên đường dẫn này dẫn tới {resolvedPath}. Có phải ý bạn là {strippedPath}?",
+  "@fileOperations.transferDialog.rootEchoWarning": {
+    "sourceHash": "b692d10"
+  },
+  "fileOperations.transferDialog.rootEchoUseStripped": "Dùng đường dẫn ngắn hơn",
+  "@fileOperations.transferDialog.rootEchoUseStripped": {
+    "sourceHash": "66972e3"
+  },
   "fileOperations.transferDialog.destinationReadOnly": "Thư mục này chỉ đọc, nên không thể đặt gì vào đây.",
   "@fileOperations.transferDialog.destinationReadOnly": {
     "sourceHash": "f30522f"
@@ -891,6 +899,10 @@
   "fileOperations.errorDialog.retry": "Thử lại",
   "@fileOperations.errorDialog.retry": {
     "sourceHash": "942087c"
+  },
+  "fileOperations.errorDialog.copyAnyway": "Vẫn sao chép",
+  "@fileOperations.errorDialog.copyAnyway": {
+    "sourceHash": "f794181"
   },
   "fileOperations.errorDialog.close": "Đóng",
   "@fileOperations.errorDialog.close": {

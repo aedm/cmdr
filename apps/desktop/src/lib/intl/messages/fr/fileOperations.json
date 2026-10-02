@@ -254,6 +254,14 @@
   "@fileOperations.transferDialog.targetWillBeCreatedMove": {
     "sourceHash": "1246331"
   },
+  "fileOperations.transferDialog.rootEchoWarning": "Cet emplacement commence déjà dans {rootFolder}, donc ce chemin mène à {resolvedPath}. Vouliez-vous dire {strippedPath} ?",
+  "@fileOperations.transferDialog.rootEchoWarning": {
+    "sourceHash": "b692d10"
+  },
+  "fileOperations.transferDialog.rootEchoUseStripped": "Utiliser le chemin plus court",
+  "@fileOperations.transferDialog.rootEchoUseStripped": {
+    "sourceHash": "66972e3"
+  },
   "fileOperations.transferDialog.destinationReadOnly": "Ce dossier est en lecture seule : rien ne peut y être placé.",
   "@fileOperations.transferDialog.destinationReadOnly": {
     "sourceHash": "f30522f"
@@ -894,6 +902,10 @@
   "fileOperations.errorDialog.retry": "Réessayer",
   "@fileOperations.errorDialog.retry": {
     "sourceHash": "942087c"
+  },
+  "fileOperations.errorDialog.copyAnyway": "Copier quand même",
+  "@fileOperations.errorDialog.copyAnyway": {
+    "sourceHash": "f794181"
   },
   "fileOperations.errorDialog.close": "Fermer",
   "@fileOperations.errorDialog.close": {

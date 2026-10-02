@@ -1553,17 +1553,17 @@
   "@errors.write.permissionDenied.suggestion.sourceRead": {
     "sourceHash": "978e180"
   },
-  "errors.write.insufficientSpace.title": "Espace insuffisant",
+  "errors.write.insufficientSpace.title": "La destination n’a peut-être pas assez d’espace libre",
   "@errors.write.insufficientSpace.title": {
-    "sourceHash": "c5f8c45"
+    "sourceHash": "9db6685"
   },
-  "errors.write.insufficientSpace.message": "La destination a besoin de {required} mais n’a que {available} de disponible.",
+  "errors.write.insufficientSpace.message": "Il faut jusqu’à {required}, et la destination a {available} de libre.",
   "@errors.write.insufficientSpace.message": {
-    "sourceHash": "582f30a"
+    "sourceHash": "931f1e0"
   },
-  "errors.write.insufficientSpace.suggestion": "Libérez de l’espace sur la destination en supprimant des fichiers inutiles, ou choisissez un emplacement différent.",
+  "errors.write.insufficientSpace.suggestion": "Les fichiers déjà présents sur la destination peuvent réduire ce besoin, et si la destination se remplit, Cmdr s’arrête et vous prévient. Par précaution, libérez de l’espace ou choisissez un autre emplacement.",
   "@errors.write.insufficientSpace.suggestion": {
-    "sourceHash": "257f1d9"
+    "sourceHash": "a5308c8"
   },
   "errors.write.destinationFull.title": "La destination est pleine",
   "@errors.write.destinationFull.title": {

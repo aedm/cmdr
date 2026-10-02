@@ -252,6 +252,14 @@
   "@fileOperations.transferDialog.targetWillBeCreatedMove": {
     "sourceHash": "1246331"
   },
+  "fileOperations.transferDialog.rootEchoWarning": "Este lugar ya empieza en {rootFolder}, así que esta ruta lleva a {resolvedPath}. ¿Querías decir {strippedPath}?",
+  "@fileOperations.transferDialog.rootEchoWarning": {
+    "sourceHash": "b692d10"
+  },
+  "fileOperations.transferDialog.rootEchoUseStripped": "Usar la ruta más corta",
+  "@fileOperations.transferDialog.rootEchoUseStripped": {
+    "sourceHash": "66972e3"
+  },
   "fileOperations.transferDialog.destinationReadOnly": "Esta carpeta es de solo lectura, así que aquí no se puede poner nada.",
   "@fileOperations.transferDialog.destinationReadOnly": {
     "sourceHash": "f30522f"
@@ -892,6 +900,10 @@
   "fileOperations.errorDialog.retry": "Reintentar",
   "@fileOperations.errorDialog.retry": {
     "sourceHash": "942087c"
+  },
+  "fileOperations.errorDialog.copyAnyway": "Copiar de todos modos",
+  "@fileOperations.errorDialog.copyAnyway": {
+    "sourceHash": "f794181"
   },
   "fileOperations.errorDialog.close": "Cerrar",
   "@fileOperations.errorDialog.close": {

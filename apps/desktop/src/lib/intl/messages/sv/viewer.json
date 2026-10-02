@@ -19,9 +19,9 @@
   "@viewer.error.noPath": {
     "sourceHash": "2b069fc"
   },
-  "viewer.error.readFailed": "Det gick inte att läsa filen",
+  "viewer.error.readFailed": "Det gick inte att läsa den här filen. Försök igen?",
   "@viewer.error.readFailed": {
-    "sourceHash": "ea7d976"
+    "sourceHash": "8c420fd"
   },
   "viewer.error.notFound": "Det gick inte att hitta den här filen. Den kan ha flyttats, döpts om eller raderats.",
   "@viewer.error.notFound": {
@@ -394,17 +394,17 @@
   "@viewer.selection.toEndOfFile": {
     "sourceHash": "62d95be"
   },
-  "viewer.selection.singleLine": "Markerade {chars} tecken på rad {line}",
+  "viewer.selection.singleLine": "Markerade {chars, plural, one {# tecken} other {# tecken}} på rad {line}",
   "@viewer.selection.singleLine": {
-    "sourceHash": "bb320d5"
+    "sourceHash": "eb11697"
   },
-  "viewer.selection.multiLine": "Markerade rad {startLine} till {endLine}, {chars} tecken",
+  "viewer.selection.multiLine": "Markerade rad {startLine} till {endLine}, {chars, plural, one {# tecken} other {# tecken}}",
   "@viewer.selection.multiLine": {
-    "sourceHash": "074c687"
+    "sourceHash": "5ba7791"
   },
-  "viewer.selection.charsOnly": "Markerade {chars} tecken",
+  "viewer.selection.charsOnly": "Markerade {chars, plural, one {# tecken} other {# tecken}}",
   "@viewer.selection.charsOnly": {
-    "sourceHash": "b772db6"
+    "sourceHash": "3db2c4e"
   },
   "viewer.selection.toEndOfFileNoLine": "Markerat till slutet av filen",
   "@viewer.selection.toEndOfFileNoLine": {

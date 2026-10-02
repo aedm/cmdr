@@ -1552,17 +1552,17 @@
   "@errors.write.permissionDenied.suggestion.sourceRead": {
     "sourceHash": "978e180"
   },
-  "errors.write.insufficientSpace.title": "空间不足",
+  "errors.write.insufficientSpace.title": "目标位置可能没有足够的空间",
   "@errors.write.insufficientSpace.title": {
-    "sourceHash": "c5f8c45"
+    "sourceHash": "9db6685"
   },
-  "errors.write.insufficientSpace.message": "目标需要 {required}，但只有 {available} 可用。",
+  "errors.write.insufficientSpace.message": "最多需要 {required}，目标位置现在有 {available} 可用。",
   "@errors.write.insufficientSpace.message": {
-    "sourceHash": "582f30a"
+    "sourceHash": "931f1e0"
   },
-  "errors.write.insufficientSpace.suggestion": "在目标上删除一些不必要的文件腾出空间，或者换一个位置。",
+  "errors.write.insufficientSpace.suggestion": "如果目标位置已有部分文件，实际需要的空间可能更少；如果目标位置被占满，Cmdr 会停止并告诉你。稳妥起见，可以腾出一些空间，或者换一个位置。",
   "@errors.write.insufficientSpace.suggestion": {
-    "sourceHash": "257f1d9"
+    "sourceHash": "a5308c8"
   },
   "errors.write.destinationFull.title": "目标位置已满",
   "@errors.write.destinationFull.title": {
