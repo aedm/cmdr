@@ -377,6 +377,8 @@ mod late_cancel_test;
 #[cfg(test)]
 mod live_connect_test;
 #[cfg(test)]
+mod live_copy_pin_test;
+#[cfg(test)]
 mod live_flow_test;
 #[cfg(test)]
 mod live_hostile_failure_test;

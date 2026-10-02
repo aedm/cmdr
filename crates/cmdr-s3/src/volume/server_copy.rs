@@ -431,6 +431,7 @@ impl S3Volume {
             let built = match ops::copy_object(
                 client.profile(),
                 source,
+                from.object.etag.as_deref(),
                 to_bucket,
                 to_key,
                 overwrite_for(mode),
@@ -465,6 +466,13 @@ impl S3Volume {
                     retried_without_header = true;
                     continue;
                 }
+                if from.object.etag.is_some()
+                    && error.is_precondition_failed()
+                    && self.source_moved_on(client, from, conditional).await
+                {
+                    warn!(target: "volume", "s3: {} changed since its HEAD; nothing was copied", from.remote);
+                    return Err(VolumeError::SourceChanged(from.remote.to_string()));
+                }
                 let failure = map_s3_error(&error, to_remote);
                 // A server fault may come after the copy applied (S3 says a
                 // 500 can mean either).
@@ -489,6 +497,24 @@ impl S3Volume {
             }
             debug!(target: "volume", "s3 copied {} bytes to {to_remote} in one request", size);
             return Ok(size);
+        }
+    }
+
+    /// A `412` to a pinned copy names either the source pin or the
+    /// no-overwrite condition (R2's `cf-copy-destination-if-none-match`, GCS's
+    /// generation match). Without the latter it's the pin; with both, one HEAD
+    /// of the source says which: a source no longer at its pinned ETag moved on.
+    async fn source_moved_on(&self, client: &S3Client, from: &CopyFrom<'_>, conditional: bool) -> bool {
+        if !conditional {
+            return true;
+        }
+        match self.head_object(client, from.bucket, from.key, from.remote).await {
+            Ok(Some(head)) => match (head.header("etag"), from.object.etag.as_deref()) {
+                (Some(now), Some(then)) => normalize_etag(now) != normalize_etag(then),
+                _ => false,
+            },
+            Ok(None) => true,
+            Err(_) => false,
         }
     }
 

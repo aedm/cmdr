@@ -9,7 +9,11 @@
 //! - [`FakeS3::keep_cut_off_bodies`]: it stores what arrived of a PUT cut off
 //!   mid-body, the way VersityGW does, where S3 publishes nothing;
 //! - it refuses a listing prefix past S3's 1,024-byte key ceiling with `400
-//!   InvalidRequest` the way B2 does, where other servers answer an empty page.
+//!   InvalidRequest` the way B2 does, where other servers answer an empty page;
+//! - a `CopyObject` honours `x-amz-copy-source-if-match` and R2's
+//!   `cf-copy-destination-if-none-match` (`412`), and
+//!   [`FakeS3::replace_after_head`] stands in for another writer replacing a
+//!   source between the copy's HEAD and the copy.
 //!
 //! It speaks path style over plain HTTP, one request per connection, and
 //! knows HEAD, PUT, DELETE, `ListObjectsV2`, and the multipart calls. A cell
@@ -70,6 +74,8 @@ struct World {
     throttle_batch_deletes: usize,
     /// Every `DeleteObjects` request that reached the store.
     batch_deletes: usize,
+    /// The next HEAD of this key is answered, then the object replaced.
+    replace_after_head: Option<String>,
 }
 
 pub(super) struct FakeS3 {
@@ -128,6 +134,12 @@ impl FakeS3 {
     /// not counted).
     pub(super) fn batch_deletes(&self) -> usize {
         self.world.lock_ignore_poison().batch_deletes
+    }
+
+    /// The next HEAD of `key` answers as usual, and then another writer
+    /// replaces it (a new ETag), as if between a copy's HEAD and the copy.
+    pub(super) fn replace_after_head(&self, key: &str) {
+        self.world.lock_ignore_poison().replace_after_head = Some(key.to_string());
     }
 
     pub(super) fn object(&self, key: &str) -> Option<Stored> {
@@ -300,6 +312,12 @@ async fn answer(
                 let Some(from) = world.objects.get(&source).cloned() else {
                     return Some(error("404 Not Found", "NoSuchKey"));
                 };
+                let pin_fails = header(head, "x-amz-copy-source-if-match").is_some_and(|pin| pin != from.etag);
+                let taken =
+                    header(head, "cf-copy-destination-if-none-match") == Some("*") && world.objects.contains_key(&key);
+                if pin_fails || taken {
+                    return Some(error("412 Precondition Failed", "PreconditionFailed"));
+                }
                 world.writes += 1;
                 let etag = format!("\"c{}\"", world.writes);
                 let meta = if replace { meta_lines(head) } else { from.meta };
@@ -402,7 +420,7 @@ async fn answer(
             Some(_) => "HTTP/1.1 204 No Content\r\nconnection: close\r\n\r\n".into(),
             None => error("404 Not Found", "NoSuchUpload"),
         },
-        ("HEAD", Some(key), None) => match world.lock_ignore_poison().objects.get(&key) {
+        ("HEAD", Some(key), None) => match head_then_maybe_replace(world, &key) {
             Some(stored) => format!(
                 "HTTP/1.1 200 OK\r\ncontent-length: {}\r\netag: {}\r\nlast-modified: Fri, 02 Oct 2026 10:00:00 GMT\r\n{}connection: close\r\n\r\n",
                 stored.len,
@@ -431,6 +449,27 @@ async fn answer(
         _ => "HTTP/1.1 501 Not Implemented\r\ncontent-length: 0\r\nconnection: close\r\n\r\n".into(),
     };
     Some(response)
+}
+
+/// The object at `key` as a HEAD sees it, replacing it afterwards when a cell
+/// asked for that ([`FakeS3::replace_after_head`]).
+fn head_then_maybe_replace(world: &Mutex<World>, key: &str) -> Option<Stored> {
+    let mut world = world.lock_ignore_poison();
+    let seen = world.objects.get(key).cloned()?;
+    if world.replace_after_head.as_deref() == Some(key) {
+        world.replace_after_head = None;
+        world.writes += 1;
+        let etag = format!("\"r{}\"", world.writes);
+        world.objects.insert(
+            key.to_string(),
+            Stored {
+                len: seen.len,
+                etag,
+                meta: Vec::new(),
+            },
+        );
+    }
+    Some(seen)
 }
 
 /// `ListObjectsV2`, every match as `Contents` (no delimiter folding), and ❗

@@ -290,6 +290,7 @@ impl S3Volume {
         let built = match ops::copy_object(
             client.profile(),
             source,
+            None,
             to_bucket,
             to_key,
             overwrite,

@@ -12,7 +12,7 @@ use std::ops::ControlFlow;
 use std::pin::Pin;
 use std::time::Duration;
 
-use cmdr_fs::volume::{ServerCopyProgress, Volume, WriteMode};
+use cmdr_fs::volume::{ServerCopyProgress, Volume, VolumeError, WriteMode};
 
 use super::fake_s3::FakeS3;
 use crate::metadata::{MTIME_HEADER, WRITE_TOKEN_HEADER};
@@ -86,4 +86,52 @@ async fn a_one_request_copy_keeps_the_sources_date_beside_its_own_token() {
         lowered.iter().any(|line| line.starts_with(WRITE_TOKEN_HEADER)),
         "{meta:?}"
     );
+}
+
+/// ❗ The copy is pinned to the ETag its source HEAD saw
+/// (`x-amz-copy-source-if-match`): a source another writer replaced in between
+/// is `SourceChanged` and nothing lands, where an unpinned copy would publish
+/// the new version under facts (size, date) read from the old one.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_source_replaced_after_its_head_is_source_changed_and_copies_nothing() {
+    let s3 = FakeS3::start(Duration::ZERO).await;
+    s3.seed_with_meta("src.txt", 10, &[&source_meta()]);
+    s3.replace_after_head("src.txt");
+    let volume = s3.volume();
+
+    let outcome = volume
+        .copy_on_server(
+            &volume,
+            &volume.root().join("src.txt"),
+            &volume.root().join("dst.txt"),
+            WriteMode::CreateNew,
+            &Straight,
+        )
+        .await;
+
+    assert!(matches!(outcome, Err(VolumeError::SourceChanged(_))), "{outcome:?}");
+    assert!(s3.object("dst.txt").is_none(), "nothing landed");
+}
+
+/// R2's `412` names either condition (the pin or its no-overwrite header); a
+/// source that still matches its pin means the destination is taken.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_r2_copy_onto_a_taken_name_is_already_exists() {
+    let s3 = FakeS3::start(Duration::ZERO).await;
+    s3.seed_with_meta("src.txt", 10, &[&source_meta()]);
+    s3.seed("dst.txt", 5);
+    let volume = s3.volume();
+
+    let outcome = volume
+        .copy_on_server(
+            &volume,
+            &volume.root().join("src.txt"),
+            &volume.root().join("dst.txt"),
+            WriteMode::CreateNew,
+            &Straight,
+        )
+        .await;
+
+    assert!(matches!(outcome, Err(VolumeError::AlreadyExists(_))), "{outcome:?}");
+    assert_eq!(s3.object("dst.txt").map(|s| s.len), Some(5), "theirs stays");
 }

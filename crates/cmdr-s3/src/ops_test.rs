@@ -158,7 +158,16 @@ fn a_refused_overwrite_on_gcs_sends_the_generation_precondition_in_its_own_diale
         bucket: "b",
         key: "src",
     };
-    let copy = copy_object(&gcs, source, "b", "k", Overwrite::Refuse, &MetadataDirective::Copy).unwrap();
+    let copy = copy_object(
+        &gcs,
+        source,
+        None,
+        "b",
+        "k",
+        Overwrite::Refuse,
+        &MetadataDirective::Copy,
+    )
+    .unwrap();
     assert_eq!(header(&copy.request, "x-goog-if-generation-match"), Some("0"));
     assert_eq!(copy.request.dialect, Dialect::Goog);
     assert!(!copy.check_first);
@@ -252,6 +261,7 @@ fn copy_object_keeps_metadata_by_default_and_replaces_it_on_request() {
     let keep = copy_object(
         &aws(),
         source,
+        None,
         "b",
         "new.txt",
         Overwrite::Replace,
@@ -264,6 +274,7 @@ fn copy_object_keeps_metadata_by_default_and_replaces_it_on_request() {
     let replace = copy_object(
         &aws(),
         source,
+        None,
         "b",
         "new.txt",
         Overwrite::Replace,
@@ -277,10 +288,28 @@ fn copy_object_keeps_metadata_by_default_and_replaces_it_on_request() {
 #[test]
 fn a_refused_copy_overwrite_uses_r2s_own_header() {
     let source = CopySource { bucket: "b", key: "a" };
-    let on_r2 = copy_object(&r2(), source, "b", "c", Overwrite::Refuse, &MetadataDirective::Copy).unwrap();
+    let on_r2 = copy_object(
+        &r2(),
+        source,
+        None,
+        "b",
+        "c",
+        Overwrite::Refuse,
+        &MetadataDirective::Copy,
+    )
+    .unwrap();
     assert_eq!(header(&on_r2.request, "cf-copy-destination-if-none-match"), Some("*"));
     assert_eq!(header(&on_r2.request, "if-none-match"), None);
-    let on_aws = copy_object(&aws(), source, "b", "c", Overwrite::Refuse, &MetadataDirective::Copy).unwrap();
+    let on_aws = copy_object(
+        &aws(),
+        source,
+        None,
+        "b",
+        "c",
+        Overwrite::Refuse,
+        &MetadataDirective::Copy,
+    )
+    .unwrap();
     assert_eq!(header(&on_aws.request, "if-none-match"), Some("*"));
 }
 
@@ -294,6 +323,7 @@ fn spaces_refuses_a_cross_bucket_copy_before_sending_it() {
         copy_object(
             &spaces(),
             source,
+            None,
             "two",
             "a",
             Overwrite::Replace,
@@ -306,6 +336,7 @@ fn spaces_refuses_a_cross_bucket_copy_before_sending_it() {
         copy_object(
             &spaces(),
             source,
+            None,
             "one",
             "b",
             Overwrite::Replace,
@@ -401,4 +432,40 @@ fn a_share_link_to_an_aws_bucket_elsewhere_names_its_region_and_endpoint() {
 
     assert_eq!(link.host_str(), Some("photos.s3.eu-west-1.amazonaws.com"));
     assert!(link.query().unwrap().contains("%2Feu-west-1%2Fs3%2F"));
+}
+
+#[test]
+fn a_copy_object_with_a_known_source_etag_is_pinned_to_it() {
+    let source = CopySource { bucket: "b", key: "a" };
+    let pinned = copy_object(
+        &aws(),
+        source,
+        Some("\"abc\""),
+        "b",
+        "c",
+        Overwrite::Replace,
+        &MetadataDirective::Copy,
+    )
+    .unwrap();
+    assert_eq!(header(&pinned.request, "x-amz-copy-source-if-match"), Some("\"abc\""));
+    // GCS answers `400 InvalidArgument` to a pin naming a multipart ETag
+    // (live, `live_copy_object_etags`, 2026-10-02); everyone else takes it.
+    let gcs = ProviderProfile::from_preset(&Preset::Gcs).unwrap();
+    for (profile, pin, sent) in [
+        (&gcs, "\"abc-2\"", None),
+        (&gcs, "\"abc\"", Some("\"abc\"")),
+        (&aws(), "\"abc-2\"", Some("\"abc-2\"")),
+    ] {
+        let built = copy_object(
+            profile,
+            source,
+            Some(pin),
+            "b",
+            "c",
+            Overwrite::Replace,
+            &MetadataDirective::Copy,
+        )
+        .unwrap();
+        assert_eq!(header(&built.request, "x-amz-copy-source-if-match"), sent, "{pin}");
+    }
 }

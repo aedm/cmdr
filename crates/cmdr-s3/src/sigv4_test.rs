@@ -355,3 +355,44 @@ fn debug_never_prints_the_secret() {
     assert!(printed.contains("AKIAIOSFODNN7EXAMPLE"));
     assert!(!printed.contains("wJalrXUtnFEMI"));
 }
+
+/// ❗ A create-only copy on GCS goes out in GCS's dialect
+/// (`x-goog-if-generation-match`), so its source pin travels as
+/// `x-goog-copy-source-if-match`, beside `x-goog-copy-source`; GCS refuses
+/// its own headers beside any `x-amz-*` one. A multipart ETag goes unpinned
+/// there (`ProviderProfile::refuses_multipart_copy_pin`).
+#[test]
+fn a_create_only_gcs_copy_carries_its_pin_spelled_x_goog() {
+    use crate::ops::{CopySource, MetadataDirective, Overwrite, copy_object};
+    let gcs = crate::profile::ProviderProfile::from_preset(&crate::profile::Preset::Gcs).expect("a profile");
+    let source = CopySource {
+        bucket: "b",
+        key: "src",
+    };
+    let signed = |pin: &str| {
+        let built = copy_object(
+            &gcs,
+            source,
+            Some(pin),
+            "b",
+            "dst",
+            Overwrite::Refuse,
+            &MetadataDirective::Copy,
+        )
+        .expect("builds");
+        sign_example(built.request)
+    };
+
+    let single = signed("\"abc\"");
+    assert!(
+        single.headers.keys().all(|name| !name.as_str().starts_with("x-amz-")),
+        "{:?}",
+        single.headers.keys().collect::<Vec<_>>()
+    );
+    assert_eq!(header(&single, "x-goog-copy-source-if-match"), "\"abc\"");
+    assert_eq!(header(&single, "x-goog-copy-source"), "/b/src");
+    assert_eq!(header(&single, "x-goog-if-generation-match"), "0");
+
+    let multipart = signed("\"abc-2\"");
+    assert!(multipart.headers.get("x-goog-copy-source-if-match").is_none());
+}
