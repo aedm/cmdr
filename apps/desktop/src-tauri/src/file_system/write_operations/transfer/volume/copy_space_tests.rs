@@ -169,6 +169,37 @@ async fn a_destination_that_does_report_free_space_still_refuses_what_it_cant_ho
     );
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn copy_anyway_goes_past_a_destination_that_says_it_is_too_small() {
+    // The pre-flight's figure is an upper bound, so a shortfall is the person's
+    // call: "Copy anyway" starts the same copy with `SpaceShortfall::Proceed`,
+    // and a destination that really fills up stops it as `DestinationFull`.
+    let source: Arc<dyn Volume> = Arc::new(InMemoryVolume::new("Source").with_space_info(10_000_000, 10_000_000));
+    let dest: Arc<dyn Volume> = Arc::new(InMemoryVolume::new("Dest").with_space_info(1_000, 4));
+    source
+        .create_file(Path::new("/big.bin"), b"more than four bytes")
+        .await
+        .unwrap();
+
+    copy_volumes_with_progress(
+        Arc::new(CollectorEventSink::new()),
+        "test-op-space-copy-anyway",
+        &make_state(),
+        Arc::clone(&source),
+        &[PathBuf::from("/big.bin")],
+        Arc::clone(&dest),
+        Path::new("/"),
+        &VolumeCopyConfig {
+            space_shortfall: SpaceShortfall::Proceed,
+            ..VolumeCopyConfig::default()
+        },
+    )
+    .await
+    .expect("a copy the person chose to run anyway is not refused for space");
+
+    assert!(dest.exists(Path::new("/big.bin")).await, "the file landed");
+}
+
 // ========================================
 // The destination spans several filesystems
 // ========================================

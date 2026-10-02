@@ -624,6 +624,8 @@ export const commands = {
        *  `VolumeCopyConfig::pre_known_conflicts` for the full rationale.
        */
       preKnownConflicts?: string[]
+      // What a copy does when the destination looks too small. See [`SpaceShortfall`].
+      spaceShortfall?: SpaceShortfall
     } | null,
     initiator: 'user' | 'aiClient' | 'agent' | 'agentEdited' | null,
   ) =>
@@ -657,6 +659,8 @@ export const commands = {
        *  `VolumeCopyConfig::pre_known_conflicts` for the full rationale.
        */
       preKnownConflicts?: string[]
+      // What a copy does when the destination looks too small. See [`SpaceShortfall`].
+      spaceShortfall?: SpaceShortfall
     } | null,
     initiator: 'user' | 'aiClient' | 'agent' | 'agentEdited' | null,
   ) =>
@@ -690,6 +694,8 @@ export const commands = {
        *  `VolumeCopyConfig::pre_known_conflicts` for the full rationale.
        */
       preKnownConflicts?: string[]
+      // What a copy does when the destination looks too small. See [`SpaceShortfall`].
+      spaceShortfall?: SpaceShortfall
     } | null,
     initiator: 'user' | 'aiClient' | 'agent' | 'agentEdited' | null,
   ) =>
@@ -720,6 +726,8 @@ export const commands = {
        *  `VolumeCopyConfig::pre_known_conflicts` for the full rationale.
        */
       preKnownConflicts?: string[]
+      // What a copy does when the destination looks too small. See [`SpaceShortfall`].
+      spaceShortfall?: SpaceShortfall
     } | null,
     initiator: 'user' | 'aiClient' | 'agent' | 'agentEdited' | null,
   ) =>
@@ -945,6 +953,8 @@ export const commands = {
        *  1..=9 (an out-of-range level hard-errors the edit, not clamps).
        */
       compressionLevel?: number | null
+      // What a copy does when the destination looks too small. See [`SpaceShortfall`].
+      spaceShortfall?: SpaceShortfall
     } | null,
     initiator: 'user' | 'aiClient' | 'agent' | 'agentEdited' | null,
   ) =>
@@ -995,6 +1005,8 @@ export const commands = {
        *  1..=9 (an out-of-range level hard-errors the edit, not clamps).
        */
       compressionLevel?: number | null
+      // What a copy does when the destination looks too small. See [`SpaceShortfall`].
+      spaceShortfall?: SpaceShortfall
     } | null,
     initiator: 'user' | 'aiClient' | 'agent' | 'agentEdited' | null,
   ) =>
@@ -1045,6 +1057,8 @@ export const commands = {
        *  1..=9 (an out-of-range level hard-errors the edit, not clamps).
        */
       compressionLevel?: number | null
+      // What a copy does when the destination looks too small. See [`SpaceShortfall`].
+      spaceShortfall?: SpaceShortfall
     } | null,
     initiator: 'user' | 'aiClient' | 'agent' | 'agentEdited' | null,
   ) =>
@@ -14279,6 +14293,22 @@ export type SpaceInfo =
     }
 
 /**
+ *  What a copy does when the destination looks too small for it.
+ *
+ *  The pre-flight's figure is an upper bound: files already at the destination
+ *  can make a copy need less than it says (`free_space.rs`). So a shortfall is
+ *  the person's call, ❌ never a verdict. `Refuse` stops with `InsufficientSpace`
+ *  before anything is written, and the error dialog's "Copy anyway" starts the
+ *  same copy again with `Proceed`. A destination that really fills up mid-copy
+ *  still stops it, as `DestinationFull`.
+ */
+export type SpaceShortfall =
+  // Stop before writing anything, with `InsufficientSpace`.
+  | 'refuse'
+  // Skip the check: the person chose to copy anyway.
+  | 'proceed'
+
+/**
  *  SQLite's page memory: the one process-wide slab every store's cached database
  *  pages come out of, plus the read-connection count that decides whether it can
  *  stay a cap.
@@ -15611,6 +15641,8 @@ export type VolumeCopyConfig = {
    *  1..=9 (an out-of-range level hard-errors the edit, not clamps).
    */
   compressionLevel?: number | null
+  // What a copy does when the destination looks too small. See [`SpaceShortfall`].
+  spaceShortfall?: SpaceShortfall
 }
 
 // Result of a pre-flight scan for volume copy.
@@ -16430,6 +16462,8 @@ export type WriteOperationConfig = {
    *  `VolumeCopyConfig::pre_known_conflicts` for the full rationale.
    */
   preKnownConflicts?: string[]
+  // What a copy does when the destination looks too small. See [`SpaceShortfall`].
+  spaceShortfall?: SpaceShortfall
 }
 
 // Errors that can occur during write operations.

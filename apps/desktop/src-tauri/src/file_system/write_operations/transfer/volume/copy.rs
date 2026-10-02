@@ -32,7 +32,7 @@ use super::super::super::state::{
     OperationIntent, WriteOperationState, is_cancelled, load_intent, update_operation_status,
 };
 use super::super::super::types::{
-    CancelRollback, VolumeCopyConfig, VolumeCopyScanResult, WriteCancelledEvent, WriteCompleteEvent,
+    CancelRollback, SpaceShortfall, VolumeCopyConfig, VolumeCopyScanResult, WriteCancelledEvent, WriteCompleteEvent,
     WriteOperationConfig, WriteOperationError, WriteOperationPhase, WriteOperationStartResult, WriteOperationType,
     WriteProgressEvent,
 };
@@ -165,6 +165,7 @@ pub async fn copy_between_volumes(
             max_conflicts_to_show: config.max_conflicts_to_show,
             preview_id: config.preview_id,
             pre_known_conflicts: config.pre_known_conflicts,
+            space_shortfall: config.space_shortfall,
             ..Default::default()
         };
 
@@ -766,11 +767,13 @@ pub(crate) async fn copy_volumes_with_progress(
     let known_directory_paths = preflight.known_directory_paths();
     let mut source_hints = preflight.source_hints;
 
-    // Phase 2: Check destination space, where the destination can report it.
+    // Phase 2: Check destination space, where the destination can report it,
+    // unless the person chose to copy anyway (`SpaceShortfall`).
     let dest_space = dest_space_if_known(&*dest_volume, dest_path)
         .await
         .map_err(|e| WriteFailure::from_volume(dest_path, PathRole::Destination, e))?;
-    if let Some(available) = room_to_check(dest_space)
+    if config.space_shortfall == SpaceShortfall::Refuse
+        && let Some(available) = room_to_check(dest_space)
         && available < total_bytes
     {
         return Err(WriteFailure::synthetic(WriteOperationError::InsufficientSpace {

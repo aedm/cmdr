@@ -25,6 +25,7 @@ import {
 import type { ConflictResolution, SortColumn, SortOrder, TransferOperationType } from '$lib/file-explorer/types'
 import { getSetting } from '$lib/settings'
 import { pathCrossesArchiveBoundary, pathInsideArchive } from '$lib/file-explorer/pane/archive-paths'
+import type { SpaceShortfall } from '$lib/ipc/bindings'
 
 /** Everything the backend needs to start this operation. Captured at the moment
  *  the user confirmed, and never re-read afterwards. */
@@ -47,6 +48,8 @@ export interface TransferDispatchConfig {
   conflictResolution?: ConflictResolution
   /** Source filenames known to conflict at dest (forwarded so the BE bulk-skips them under `Skip all`). */
   preKnownConflicts?: string[]
+  /** Copy only: `proceed` when the person chose "Copy anyway" after a space shortfall. */
+  spaceShortfall?: SpaceShortfall
   /** Per-item sizes for trash progress (from scan or drive index). */
   itemSizes?: number[]
   /** Who triggered this operation. `undefined`/`user` for direct UI actions;
@@ -177,6 +180,7 @@ function dispatchCopy(
       previewId: config.previewId,
       preKnownConflicts: config.preKnownConflicts ?? [],
       compressionLevel,
+      spaceShortfall: config.spaceShortfall ?? 'refuse',
     },
     config.initiator,
   )

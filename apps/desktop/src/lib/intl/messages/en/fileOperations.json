@@ -1587,6 +1587,11 @@
     "screenshot": "transfer-error-cancelled.png"
   },
 
+  "fileOperations.errorDialog.copyAnyway": "Copy anyway",
+  "@fileOperations.errorDialog.copyAnyway": {
+    "description": "Button on the \"destination may not have enough space\" dialog that starts the same copy again without the free-space check. The space figure is only an estimate, so the user may go ahead; the copy stops if the destination really fills up. Short control label."
+  },
+
   "fileOperations.errorDialog.close": "Close",
   "@fileOperations.errorDialog.close": {
     "description": "Button that dismisses the transfer-error dialog. Short control label.",

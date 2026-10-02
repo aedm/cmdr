@@ -1486,6 +1486,7 @@
     onTransferErrorRetry={() => {
         dialogs.handleTransferErrorRetry()
     }}
+    onTransferErrorCopyAnyway={() => { dialogs.handleTransferErrorCopyAnyway(); }}
     onArchivePasswordSubmit={(password: string) => {
         dialogs.handleArchivePasswordSubmit(password)
     }}

@@ -248,6 +248,22 @@ export function createDialogState(deps: DialogStateDeps) {
     transferErrorProps = null
   }
 
+  /** Starts `retry` as a NEW operation through the same start every operation
+   *  takes, settling the failed one like a close first. */
+  function startAgainFromErrorDialog(retry: TransferProgressPropsData | null, how: string): void {
+    settleTransferError()
+    if (retry === null) {
+      deps.onRefocus()
+      return
+    }
+    const op = retry.operationType
+    if (startBirthOperation(retry) === 'started') {
+      log.info('{op} {how} from the error dialog', { op: transferOpLabel(op), how })
+    } else {
+      deps.onRefocus()
+    }
+  }
+
   const archivePassword = createArchivePasswordFlow({
     hasBirthContext: () => transferProgressProps !== null,
     redispatchBirthOperation: () => {
@@ -685,18 +701,16 @@ export function createDialogState(deps: DialogStateDeps) {
      *  every new operation takes. A new operation, so the failed one is settled
      *  like a close. */
     handleTransferErrorRetry() {
+      startAgainFromErrorDialog(transferErrorProps?.retry ?? null, 'retried')
+    },
+
+    /** The error dialog's "Copy anyway" after a space shortfall: the same copy
+     *  again, told to skip the free-space check. The shortfall figure is an upper
+     *  bound (files already there can make the copy need less), so it's the
+     *  person's call; a destination that really fills up still stops the copy. */
+    handleTransferErrorCopyAnyway() {
       const retry = transferErrorProps?.retry ?? null
-      settleTransferError()
-      if (retry === null) {
-        deps.onRefocus()
-        return
-      }
-      const op = retry.operationType
-      if (startBirthOperation(retry) === 'started') {
-        log.info('{op} retried from the error dialog', { op: transferOpLabel(op) })
-      } else {
-        deps.onRefocus()
-      }
+      startAgainFromErrorDialog(retry && { ...retry, spaceShortfall: 'proceed' }, 'started anyway')
     },
 
     handleNewFolderCreated(folderName: string) {

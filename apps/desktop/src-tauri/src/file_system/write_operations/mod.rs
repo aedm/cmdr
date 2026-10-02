@@ -28,6 +28,7 @@ mod durability;
 mod error_classification;
 mod eta;
 mod event_sinks;
+mod free_space;
 mod human_wait;
 mod in_flight_temps;
 mod journal;
@@ -176,7 +177,7 @@ pub use types::{
     MoveLeftoversKeptEvent, OperationStatus, OperationSummary, ReadOnlySide, ScanPreviewCancelledEvent,
     ScanPreviewCompleteEvent, ScanPreviewErrorEvent, ScanPreviewProgressEvent, ScanPreviewRefusal,
     ScanPreviewStartResult, ScanPreviewTotals, ScanProgressEvent, SortColumn, SortOrder, SourceItemOutcome,
-    TransferActivity, TransferWaitReason, WriteCancelledEvent, WriteCompleteEvent, WriteConflictEvent,
+    SpaceShortfall, TransferActivity, TransferWaitReason, WriteCancelledEvent, WriteCompleteEvent, WriteConflictEvent,
     WriteConflictResolvedEvent, WriteErrorEvent, WriteOperationConfig, WriteOperationError, WriteOperationPhase,
     WriteOperationStartResult, WriteOperationType, WriteProgressEvent, WriteSettledEvent, WriteSourceItemDoneEvent,
 };
@@ -188,8 +189,7 @@ pub(crate) use state::{OperationIntent, WriteOperationState, is_cancelled, load_
 #[allow(unused_imports, reason = "Re-exports for test modules in file_system")]
 pub(crate) use validation::{
     ensure_destination_dir, is_same_file, is_same_filesystem, validate_destination_not_inside_source,
-    validate_destination_writable, validate_disk_space, validate_path_length, validate_source_names_are_distinct,
-    validate_sources,
+    validate_destination_writable, validate_path_length, validate_source_names_are_distinct, validate_sources,
 };
 // Exposed for the integration suites that drive `copy_volumes_with_progress`
 // directly against a real backend instead of through the full Tauri path (for
@@ -796,6 +796,8 @@ mod scan_watchdog_tests;
 #[cfg(test)]
 mod settle_event_tests;
 // The one cooperative-stop boundary every serial loop here asks at.
+#[cfg(test)]
+mod free_space_tests;
 #[cfg(test)]
 mod stop_or_park_tests;
 #[cfg(test)]

@@ -81,7 +81,7 @@ The full top-level inventory is here:
   `types/errors.rs`, `WriteOperationError` with the typed payloads its variants carry — both re-exported through
   `types`), `event_sinks.rs`, `error_classification.rs`, `transfer_sides.rs` (the two volumes a transfer runs
   between, the mount-table question, and the one boundary that words a stop; tests in `transfer_sides_tests.rs`),
-  `mutation_error.rs` (the typed refusal an instant mutation returns), `validation.rs`, `analytics.rs`, `eta.rs`. Journaling: `journal.rs`, `journal_search.rs`. The
+  `mutation_error.rs` (the typed refusal an instant mutation returns), `validation.rs`, `free_space.rs` (the copy's free-space pre-flight, § "The free-space pre-flight"), `analytics.rs`, `eta.rs`. Journaling: `journal.rs`, `journal_search.rs`. The
   scratch dir archive edits stage local bytes in: `scratch_dir.rs` (the remote edit itself is `archive_edit/remote.rs`). Entry points: `create/` + `create.rs`, `rename/` +
   `rename.rs`, `paste_clipboard.rs`, `routing.rs` (the one routing every cross-volume transfer takes:
   `start_volume_{copy,move,compress}`). `source_binding.rs` is the optional set of sources an op may touch. Fixtures:
@@ -278,7 +278,7 @@ Frontend
                on hit, build the entry list from `per_path` — top-level files come
                straight from the cache, top-level dirs recurse via the oracle-aware
                walker; on miss, fall through to `scan_volume_recursive`)
-          → disk space check (statvfs)
+          → free-space check (copy: `free_space.rs`, § "The free-space pre-flight")
           → execute phase: per-file copy/delete
               → throttled write-progress events (200ms default)
           → success (copy/move): flush_created_destinations() → emit write-progress (phase: flushing) → fdatasync dests → CopyTransaction::commit(), emit write-complete
@@ -1128,10 +1128,37 @@ add a second feed site (see `../../priority/CLAUDE.md`).
 **Decision**: `types.rs` is the floor of `write_operations` and imports no sibling. `state.rs` keeps its `operation_intent` + `scan_cache` + `status_cache` re-export facade, and `mod.rs` keeps its `transfer::*` + `delete::*` one.
 **Why**: See § "Why `types` imports nothing" for the floor. The two surviving facades sit ABOVE the floor and point down, so neither can close a circle: `state` and `mod.rs` already depend on everything they re-export. Both front a broad name surface (`operation_intent` at ~35 sites across ~20 files, every cancellation check; the `scan_cache` types across `scan.rs`, `scan_preview.rs`, `validation.rs`, and two test files), which is a legitimate shape for a facade that costs nothing structurally.
 
+## The free-space pre-flight
+
+A copy checks the destination's room after its scan and before anything is written: `free_space.rs::check_local_copy_space` for a local
+copy, `transfer/volume/copy.rs` Phase 2 for the volume engine
+(`transfer/volume/DETAILS.md` § "The destination free-space pre-flight"). A local-FS move has no space check.
+
+- **What the destination has**: `statvfs` first, the purgeable-aware NSURL figure only on a shortfall, the larger of
+  the two winning (§ "Shared gotchas" has why). No figure at all lets the copy go ahead.
+- **What the copy can need**: the full write footprint (`total_bytes`), unless that doesn't fit AND the destination is
+  a local disk (`index_provider::path_is_on_network_mount` says no). Then `local_copy_need` stats each source file at
+  its destination name, and a file landing on an existing file counts per policy: `Skip` nothing, the three overwrite
+  policies `max(0, size - existing)` plus headroom for the largest `min(size, existing)` (the new bytes stage beside the
+  old ones before the rename), and `Rename` / `Stop` the whole file (both copies can stay). That bound stays above the
+  real peak whatever the order (proof on `SpaceNeed`). A source already AT the destination is a duplicate, counted in
+  full. ❌ Never run that probe against a network destination: it's a round trip per file, so a share keeps the full
+  count and relies on the next point.
+- **A shortfall is the person's call.** The figure is an upper bound (it can't see clashes on a network share or inside
+  the volume engine), so `InsufficientSpace` is a question: the error dialog offers "Copy anyway", which starts the same
+  copy again with `SpaceShortfall::Proceed` (`apps/desktop/src/lib/file-operations/transfer/DETAILS.md` § "Copy
+  anyway"). A destination that really fills up mid-copy stops the copy as `DestinationFull` (`ENOSPC` / `EDQUOT` via
+  `error_classification.rs`, `StorageFull` via `transfer/volume/transfer_error.rs`), and a failed copy keeps what
+  landed. #351 is the case: re-syncing 1.5 GB onto a
+  2 GB SMB share that already held most of it was refused outright.
+
+Pinned by `free_space_tests.rs` (the figure order, the per-policy need, the real-folder probe, the verdict) and
+`transfer/volume/copy_space_tests.rs::copy_anyway_goes_past_a_destination_that_says_it_is_too_small`.
+
 ## Shared gotchas
 
-**Gotcha**: On macOS, never use `statvfs` alone for disk space checks; use `NSURLVolumeAvailableCapacityForImportantUsageKey`
-**Why**: `statvfs` reports only physically free blocks. On APFS, purgeable space (iCloud caches, APFS snapshots) can account for tens of GB that macOS will reclaim on demand. Using `statvfs` causes the "insufficient space" error to reject copies that would actually succeed, and shows a different available-space number than the status bar (which uses the NSURL API). `validate_disk_space` in `validation.rs` calls `crate::volumes::get_volume_space()` on macOS and falls back to `statvfs` on Linux.
+**Gotcha**: On macOS, never refuse a copy on `statvfs` alone, and never ask NSURL first.
+**Why**: `statvfs` reports only physically free blocks. On APFS, purgeable space (iCloud caches, APFS snapshots) can account for tens of GB that macOS reclaims on demand, so `statvfs` alone rejects copies that would succeed. `NSURLVolumeAvailableCapacityForImportantUsageKey` counts it, but it walks the volume in the kernel and serializes across callers (0.6 s for one copy, over 5 s for 40 at once, 2026-10-02, #350). So `free_space.rs::available_space_from` asks `statvfs` first and NSURL only when `statvfs` says the copy won't fit. Pinned by `free_space_tests.rs`.
 
 **Gotcha**: Volume-side `on_progress` callbacks report counts LOCAL to the current scan operation, not cumulative.
 **Why**: `Volume::scan_for_copy_batch_with_boundary` and `scan_subtree_with_oracle` both invoke `on_progress(count)` with a count local to the current `list_directory` call / subtree (starts at 1 each time). Forwarding that unchanged through `run_volume_scan_preview`'s closure made the FE's running tally drop visibly between parent groups, between sibling top-level dirs in a cache-hit branch, and between recursion frames inside `scan_subtree_with_oracle`. `run_oracle_aware_batch_scan` now wraps `on_progress` with a `baseline = aggregate.file_count` shift before each scan call (cold-cache batch + cache-hit subtree), and `scan_subtree_with_oracle` does the same at its own recursion site (`baseline = totals.file_count`). The visible FE count stays cumulative across the entire scan. Direct `on_progress(aggregate.file_count)` emit sites in `run_oracle_aware_batch_scan` (cache-hit per-file paths, fallthrough `scan_for_copy` after a name miss) stay unwrapped — they're already cumulative. Future scan call sites that delegate to a volume backend or to `scan_subtree_with_oracle` need the same baseline wrap.

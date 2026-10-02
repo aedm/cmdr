@@ -58,6 +58,7 @@
         onAdoptedQueue,
         onTransferErrorClose,
         onTransferErrorRetry,
+        onTransferErrorCopyAnyway,
         onArchivePasswordSubmit,
         onArchivePasswordCancel,
         onNewFolderCreated,
@@ -111,6 +112,8 @@
         onTransferErrorClose: () => void
         /** The error dialog's Retry. Offered only when `transferErrorProps.retry` holds something to start. */
         onTransferErrorRetry?: () => void
+        /** The error dialog's "Copy anyway" after a space shortfall. Offered only when `transferErrorProps.retry` holds the copy to start. */
+        onTransferErrorCopyAnyway?: () => void
         onArchivePasswordSubmit: (password: string) => void
         onArchivePasswordCancel: () => void
         onNewFolderCreated: (folderName: string) => void
@@ -233,6 +236,7 @@
             destVolumeId={transferProgressProps.destVolumeId}
             conflictResolution={transferProgressProps.conflictResolution}
             preKnownConflicts={transferProgressProps.preKnownConflicts}
+            spaceShortfall={transferProgressProps.spaceShortfall}
             itemSizes={transferProgressProps.itemSizes}
             mcpRequestId={transferProgressProps.mcpRequestId}
             initiator={transferProgressProps.initiator}
@@ -308,6 +312,7 @@
             progressAtStop={transferErrorProps.progressAtStop}
             onClose={onTransferErrorClose}
             onRetry={transferErrorProps.retry ? onTransferErrorRetry : undefined}
+            onCopyAnyway={transferErrorProps.retry ? onTransferErrorCopyAnyway : undefined}
         />
     {/if}
 

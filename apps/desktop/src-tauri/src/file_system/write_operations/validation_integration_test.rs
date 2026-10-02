@@ -687,33 +687,3 @@ fn test_special_file_fifo_skipped() {
     assert!(!metadata.is_dir());
     assert!(!metadata.is_symlink());
 }
-
-// ============================================================================
-// Copy safety: disk space check
-// ============================================================================
-
-#[cfg(unix)]
-#[test]
-fn test_validate_disk_space_sufficient() {
-    use super::validate_disk_space;
-
-    let temp_dir = create_temp_dir("disk_space_ok");
-    // Requesting 1 byte should always succeed on any volume with free space
-    let result = validate_disk_space(&temp_dir, 1);
-    assert!(result.is_ok());
-}
-
-#[cfg(unix)]
-#[test]
-fn test_validate_disk_space_insufficient() {
-    use super::validate_disk_space;
-
-    let temp_dir = create_temp_dir("disk_space_fail");
-    // Requesting an absurdly large amount (1 exabyte) should fail
-    let result = validate_disk_space(&temp_dir, u64::MAX);
-    assert!(
-        matches!(result, Err(WriteOperationError::InsufficientSpace { .. })),
-        "Should reject when required space exceeds available, got: {:?}",
-        result
-    );
-}

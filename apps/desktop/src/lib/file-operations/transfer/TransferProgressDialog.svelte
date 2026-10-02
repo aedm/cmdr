@@ -9,7 +9,7 @@
         SortOrder,
         ConflictResolution,
     } from '$lib/file-explorer/types'
-    import type { OpKind } from '$lib/ipc/bindings'
+    import type { OpKind, SpaceShortfall } from '$lib/ipc/bindings'
     import type { TransferCompletePayload } from '$lib/file-explorer/pane/dialog-props'
     import { getVolumes } from '$lib/stores/volume-store.svelte'
     import DirectionIndicator from './DirectionIndicator.svelte'
@@ -78,6 +78,8 @@
         /** Source filenames known to conflict at dest (from TransferDialog's pre-flight scan).
          *  Forwarded to the BE so it can bulk-skip them upfront under `Skip all`. */
         preKnownConflicts?: string[]
+        /** Copy only: `proceed` when the person chose "Copy anyway" after a space shortfall. */
+        spaceShortfall?: SpaceShortfall
         /** Per-item sizes for trash progress (from scan or drive index, optional) */
         itemSizes?: number[]
         /** Who triggered this operation (`aiClient` for MCP-originated writes). */
@@ -113,6 +115,7 @@
         destVolumeId,
         conflictResolution,
         preKnownConflicts,
+        spaceShortfall,
         itemSizes,
         initiator,
         onComplete,
@@ -193,6 +196,7 @@
         destVolumeId,
         conflictResolution,
         preKnownConflicts,
+        spaceShortfall,
         itemSizes,
         initiator,
         onComplete,

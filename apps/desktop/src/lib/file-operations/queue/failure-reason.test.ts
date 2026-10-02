@@ -54,7 +54,7 @@ describe('failureReasonFor', () => {
       volumeName: 'Backup',
     }
     const reason = failureReasonFor(snapshot(error))
-    expect(reason?.title).toBe('Not enough space')
+    expect(reason?.title).toBe('The destination may not have enough space')
     expect(reason?.message).toContain('1.00 GB')
     expect(reason?.message).toContain('512.00 MB')
   })

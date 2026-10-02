@@ -11,6 +11,7 @@ import {
   type MtpPermissionError,
   type MtpStorageInfo as MtpStorageInfoBinding,
   type SpaceInfo,
+  type SpaceShortfall,
   type WriteAccess,
 } from '$lib/ipc/bindings'
 import type { ConflictResolution, FileEntry, WriteOperationStartResult } from '../file-explorer/types'
@@ -407,6 +408,8 @@ export interface VolumeCopyConfig {
    * it for non-archive copies. See `behavior.archiveCompressionLevel`.
    */
   compressionLevel?: number | null
+  /** What the copy does when the destination looks too small (`"proceed"` after "Copy anyway"). */
+  spaceShortfall?: SpaceShortfall
 }
 
 /** Input for source item in conflict scanning. */

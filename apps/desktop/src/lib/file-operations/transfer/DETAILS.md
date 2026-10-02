@@ -739,6 +739,25 @@ a move that stops keeps every original, so there is no partial state to report. 
 the move's closing flush couldn't prove the copies were on disk, so every original stayed put, and the copy says exactly
 that.
 
+## Copy anyway
+
+`insufficient_space` is a question, not a verdict: its `required` is an upper bound (files already at the destination
+can make a copy need less, and the backend only looks at them on a local disk), so the copy is worded "may not have
+enough space" and the error dialog offers **Copy anyway** beside Close. The click runs
+`dialog-state.handleTransferErrorCopyAnyway`, which starts the failed copy's birth context again (`retryPropsFrom`,
+fresh preview, same conflict policy) with `spaceShortfall: 'proceed'`, settling the failed one like a close. The field
+rides `TransferProgressPropsData` → `TransferProgressDialog` → `TransferDispatchConfig` → `copyBetweenVolumes`, and the
+backend then skips its free-space check (`SpaceShortfall` in
+`apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "The free-space pre-flight"). A destination that
+really fills up still stops the copy, as `destination_full`.
+
+Close stays primary, so Enter takes the safe way out. The button appears only for a `copy` with a birth context: an
+adopted operation (queue window) and a retained failure have nothing to start again, and the suggestion text never names
+the button for that reason. A plain Retry of a refused copy asks about space again; one of a copy already started anyway
+keeps `proceed`. An MCP-started copy surfaces the same refusal to the agent, and only the person's click goes ahead.
+Pinned by `TransferErrorDialog.typed.test.ts`, `DialogManager.svelte.test.ts`, and
+`dialog-state.failure-handover.svelte.test.ts`.
+
 ## Gotchas
 
 - **Always use batch IPC for selection lookups.** `get_paths_at_indices` (paths only) and `get_files_at_indices` (full

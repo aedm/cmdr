@@ -1673,6 +1673,7 @@ export type MessageKey =
   | 'fileOperations.delete.titleSelected'
   | 'fileOperations.delete.trashSwitch'
   | 'fileOperations.errorDialog.close'
+  | 'fileOperations.errorDialog.copyAnyway'
   | 'fileOperations.errorDialog.retry'
   | 'fileOperations.errorDialog.technicalDetails'
   | 'fileOperations.errorDialog.technicalDetailsAria'

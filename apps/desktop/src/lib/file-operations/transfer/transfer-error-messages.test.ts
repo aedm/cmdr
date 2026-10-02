@@ -60,7 +60,7 @@ describe('getUserFriendlyMessage', () => {
       }
       const result = getUserFriendlyMessage(error)
 
-      expect(result.title).toBe('Not enough space')
+      expect(result.title).toBe('The destination may not have enough space')
       expect(result.message).toContain('1.00 GB')
       expect(result.message).toContain('512.00 MB')
     })

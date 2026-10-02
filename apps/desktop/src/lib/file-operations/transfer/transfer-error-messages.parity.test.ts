@@ -506,12 +506,12 @@ const cases: Case[] = [
     name: 'insufficient_space',
     error: { type: 'insufficient_space', required: REQUIRED, available: AVAILABLE, volumeName: null },
     expected: {
-      title: 'Not enough space',
+      title: 'The destination may not have enough space',
       // The size HTML comes from colorizeSizeString(formatByteSize(...)); the
       // template text around it is the migrated copy this pins.
-      message: `The destination needs ${requiredSize} but only has ${availableSize} available.`,
+      message: `This needs up to ${requiredSize}, and the destination has ${availableSize} free.`,
       suggestion:
-        'Free up some space on the destination by deleting unnecessary files, or choose a different location.',
+        'Files already at the destination may mean it needs less, and if the destination fills up, Cmdr stops and tells you. To be safe, free up some space or choose a different location.',
     },
   },
   {
@@ -924,9 +924,9 @@ const cases: Case[] = [
     },
     expected: {
       title: 'Your file is under a new name',
-      message: `Folders took the names of 2 of your files, so those files are now under new names. Nothing was thrown away; the technical details below list every one. The destination needs ${requiredSize} but only has ${availableSize} available.`,
+      message: `Folders took the names of 2 of your files, so those files are now under new names. Nothing was thrown away; the technical details below list every one. This needs up to ${requiredSize}, and the destination has ${availableSize} free.`,
       suggestion:
-        'Check the details below for where each file is. Once you’ve moved the folders out of the way, you can rename them back. Free up some space on the destination by deleting unnecessary files, or choose a different location.',
+        'Check the details below for where each file is. Once you’ve moved the folders out of the way, you can rename them back. Files already at the destination may mean it needs less, and if the destination fills up, Cmdr stops and tells you. To be safe, free up some space or choose a different location.',
     },
   },
   {

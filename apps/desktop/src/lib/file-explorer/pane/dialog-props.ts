@@ -9,7 +9,7 @@
  */
 
 import type { Initiator, ProgressAtStop } from '$lib/tauri-commands'
-import type { AppearedDuringMove, TopLevelSkipped, TrashRefusedItems, OpKind } from '$lib/ipc/bindings'
+import type { AppearedDuringMove, TopLevelSkipped, TrashRefusedItems, OpKind, SpaceShortfall } from '$lib/ipc/bindings'
 import type { SoftDialogId } from '$lib/ui/dialog-registry'
 import type { CloudOnlineOnlyExtent, DeleteSourceItem } from '$lib/file-operations/delete/delete-dialog-utils'
 import type { TransferOperationType, SortColumn, SortOrder, ConflictResolution, WriteOperationError } from '../types'
@@ -98,6 +98,8 @@ export interface TransferProgressPropsData {
   /** Source filenames known to conflict at dest (from pre-flight scan).
    *  Forwarded to the BE so it can bulk-skip them upfront under `Skip all`. */
   preKnownConflicts?: string[]
+  /** Copy only: `proceed` when the person chose "Copy anyway" after a space shortfall. */
+  spaceShortfall?: SpaceShortfall
   /** Top-level files the operation will transfer (for the completion toast's per-type
    *  split). Supplied by F5/F6 (real selection counts), drag-and-drop, and clipboard
    *  paste (each from a top-level kind probe). Absent only when the split is unknown

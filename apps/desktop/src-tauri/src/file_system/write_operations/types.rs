@@ -159,6 +159,26 @@ pub enum ConflictResolution {
     OverwriteOlder,
 }
 
+/// What a copy does when the destination looks too small for it.
+///
+/// The pre-flight's figure is an upper bound: files already at the destination
+/// can make a copy need less than it says (`free_space.rs`). So a shortfall is
+/// the person's call, ❌ never a verdict. `Refuse` stops with `InsufficientSpace`
+/// before anything is written, and the error dialog's "Copy anyway" starts the
+/// same copy again with `Proceed`. A destination that really fills up mid-copy
+/// still stops it, as `DestinationFull`.
+// DEFAULT-OK: the zero value is `Refuse`, which asks the person rather than
+// starting a copy the destination may not hold.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum SpaceShortfall {
+    /// Stop before writing anything, with `InsufficientSpace`.
+    #[default]
+    Refuse,
+    /// Skip the check: the person chose to copy anyway.
+    Proceed,
+}
+
 /// Which clash an answer is for.
 ///
 /// An operation raises many Stop-mode clashes over its life, one at a time, and
@@ -391,6 +411,9 @@ pub struct WriteOperationConfig {
     /// `VolumeCopyConfig::pre_known_conflicts` for the full rationale.
     #[serde(default)]
     pub pre_known_conflicts: Vec<String>,
+    /// What a copy does when the destination looks too small. See [`SpaceShortfall`].
+    #[serde(default)]
+    pub space_shortfall: SpaceShortfall,
 }
 
 impl Default for WriteOperationConfig {
@@ -404,6 +427,7 @@ impl Default for WriteOperationConfig {
             preview_id: None,
             max_conflicts_to_show: default_max_conflicts_to_show(),
             pre_known_conflicts: Vec::new(),
+            space_shortfall: SpaceShortfall::Refuse,
         }
     }
 }
@@ -499,6 +523,9 @@ pub struct VolumeCopyConfig {
     /// 1..=9 (an out-of-range level hard-errors the edit, not clamps).
     #[serde(default)]
     pub compression_level: Option<i64>,
+    /// What a copy does when the destination looks too small. See [`SpaceShortfall`].
+    #[serde(default)]
+    pub space_shortfall: SpaceShortfall,
 }
 
 impl Default for VolumeCopyConfig {
@@ -510,6 +537,7 @@ impl Default for VolumeCopyConfig {
             preview_id: None,
             pre_known_conflicts: Vec::new(),
             compression_level: None,
+            space_shortfall: SpaceShortfall::Refuse,
         }
     }
 }
@@ -525,6 +553,7 @@ impl From<&WriteOperationConfig> for VolumeCopyConfig {
             // `WriteOperationConfig` is the legacy local-only path (no archive
             // routing rides it), so the level has no source here.
             compression_level: None,
+            space_shortfall: config.space_shortfall,
         }
     }
 }
