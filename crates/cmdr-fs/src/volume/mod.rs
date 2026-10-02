@@ -1048,6 +1048,7 @@ pub trait Volume: Send + Sync {
             can_share_links: self.supports_share_links(),
             can_be_indexed: self.backend_kind().can_be_indexed(),
             renames_can_copy: self.renames_can_copy(),
+            has_os_mount_fallback: self.backend_kind().has_os_mount_fallback(),
         }
     }
 

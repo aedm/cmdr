@@ -229,7 +229,11 @@
         <UsbSpeedDot speed={currentVolume.usbSpeed} breadcrumb />
     {/if}
     {#if currentVolume?.connectionState === 'direct'}
-        <ConnectionDot state="direct" breadcrumb />
+        <ConnectionDot
+            state="direct"
+            hasOsMountFallback={currentVolume.capabilities?.hasOsMountFallback ?? false}
+            breadcrumb
+        />
     {:else if currentVolume?.connectionState === 'os_mount'}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->

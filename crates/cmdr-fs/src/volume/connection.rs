@@ -163,6 +163,28 @@ impl BackendKind {
         }
     }
 
+    /// Whether a volume this backend serves can also be reached through the OS's
+    /// own mount, so a live session here is one of two ways in
+    /// ([`ConnectionState::Direct`] versus [`ConnectionState::OsMount`]) and the
+    /// UI may say which. Everywhere else "direct" is the only way there is, and a
+    /// green dot claiming "connected directly" would be naming a choice nobody has.
+    ///
+    /// Exhaustive on purpose: a new backend doesn't compile until it answers.
+    #[must_use]
+    pub fn has_os_mount_fallback(self) -> bool {
+        match self {
+            Self::Smb => true,
+            Self::Local
+            | Self::Sftp
+            | Self::Webdav
+            | Self::S3
+            | Self::Mtp
+            | Self::Adb
+            | Self::Archive
+            | Self::GitPortal => false,
+        }
+    }
+
     /// Whether a volume this backend serves is taken away by dropping its own
     /// SESSION, rather than by an unmount or a device provider's eject.
     ///

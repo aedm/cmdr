@@ -15995,6 +15995,13 @@ export type VolumeCapabilities = {
    *  counts and the S3 cost line) where it would skip the scan elsewhere.
    */
   renamesCanCopy: boolean
+  /**
+   *  The same place can also be reached through the OS's own mount (SMB), so
+   *  a live session here is the "direct" one of two ways in, and the
+   *  connection dot may say so. `BackendKind::has_os_mount_fallback` is the
+   *  one decider.
+   */
+  hasOsMountFallback: boolean
 }
 
 /**

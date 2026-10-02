@@ -2026,6 +2026,10 @@
   "@fileExplorer.navigation.connectionTooltipDirect": {
     "description": "Hover tooltip on the connection indicator of a network volume that is connected directly (the fast path)."
   },
+  "fileExplorer.navigation.connectionTooltipConnected": "Connected",
+  "@fileExplorer.navigation.connectionTooltipConnected": {
+    "description": "Hover tooltip on the green connection indicator of a server or device that has only one way to connect (SFTP, WebDAV, S3 storage, an Android phone), saying its connection is live and working."
+  },
   "fileExplorer.navigation.connectionTooltipSystem": "Using system connection. Use the “Connect directly for faster access” menu item for faster access.",
   "@fileExplorer.navigation.connectionTooltipSystem": {
     "description": "Hover tooltip on the connection indicator of a network volume mounted via the OS (slower path), pointing the user at the menu item that upgrades to a direct connection. The quoted menu item label must match the menu item exactly.",

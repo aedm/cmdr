@@ -1381,6 +1381,7 @@ export type MessageKey =
   | 'fileExplorer.navigation.connectDirectlyNowTooltip'
   | 'fileExplorer.navigation.connectingDirectly'
   | 'fileExplorer.navigation.connectingWithSavedPassword'
+  | 'fileExplorer.navigation.connectionTooltipConnected'
   | 'fileExplorer.navigation.connectionTooltipDirect'
   | 'fileExplorer.navigation.connectionTooltipDisconnected'
   | 'fileExplorer.navigation.connectionTooltipNeedsHostKey'

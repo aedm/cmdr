@@ -262,6 +262,8 @@ export interface VolumeBackendCapabilities {
   canShareLinks: boolean
   /** Some entries here rename by copying on the server (S3), so a move within the volume scans. */
   renamesCanCopy: boolean
+  /** The same place can also be reached through the OS's own mount (SMB), so a live session is the "direct" one of two. */
+  hasOsMountFallback: boolean
 }
 
 /**

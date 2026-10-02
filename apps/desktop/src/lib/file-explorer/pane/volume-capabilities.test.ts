@@ -440,6 +440,7 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
         canBeIndexed: true,
         canShareLinks: false,
         renamesCanCopy: false,
+        hasOsMountFallback: false,
       }),
     ).toBe(row)
   })
@@ -452,6 +453,7 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
       canBeIndexed: true,
       canShareLinks: false,
       renamesCanCopy: false,
+      hasOsMountFallback: false,
     })
     expect(folded.canWrite).toBe(false)
     expect(folded.canBeSource).toBe(false)
@@ -471,6 +473,7 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
       canBeIndexed: false,
       canShareLinks: false,
       renamesCanCopy: false,
+      hasOsMountFallback: false,
     })
     expect(folded.canBeIndexed).toBe(false)
     expect(folded.canWrite).toBe(true)
@@ -489,6 +492,7 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
           canBeIndexed: true,
           canShareLinks: false,
           renamesCanCopy: false,
+          hasOsMountFallback: false,
         },
       }),
     ]
@@ -511,6 +515,7 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
           canBeIndexed: false,
           canShareLinks: false,
           renamesCanCopy: false,
+          hasOsMountFallback: false,
         },
       }),
     ]
@@ -532,6 +537,7 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
           canBeIndexed: false,
           canShareLinks: true,
           renamesCanCopy: true,
+          hasOsMountFallback: false,
         },
       }),
       vol({
@@ -544,6 +550,7 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
           canBeIndexed: false,
           canShareLinks: false,
           renamesCanCopy: false,
+          hasOsMountFallback: false,
         },
       }),
     ]
@@ -563,6 +570,7 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
           canBeIndexed: false,
           canShareLinks: true,
           renamesCanCopy: true,
+          hasOsMountFallback: false,
         },
       }),
     ]
@@ -590,6 +598,7 @@ describe("withBackendCapabilities — the backend's answer wins over the per-kin
           canBeIndexed: true,
           canShareLinks: false,
           renamesCanCopy: false,
+          hasOsMountFallback: false,
         },
       }),
     ]
@@ -624,6 +633,7 @@ describe('capabilitiesForPane — kind-from-path resolution', () => {
           canBeIndexed: true,
           canShareLinks: false,
           renamesCanCopy: false,
+          hasOsMountFallback: false,
         },
       }),
     ]
@@ -675,6 +685,7 @@ describe('capabilitiesForPane — kind-from-path resolution', () => {
           canBeIndexed: true,
           canShareLinks: false,
           renamesCanCopy: false,
+          hasOsMountFallback: false,
         },
       }),
     ]
@@ -711,6 +722,7 @@ describe('capabilitiesForPane — kind-from-path resolution', () => {
           canBeIndexed: true,
           canShareLinks: false,
           renamesCanCopy: false,
+          hasOsMountFallback: false,
         },
       }),
     ]

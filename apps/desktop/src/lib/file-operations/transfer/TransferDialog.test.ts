@@ -163,6 +163,7 @@ vi.mock('$lib/stores/volume-store.svelte', () => ({
         canShareLinks: true,
         canBeIndexed: false,
         renamesCanCopy: true,
+        hasOsMountFallback: false,
       },
     },
   ],

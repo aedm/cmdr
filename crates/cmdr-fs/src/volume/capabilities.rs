@@ -56,4 +56,9 @@ pub struct VolumeCapabilities {
     /// scan, not one cheap rename. The Move dialog scans such a move (for its
     /// counts and the S3 cost line) where it would skip the scan elsewhere.
     pub renames_can_copy: bool,
+    /// The same place can also be reached through the OS's own mount (SMB), so
+    /// a live session here is the "direct" one of two ways in, and the
+    /// connection dot may say so. `BackendKind::has_os_mount_fallback` is the
+    /// one decider.
+    pub has_os_mount_fallback: bool,
 }

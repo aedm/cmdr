@@ -351,7 +351,9 @@ so ❗ a variant with no `.smb-indicator-<state>` rule in THAT file renders as a
 session, amber = the OS-mount fallback or a waiting sign-in, red = a changed host key, hollow = `saved`. Each state gets
 its OWN tooltip sentence (`getConnectionTooltip`, a `Record` over the union, so a new state is a compile error);
 `connection-tooltips.test.ts` also catches a BORROWED one, since five states once shared two sentences and a signed-out
-SFTP server hovered as "Using system connection".
+SFTP server hovered as "Using system connection". `direct` has two sentences: "Connected directly…" only when the
+volume's `capabilities.hasOsMountFallback` says the OS mount is the other way in (SMB), plain "Connected" everywhere
+else (SFTP, WebDAV, S3, ADB), where no other way exists. Both placements pass it as a `ConnectionDot` prop.
 
 ❌ Never read `connectionState` with `!= null` — `connection-state.ts` holds the named predicates (`hasReconnectLoop`,
 `isLiveSession`, `showsDisconnect`), and `eject-predicate.ts` composes two of them. On the chip, yellow state is a

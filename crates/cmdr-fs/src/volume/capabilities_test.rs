@@ -124,6 +124,7 @@ fn an_undeclared_backend_gets_the_conservative_answer_to_everything() {
             // Follows `backend_kind`, whose default is `Local`.
             can_be_indexed: true,
             renames_can_copy: false,
+            has_os_mount_fallback: false,
         }
     );
 }
@@ -138,6 +139,7 @@ fn declaring_a_predicate_moves_the_published_surface() {
             can_share_links: true,
             can_be_indexed: true,
             renames_can_copy: true,
+            has_os_mount_fallback: false,
         }
     );
 }
@@ -153,6 +155,7 @@ fn the_in_memory_double_publishes_the_read_write_surface_a_test_expects() {
             can_share_links: false,
             can_be_indexed: true,
             renames_can_copy: false,
+            has_os_mount_fallback: false,
         }
     );
 }
@@ -187,6 +190,28 @@ fn indexability_follows_the_backend_kind() {
     ] {
         let volume = InMemoryVolume::new("Test").with_backend_kind(kind);
         assert_eq!(volume.capabilities().can_be_indexed, indexable, "{kind:?}");
+    }
+}
+
+/// Only an SMB share can also be reached through the OS's own mount, so only its
+/// green dot may say "connected directly": on any other server "direct" is the
+/// only way there is.
+#[test]
+fn only_smb_has_an_os_mount_fallback() {
+    use super::BackendKind;
+    for (kind, has_fallback) in [
+        (BackendKind::Smb, true),
+        (BackendKind::Local, false),
+        (BackendKind::Sftp, false),
+        (BackendKind::Webdav, false),
+        (BackendKind::S3, false),
+        (BackendKind::Mtp, false),
+        (BackendKind::Adb, false),
+        (BackendKind::Archive, false),
+        (BackendKind::GitPortal, false),
+    ] {
+        let volume = InMemoryVolume::new("Test").with_backend_kind(kind);
+        assert_eq!(volume.capabilities().has_os_mount_fallback, has_fallback, "{kind:?}");
     }
 }
 
