@@ -795,6 +795,12 @@ impl Machine {
             // under the walker, rather than reading the whole volume as in flux
             // for the run's whole length.
             covered_in_phases: true,
+            // A first index has no history to add up, and its checklist is one
+            // step, so it carries no overall figure.
+            left_after_find_files_ms: None,
+            left_after_save_ms: None,
+            left_after_compute_ms: None,
+            left_after_catch_up_ms: None,
         });
         crate::indexing::lifecycle::state::apply_freshness_event_on(
             &self.freshness,

@@ -84,6 +84,16 @@ concurrently without corrupting each other. Every invariant below holds independ
   is the ONE place the `scan_completed_at` marker, the two-bucket calibration keys, and `volume_path` are written:
   `network_scan.rs` calls it too, so a trait-scanned volume's completion can't drift from a local one's. Only the
   shallow-sweep-window reset stays local-walk-only, since a trait-scanned volume has no FSEvents stream.
+  `stamp_step_durations` beside it records how long the save, compute, and catch-up steps took, per walk kind
+  (`../store/DETAILS.md` § "The steps after the walk").
+- **steps_ahead.rs** — the remembered half of a host's overall "~X left": `StepsAhead::remembered(shape, durations)`
+  sums, for each step, what every step AFTER it took on the last completed run of this kind. `RunShape::Local` is find
+  files → save → compute → catch up; `RunShape::Network` is find files → compute (entries land inline, and no catch-up
+  pass follows). The honesty gate is here: one step ahead without history makes that remainder `None`, and the host
+  shows no overall figure. Computed at both whole-volume scan-start funnels, stashed on `ScanCalibration`, and carried
+  as the flat `left_after_*_ms` fields of `IndexEvent::ScanStarted` and `IndexStatusResponse` (flat because the root
+  surface is capped, and a new root type would be a new promise; `crates/cmdr-index/CLAUDE.md`). A phased first index
+  and a roll-on carry no plan.
 - **freshness.rs** — the `Fresh`/`Stale`/`Scanning`/`Failed` transition table (`Freshness::on`) +
   `initial_freshness_on_launch`.
 - **failure.rs** — `IndexFailureSignal`, the one-shot per-volume fatal-storage-error signal.

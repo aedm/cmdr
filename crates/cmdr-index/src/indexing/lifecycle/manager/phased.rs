@@ -27,6 +27,7 @@ use crate::indexing::events::ScanRunKind;
 use crate::indexing::hold::HoldKind;
 use crate::indexing::lifecycle::phases::{self, MachineContext};
 use crate::indexing::lifecycle::rescan_request::ScanStartError;
+use crate::indexing::lifecycle::steps_ahead::StepsAhead;
 use crate::indexing::scanner::{exclusion_policy_stamp_message, index_predates_exclusion_policy};
 use crate::indexing::store::IndexStore;
 use crate::indexing::watch::branches;
@@ -423,6 +424,9 @@ impl PhaseStart {
                 prior: calibration_set.for_kind(run_kind.calibration_kind()),
                 volume_used_bytes: None,
                 run_kind,
+                // A first index has nothing to remember yet, and its one step is
+                // the whole run, so there's no remainder to add.
+                steps_ahead: StepsAhead::default(),
             },
             handle: phases::start(self.context),
         }

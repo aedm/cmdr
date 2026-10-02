@@ -70,6 +70,28 @@ pub struct IndexScanStartedEvent {
     /// walk puts every folder on the drive in flux for the run's whole length,
     /// while a phased run puts only the ground the branch events name in flux.
     pub covered_in_phases: bool,
+    /// What the steps after each one took on the last completed run of this kind:
+    /// the remembered half of the overall "~X left".
+    pub steps_ahead_ms: StepsAheadMs,
+}
+
+/// The remembered time left after each checklist step finishes, keyed by the
+/// frontend's step kinds. The frontend adds its live estimate for the active
+/// step to the entry for that step, and shows no overall figure where the entry
+/// is `None` (no history for a step still ahead, or a step this run doesn't
+/// have). The sum and its honesty gate are the index crate's
+/// (`lifecycle/steps_ahead.rs`); this only renames the keys for the wire.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct StepsAheadMs {
+    /// Left once the walk (find files) is done.
+    pub find_files: Option<u64>,
+    /// Left once the file list is saved (or updated, on a change check).
+    pub save_file_list: Option<u64>,
+    /// Left once folder sizes are computed.
+    pub compute_folder_sizes: Option<u64>,
+    /// Left once the catch-up step is done.
+    pub catch_up: Option<u64>,
 }
 
 /// A drive's first index moved on to its next phase.
@@ -430,6 +452,10 @@ pub(crate) fn route(event: IndexEvent, app: Option<&AppHandle>) -> Destination {
             prior_scan_duration_ms,
             volume_used_bytes,
             covered_in_phases,
+            left_after_find_files_ms,
+            left_after_save_ms,
+            left_after_compute_ms,
+            left_after_catch_up_ms,
         } => to_frontend(
             app,
             IndexScanStartedEvent {
@@ -439,6 +465,12 @@ pub(crate) fn route(event: IndexEvent, app: Option<&AppHandle>) -> Destination {
                 prior_scan_duration_ms,
                 volume_used_bytes,
                 covered_in_phases,
+                steps_ahead_ms: StepsAheadMs {
+                    find_files: left_after_find_files_ms,
+                    save_file_list: left_after_save_ms,
+                    compute_folder_sizes: left_after_compute_ms,
+                    catch_up: left_after_catch_up_ms,
+                },
             },
         ),
         IndexEvent::CoverageBranchStarted { volume_id, roots } => {

@@ -22,6 +22,7 @@ fn calibration(used_bytes: Option<u64>) -> ScanCalibration {
         prior: crate::indexing::store::ScanCalibration::default(),
         volume_used_bytes: used_bytes,
         run_kind: ScanRunKind::FirstScan,
+        steps_ahead: StepsAhead::default(),
     }
 }
 
@@ -56,6 +57,21 @@ fn live_counters_carry_the_running_scans_per_kind_calibration() {
     let counters = live_scan_counters(Some(snapshot(42_000, 1_200, 905_000_000)), Some(cal));
     assert_eq!(counters.prior_total_entries, Some(5_100_000));
     assert_eq!(counters.prior_scan_duration_ms, Some(1_180_696));
+}
+
+#[test]
+fn live_counters_carry_the_running_scans_remembered_steps_ahead() {
+    // A window reload mid-scan misses `index-scan-started`, so the overall
+    // figure's remembered half has to come back through `get_status` too.
+    let mut cal = calibration(Some(746_000_000));
+    cal.steps_ahead = StepsAhead {
+        after_find_files_ms: Some(61_000),
+        after_save_ms: Some(21_000),
+        after_compute_ms: Some(2_000),
+        after_catch_up_ms: Some(0),
+    };
+    let counters = live_scan_counters(Some(snapshot(42_000, 1_200, 905_000_000)), Some(cal));
+    assert_eq!(counters.steps_ahead, cal.steps_ahead);
 }
 
 #[test]

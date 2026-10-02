@@ -204,6 +204,23 @@ Which bucket a run reads and writes is decided ONCE, by `events::ScanRunKind::ca
 funnel, and threaded to the completion handler (`lifecycle/scan_completion.rs` for local, `lifecycle/network_scan.rs`'s
 completion arm for SMB/MTP). Pinned by `store::tests::meta_and_calibration::calibration_for_kind_*`.
 
+### The steps after the walk, for the overall "~X left"
+
+A host's overall figure adds what the steps AFTER the walk took last time (`../lifecycle/steps_ahead.rs`), so each of
+them is remembered too, in the same per-kind buckets: `save_duration_ms_<kind>`, `compute_duration_ms_<kind>`, and
+`catch_up_duration_ms_<kind>` (bases on `StepDurations`), read by `IndexStore::read_step_durations(conn, kind)`.
+
+Unlike the walk's own keys these have ❌ no unsuffixed twin and no cross-kind fallback. The walk's fallback seeds ONE
+step's ETA, and that step shows its own progress, so a loose seed corrects itself within seconds. A step that is still
+AHEAD has no live progress to correct a borrowed timing, so it would sit in the overall figure as a guess for the whole
+run. A missing key reads `None`, which is what hides the figure.
+
+Writers: `../lifecycle/scan_completion/stamps.rs::stamp_step_durations`, gated on a walk that ran to the end like every
+stamp there. The local completion splits its post-walk flush into save and compute by the writer's own timing of the
+full aggregate (`IndexWriter::take_last_full_aggregate_ms`, `split_save_and_compute`) and times catch-up from the
+`Reconciling` transition to `Live`; a trait walk records compute only (no save step, no catch-up). Pinned by
+`store::tests::meta_and_calibration::read_step_durations_*` and `scan_completion::tests::a_*_remembers_*`.
+
 ## Decision: a subtree delete is post-order, so an interruption can never strand rows
 
 `delete_descendants_by_id` deletes files on the way down (a leaf can't strand anything), banks each level's directory

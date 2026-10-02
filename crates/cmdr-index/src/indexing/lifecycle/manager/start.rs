@@ -21,10 +21,11 @@ use crate::indexing::lifecycle::cover;
 use crate::indexing::lifecycle::progress_reporter::ScanProgressReporter;
 use crate::indexing::lifecycle::rescan_request::ScanStartError;
 use crate::indexing::lifecycle::state;
+use crate::indexing::lifecycle::steps_ahead::{RunShape, StepsAhead};
 use crate::indexing::reconcile::local_reconcile;
 use crate::indexing::reconcile::reconciler::EventReconciler;
 use crate::indexing::scanner::{self, ScanConfig};
-use crate::indexing::store::IndexStore;
+use crate::indexing::store::{IndexStore, StepDurations};
 use crate::indexing::watch::branches::{self, AfterWalk, WatchScope};
 use crate::indexing::watch::event_loop::{
     JOURNAL_GAP_THRESHOLD, LiveConfig, ReplayConfig, run_live_event_loop, run_replay_event_loop,
@@ -483,6 +484,15 @@ impl IndexManager {
         });
         let run_kind = ScanRunKind::classify(reconcile, calibration_set.any.total_entries);
         let prior = calibration_set.for_kind(run_kind.calibration_kind());
+        // And what each step after the walk took on the last run of this kind, for
+        // the overall "~X left". Same kind only: a borrowed timing would be a guess.
+        let steps_ahead = StepsAhead::remembered(
+            RunShape::Local,
+            IndexStore::read_step_durations(self.store.read_conn(), run_kind.calibration_kind()).unwrap_or_else(|e| {
+                log::warn!("Failed to read the remembered step durations (no overall estimate this run): {e}");
+                StepDurations::default()
+            }),
+        );
 
         // Fetch the scanned volume's used bytes ONCE (tier-2 denominator). The call
         // does disk I/O — an NSURL XPC round-trip on macOS, `statvfs` on Linux — and
@@ -498,6 +508,7 @@ impl IndexManager {
             prior,
             volume_used_bytes,
             run_kind,
+            steps_ahead,
         };
         self.scan_calibration = Some(calibration);
 
@@ -624,6 +635,10 @@ impl IndexManager {
             // Which family of steps the checklist shows. This walk takes the
             // volume whole, so it runs the four-step pipeline.
             covered_in_phases: false,
+            left_after_find_files_ms: calibration.steps_ahead.after_find_files_ms,
+            left_after_save_ms: calibration.steps_ahead.after_save_ms,
+            left_after_compute_ms: calibration.steps_ahead.after_compute_ms,
+            left_after_catch_up_ms: calibration.steps_ahead.after_catch_up_ms,
         });
         // And the ground it covers, which is all of it. The listing tests one
         // list of walked roots either way; nothing downstream knows there are two

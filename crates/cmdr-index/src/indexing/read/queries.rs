@@ -169,6 +169,10 @@ fn disabled_status_response() -> IndexStatusResponse {
         scan_run_kind: None,
         prior_total_entries: None,
         prior_scan_duration_ms: None,
+        left_after_find_files_ms: None,
+        left_after_save_ms: None,
+        left_after_compute_ms: None,
+        left_after_catch_up_ms: None,
     }
 }
 
@@ -211,6 +215,7 @@ pub fn get_status(volume_id: &str) -> Result<IndexStatusResponse, String> {
                 scan_run_kind: None,
                 prior_total_entries: None,
                 prior_scan_duration_ms: None,
+                ..disabled_status_response()
             })
         }
         Some(IndexPhase::Running(mgr)) => mgr.get_status(),
@@ -278,6 +283,7 @@ pub fn get_debug_status(volume_id: &str) -> Result<IndexDebugStatusResponse, Str
                 scan_run_kind: None,
                 prior_total_entries: None,
                 prior_scan_duration_ms: None,
+                ..disabled_status_response()
             };
             let (activity_phase, phase_started_at, phase_duration_ms, phase_history) =
                 IndexManager::read_phase_timeline();

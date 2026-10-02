@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use super::phases;
 use super::state::{self, Handover};
+use super::steps_ahead::StepsAhead;
 use crate::indexing::IndexPathSpace;
 use crate::indexing::deletes;
 use crate::indexing::events::{
@@ -126,6 +127,10 @@ pub(super) struct ScanCalibration {
     /// What kind of run this is. Rides the started event so the frontend states
     /// it, and picks the calibration bucket the completion handler writes into.
     pub(super) run_kind: ScanRunKind,
+    /// What the steps after each one took last time on this kind of run, the
+    /// remembered half of the overall "~X left". All `None` for a run with no
+    /// plan to remember (a phased first index).
+    pub(super) steps_ahead: StepsAhead,
 }
 
 /// The live scan-progress fields `get_status` surfaces on `IndexStatusResponse`.
@@ -138,6 +143,7 @@ struct LiveScanCounters {
     scan_run_kind: Option<ScanRunKind>,
     prior_total_entries: Option<u64>,
     prior_scan_duration_ms: Option<u64>,
+    steps_ahead: StepsAhead,
 }
 
 /// Derive the live scan counters for `get_status` from the active scan's progress
@@ -159,6 +165,7 @@ fn live_scan_counters(
         scan_run_kind: calibration.map(|c| c.run_kind),
         prior_total_entries: calibration.and_then(|c| c.prior.total_entries),
         prior_scan_duration_ms: calibration.and_then(|c| c.prior.scan_duration_ms),
+        steps_ahead: calibration.map(|c| c.steps_ahead).unwrap_or_default(),
     }
 }
 
@@ -650,6 +657,10 @@ impl IndexManager {
             scan_run_kind: counters.scan_run_kind,
             prior_total_entries: counters.prior_total_entries,
             prior_scan_duration_ms: counters.prior_scan_duration_ms,
+            left_after_find_files_ms: counters.steps_ahead.after_find_files_ms,
+            left_after_save_ms: counters.steps_ahead.after_save_ms,
+            left_after_compute_ms: counters.steps_ahead.after_compute_ms,
+            left_after_catch_up_ms: counters.steps_ahead.after_catch_up_ms,
         })
     }
 

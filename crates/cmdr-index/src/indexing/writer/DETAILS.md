@@ -517,6 +517,13 @@ truncate + `Maps` path, and an uncancelled in-flight verification's `ComputeSubt
 wipe maps that then partially repopulate. `TruncateData` already clears the maps at the start of every legitimate `Maps`
 flow. The interleaved-aggregate test pins this.
 
+**A full aggregate times itself.** A successful `ComputeAllAggregates` stores its wall clock in the writer's
+`last_full_aggregate_ms` (a failed one clears it), and `IndexWriter::take_last_full_aggregate_ms` reads and clears it. A
+scan's completion handler takes it right after the flush that waited the aggregate out: the writer is one ordered
+thread, so by then the scan's own aggregate is the last one finished. That's what splits the post-walk wait into the
+"save the file list" and "compute folder sizes" steps the overall "~X left" remembers (`../store/DETAILS.md` § "The
+steps after the walk").
+
 **The hourglass for coalesced rescans (the held-roots tier).** A detached `reconcile_subtree` runs for seconds while the
 writer queue oscillates empty, so the wholesale queue-drain clear of `PendingSizes` would wipe the "size updating" mark
 long before the reconcile finishes. `PendingSizes` (owned by `../read/`) gains a HELD-roots tier:

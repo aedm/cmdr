@@ -3,8 +3,8 @@
 
 use super::{
     INDEX_NEEDS_REBUILD_KEY, IndexStatus, IndexStore, IndexStoreError, SCHEMA_VERSION, ScanCalibration,
-    ScanCalibrationKind, ScanCalibrationSet, USER_DISABLED_KEY, USER_ENABLED_KEY, apply_pragmas, create_tables,
-    register_platform_case_collation,
+    ScanCalibrationKind, ScanCalibrationSet, StepDurations, USER_DISABLED_KEY, USER_ENABLED_KEY, apply_pragmas,
+    create_tables, register_platform_case_collation,
 };
 use rusqlite::{Connection, params};
 use std::path::Path;
@@ -348,6 +348,23 @@ impl IndexStore {
             total_entries: read_u64("total_entries")?,
             total_physical_bytes: read_u64("total_physical_bytes")?,
             scan_duration_ms: read_u64("scan_duration_ms")?,
+        })
+    }
+
+    /// The remembered durations of the steps after the walk, for one walk kind.
+    /// Missing or unparseable keys map to `None`; there's no cross-kind fallback
+    /// (see [`StepDurations`]).
+    pub(crate) fn read_step_durations(
+        conn: &Connection,
+        kind: ScanCalibrationKind,
+    ) -> Result<StepDurations, IndexStoreError> {
+        let read_u64 = |base: &str| -> Result<Option<u64>, IndexStoreError> {
+            Ok(Self::read_meta_value(conn, &kind.meta_key(base))?.and_then(|v| v.parse::<u64>().ok()))
+        };
+        Ok(StepDurations {
+            save_ms: read_u64(StepDurations::SAVE_KEY)?,
+            compute_ms: read_u64(StepDurations::COMPUTE_KEY)?,
+            catch_up_ms: read_u64(StepDurations::CATCH_UP_KEY)?,
         })
     }
 

@@ -8633,6 +8633,11 @@ export type IndexScanStartedEvent = {
    *  while a phased run puts only the ground the branch events name in flux.
    */
   coveredInPhases: boolean
+  /**
+   *  What the steps after each one took on the last completed run of this kind:
+   *  the remembered half of the overall "~X left".
+   */
+  stepsAheadMs: StepsAheadMs
 }
 
 /**
@@ -8753,6 +8758,27 @@ export type IndexStatusResponse = {
   priorTotalEntries: number | null
   // How long that previous walk took, the tier-1 ETA's rate.
   priorScanDurationMs: number | null
+  /**
+   *  The remembered time left once the find-files step (the walk) is done: what
+   *  every later step took on the last completed run of this kind. `None` when
+   *  any of them has no such history, so no overall figure shows. Same
+   *  read-only-while-`scanning` rule as the calibration above. A host adds its
+   *  live estimate for the active step to the matching `left_after_*` field to
+   *  get the overall "~X left".
+   */
+  leftAfterFindFilesMs: number | null
+  /**
+   *  The remembered time left once the save-the-file-list step is done. `None`
+   *  on a run with no such step (a network walk) or no history for what follows.
+   */
+  leftAfterSaveMs: number | null
+  // The remembered time left once the compute-folder-sizes step is done.
+  leftAfterComputeMs: number | null
+  /**
+   *  The remembered time left once the catch-up step is done: `Some(0)` on a run
+   *  that has one (it's the last step), `None` on a run that doesn't.
+   */
+  leftAfterCatchUpMs: number | null
 }
 
 /**
@@ -14312,6 +14338,25 @@ export type StagedLeftovers = {
    *  which is what the user would be looking for at the destination.
    */
   exampleName: string
+}
+
+/**
+ *  The remembered time left after each checklist step finishes, keyed by the
+ *  frontend's step kinds. The frontend adds its live estimate for the active
+ *  step to the entry for that step, and shows no overall figure where the entry
+ *  is `None` (no history for a step still ahead, or a step this run doesn't
+ *  have). The sum and its honesty gate are the index crate's
+ *  (`lifecycle/steps_ahead.rs`); this only renames the keys for the wire.
+ */
+export type StepsAheadMs = {
+  // Left once the walk (find files) is done.
+  findFiles: number | null
+  // Left once the file list is saved (or updated, on a change check).
+  saveFileList: number | null
+  // Left once folder sizes are computed.
+  computeFolderSizes: number | null
+  // Left once the catch-up step is done.
+  catchUp: number | null
 }
 
 /**
