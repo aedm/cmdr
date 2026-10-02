@@ -16,8 +16,8 @@ macOS volume and location discovery, plus live mount/unmount watching via `NSWor
   path): an ID keys the index DB, `lastUsedPaths`, tabs, and routing, so a lossy one sends deletes to the wrong disk.
   Only the scheme prefix means anything: ❌ never match the slug or rebuild one from parts.
 - **One volume ID publishes ONE location at ONE canonical root**: mounts sharing an ID collapse to the shortest path via
-  `canonical_root::collapse_by_volume_id` (shared with `volumes_linux/`: ❌ never re-copy it), and `list_locations`
-  dedupes on ID, ❌ never path alone.
+  `canonical_root::collapse_by_volume_id` (❌ never re-copy it), and `list_locations`
+  dedupes on ID, ❌ never path alone, and favorites ❌ never on path (#349).
 - **What this module publishes is the SWITCHER's list, ❌ never the registry's**: `mount_registration` sweeps
   `registrable_mount_roots`: every mount but another account's own, which only the index still sees (`mount_roots`).
   A row filtered out here must never mean a path can't be opened.
@@ -30,7 +30,7 @@ macOS volume and location discovery, plus live mount/unmount watching via `NSWor
   NSFileManager or per-mount `statfs`; blocking NSURL / NSWorkspace / DiskArbitration enrichment for LOCAL mounts
   only, never on the main thread. **❗ A mount table that wouldn't answer is its OWN answer, ❌ never an empty one**, or an unmount takes a
   sibling down under its live watcher.
-- **Detect SMB with `is_smb_fs_type()`**, ❌ never raw `"smbfs"` / `"cifs"`: one place covers both platforms.
+- **Detect SMB with `is_smb_fs_type()`** (both platforms), ❌ never raw `"smbfs"` / `"cifs"`.
 - **An SMB share is ONE path segment; everything below it is a directory INSIDE the share** (`SmbMountInfo::subpath`),
   the SAME volume as its share. ❌ Never split a mount source on the first `/`: a DFS sub-mount records
   `//user@domain/SYSVOL/domain` (wrong share, second ID, ERR-48RZX).
@@ -41,7 +41,7 @@ macOS volume and location discovery, plus live mount/unmount watching via `NSWor
   `connection_state`), once, in BOTH twins, ❌ never a discovery constructor. `volume_listing::complete` assembles the
   published list, owning its order and the only `append_device_volumes` call.
 - **Wrap every objc-touching `spawn_blocking` body in `objc2::rc::autoreleasepool`**, or the objects leak. Keep
-  `watcher.rs`’s observer block cheap: main thread, no blocking I/O.
+  `watcher.rs`’s observer block cheap: main thread, no I/O.
 - **Six more rules each own a `DETAILS.md` section to read first**: which mounts get a row,
   another account's mounts, cloud-drive prefixes ahead of `statfs` in `resolve_path_volume_fast` (else a cloud folder highlights "Macintosh HD"),
   the unmount path's `remove_root` (nothing identifies a gone mount, so deriving an ID lands on the wrong one), the FDA

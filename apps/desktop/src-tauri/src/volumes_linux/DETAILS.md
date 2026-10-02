@@ -140,7 +140,8 @@ through this parser at all but through `parse_gvfs_smb_dirname`, which carries n
 ## One volume ID publishes one mount root
 
 **Decision**: `get_mounted_volumes` collapses mounts that share a volume ID through
-`cmdr_fs::volume::canonical_root::collapse_by_volume_id`, and `list_locations` dedupes on ID as well as path. macOS
+`cmdr_fs::volume::canonical_root::collapse_by_volume_id`, and `list_locations` dedupes on ID as well as path (favorites on ID only) through the shared
+`cmdr_fs::volume::published_locations::dedupe_locations`. macOS
 calls the same function from `get_attached_volumes`; the rationale for the rule (and for the shortest-path tie-break)
 lives once, in `volumes/DETAILS.md` § "One volume ID publishes one mount root".
 

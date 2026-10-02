@@ -17,12 +17,13 @@ the next section.
 
 - `volume/`: the `Volume` trait and its types; `connection.rs` (the REMOTE vocabulary: `ConnectionState`,
   `DeviceReadiness`, `BackendKind`, `SignInShape`, and `DeviceUnavailableReason`); `ids` + `canonical_root` + `mtp_ids`
-  (the ID funnel and double-mount collapse); `smb_mount_source` (the `user:password@host:port` split both platforms' SMB
-  mount-source parsers share, bracketed IPv6 included); `capabilities.rs`; `entry_kind.rs` (`File` / `Directory` /
-  `Symlink`, the answer `Volume::entry_kind` gives, a link reported as the link, where `is_directory` may follow it);
-  `retirement.rs` (how background work learns it stopped being the live volume); `channel_stream.rs` (a network
-  backend's read path, consumer half); `scan_boundary.rs` + `scan_stop.rs` (the one seam a copy scan touches per entry:
-  counts, Cancel, and Pause); `scan_walk.rs`, `mkdir_all.rs`, `patching.rs`, and `secret_store.rs` (the bodies a
+  (the ID funnel and double-mount collapse); `published_locations` (the switcher list's dedupe both platforms share,
+  where a favorite never claims a volume's path); `smb_mount_source` (the `user:password@host:port` split both
+  platforms' SMB mount-source parsers share, bracketed IPv6 included); `capabilities.rs`; `entry_kind.rs` (`File` /
+  `Directory` / `Symlink`, the answer `Volume::entry_kind` gives, a link reported as the link, where `is_directory` may
+  follow it); `retirement.rs` (how background work learns it stopped being the live volume); `channel_stream.rs` (a
+  network backend's read path, consumer half); `scan_boundary.rs` + `scan_stop.rs` (the one seam a copy scan touches per
+  entry: counts, Cancel, and Pause); `scan_walk.rs`, `mkdir_all.rs`, `patching.rs`, and `secret_store.rs` (the bodies a
   stat-and-listing backend gets for free); `remote_paths.rs` (a server tree's `<scheme>://user@host:port` app spelling,
   and the ONE translation); `friendly_error/` (typed, word-free classification); `usb_speed.rs` (❗ its doc comment
   reaches `bindings.ts`); `in_memory.rs` (the store and its knobs; `in_memory/volume_impl.rs` is its `impl Volume`);

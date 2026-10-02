@@ -119,7 +119,17 @@ Every other ID is minted by `cmdr_fs::volume::ids` (below).
 
 ## `list_locations()`
 
-Aggregates all `LocationCategory` entries in order and deduplicates by path AND by volume ID, two `HashSet<String>`s.
+Aggregates all `LocationCategory` entries in order (favorites first) and deduplicates through
+`cmdr_fs::volume::published_locations::dedupe_locations`, shared with `volumes_linux/`: the first row per ID, and the
+first volume row per path.
+
+**Decision: a favorite never claims its path.** A favorite is a `fav-<uuid>` shortcut into a volume, not a volume, so
+it dedupes on ID only. **Why**: favorites are gathered first, so a favorite at `/` used to take the path slot and drop
+the "Macintosh HD" row. The pane's chip then read "Volume", and every favorite on the boot disk resolved to `root`, a
+volume missing from the list, so none of them opened (#349). The same held for a favorite at a drive's mount root or a
+cloud drive's folder. The consequence: a favorite and a volume can share a path, so a frontend lookup by path must skip
+favorites (`pane-volume.ts::volumeMountedAt`).
+
 Inside this listing, `LocationCategory::Network` comes only from the servers arm below: an OS-mounted SMB share is an
 `AttachedVolume` under `/Volumes/`, and the OS-level `/Network` browseable location has no sidebar entry.
 
@@ -163,7 +173,7 @@ with a registered SFTP volume greying out under Linux while it stayed live on a 
 
 **Decision**: `get_attached_volumes` collapses mounts that share a volume ID
 (`cmdr_fs::volume::canonical_root::collapse_by_volume_id`), keeping the SHORTEST path and breaking ties
-lexicographically. `list_locations` then dedupes on ID as well as path.
+lexicographically. `list_locations` then dedupes on ID as well as path (favorites on ID only; see above).
 
 The collapse lives in `cmdr-fs` rather than here because it's a pure list transform over `(volume id, mount root)`
 pairs, and Linux needs the identical rule (`volumes_linux/DETAILS.md`): bind mounts and container mounts make "one ID,

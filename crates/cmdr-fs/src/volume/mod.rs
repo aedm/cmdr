@@ -1731,6 +1731,7 @@ mod usb_speed;
 // top of it: rustdoc resolves the concatenated fragments in THIS module's scope,
 // so the file's own inner-doc links to its items stop resolving.
 pub mod canonical_root;
+pub mod published_locations;
 pub mod smb_mount_source;
 
 /// Typed, word-free classification of why a volume operation failed.

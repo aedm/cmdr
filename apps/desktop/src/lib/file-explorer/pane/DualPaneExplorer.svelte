@@ -32,6 +32,7 @@
 
     import { canGoBack, getCurrentEntry } from '../navigation/navigation-history'
     import { recordCursor, type CursorReading } from '../navigation/history-cursor'
+    import { volumeMountedAt } from '../navigation/pane-volume'
     import TabBar from '../tabs/TabBar.svelte'
     import TabDragOverlay from '../tabs/TabDragOverlay.svelte'
     import { createTabDragController } from '../tabs/tab-drag-controller.svelte'
@@ -599,7 +600,7 @@
         // won the race. The mount watchers still speak in paths, which is the
         // fallback.
         unlistenVolumeUnmount = await onVolumeUnmounted((payload) => {
-            const volumeId = payload.volumeId ?? volumes.find((v) => v.path === payload.volumePath)?.id
+            const volumeId = payload.volumeId ?? volumeMountedAt(volumes, payload.volumePath)?.id
             if (volumeId) {
                 void edgeFlow.handleVolumeUnmount(volumeId)
             }

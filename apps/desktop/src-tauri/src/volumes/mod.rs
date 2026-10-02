@@ -24,8 +24,8 @@ mod mounts;
 mod nsurl;
 mod smb;
 
+use cmdr_fs::volume::published_locations::{PublishedLocation, dedupe_locations};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 use std::path::Path;
 
 pub use crate::file_system::volume::ConnectionState;
@@ -181,6 +181,20 @@ impl cmdr_fs::volume::canonical_root::MountRootCandidate for LocationInfo {
     }
 }
 
+impl PublishedLocation for LocationInfo {
+    fn location_id(&self) -> &str {
+        &self.id
+    }
+
+    fn location_path(&self) -> &str {
+        &self.path
+    }
+
+    fn is_favorite(&self) -> bool {
+        self.category == LocationCategory::Favorite
+    }
+}
+
 /// Whether a MOUNT ROOT is served by a cloud provider's own filesystem, so its
 /// entries cost a round trip to that provider's daemon rather than a disk read.
 ///
@@ -292,46 +306,16 @@ pub fn resolve_path_volume_fast(path: &str) -> Option<VolumeInfo> {
 
 /// Get all locations organized by category, deduplicated.
 ///
-/// Deduplicates on BOTH path and ID. Path alone isn't enough: one filesystem can
-/// be mounted at two paths (macOS suffixes the second `-1`) and both derive the
-/// same volume ID, which every downstream consumer keys on. `get_attached_volumes`
-/// already collapses those, so the ID set here is the second line of defense
-/// against another source (a favorite, a cloud drive) reintroducing one.
+/// Gathers favorites, the main volume, attached volumes, and cloud drives in
+/// that order, then dedupes through `cmdr_fs::volume::published_locations`
+/// (shared with `volumes_linux/`), whose header says which row wins a clash.
 pub fn list_locations() -> Vec<LocationInfo> {
-    let mut locations = Vec::new();
-    let mut seen_paths: HashSet<String> = HashSet::new();
-    let mut seen_ids: HashSet<String> = HashSet::new();
-
-    let mut push_unique = |locations: &mut Vec<LocationInfo>, loc: LocationInfo| {
-        // Both inserts must run, so the sets can't drift apart on a partial hit.
-        let new_path = seen_paths.insert(loc.path.clone());
-        let new_id = seen_ids.insert(loc.id.clone());
-        if new_path && new_id {
-            locations.push(loc);
-        }
-    };
-
-    // 1. Favorites
-    for loc in get_favorites() {
-        push_unique(&mut locations, loc);
-    }
-
-    // 2. Main volume
-    if let Some(loc) = get_main_volume() {
-        push_unique(&mut locations, loc);
-    }
-
-    // 3. Attached volumes
-    for loc in get_attached_volumes() {
-        push_unique(&mut locations, loc);
-    }
-
-    // 4. Cloud drives (skip if already in favorites)
-    for loc in get_cloud_drives() {
-        push_unique(&mut locations, loc);
-    }
-
-    locations
+    let locations = get_favorites()
+        .into_iter()
+        .chain(get_main_volume())
+        .chain(get_attached_volumes())
+        .chain(get_cloud_drives());
+    dedupe_locations(locations)
 }
 
 /// Get the user's favorites from the editable store (`favorites.json`).
@@ -435,6 +419,7 @@ pub use LocationInfo as VolumeInfo;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
 
     #[test]
     fn test_list_locations_includes_root() {
@@ -452,12 +437,15 @@ mod tests {
         // IDs matter more than paths: an ID is identity (index DB, saved paths,
         // registry routing, and the frontend's keyed lists), and a doubly-mounted
         // share has two distinct paths under one ID, so a path-only assertion
-        // passes on exactly the case that breaks the app.
+        // passes on exactly the case that breaks the app. Favorites are exempt
+        // from the path half: one may point at a volume's own root.
         let locations = list_locations();
         let mut seen_paths = HashSet::new();
         let mut seen_ids = HashSet::new();
         for loc in &locations {
-            assert!(seen_paths.insert(&loc.path), "Duplicate path found: {}", loc.path);
+            if loc.category != LocationCategory::Favorite {
+                assert!(seen_paths.insert(&loc.path), "Duplicate path found: {}", loc.path);
+            }
             assert!(
                 seen_ids.insert(&loc.id),
                 "Duplicate volume ID found: {} (at {})",
