@@ -572,7 +572,11 @@ pub(super) async fn stream_pipe_file(
             Err(FinalizeFailure {
                 error: VolumeError::NotSupported,
                 ..
-            }) if matches!(staging, WriteStaging::Stage | WriteStaging::StageOntoClaimedName) => {
+            }) if matches!(
+                staging,
+                WriteStaging::Stage | WriteStaging::StageInFreshFolder | WriteStaging::StageOntoClaimedName
+            ) =>
+            {
                 log::warn!(
                     target: "copy",
                     "stream_pipe_file: destination can't land a staged write for {}; falling back to writing at the final name",

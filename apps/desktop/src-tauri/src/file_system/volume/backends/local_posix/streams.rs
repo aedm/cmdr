@@ -181,7 +181,7 @@ impl LocalPosixVolume {
                 let mut options = std::fs::OpenOptions::new();
                 options.write(true);
                 match mode {
-                    WriteMode::CreateNew => options.create_new(true),
+                    WriteMode::CreateNew | WriteMode::CreateNewInFreshFolder => options.create_new(true),
                     WriteMode::CreateOrReplace => options.create(true).truncate(true),
                 };
                 options.open(&dest_for_open)

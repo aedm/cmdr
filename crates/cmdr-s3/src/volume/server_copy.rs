@@ -440,7 +440,7 @@ impl S3Volume {
                 Err(BuildError::CrossBucketCopy) => return Err(VolumeError::NotSupported),
                 Err(_) => return Err(VolumeError::NotFound(to_remote.to_string())),
             };
-            let conditional = mode == WriteMode::CreateNew && !built.check_first;
+            let conditional = mode.refuses_occupied() && !built.check_first;
             if built.check_first {
                 self.refuse_if_taken(client, &target).await?;
             }
@@ -517,7 +517,7 @@ impl S3Volume {
         plan: PartPlan,
         progress: &dyn ServerCopyProgress,
     ) -> Result<u64, VolumeError> {
-        if target.mode == WriteMode::CreateNew
+        if target.mode.refuses_occupied()
             && client.profile().no_overwrite(ConditionalOp::CompleteMultipart)
                 == crate::profile::NoOverwrite::CheckThenWrite
         {
@@ -580,7 +580,7 @@ impl S3Volume {
                 abort_upload(client, &self.inner.ledger, &guard.upload).await;
                 guard.settled = true;
                 if gone.load(Ordering::Relaxed)
-                    && target.mode == WriteMode::CreateNew
+                    && target.mode.refuses_occupied()
                     && matches!(
                         self.head_object(client, target.bucket, target.key, target.remote).await,
                         Ok(Some(_))

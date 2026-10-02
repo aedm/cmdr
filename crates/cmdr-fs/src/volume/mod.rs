@@ -1853,7 +1853,7 @@ pub trait Volume: Send + Sync {
         progress: &'a dyn ServerCopyProgress,
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
         Box::pin(async move {
-            if mode == WriteMode::CreateNew || !std::ptr::addr_eq(self as *const Self, source as *const dyn Volume) {
+            if mode.refuses_occupied() || !std::ptr::addr_eq(self as *const Self, source as *const dyn Volume) {
                 return Err(VolumeError::NotSupported);
             }
             self.copy_within(from, to, &|done, total| progress.advanced(done, total))

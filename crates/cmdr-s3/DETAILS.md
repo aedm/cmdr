@@ -514,6 +514,17 @@ for that operation right now. Making the flag part of the return type is what ke
   blind: a writer whose object lands between our last check and our own write's completion is overwritten by ours, and
   nothing short of bucket versioning can see it. That's the residual risk the product decision accepts ("tell the user
   plainly when we notice").
+- **A fresh folder skips the check-then-write HEADs** (`WriteMode::CreateNewInFreshFolder`, `refuse_if_taken`): the
+  engine's merge walker hands it down for every name in a folder its own `create_directory` just made, which that
+  creation proved empty (a rename to a new name, or a copy of a folder into a place without one). The header paths still
+  apply (they cost nothing); the HEAD before the write, and before a multipart completion, doesn't go. The verifying
+  HEAD after the write stays. Decision/Why: one HEAD per object was a third of a folder rename's requests (1,005 of
+  3,021 for 1,005 objects on B2's check-then-write profile, the requests behind its daily Class B cap) and protects
+  nothing the folder's creation didn't. ❗ The accepted window: a file another writer puts in the brand-new folder while
+  the operation runs is overwritten, where the HEAD would have refused it if it had landed before that HEAD. A merge
+  into a folder that already existed keeps every check: that's where another writer's files plausibly are. Pinned by
+  `fresh_folder_test.rs` over `fake_s3.rs` and the app's `a_folder_of_1005_objects_renames_through_the_engine` (at most
+  two HEADs per object).
 - **Garage ends an upload when another write replaces its object** (`NoSuchUpload` on the next part or the completion;
   `apps/desktop/test/s3-servers/README.md`). Under `CreateNew` that's read as the name being taken, after a HEAD
   confirms it, ❌ never as the destination "not found".

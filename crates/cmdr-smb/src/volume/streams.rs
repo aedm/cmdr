@@ -142,7 +142,7 @@ async fn open_file_writer(
     mode: WriteMode,
 ) -> Result<smb2::client::stream::FileWriter, smb2::Error> {
     match mode {
-        WriteMode::CreateNew => tree.create_file_writer_exclusive(conn, path).await,
+        WriteMode::CreateNew | WriteMode::CreateNewInFreshFolder => tree.create_file_writer_exclusive(conn, path).await,
         WriteMode::CreateOrReplace => tree.create_file_writer(conn, path).await,
     }
 }
@@ -482,7 +482,7 @@ impl SmbVolume {
                         // refusal is a CREATE failure, so the cleanup below leaves
                         // their file alone.
                         let write_result = match mode {
-                            WriteMode::CreateNew => {
+                            WriteMode::CreateNew | WriteMode::CreateNewInFreshFolder => {
                                 tree.write_file_compound_exclusive(&mut conn, &smb_path, &buffer).await
                             }
                             WriteMode::CreateOrReplace => tree.write_file_compound(&mut conn, &smb_path, &buffer).await,

@@ -445,10 +445,15 @@ async fn merge_level<'a>(
     // can't be trusted to error on collision) we pre-check existence with the
     // one listing the merge level pays anyway, and skip the create when present.
     let dest_prepare = async {
+        // Whether THIS walk's `create_directory` made the level, which proved it
+        // empty. ❌ Not the `NotSupported` "treat as fresh" case below: nothing
+        // proved anything there.
+        let mut made_here = false;
         let level_pre_existed = if backend_create_directory_detects_collisions(dest_volume) {
             match dest_volume.create_directory(dest_path).await {
                 Ok(()) => {
                     created.record_dir(dest_path.to_path_buf());
+                    made_here = true;
                     false
                 }
                 Err(VolumeError::AlreadyExists(_)) => true,
@@ -468,6 +473,7 @@ async fn merge_level<'a>(
                 match dest_volume.create_directory(dest_path).await {
                     Ok(()) => {
                         created.record_dir(dest_path.to_path_buf());
+                        made_here = true;
                         false
                     }
                     // A race created it between the check and the create; merge.
@@ -485,7 +491,7 @@ async fn merge_level<'a>(
         } else {
             None
         };
-        Ok(dest_index)
+        Ok((dest_index, made_here))
     };
 
     let (dest_index, entries) = if legs_may_overlap {
@@ -496,7 +502,7 @@ async fn merge_level<'a>(
             source_volume.list_directory(source_path, None).await,
         )
     };
-    let dest_index = dest_index.at(source_path)?;
+    let (dest_index, level_made_here) = dest_index.at(source_path)?;
     let entries = entries.at(source_path)?;
     // A move sweeps exactly the folders this walk listed; anything else it
     // finds in the source afterwards arrived later and stays.
@@ -569,7 +575,18 @@ async fn merge_level<'a>(
         // Nothing has resolved a conflict for this child yet, so the name it is
         // about to take is one we believe FREE. A resolver decision below is
         // what turns that into a claim (`staged_write.rs::LandingName`).
-        let mut landing = LandingName::ExpectedFree;
+        //
+        // ❗ A level THIS walk created (its `create_directory` succeeded, so it
+        // held nothing at that moment) hands that fact down as
+        // `FreeInFreshFolder`, which lets an object store skip its per-object
+        // no-overwrite HEAD (`WriteMode::CreateNewInFreshFolder`). A merge into
+        // a level that pre-existed keeps `ExpectedFree` and its check: that's
+        // where another writer's files plausibly land.
+        let mut landing = if level_made_here {
+            LandingName::FreeInFreshFolder
+        } else {
+            LandingName::ExpectedFree
+        };
         // Nothing has reserved anything for this child either, until a `Rename`
         // resolution below says otherwise.
         let mut reserved_placeholder = false;

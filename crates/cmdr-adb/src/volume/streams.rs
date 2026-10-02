@@ -162,7 +162,7 @@ impl AdbVolume {
 
         match pumped {
             Ok(written) => {
-                if mode == WriteMode::CreateNew && self.probe(&device).await != WhatIsThere::Nothing {
+                if mode.refuses_occupied() && self.probe(&device).await != WhatIsThere::Nothing {
                     self.remove_partial(&staging).await;
                     return Err(VolumeError::AlreadyExists(device));
                 }

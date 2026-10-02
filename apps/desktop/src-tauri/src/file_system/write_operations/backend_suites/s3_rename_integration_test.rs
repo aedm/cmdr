@@ -100,9 +100,19 @@ pub(super) async fn a_folder_of_1005_objects_renames_through_the_engine(target: 
     let keys: Vec<String> = (0..1_005).map(|n| format!("{prefix}folder/f{n:04}.txt")).collect();
     let seeds: Vec<Seed<'_>> = keys.iter().map(|key| object(key, b"x")).collect();
     target.seed(target.bucket(), &seeds).await;
+    take_sent_requests(&volume).await;
 
     let (events, _) = start(&volume_id, at(&volume, &format!("{prefix}folder")), "renamed").await;
     settle(&events, "the folder rename to settle").await;
+
+    // ❗ Two HEADs per object: the source's (its date and headers, for the
+    // copy's `REPLACE`) and the landing check. ❌ No per-object no-overwrite
+    // HEAD: `renamed/` is a folder this rename made, so its creation proved it
+    // empty (`WriteMode::CreateNewInFreshFolder`). The rest is per folder.
+    let sent = take_sent_requests(&volume).await;
+    let heads = sent.get("HeadObject").copied().unwrap_or(0);
+    assert!(heads <= 2 * 1_005 + 20, "{sent:?}");
+    assert_eq!(sent.get("CopyObject"), Some(&1_005), "{sent:?}");
 
     let renamed = volume
         .list_directory(&at(&volume, &format!("{prefix}renamed")), None)

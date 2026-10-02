@@ -182,7 +182,7 @@ impl WebdavVolume {
                 debug!("WebdavVolume::write_from_stream: {remote}");
                 self.put_streaming(&client, &remote, size, stream, on_progress).await
             }
-            WriteMode::CreateNew => {
+            WriteMode::CreateNew | WriteMode::CreateNewInFreshFolder => {
                 let temp = staging_sibling(&remote);
                 debug!("WebdavVolume::write_from_stream: {remote} via {temp}");
                 let total = self.put_streaming(&client, &temp, size, stream, on_progress).await?;

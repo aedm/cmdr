@@ -126,7 +126,7 @@ pub(super) fn judge_landing(expected: u64, ours: Option<&str>, found: Option<&La
         && normalize_etag(ours) != normalize_etag(theirs)
     {
         return match mode {
-            WriteMode::CreateNew => Landing::TakenAfterUs,
+            WriteMode::CreateNew | WriteMode::CreateNewInFreshFolder => Landing::TakenAfterUs,
             WriteMode::CreateOrReplace => Landing::ReplacedAfterUs,
         };
     }
@@ -165,7 +165,7 @@ pub(super) fn normalize_etag(etag: &str) -> String {
 /// The overwrite a write mode asks of a conditional builder.
 pub(super) fn overwrite_for(mode: WriteMode) -> Overwrite {
     match mode {
-        WriteMode::CreateNew => Overwrite::Refuse,
+        WriteMode::CreateNew | WriteMode::CreateNewInFreshFolder => Overwrite::Refuse,
         WriteMode::CreateOrReplace => Overwrite::Replace,
     }
 }
@@ -327,7 +327,7 @@ impl S3Volume {
             target.metadata,
         )
         .map_err(|_| VolumeError::NotFound(target.remote.to_string()))?;
-        let conditional = target.mode == WriteMode::CreateNew && !built.check_first;
+        let conditional = target.mode.refuses_occupied() && !built.check_first;
         if built.check_first {
             self.refuse_if_taken(client, target).await?;
         }
@@ -519,7 +519,17 @@ impl S3Volume {
 
     /// `CreateNew` on a provider with no trusted conditional header: refuse a
     /// key that's taken before sending anything.
+    ///
+    /// ❗ Not under `CreateNewInFreshFolder`: the caller made the key's folder
+    /// this operation and its creation proved it empty, so the HEAD would buy
+    /// nothing but the window it can't close anyway (a writer between it and
+    /// the write). What that accepts: a file another writer puts in the
+    /// brand-new folder while the operation runs is overwritten (`DETAILS.md` §
+    /// "No-overwrite writes").
     pub(super) async fn refuse_if_taken(&self, client: &S3Client, target: &WriteTarget<'_>) -> Result<(), VolumeError> {
+        if target.mode == WriteMode::CreateNewInFreshFolder {
+            return Ok(());
+        }
         match self
             .head_object(client, target.bucket, target.key, target.remote)
             .await?

@@ -408,6 +408,15 @@ Three answers, cheapest first, in `copy.rs`'s spawn loop:
 2. **The listing Phase 0.6 already paid for.** `reap_stale_transfer_temps` does one `list_directory` of `dest_path` on every copy, merges included, immediately before the spawn loop. It now RETURNS that listing (minus the temps it reaped), and the driver indexes it into a `DestNameIndex` (`dest_name_index.rs`) the loop consults in memory. This is the ordinary F5 copy's case: `TransferDialog` seeds the destination with the opposite pane's current folder, which exists, so a merge is what most copies are.
 3. **The per-file probe**, for anything the index won't answer.
 
+**The merge walker hands the same fact to the destination.** A level its own `create_directory` made (`Ok`, ❌ not the
+`NotSupported` "treat as fresh" fallback, which proved nothing) writes each child with
+`LandingName::FreeInFreshFolder` → `WriteStaging::StageInFreshFolder` → on a whole-publishing destination
+`WriteMode::CreateNewInFreshFolder`. Every backend treats that mode as `CreateNew` (`WriteMode::refuses_occupied`)
+except where its no-overwrite check is a request of its own: S3 then skips the HEAD before each object (`cmdr-s3`'s
+`DETAILS.md` § "No-overwrite writes" has the accepted window). A staged write lands exactly as `Stage` does. Top-level
+files copied straight into a destination folder Phase 0.5 created keep `ExpectedFree` (the concurrent and serial
+drivers don't thread the fact yet); the folders a copy or a rename carries are where the requests were.
+
 **A probe that can't ANSWER fails the item, and is never read as "the name is free."** `landing.rs::where_it_lands` is the one rule for all four top-level pre-check sites (`copy_serial.rs`, `move_cross.rs`, and `move_same.rs` through `landing.rs::top_level_precheck`, and the concurrent driver's `copy_concurrent_source.rs::existing_dest_entry`) and for every merge child: only `VolumeError::NotFound` means free, and every other refusal — `ConnectionTimeout`, `DeviceSessionReset`, `PermissionDenied` — becomes a failure of THAT item at the DESTINATION path. Nothing is written for it. A stat that fails is what a flaky share or a phone mid-session-reset looks like, and folding it into "nothing is there" runs no resolver, consults no Skip/Stop policy, and lets the landing clear whatever the probe was asked about — a silent overwrite under a policy that promised the opposite. The driver's `FetchFut` carries the `Result` so the shape is unrepresentable rather than only written down. ❌ No retry here: per-file retry is `retry.rs`'s, inside `stream_pipe_file`, and a second layer would multiply the wait on a dead link. Pinned by `dest_precheck_failure_tests.rs` (one cell per site) and `transfer_driver_async_tests.rs::async_driver_fails_the_item_whose_destination_probe_refuses`.
 
 **Decision (2)**: answer the merge case from the one listing, and accept that it is a snapshot.

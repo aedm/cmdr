@@ -58,6 +58,12 @@ pub(super) enum WriteStaging {
     /// The caller believes that name is FREE, so an `AlreadyExists` when the
     /// bytes come to take it is a clash nobody answered — see [`LandingName`].
     Stage,
+    /// [`WriteStaging::Stage`] for a name inside a folder THIS operation created
+    /// (the merge walker's `create_directory` succeeded), which the creation
+    /// proved empty. Staged and landed exactly like `Stage`; a whole-publishing
+    /// destination writes it with [`WriteMode::CreateNewInFreshFolder`], which
+    /// lets an object store skip its per-object no-overwrite HEAD.
+    StageInFreshFolder,
     /// Stage as [`WriteStaging::Stage`], but the final name is one the CALLER
     /// claimed or cleared: a `Rename` resolution's `O_EXCL` placeholder, or a
     /// cross-type Overwrite that removed what was there. Whatever the landing
@@ -93,6 +99,11 @@ pub(super) enum LandingName {
     /// caller last looked. Something in the way now is a clash no policy and no
     /// person answered, so the landing REFUSES rather than clearing it.
     ExpectedFree,
+    /// [`ExpectedFree`](Self::ExpectedFree), inside a folder this operation
+    /// created and found empty. Means exactly the same to the landing (a clash
+    /// nobody answered); only the write mode differs
+    /// ([`WriteMode::CreateNewInFreshFolder`]).
+    FreeInFreshFolder,
     /// The caller claimed or cleared this name and is entitled to what's in the
     /// way: a `Rename` pick reserved with an `O_EXCL` placeholder, a cross-type
     /// Overwrite whose destination delete has already run.
@@ -158,7 +169,7 @@ impl StagedWrite {
         let mut temp = None;
         let mut caller_temp = None;
         match staging {
-            WriteStaging::Stage | WriteStaging::StageOntoClaimedName => {
+            WriteStaging::Stage | WriteStaging::StageInFreshFolder | WriteStaging::StageOntoClaimedName => {
                 let staged = StagingTemp::mint(final_path, state.liveness_token());
                 super::super::in_flight_temps::register(state, staged.path(), dest_home(state));
                 temp = Some(staged);
@@ -182,13 +193,16 @@ impl StagedWrite {
             // of the staged write it replaced, which is what `write_mode` reads.
             landing: match staging {
                 WriteStaging::Stage => LandingName::ExpectedFree,
+                WriteStaging::StageInFreshFolder => LandingName::FreeInFreshFolder,
                 WriteStaging::StageOntoClaimedName | WriteStaging::AlreadyStaged => LandingName::ClaimedByTheCaller,
                 WriteStaging::SingleShot(landing) => landing,
             },
             write_mode: match staging {
                 WriteStaging::SingleShot(LandingName::ExpectedFree) => WriteMode::CreateNew,
+                WriteStaging::SingleShot(LandingName::FreeInFreshFolder) => WriteMode::CreateNewInFreshFolder,
                 WriteStaging::SingleShot(LandingName::ClaimedByTheCaller)
                 | WriteStaging::Stage
+                | WriteStaging::StageInFreshFolder
                 | WriteStaging::StageOntoClaimedName
                 | WriteStaging::AlreadyStaged => WriteMode::CreateOrReplace,
             },
@@ -486,7 +500,7 @@ async fn land(
         discard().await;
         return Err(first.into());
     }
-    if landing == LandingName::ExpectedFree {
+    if matches!(landing, LandingName::ExpectedFree | LandingName::FreeInFreshFolder) {
         log::warn!(
             target: "copy",
             "staged write: {} is taken by something nobody resolved a conflict for; \
@@ -609,6 +623,7 @@ pub(super) fn staging_for(replaces: &Replaces, landing: LandingName) -> WriteSta
         (Replaces::ViaTemp(_), _) => WriteStaging::AlreadyStaged,
         (Replaces::InPlace, _) => WriteStaging::SingleShot(LandingName::ClaimedByTheCaller),
         (Replaces::Nothing, LandingName::ExpectedFree) => WriteStaging::Stage,
+        (Replaces::Nothing, LandingName::FreeInFreshFolder) => WriteStaging::StageInFreshFolder,
         (Replaces::Nothing, LandingName::ClaimedByTheCaller) => WriteStaging::StageOntoClaimedName,
     }
 }
@@ -635,7 +650,7 @@ pub(super) fn staging_for(replaces: &Replaces, landing: LandingName) -> WriteSta
 pub(super) fn failed_write_leaves_ours_at(staging: WriteStaging) -> bool {
     match staging {
         WriteStaging::AlreadyStaged | WriteStaging::StageOntoClaimedName => true,
-        WriteStaging::Stage | WriteStaging::SingleShot(_) => false,
+        WriteStaging::Stage | WriteStaging::StageInFreshFolder | WriteStaging::SingleShot(_) => false,
     }
 }
 
@@ -679,6 +694,7 @@ pub(super) fn failed_write_leaves_ours_at(staging: WriteStaging) -> bool {
 pub(super) fn resolve_staging(requested: WriteStaging, lands_whole: bool) -> WriteStaging {
     match requested {
         WriteStaging::Stage if lands_whole => WriteStaging::SingleShot(LandingName::ExpectedFree),
+        WriteStaging::StageInFreshFolder if lands_whole => WriteStaging::SingleShot(LandingName::FreeInFreshFolder),
         WriteStaging::StageOntoClaimedName if lands_whole => WriteStaging::SingleShot(LandingName::ClaimedByTheCaller),
         other => other,
     }

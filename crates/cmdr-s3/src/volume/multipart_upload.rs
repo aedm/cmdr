@@ -19,7 +19,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
 
 use bytes::Bytes;
-use cmdr_fs::volume::{VolumeError, VolumeReadStream, WriteMode};
+use cmdr_fs::volume::{VolumeError, VolumeReadStream};
 use futures_util::StreamExt;
 use futures_util::stream::FuturesUnordered;
 use log::{debug, info, warn};
@@ -331,7 +331,7 @@ impl S3Volume {
             }
             first = Some(head);
         }
-        let check_first = target.mode == WriteMode::CreateNew
+        let check_first = target.mode.refuses_occupied()
             && client.profile().no_overwrite(ConditionalOp::CompleteMultipart) == NoOverwrite::CheckThenWrite;
         if check_first {
             self.refuse_if_taken(client, target).await?;
@@ -381,7 +381,7 @@ impl S3Volume {
                 // likely another writer taking the name: say so when the name
                 // is taken now, which is the refusal a `CreateNew` owes.
                 if gone.load(Ordering::Relaxed)
-                    && target.mode == WriteMode::CreateNew
+                    && target.mode.refuses_occupied()
                     && matches!(
                         self.head_object(client, target.bucket, target.key, target.remote).await,
                         Ok(Some(_))
@@ -412,7 +412,7 @@ impl S3Volume {
             target.metadata,
         )
         .map_err(|_| VolumeError::NotFound(target.remote.to_string()))?;
-        let conditional = target.mode == WriteMode::CreateNew && !built.check_first;
+        let conditional = target.mode.refuses_occupied() && !built.check_first;
         if built.check_first {
             self.refuse_if_taken(client, target).await?;
         }
@@ -639,7 +639,7 @@ impl S3Volume {
                 overwrite_for(target.mode),
             )
             .map_err(|_| VolumeError::NotFound(target.remote.to_string()))?;
-            let conditional = target.mode == WriteMode::CreateNew && !built.check_first;
+            let conditional = target.mode.refuses_occupied() && !built.check_first;
             // Checked again right before the object appears: a writer that took
             // the name during a long upload is caught here, not after.
             if built.check_first {

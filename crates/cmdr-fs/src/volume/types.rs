@@ -55,9 +55,29 @@ pub enum WriteMode {
     /// SMB's `FileCreate`, `SSH_FXF_EXCL`, WebDAV's `If-None-Match: *`) and
     /// check just before writing where they don't (MTP, ADB).
     CreateNew,
+    /// [`CreateNew`](Self::CreateNew) for a name inside a folder THIS operation
+    /// created, which the creation proved empty at that moment (the
+    /// `create_directory` that made it succeeded rather than finding it).
+    ///
+    /// It refuses an occupied name exactly as `CreateNew` does wherever that
+    /// costs nothing extra (an atomic create, a conditional header). A backend
+    /// whose no-overwrite check is a request of its own (an object store's HEAD
+    /// before each write) may skip that request: a file another writer puts in
+    /// the brand-new folder during the operation is then overwritten, the
+    /// window the caller accepted by handing down this fact. ❌ Only from the
+    /// caller that made the folder; never a guess at write time.
+    CreateNewInFreshFolder,
     /// Whatever holds the name is the caller's to replace: a temp it minted, a
     /// name it claimed with a placeholder, a file the user chose to overwrite.
     CreateOrReplace,
+}
+
+impl WriteMode {
+    /// Whether a write in this mode must not replace what holds the name:
+    /// everything but [`CreateOrReplace`](Self::CreateOrReplace).
+    pub fn refuses_occupied(self) -> bool {
+        !matches!(self, Self::CreateOrReplace)
+    }
 }
 
 /// Whether a stream's final byte length is known before writing starts.

@@ -224,12 +224,12 @@ impl SftpVolume {
         let mut options = session.sftp().options();
         options.write(true);
         let opened = match mode {
-            WriteMode::CreateNew => options.create_new(true).open(&remote).await,
+            WriteMode::CreateNew | WriteMode::CreateNewInFreshFolder => options.create_new(true).open(&remote).await,
             WriteMode::CreateOrReplace => options.create(true).truncate(true).open(&remote).await,
         };
         let file = match opened {
             Ok(file) => file,
-            Err(e) if mode == WriteMode::CreateNew => return Err(self.name_taken(&session, &remote, &e).await),
+            Err(e) if mode.refuses_occupied() => return Err(self.name_taken(&session, &remote, &e).await),
             Err(e) => return Err(map_sftp_error(&e, &remote)),
         };
         let writer = RemoteWrite::new(file, Arc::from(remote.as_str()));

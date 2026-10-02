@@ -704,7 +704,7 @@ impl Volume for MtpVolume {
                     expected_length: StreamLength::Known(size),
                 })
             };
-            if mode == WriteMode::CreateNew && self.exists(dest).await {
+            if mode.refuses_occupied() && self.exists(dest).await {
                 return Err(VolumeError::AlreadyExists(dest.display().to_string()));
             }
             let dest_folder = dest.parent().map(|p| self.to_mtp_path(p)).unwrap_or_default();
