@@ -916,9 +916,9 @@
   "@commands.helpViewDebugLog.description": {
     "sourceHash": "a937e6e"
   },
-  "commands.handler.viewDebugLog.disabled": "Хранение журналов выключено. Включите его в разделе «Настройки > Дополнения» и перезапустите Cmdr, чтобы просмотреть журнал отладки.",
+  "commands.handler.viewDebugLog.disabled": "Хранение журналов выключено. Задайте ограничение места для журналов больше 0 в разделе «Настройки > Дополнения» и перезапустите Cmdr, чтобы просмотреть журнал отладки.",
   "@commands.handler.viewDebugLog.disabled": {
-    "sourceHash": "a781813"
+    "sourceHash": "96f16fc"
   },
   "commands.handler.viewDebugLog.unavailable": "Не удалось открыть журнал отладки. Попробуйте еще раз.",
   "@commands.handler.viewDebugLog.unavailable": {

@@ -1104,9 +1104,9 @@
   "@commands.helpViewDebugLog.description": {
     "description": "Secondary help line beneath View debug log in the command palette. Starts with a verb. The viewer opens at the end of the log and keeps scrolling as new lines arrive, which is what live means here. The log contains diagnostic records from the running application, not the user’s file-operation history. Cmdr is the brand name; keep it recognizable."
   },
-  "commands.handler.viewDebugLog.disabled": "Log storage is disabled. Enable it in Settings > Advanced, then restart Cmdr to view the debug log.",
+  "commands.handler.viewDebugLog.disabled": "Log storage is off. Set a disk space limit above 0 in Settings > Advanced, then restart Cmdr to view the debug log.",
   "@commands.handler.viewDebugLog.disabled": {
-    "description": "Informational toast after selecting View debug log when log storage is disabled. Direct the user to the Advanced settings section to give log storage a nonzero limit, then restart the app. Cmdr is the brand name."
+    "description": "Informational toast after selecting View debug log when log storage is off. The control is a number field, not a switch: settings.advanced.maxLogStorageMb.label (Maximum disk space for log files (MB)), where 0 means off. So the instruction is to set that limit above 0, then restart the app. Settings > Advanced is a navigation path; use this language's names for the Settings window and its Advanced section. Cmdr is the brand name."
   },
   "commands.handler.viewDebugLog.unavailable": "Couldn’t open the debug log. Try again.",
   "@commands.handler.viewDebugLog.unavailable": {

@@ -916,9 +916,9 @@
   "@commands.helpViewDebugLog.description": {
     "sourceHash": "a937e6e"
   },
-  "commands.handler.viewDebugLog.disabled": "Le stockage des journaux est désactivé. Activez-le dans Réglages > Avancé, puis redémarrez Cmdr pour visualiser le journal de débogage.",
+  "commands.handler.viewDebugLog.disabled": "Le stockage des journaux est désactivé. Réglez une limite d’espace disque supérieure à 0 dans Réglages > Avancé, puis redémarrez Cmdr pour visualiser le journal de débogage.",
   "@commands.handler.viewDebugLog.disabled": {
-    "sourceHash": "a781813"
+    "sourceHash": "96f16fc"
   },
   "commands.handler.viewDebugLog.unavailable": "Ouverture du journal de débogage impossible. Réessayez.",
   "@commands.handler.viewDebugLog.unavailable": {

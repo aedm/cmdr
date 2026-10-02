@@ -128,8 +128,5 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   none has a `screenshot`. Capture the S3 form, a refusal, the share-link submenu, and the cost line. (all)
 - `errors.write.invalidName.suggestion` changed English (tabs and line breaks) in the same commit as the S3 batch but
   wasn't in its `--keys` brief; the stale check caught it. Brief stale keys alongside new ones. (all)
-- `commands.handler.viewDebugLog.disabled`: "Enable it in Settings > Advanced" sends the reader hunting for a switch,
-  but the control is a size field (`settings.advanced.maxLogStorageMb.label`, 0 = off). Name the field or say "set a
-  limit above 0". (all)
 - `i18n-termbase` misses a duplicate top-level key in `terms.json`: a hand-added `storage` entry shadowed (or was
   shadowed by) the real one in de, pt, and vi with no finding. Fail on duplicate keys. (all)

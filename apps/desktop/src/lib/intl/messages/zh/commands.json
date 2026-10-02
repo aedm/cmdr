@@ -916,9 +916,9 @@
   "@commands.helpViewDebugLog.description": {
     "sourceHash": "a937e6e"
   },
-  "commands.handler.viewDebugLog.disabled": "日志存储已关闭。在“设置 > 高级”中开启，然后重启 Cmdr 来查看调试日志。",
+  "commands.handler.viewDebugLog.disabled": "日志存储已关闭。在“设置 > 高级”中把磁盘空间上限设为大于 0，然后重启 Cmdr 来查看调试日志。",
   "@commands.handler.viewDebugLog.disabled": {
-    "sourceHash": "a781813"
+    "sourceHash": "96f16fc"
   },
   "commands.handler.viewDebugLog.unavailable": "无法打开调试日志。再试一次。",
   "@commands.handler.viewDebugLog.unavailable": {

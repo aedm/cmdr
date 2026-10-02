@@ -916,9 +916,9 @@
   "@commands.helpViewDebugLog.description": {
     "sourceHash": "a937e6e"
   },
-  "commands.handler.viewDebugLog.disabled": "A naplótárolás ki van kapcsolva. Kapcsold be itt: Beállítások > Speciális, majd indítsd újra a Cmdrt a hibakeresési napló megtekintéséhez.",
+  "commands.handler.viewDebugLog.disabled": "A naplótárolás ki van kapcsolva. Állíts be 0-nál nagyobb lemezterület-korlátot itt: Beállítások > Speciális, majd indítsd újra a Cmdrt a hibakeresési napló megtekintéséhez.",
   "@commands.handler.viewDebugLog.disabled": {
-    "sourceHash": "a781813"
+    "sourceHash": "96f16fc"
   },
   "commands.handler.viewDebugLog.unavailable": "Nem sikerült megnyitni a hibakeresési naplót. Próbáld újra.",
   "@commands.handler.viewDebugLog.unavailable": {

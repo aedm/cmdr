@@ -151,9 +151,9 @@
   "@commands.suggestedOpsShow.description": {
     "sourceHash": "7864be0"
   },
-  "commands.handler.viewDebugLog.disabled": "El almacenamiento de registros está desactivado. Actívalo en Configuración > Avanzado y reinicia Cmdr para ver el registro de depuración.",
+  "commands.handler.viewDebugLog.disabled": "El almacenamiento de registros está desactivado. Pon un límite de espacio en disco mayor que 0 en Configuración > Avanzado y reinicia Cmdr para ver el registro de depuración.",
   "@commands.handler.viewDebugLog.disabled": {
-    "sourceHash": "33622c3"
+    "sourceHash": "2bf377a"
   },
   "commands.handler.viewDebugLog.unavailable": "No se pudo abrir el registro de depuración. Inténtalo de nuevo.",
   "@commands.handler.viewDebugLog.unavailable": {

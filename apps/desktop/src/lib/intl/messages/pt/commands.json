@@ -916,9 +916,9 @@
   "@commands.helpViewDebugLog.description": {
     "sourceHash": "a937e6e"
   },
-  "commands.handler.viewDebugLog.disabled": "O armazenamento de registros está desativado. Ative-o em Ajustes > Avançado e reinicie o Cmdr para visualizar o registro de depuração.",
+  "commands.handler.viewDebugLog.disabled": "O armazenamento de registros está desativado. Defina um limite de espaço em disco maior que 0 em Ajustes > Avançado e reinicie o Cmdr para visualizar o registro de depuração.",
   "@commands.handler.viewDebugLog.disabled": {
-    "sourceHash": "a781813"
+    "sourceHash": "96f16fc"
   },
   "commands.handler.viewDebugLog.unavailable": "Não foi possível abrir o registro de depuração. Tente de novo.",
   "@commands.handler.viewDebugLog.unavailable": {

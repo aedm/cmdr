@@ -916,9 +916,9 @@
   "@commands.helpViewDebugLog.description": {
     "sourceHash": "a937e6e"
   },
-  "commands.handler.viewDebugLog.disabled": "Logglagringen är avstängd. Slå på den i Inställningar > Avancerat och starta sedan om Cmdr för att visa felsökningsloggen.",
+  "commands.handler.viewDebugLog.disabled": "Logglagringen är avstängd. Ställ in en diskutrymmesgräns över 0 i Inställningar > Avancerat och starta sedan om Cmdr för att visa felsökningsloggen.",
   "@commands.handler.viewDebugLog.disabled": {
-    "sourceHash": "a781813"
+    "sourceHash": "96f16fc"
   },
   "commands.handler.viewDebugLog.unavailable": "Det gick inte att öppna felsökningsloggen. Försök igen.",
   "@commands.handler.viewDebugLog.unavailable": {

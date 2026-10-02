@@ -919,9 +919,9 @@
   "@commands.helpViewDebugLog.description": {
     "sourceHash": "a937e6e"
   },
-  "commands.handler.viewDebugLog.disabled": "Logopslag staat uit. Zet logopslag aan in Instellingen > Geavanceerd en herstart daarna Cmdr om het foutopsporingslogbestand te bekijken.",
+  "commands.handler.viewDebugLog.disabled": "Logopslag staat uit. Zet de schijfruimtelimiet in Instellingen > Geavanceerd op meer dan 0 en herstart daarna Cmdr om het foutopsporingslogbestand te bekijken.",
   "@commands.handler.viewDebugLog.disabled": {
-    "sourceHash": "a781813"
+    "sourceHash": "96f16fc"
   },
   "commands.handler.viewDebugLog.unavailable": "Kon het foutopsporingslogbestand niet openen. Probeer het opnieuw.",
   "@commands.handler.viewDebugLog.unavailable": {

@@ -916,9 +916,9 @@
   "@commands.helpViewDebugLog.description": {
     "sourceHash": "a937e6e"
   },
-  "commands.handler.viewDebugLog.disabled": "Die Protokollspeicherung ist deaktiviert. Aktiviere sie unter Einstellungen > Erweitert und starte Cmdr neu, um das Debug-Protokoll anzusehen.",
+  "commands.handler.viewDebugLog.disabled": "Die Protokollspeicherung ist deaktiviert. Setze das Speicherplatz-Limit unter Einstellungen > Erweitert auf mehr als 0 und starte Cmdr neu, um das Debug-Protokoll anzusehen.",
   "@commands.handler.viewDebugLog.disabled": {
-    "sourceHash": "a781813"
+    "sourceHash": "96f16fc"
   },
   "commands.handler.viewDebugLog.unavailable": "Das Debug-Protokoll ließ sich nicht öffnen. Versuche es noch einmal.",
   "@commands.handler.viewDebugLog.unavailable": {
