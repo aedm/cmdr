@@ -2743,8 +2743,11 @@ export const commands = {
    *  (installed → false) while keeping keyword + tag search working. Runs OFF the IPC
    *  thread (it blocks on each volume's writer). Idempotent: with nothing installed and
    *  nothing enriched it removes any stray artifacts and returns.
+   *
+   *  [`ReclaimError::NotDeleted`] when some of it is still on disk (a volume's prune didn't
+   *  land, or the artifacts wouldn't go), so the panel never says the data is gone when it isn't.
    */
-  mediaIndexDeleteClipModel: () => typedError<null, string>(__TAURI_INVOKE('media_index_delete_clip_model')),
+  mediaIndexDeleteClipModel: () => typedError<null, ReclaimError>(__TAURI_INVOKE('media_index_delete_clip_model')),
   /**
    *  Classify the index status of each file in `paths` (in request order) on `volume_id`.
    *

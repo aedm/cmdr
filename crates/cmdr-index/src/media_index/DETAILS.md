@@ -539,9 +539,11 @@ OCR text stops being searchable at once (privacy is a hard requirement, not "eve
 - **The trigger** is a folder context-menu item ("Don't index images in this folder" / "Index images here again", shown
   only while image indexing is on, exactly one keyed on the current state). It's a NATIVE (Rust) menu, so the click
   emits a `MediaIndexFolderExclusion` event to the FE, which persists `mediaIndex.excludedFolders` and calls
-  `media_index_set_excluded_folder` (the native menu can't write the FE settings store) — the persist + live-apply
-  pattern from `network-volume-prefs.ts` minus its rollback (the owed-purge bullet above says why), in
-  `src/lib/media-index/excluded-folders.ts`, wired in the main route's `setupMenuListeners`.
+  `media_index_set_excluded_folder` (the native menu can't write the FE settings store) — the shared `persistThenApply`
+  helper from `network-volume-prefs.ts` with `rollback: false` (the owed-purge bullet above says why), in
+  `src/lib/media-index/excluded-folders.ts`, wired in the main route's `setupMenuListeners`. The other three media-index
+  prefs roll back on a failed apply, and only their own item: the helper re-reads the array and restores that one id's
+  membership, so a toggle that landed while the failing call was in flight survives.
 
 ## WAL checkpoint at pass completion (`writer/maintenance.rs`, plan M9)
 

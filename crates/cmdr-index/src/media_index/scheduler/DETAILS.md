@@ -285,12 +285,18 @@ derives ONLY from settings state, so it needs no `Completed` edge.
   sums the content bytes of the doomed paths (a set membership test, so no giant `IN (…)` for a 200k doomed set). It's a
   content estimate (excludes FTS-index + page overhead), so it's an honest "about" and a `VACUUM` reclaims at least it.
   The preview's "free about X" and the prune's "Freed X" use the SAME method, so the two numbers agree.
-- **A prune that didn't land says so.** A writer that won't start, or a delete SQLite refuses (a full disk, a locked
-  database), is a typed `PruneFailure`, never zero rows: zero rows is what the settings toast voices as "already
-  cleared". `media_index_prune_below_threshold` turns any volume's failure into `ReclaimError::NotDeleted` (still
-  pruning the other volumes), and the panel toasts "couldn't delete" and re-reads the preview. A `VACUUM` that fails
-  after the delete landed reports `freed_bytes: None`, because the file is exactly as large as before, and owes the
-  volume a `VACUUM` its next pass runs (`purge.rs`). The panel then says the space frees up later instead of "Freed X".
+- **A prune that didn't land says so.** A `media.db` that won't read, a writer that won't start, or a delete SQLite
+  refuses (a full disk, a locked database), is a typed `PruneFailure`, never zero rows: zero rows is what the settings
+  toast voices as "already cleared". `media_index_prune_below_threshold` turns any volume's failure into
+  `ReclaimError::NotDeleted` (still pruning the other volumes), and the panel toasts "couldn't delete" and re-reads the
+  preview. A `VACUUM` that fails after the delete landed reports `freed_bytes: None`, because the file is exactly as
+  large as before, and owes the volume a `VACUUM` its next pass runs (`purge.rs`). The panel then says the space frees
+  up later instead of "Freed X".
+
+- **An unreadable store is not an empty one.** `stored_coverage` answers `Err(StoreUnreadable)` when the volume's
+  `media.db` exists but won't read (corrupt, or locked past the busy timeout), and an empty partition only when there's
+  no file (never enriched). The prune maps it to `PruneFailure::StoreUnreadable` (the panel's "couldn't delete" toast),
+  the preview to `pending` (the line hides), and the counts poll to `None` (unknown, never `0`).
 
 The two commands (`media_index_reclaim_preview`, `media_index_prune_below_threshold`) are in `../DETAILS.md` § The IPC
 surface, and the FE surface in its § The frontend surface.

@@ -83,7 +83,10 @@ the shared on-disk `clip-model` dir (both towers), then, for EVERY volume with a
 resetting the stamp is what makes a later re-download re-embed (the row goes CLIP-stale again against the reinstalled
 stamp). Vision data (status/OCR/tags/feature print) is untouched, and CLIP embeddings aren't part of the `accounted`
 aggregate (that counts `media_status` rows), so no aggregate delta. After the delete, `media_index_clip_model_status`
-reads `installed: false`, so the UI returns to the download affordance.
+reads `installed: false`, so the UI returns to the download affordance. A volume whose writer won't start or whose
+`prune_all_clip` SQLite refuses makes `delete_clip_model` answer a `PruneFailure` (after still pruning every other
+volume), and the command answers `ReclaimError::NotDeleted`, so the panel shows its "couldn't delete" line instead of
+claiming the embeddings are gone.
 
 ## The Core ML towers + worker thread (`macos.rs`)
 
