@@ -28,6 +28,10 @@ pub struct Workload {
     /// Whether a big server-side copy goes in `UploadPartCopy` parts; GCS
     /// has none, so it's one `CopyObject` there.
     pub(crate) copies_in_parts: bool,
+    /// Whether the provider enforces a part copy's source ETag pin; off the
+    /// allowlist a multipart copy HEADs its source once more before
+    /// completing (`volume/server_copy.rs::source_unchanged`).
+    pub(crate) pins_copy_source: bool,
     /// Whether a one-PUT overwrite of an existing object goes as a multipart
     /// upload, because the provider is off the `refuses_short_body` allowlist
     /// (`volume/writes.rs`).
@@ -63,6 +67,7 @@ impl Workload {
             checks: Checks::of(provider),
             short_tail: profile.as_ref().map_or(ShortTail::Fold, |profile| profile.short_tail),
             copies_in_parts: profile.as_ref().is_ok_and(|profile| profile.copies_in_parts),
+            pins_copy_source: profile.as_ref().is_ok_and(|profile| profile.enforces_copy_source_pin),
             // A profile that won't build is the multipart side, the safe one.
             overwrites_in_parts: !profile.as_ref().is_ok_and(|profile| profile.refuses_short_body),
             requests: HashMap::new(),
@@ -101,7 +106,8 @@ impl Workload {
     /// (`volume/server_copy.rs`): a HEAD of the source, one `CopyObject` up to
     /// the part floor (or any size where the provider has no `UploadPartCopy`),
     /// else Create, an `UploadPartCopy` per part, and Complete; then the
-    /// verifying HEAD, and the no-overwrite HEADs where needed. Past one
+    /// verifying HEAD, the no-overwrite HEADs where needed, and for a copy in
+    /// parts off the pin allowlist one more source HEAD. Past one
     /// `CopyObject`'s ceiling without parts, the engine streams it: a download
     /// and an upload.
     pub fn copy_on_server(&mut self, size: u64) {
@@ -121,7 +127,8 @@ impl Workload {
             self.add(RequestKind::CompleteMultipartUpload, 1);
         }
         let checks = if whole { self.checks.copy } else { self.checks.complete };
-        self.add(RequestKind::HeadObject, 2 + checks);
+        let pin_stand_in = u64::from(!whole && !self.pins_copy_source);
+        self.add(RequestKind::HeadObject, 2 + checks + pin_stand_in);
     }
 
     /// One object deleted, in a `DeleteObjects` batch (`volume/batch.rs`).

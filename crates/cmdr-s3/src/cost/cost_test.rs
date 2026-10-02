@@ -398,6 +398,34 @@ fn a_short_tail_counts_as_its_own_part() {
 // $0.40/M, a single delete free, egress $0.12/GB. No `UploadPartCopy`.
 // ---------------------------------------------------------------------------
 
+/// ❗ Off the `enforces_copy_source_pin` allowlist a multipart server-side
+/// copy HEADs its source once more right before the completion
+/// (`server_copy.rs::source_unchanged`); a one-request copy doesn't. Counted by
+/// the engine's request tally on Hetzner and Spaces (live, 2026-10-02).
+#[test]
+fn a_multipart_copy_off_the_pin_allowlist_heads_its_source_again() {
+    let heads = |provider: &S3Provider, size: u64| {
+        let mut work = workload(provider);
+        work.copy_on_server(size);
+        work.counted_requests().get("HeadObject").copied().unwrap_or(0)
+    };
+    // Source, verify, and the two no-overwrite checks a multipart write makes
+    // on a check-then-write provider, plus the pin's stand-in.
+    assert_eq!(heads(&hetzner(), GIB), 5);
+    // One `CopyObject`: source, verify, one no-overwrite check; no stand-in.
+    assert_eq!(heads(&hetzner(), MIB), 3);
+    // AWS enforces the pin and refuses an occupied name by header.
+    assert_eq!(
+        heads(
+            &S3Provider::Aws {
+                region: "us-east-1".into()
+            },
+            GIB
+        ),
+        2
+    );
+}
+
 #[test]
 fn gcs_copies_a_big_object_in_one_request() {
     let mut work = workload(&S3Provider::Gcs);
