@@ -9,7 +9,8 @@
 # Credentials come from David's sops store through the `secret` CLI and go to
 # the environment only. ❗ Never echo them. Bucket names aren't secret, so the
 # ones without a secret of their own are defaults here; any variable already
-# set wins.
+# set wins. Hetzner and Spaces have no default bucket: they bill while a bucket
+# exists, so they run only when one is passed in.
 #
 # Each provider with a second bucket (`_BUCKET_2`, reached by the same key)
 # runs the cross-bucket cells too.
@@ -29,24 +30,34 @@ export CMDR_S3_LIVE_R2_KEY_ID="${CMDR_S3_LIVE_R2_KEY_ID:-$(secret R2_S3_TEST_ACC
 export CMDR_S3_LIVE_R2_SECRET="${CMDR_S3_LIVE_R2_SECRET:-$(secret R2_S3_TEST_SECRET_ACCESS_KEY)}"
 export CMDR_S3_LIVE_R2_BUCKET="${CMDR_S3_LIVE_R2_BUCKET:-cmdr-s3-test}"
 
-# Hetzner Object Storage. HEL1 has been degraded; NBG1 is the default. Hetzner
-# bills per hour while a bucket exists.
-export CMDR_S3_LIVE_HETZNER_LOCATION="${CMDR_S3_LIVE_HETZNER_LOCATION:-nbg1}"
-export CMDR_S3_LIVE_HETZNER_KEY_ID="${CMDR_S3_LIVE_HETZNER_KEY_ID:-$(secret HETZNER_S3_ACCESS_KEY_ID)}"
-export CMDR_S3_LIVE_HETZNER_SECRET="${CMDR_S3_LIVE_HETZNER_SECRET:-$(secret HETZNER_S3_SECRET_ACCESS_KEY)}"
-export CMDR_S3_LIVE_HETZNER_BUCKET="${CMDR_S3_LIVE_HETZNER_BUCKET:-cmdr-s3-test-58fb74}"
-export CMDR_S3_LIVE_HETZNER_BUCKET_2="${CMDR_S3_LIVE_HETZNER_BUCKET_2:-cmdr-s3-test-58fb74-2}"
+# Hetzner Object Storage, only when CMDR_S3_LIVE_HETZNER_BUCKET is set: Hetzner
+# bills per hour while a bucket exists, so the test buckets are made for a run
+# and deleted after (README § "Live providers"). HEL1 has been degraded; NBG1
+# is the default. An unset bucket leaves every Hetzner variable unset, and the
+# cells skip it.
+if [ -n "${CMDR_S3_LIVE_HETZNER_BUCKET:-}" ]; then
+    export CMDR_S3_LIVE_HETZNER_BUCKET
+    export CMDR_S3_LIVE_HETZNER_LOCATION="${CMDR_S3_LIVE_HETZNER_LOCATION:-nbg1}"
+    export CMDR_S3_LIVE_HETZNER_KEY_ID="${CMDR_S3_LIVE_HETZNER_KEY_ID:-$(secret HETZNER_S3_ACCESS_KEY_ID)}"
+    export CMDR_S3_LIVE_HETZNER_SECRET="${CMDR_S3_LIVE_HETZNER_SECRET:-$(secret HETZNER_S3_SECRET_ACCESS_KEY)}"
+    if [ -n "${CMDR_S3_LIVE_HETZNER_BUCKET_2:-}" ]; then export CMDR_S3_LIVE_HETZNER_BUCKET_2; fi
+fi
 
 # Google Cloud Storage, through the XML API with HMAC keys.
 export CMDR_S3_LIVE_GCS_KEY_ID="${CMDR_S3_LIVE_GCS_KEY_ID:-$(secret GCS_S3_ACCESS_KEY_ID)}"
 export CMDR_S3_LIVE_GCS_SECRET="${CMDR_S3_LIVE_GCS_SECRET:-$(secret GCS_S3_SECRET_ACCESS_KEY)}"
 export CMDR_S3_LIVE_GCS_BUCKET="${CMDR_S3_LIVE_GCS_BUCKET:-$(secret GCS_S3_TEST_BUCKET)}"
 
-# DigitalOcean Spaces. The key is bucket-scoped.
-export CMDR_S3_LIVE_SPACES_REGION="${CMDR_S3_LIVE_SPACES_REGION:-$(secret DO_SPACES_REGION)}"
-export CMDR_S3_LIVE_SPACES_KEY_ID="${CMDR_S3_LIVE_SPACES_KEY_ID:-$(secret DO_SPACES_ACCESS_KEY_ID)}"
-export CMDR_S3_LIVE_SPACES_SECRET="${CMDR_S3_LIVE_SPACES_SECRET:-$(secret DO_SPACES_SECRET_ACCESS_KEY)}"
-export CMDR_S3_LIVE_SPACES_BUCKET="${CMDR_S3_LIVE_SPACES_BUCKET:-$(secret DO_SPACES_TEST_BUCKET)}"
+# DigitalOcean Spaces, only when CMDR_S3_LIVE_SPACES_BUCKET is set: Spaces bills
+# $5/month while any bucket exists, so the test bucket is made for a run and
+# deleted after (README § "Live providers"). The key is bucket-scoped to the
+# name in `secret DO_SPACES_TEST_BUCKET`, so recreate that one.
+if [ -n "${CMDR_S3_LIVE_SPACES_BUCKET:-}" ]; then
+    export CMDR_S3_LIVE_SPACES_BUCKET
+    export CMDR_S3_LIVE_SPACES_REGION="${CMDR_S3_LIVE_SPACES_REGION:-$(secret DO_SPACES_REGION)}"
+    export CMDR_S3_LIVE_SPACES_KEY_ID="${CMDR_S3_LIVE_SPACES_KEY_ID:-$(secret DO_SPACES_ACCESS_KEY_ID)}"
+    export CMDR_S3_LIVE_SPACES_SECRET="${CMDR_S3_LIVE_SPACES_SECRET:-$(secret DO_SPACES_SECRET_ACCESS_KEY)}"
+fi
 
 # AWS, as the IAM user `claude-agent`. Two buckets in eu-north-1, plus a third
 # in us-west-2 for the account root's per-bucket region routing.

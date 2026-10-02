@@ -8,9 +8,11 @@
 #   ./live.sh                      # every provider, every live cell, then the sweep
 #   ./live.sh r2,gcs               # only these providers
 #   ./live.sh all live_batch       # every provider, only cells matching a filter
+#   CMDR_S3_LIVE_HETZNER_BUCKET=<name> ./live.sh hetzner
 #
 # The variables come from `live-env.sh` beside this script, which other
-# runners source too.
+# runners source too. Hetzner and Spaces run only with a bucket passed in like
+# above, since they bill while a bucket exists (README § "Live providers").
 #
 # Each cell deletes what it wrote under `cmdr-live/<run>/`; the last step
 # sweeps anything a crashed run left. The buckets themselves stay.

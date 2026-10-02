@@ -162,8 +162,25 @@ Findings: `docs/notes/s3/live-engine-2026-10.md`.
 `live-env.sh` is the single source of the variables (`CMDR_S3_LIVE_<NAME>_{REGION,KEY_ID,SECRET,BUCKET,BUCKET_2}` and a
 few extras): credentials from David's sops store through `secret`, bucket names as defaults. Any variable already set
 wins. ❗ It never echoes a value. The buckets stay between runs; each cell deletes what it wrote under
-`cmdr-live/<run>/`, and the last step sweeps leftovers. Cost guardrails: Hetzner bills per hour while a bucket exists,
-and Wasabi bills every object for 90 days even once deleted, so its big-file cells stay small.
+`cmdr-live/<run>/`, and the last step sweeps leftovers. Cost guardrails: Wasabi bills every object for 90 days even once
+deleted, so its big-file cells stay small.
+
+Hetzner and Spaces bill a base fee while any bucket exists, even an empty one, so their test buckets don't stay: they
+exist only for a run, and `live-env.sh` exports their variables only when a bucket is passed in. A default run skips
+both. To rerun one:
+
+- **Hetzner** (about EUR 6.49/month, billed by the hour, so a one-hour run costs about one cent; verified on
+  hetzner.com/storage/object-storage, 2026-10-02): create the buckets in `nbg1` with the `HETZNER_S3_*` key
+  (`aws s3api create-bucket --endpoint-url https://nbg1.your-objectstorage.com`), then
+  `CMDR_S3_LIVE_HETZNER_BUCKET=<name> CMDR_S3_LIVE_HETZNER_BUCKET_2=<name-2> ./live.sh hetzner`. `_BUCKET_2` is optional
+  and enables the cross-bucket cells.
+- **Spaces** (USD 5/month while any bucket exists, prorated): the `DO_SPACES_*` key is scoped to the bucket name in
+  `secret DO_SPACES_TEST_BUCKET` and can't create a bucket, so create that name in `secret DO_SPACES_REGION` from the
+  control panel (or with a temporary full-access key minted by the PAT: `POST /v2/spaces/keys` with
+  `{"bucket": "", "permission": "fullaccess"}`), then `CMDR_S3_LIVE_SPACES_BUCKET=<name> ./live.sh spaces`.
+- **After the run**, empty and delete the buckets (abort unfinished multipart uploads first), and list buckets to
+  confirm none remain. Spaces' scoped key can empty its bucket but not delete it: delete it with a temporary full-access
+  key over the S3 API (DigitalOcean's API has no bucket delete), then `DELETE /v2/spaces/keys/<access_key>`.
 
 ## Adding a server
 
