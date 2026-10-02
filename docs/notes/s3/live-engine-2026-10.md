@@ -158,8 +158,9 @@ requests against the estimate 6 of 6. B2 stays unverified (cap hit).
 3. **IPv6 without a route.** On this network (ULA addresses only) GCS twice failed mid-run with "Network is unreachable
    (os error 51)", every later connect in that process too, while `curl` falls back to IPv4. Worth checking how
    `hyper-util`'s happy eyeballs handles an address list that fails instantly.
-4. **The fixture lane got heavier**: 94 app `s3_integration_` cells. At full parallelism under load they hit the 8 s cap
-   together; at `-j 2` all pass. A test group or a thread cap for `s3_integration_` would keep the lane honest.
+4. **Done (`ce80865de`): the fixture lane queues.** All 191 S3 fixture cells (94 app, 97 crate) run four at a time on
+   nextest's `s3-fixture` group with a 30 s cap; at full parallelism the whole lane went from every cell killed at 8 s
+   to 191 of 191 green in 174 s. If that wall time matters more than headroom, `max-threads` is the knob.
 5. **Second buckets** on R2, GCS, and Spaces would let the cross-bucket flows run there too.
 6. **B2's daily Class B cap** needs a rerun of B2's read flows after it resets (or a raised cap). Once the cap was used
    up (by the 1,005-object cells' HEADs), every B2 GET answered `403` with `<Code>AccessDenied</Code>` ("Cannot download
