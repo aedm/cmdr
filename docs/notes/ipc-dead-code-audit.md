@@ -113,10 +113,12 @@ superseded too, not groundwork.
 
 - `MtpDeleteScope::Tree` in `cmdr-mtp` has no caller left (the removed `delete_mtp_object` was the only one). Keep it as
   crate capability, or drop it with `tree_scope_still_removes_a_whole_subtree`.
-- `VolumeScanError::SourceVolumeNotFound` / `SourceVolumeNotConnected` are no longer constructed (only the removed
-  command built them) and could go.
 - `list_directory_start_with_volume` is a test-only twin of the streaming listing pipeline; folding its three tests onto
   the streaming path (with a collector sink) would let it go.
 - The Windows stubs (`stubs/mtp.rs`, `stubs/network.rs`) compile on no lane; they were edited by reading alone.
-- A check that fails on an unreferenced `commands.*` entry or `tauri-commands` export would keep this from piling up
-  again.
+- **Done**: `VolumeScanError::SourceVolumeNotFound` / `SourceVolumeNotConnected` are gone (nothing, the stubs included,
+  built them after the removed command).
+- **Done**: the `desktop-ipc-unused` check now fails on an uncalled `tauri-commands` export or `commands.*` entry, with
+  the GAP and UNSURE items above (plus `get_memory_diagnostics`, agent tooling) in its allowlist until they're resolved.
+  knip also sees `tauri-commands/` now. Rule: `apps/desktop/src/lib/tauri-commands/DETAILS.md` § "Unused wrappers and
+  commands".

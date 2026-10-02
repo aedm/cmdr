@@ -15972,12 +15972,6 @@ export type VolumeRootChanged = {
  *  so a scan that fails on the device says exactly what the device said.
  */
 export type VolumeScanError =
-  // The source volume isn't registered (a race: it was ejected mid-dialog).
-  | {
-      type: 'sourceVolumeNotFound'
-      // The id that no longer resolves.
-      volumeId: string
-    }
   // The destination volume isn't registered.
   | {
       type: 'destinationVolumeNotFound'
@@ -15985,17 +15979,8 @@ export type VolumeScanError =
       volumeId: string
     }
   /**
-   *  The source is a listed phone or a saved server that nothing has
-   *  connected yet (`crate::unregistered_volumes`).
-   */
-  | {
-      type: 'sourceVolumeNotConnected'
-      // The id nothing has connected.
-      volumeId: string
-    }
-  /**
    *  The destination is a listed phone or a saved server that nothing has
-   *  connected yet.
+   *  connected yet (`crate::unregistered_volumes`).
    */
   | {
       type: 'destinationVolumeNotConnected'

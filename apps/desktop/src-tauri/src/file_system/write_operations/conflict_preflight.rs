@@ -34,24 +34,13 @@ use super::routing::{resolve_dest_path, resolve_source_volume, transfer_would_la
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 #[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum VolumeScanError {
-    /// The source volume isn't registered (a race: it was ejected mid-dialog).
-    SourceVolumeNotFound {
-        /// The id that no longer resolves.
-        volume_id: String,
-    },
     /// The destination volume isn't registered.
     DestinationVolumeNotFound {
         /// The id that no longer resolves.
         volume_id: String,
     },
-    /// The source is a listed phone or a saved server that nothing has
-    /// connected yet (`crate::unregistered_volumes`).
-    SourceVolumeNotConnected {
-        /// The id nothing has connected.
-        volume_id: String,
-    },
     /// The destination is a listed phone or a saved server that nothing has
-    /// connected yet.
+    /// connected yet (`crate::unregistered_volumes`).
     DestinationVolumeNotConnected {
         /// The id nothing has connected.
         volume_id: String,
@@ -86,11 +75,9 @@ impl std::fmt::Display for VolumeScanError {
     /// ❗ For logs and debugging only.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::SourceVolumeNotFound { volume_id } => write!(f, "source volume not found: {volume_id}"),
             Self::DestinationVolumeNotFound { volume_id } => {
                 write!(f, "destination volume not found: {volume_id}")
             }
-            Self::SourceVolumeNotConnected { volume_id } => write!(f, "source volume not connected yet: {volume_id}"),
             Self::DestinationVolumeNotConnected { volume_id } => {
                 write!(f, "destination volume not connected yet: {volume_id}")
             }
