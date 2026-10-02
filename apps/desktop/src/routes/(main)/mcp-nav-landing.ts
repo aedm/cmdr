@@ -131,14 +131,16 @@ export async function waitForListingOrStall(
   probe: Pick<PaneQuietProbe, 'getListingId' | 'isStalled' | 'sleep'>,
   options: { listingIdBefore: string | null; pollMs: number },
 ): Promise<'quiet' | 'stalled'> {
-  let landed = false
+  // A property, not a `let`: the callbacks below flip it, which flow analysis can't see
+  // from the loop, so a bare boolean reads to it as forever `false`.
+  const watch = { landed: false }
   const listing = settled.then(
     () => {
-      landed = true
+      watch.landed = true
       return 'quiet' as const
     },
     (e: unknown) => {
-      landed = true
+      watch.landed = true
       throw e
     },
   )
@@ -146,7 +148,7 @@ export async function waitForListingOrStall(
   // (the user pressing Esc on the stalled screen) from going unhandled.
   listing.catch(() => undefined)
   const stall = (async () => {
-    while (!landed) {
+    while (!watch.landed) {
       if (probe.getListingId() !== options.listingIdBefore && probe.isStalled()) return 'stalled' as const
       await probe.sleep(options.pollMs)
     }
