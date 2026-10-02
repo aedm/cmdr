@@ -103,14 +103,13 @@ impl Workload {
     }
 
     /// One object copied within the account, without its bytes leaving
-    /// (`volume/server_copy.rs`), its source facts taken from the listing the
-    /// walk just made: one `CopyObject` up to the part floor (or any size
-    /// where the provider has no `UploadPartCopy`), with no HEAD of its
-    /// source; else a HEAD of the source for the metadata the copy restates,
-    /// Create, an `UploadPartCopy` per part, and Complete, and off the pin
-    /// allowlist one more source HEAD. Then the verifying HEAD and the
-    /// no-overwrite HEADs where needed. Past one `CopyObject`'s ceiling
-    /// without parts, the engine streams it: a download and an upload.
+    /// (`volume/server_copy.rs`): a HEAD of the source, one `CopyObject` up to
+    /// the part floor (or any size where the provider has no `UploadPartCopy`),
+    /// else Create, an `UploadPartCopy` per part, and Complete; then the
+    /// verifying HEAD, the no-overwrite HEADs where needed, and for a copy in
+    /// parts off the pin allowlist one more source HEAD. Past one
+    /// `CopyObject`'s ceiling without parts, the engine streams it: a download
+    /// and an upload.
     pub fn copy_on_server(&mut self, size: u64) {
         if !self.copies_in_parts && size > MAX_COPY_OBJECT_SIZE {
             self.download(size);
@@ -128,12 +127,8 @@ impl Workload {
             self.add(RequestKind::CompleteMultipartUpload, 1);
         }
         let checks = if whole { self.checks.copy } else { self.checks.complete };
-        let source_heads = if whole {
-            0
-        } else {
-            1 + u64::from(!self.pins_copy_source)
-        };
-        self.add(RequestKind::HeadObject, 1 + checks + source_heads);
+        let pin_stand_in = u64::from(!whole && !self.pins_copy_source);
+        self.add(RequestKind::HeadObject, 2 + checks + pin_stand_in);
     }
 
     /// One object deleted, in a `DeleteObjects` batch (`volume/batch.rs`).

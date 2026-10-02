@@ -75,6 +75,14 @@ pub(crate) struct ObjectMetadata {
     pub carried: Vec<(String, String)>,
 }
 
+/// What a copy does with the source's metadata.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum MetadataDirective {
+    /// Keep the source's (S3's default): a rename keeps its mtime.
+    Copy,
+    Replace(ObjectMetadata),
+}
+
 /// The object a copy reads from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct CopySource<'a> {
@@ -270,22 +278,22 @@ pub(crate) fn list_multipart_uploads(
 }
 
 /// A server-side copy in one request (up to 5 GB; past that, multipart with
-/// `upload_part_copy`), keeping the source's metadata (S3's default `COPY`
-/// directive: a rename keeps its mtime). `source_etag`, when known, pins the
-/// copy to that version of the source (`x-amz-copy-source-if-match`), as
-/// `upload_part_copy` does. ❗ May fail inside a `200`: parse the body.
+/// `upload_part_copy`). ❗ May fail inside a `200`: parse the body.
 pub(crate) fn copy_object(
     profile: &ProviderProfile,
     source: CopySource<'_>,
-    source_etag: Option<&str>,
     bucket: &str,
     key: &str,
     overwrite: Overwrite,
+    directive: &MetadataDirective,
 ) -> Result<Built, BuildError> {
     let mut request = at(profile, Method::PUT, bucket, Some(key))?
         .header(name("x-amz-copy-source"), copy_source(profile, source, bucket)?);
-    if let Some(etag) = source_etag.and_then(|etag| HeaderValue::from_str(etag).ok()) {
-        request = request.header(name("x-amz-copy-source-if-match"), etag);
+    if let MetadataDirective::Replace(metadata) = directive {
+        request = with_metadata(
+            request.header(name("x-amz-metadata-directive"), HeaderValue::from_static("REPLACE")),
+            metadata,
+        );
     }
     Ok(guarded(profile, ConditionalOp::Copy, request, overwrite))
 }

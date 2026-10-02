@@ -7,9 +7,8 @@ use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 
 use cmdr_fs::volume::VolumeError;
 
-use super::SourceObject;
+use super::{SourceObject, Window, part_refusal};
 use crate::transport::Answer;
-use crate::volume::part_copy::{Window, part_refusal};
 
 fn head(pairs: &[(&str, &str)]) -> Answer {
     let mut headers = HeaderMap::new();

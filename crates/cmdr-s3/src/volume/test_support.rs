@@ -50,7 +50,6 @@ pub(super) fn make_test_volume_with(bucket: Option<&str>, host: VolumeHost) -> S
             ledger: super::upload_ledger::UploadLedger::at(host.state_dir("s3")),
             host,
             written: std::sync::Mutex::new(std::collections::HashMap::new()),
-            listed: std::sync::Mutex::new(std::collections::HashMap::new()),
             part_floor: std::sync::atomic::AtomicU64::new(crate::multipart::MIN_PART_SIZE),
             beside_folders: std::sync::Mutex::new(std::collections::HashSet::new()),
         }),

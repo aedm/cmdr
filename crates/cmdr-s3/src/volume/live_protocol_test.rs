@@ -164,10 +164,10 @@ async fn try_built(live: &Live, client: &S3Client, prefix: &str, op: Conditional
                         bucket: &live.bucket,
                         key: &source,
                     },
-                    None,
                     &live.bucket,
                     &key,
                     ops::Overwrite::Refuse,
+                    &ops::MetadataDirective::Copy,
                 ),
                 _ => ops::put_object(
                     client.profile(),
@@ -557,90 +557,6 @@ async fn live_upload_part_copy_shapes() {
             },
         );
         live.abort(&client, &key, &upload_id).await;
-        live.clean(&client, &prefix).await;
-    }
-}
-
-/// What a one-request `CopyObject` by `COPY` answers as its ETag, for a
-/// single-part source and a multipart one, and whether it enforces
-/// `x-amz-copy-source-if-match`: the lost-answer proof of
-/// `server_copy.rs::landed_after_all` holds only where the copy keeps the
-/// source's ETag, and `copy_whole` trusts a stale pin's `412` only where the
-/// profile says the pin holds.
-#[tokio::test(flavor = "multi_thread")]
-async fn live_copy_object_etags() {
-    for live in live_targets() {
-        let client = live.client();
-        let prefix = live_prefix("copy-etag");
-        let single = format!("{prefix}single.bin");
-        assert!(
-            live.put(&client, &single, &pattern(4096, 3), &[])
-                .await
-                .status
-                .is_success()
-        );
-        let multi = format!("{prefix}multi.bin");
-        let (said, _) = shaped_upload(&live, &client, &multi, &[5, 5]).await;
-        for (label, source) in [("single-part source", &single), ("multipart source", &multi)] {
-            let head = ops::head_object(client.profile(), &live.bucket, source).expect("builds");
-            let source_etag = live.send(&client, head).await.header("etag").map(str::to_string);
-            let to = format!("{source}.copy");
-            let pin = source_etag.clone().unwrap_or_default();
-            let answer = live
-                .send(
-                    &client,
-                    copy_request(
-                        &client,
-                        (&live.bucket, source),
-                        (&live.bucket, &to),
-                        &[("x-amz-copy-source-if-match", pin.as_str())],
-                    ),
-                )
-                .await;
-            let answered = crate::xml::parse_copy_result(&answer.text())
-                .ok()
-                .and_then(|copied| copied.etag);
-            let head = ops::head_object(client.profile(), &live.bucket, &to).expect("builds");
-            let landed = live.send(&client, head).await.header("etag").map(str::to_string);
-            let same = |etag: &Option<String>| match (etag, &source_etag) {
-                (Some(one), Some(other)) => one.trim_matches('"') == other.trim_matches('"'),
-                _ => false,
-            };
-            report(
-                &live,
-                &format!("CopyObject ETag, {label}"),
-                format!(
-                    "{}; source {source_etag:?}, answered {answered:?} (same: {}), HEAD after {landed:?} (same: {})",
-                    verdict(&answer),
-                    same(&answered),
-                    same(&landed)
-                ),
-            );
-        }
-        report(&live, "CopyObject ETag, the multipart source's upload", said);
-        let to = format!("{single}.wrong-pin");
-        let refused = live
-            .send(
-                &client,
-                copy_request(
-                    &client,
-                    (&live.bucket, &single),
-                    (&live.bucket, &to),
-                    &[("x-amz-copy-source-if-match", "\"0123456789abcdef0123456789abcdef\"")],
-                ),
-            )
-            .await;
-        let landed = live.length(&client, &to).await;
-        report(
-            &live,
-            "CopyObject with a wrong source pin",
-            format!("{}, a copy landed: {}", verdict(&refused), landed.is_some()),
-        );
-        assert!(
-            landed.is_none() || !client.profile().enforces_copy_source_pin,
-            "[{}] the profile trusts the copy-source pin, but a CopyObject ignored it",
-            live.name
-        );
         live.clean(&client, &prefix).await;
     }
 }

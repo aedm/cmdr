@@ -158,7 +158,7 @@ fn a_refused_overwrite_on_gcs_sends_the_generation_precondition_in_its_own_diale
         bucket: "b",
         key: "src",
     };
-    let copy = copy_object(&gcs, source, None, "b", "k", Overwrite::Refuse).unwrap();
+    let copy = copy_object(&gcs, source, "b", "k", Overwrite::Refuse, &MetadataDirective::Copy).unwrap();
     assert_eq!(header(&copy.request, "x-goog-if-generation-match"), Some("0"));
     assert_eq!(copy.request.dialect, Dialect::Goog);
     assert!(!copy.check_first);
@@ -244,24 +244,43 @@ fn upload_part_copy_names_its_source_and_byte_range() {
 }
 
 #[test]
-fn copy_object_keeps_the_sources_metadata() {
+fn copy_object_keeps_metadata_by_default_and_replaces_it_on_request() {
     let source = CopySource {
         bucket: "b",
         key: "old name.txt",
     };
-    let keep = copy_object(&aws(), source, None, "b", "new.txt", Overwrite::Replace).unwrap();
+    let keep = copy_object(
+        &aws(),
+        source,
+        "b",
+        "new.txt",
+        Overwrite::Replace,
+        &MetadataDirective::Copy,
+    )
+    .unwrap();
     assert_eq!(header(&keep.request, "x-amz-copy-source"), Some("/b/old%20name.txt"));
     assert_eq!(header(&keep.request, "x-amz-metadata-directive"), None);
-    assert_eq!(header(&keep.request, "x-amz-copy-source-if-match"), None);
+
+    let replace = copy_object(
+        &aws(),
+        source,
+        "b",
+        "new.txt",
+        Overwrite::Replace,
+        &MetadataDirective::Replace(with_mtime()),
+    )
+    .unwrap();
+    assert_eq!(header(&replace.request, "x-amz-metadata-directive"), Some("REPLACE"));
+    assert_eq!(header(&replace.request, "x-amz-meta-mtime"), Some("1354040105"));
 }
 
 #[test]
 fn a_refused_copy_overwrite_uses_r2s_own_header() {
     let source = CopySource { bucket: "b", key: "a" };
-    let on_r2 = copy_object(&r2(), source, None, "b", "c", Overwrite::Refuse).unwrap();
+    let on_r2 = copy_object(&r2(), source, "b", "c", Overwrite::Refuse, &MetadataDirective::Copy).unwrap();
     assert_eq!(header(&on_r2.request, "cf-copy-destination-if-none-match"), Some("*"));
     assert_eq!(header(&on_r2.request, "if-none-match"), None);
-    let on_aws = copy_object(&aws(), source, None, "b", "c", Overwrite::Refuse).unwrap();
+    let on_aws = copy_object(&aws(), source, "b", "c", Overwrite::Refuse, &MetadataDirective::Copy).unwrap();
     assert_eq!(header(&on_aws.request, "if-none-match"), Some("*"));
 }
 
@@ -272,10 +291,28 @@ fn spaces_refuses_a_cross_bucket_copy_before_sending_it() {
         key: "a",
     };
     assert_eq!(
-        copy_object(&spaces(), source, None, "two", "a", Overwrite::Replace).err(),
+        copy_object(
+            &spaces(),
+            source,
+            "two",
+            "a",
+            Overwrite::Replace,
+            &MetadataDirective::Copy
+        )
+        .err(),
         Some(BuildError::CrossBucketCopy)
     );
-    assert!(copy_object(&spaces(), source, None, "one", "b", Overwrite::Replace).is_ok());
+    assert!(
+        copy_object(
+            &spaces(),
+            source,
+            "one",
+            "b",
+            Overwrite::Replace,
+            &MetadataDirective::Copy
+        )
+        .is_ok()
+    );
     assert_eq!(
         upload_part_copy(&spaces(), "two", "a", "up", 1, source, (0, 1), None).err(),
         Some(BuildError::CrossBucketCopy)
@@ -364,11 +401,4 @@ fn a_share_link_to_an_aws_bucket_elsewhere_names_its_region_and_endpoint() {
 
     assert_eq!(link.host_str(), Some("photos.s3.eu-west-1.amazonaws.com"));
     assert!(link.query().unwrap().contains("%2Feu-west-1%2Fs3%2F"));
-}
-
-#[test]
-fn a_copy_object_with_a_known_source_etag_is_pinned_to_it() {
-    let source = CopySource { bucket: "b", key: "a" };
-    let pinned = copy_object(&aws(), source, Some("\"abc\""), "b", "c", Overwrite::Replace).unwrap();
-    assert_eq!(header(&pinned.request, "x-amz-copy-source-if-match"), Some("\"abc\""));
 }

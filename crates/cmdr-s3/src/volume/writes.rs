@@ -583,43 +583,13 @@ impl S3Volume {
         let head = self
             .head_object(client, target.bucket, target.key, target.remote)
             .await?;
-        self.judge_head(target, size, ours, head.as_ref())
-    }
-
-    /// [`verify_landing`](Self::verify_landing) for a write whose size isn't
-    /// known for sure (a copy whose source pin the provider ignores): the
-    /// object at the key is ours by its ETag, at whatever size it holds.
-    /// Returns that size.
-    pub(super) async fn verify_landing_as_found(
-        &self,
-        client: &S3Client,
-        target: &WriteTarget<'_>,
-        size: u64,
-        ours: Option<&str>,
-    ) -> Result<u64, VolumeError> {
-        let head = self
-            .head_object(client, target.bucket, target.key, target.remote)
-            .await?;
-        let found = head.as_ref().and_then(Answer::object_length).unwrap_or(size);
-        self.judge_head(target, found, ours, head.as_ref())?;
-        Ok(found)
-    }
-
-    /// What the HEAD after a write says, in the `Volume` vocabulary.
-    fn judge_head(
-        &self,
-        target: &WriteTarget<'_>,
-        size: u64,
-        ours: Option<&str>,
-        head: Option<&Answer>,
-    ) -> Result<(), VolumeError> {
-        let landed = head.map(|answer| Landed {
+        let landed = head.as_ref().map(|answer| Landed {
             size: answer.object_length(),
             etag: answer.header("etag").map(str::to_string),
         });
         match judge_landing(size, ours, landed.as_ref(), target.mode) {
             Landing::Verified => {
-                if let Some(answer) = head {
+                if let Some(answer) = &head {
                     self.remember_written(target, answer);
                 }
                 Ok(())

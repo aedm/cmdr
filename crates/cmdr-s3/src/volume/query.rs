@@ -121,7 +121,6 @@ impl S3Volume {
                 }
                 let children = settle(children);
                 self.note_beside_folders(&remote, &children);
-                self.note_listed(&remote, &children);
                 gathered.entries = children
                     .into_iter()
                     .filter_map(|child| self.child_entry(&remote, child))
@@ -160,10 +159,7 @@ impl S3Volume {
                 }
                 let request = ops::head_object(client.profile(), bucket, key).map_err(|_| not_here())?;
                 match self.ask(&client, request, &remote).await {
-                    Ok(answer) => {
-                        self.note_headed(&remote, &answer);
-                        self.object_entry(name, &remote, &answer).ok_or_else(not_here)
-                    }
+                    Ok(answer) => self.object_entry(name, &remote, &answer).ok_or_else(not_here),
                     Err(VolumeError::NotFound(_)) if holder == Holder::Either => {
                         if self.has_keys_under(&client, bucket, key, &remote).await? {
                             self.folder_entry(name, &remote, None).ok_or_else(not_here)

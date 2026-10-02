@@ -169,17 +169,16 @@ fn aws_folder_delete_is_a_listing_and_a_delete() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn r2_server_copy_copies_and_verifies() {
+fn r2_server_copy_heads_the_source_copies_and_verifies() {
     let mut work = workload(&r2());
     for _ in 0..100 {
         work.copy_on_server(MIB);
     }
     let estimate = estimate(&work);
-    // The source's facts come from the listing: no HEAD of it.
-    // 100 `CopyObject` × $4.50/M = $0.00045; 100 HEADs × $0.36/M = $0.000036.
+    // 100 `CopyObject` × $4.50/M = $0.00045; 200 HEADs × $0.36/M = $0.000072.
     assert_eq!(requests_in(&estimate, "Class A"), 100);
-    assert_eq!(requests_in(&estimate, "Class B"), 100);
-    close(estimate.total, 0.000486);
+    assert_eq!(requests_in(&estimate, "Class B"), 200);
+    close(estimate.total, 0.000522);
 }
 
 #[test]
@@ -413,9 +412,8 @@ fn a_multipart_copy_off_the_pin_allowlist_heads_its_source_again() {
     // Source, verify, and the two no-overwrite checks a multipart write makes
     // on a check-then-write provider, plus the pin's stand-in.
     assert_eq!(heads(&hetzner(), GIB), 5);
-    // One `CopyObject`: verify and one no-overwrite check; its source facts
-    // come from the listing, and no stand-in.
-    assert_eq!(heads(&hetzner(), MIB), 2);
+    // One `CopyObject`: source, verify, one no-overwrite check; no stand-in.
+    assert_eq!(heads(&hetzner(), MIB), 3);
     // AWS enforces the pin and refuses an occupied name by header.
     assert_eq!(
         heads(
@@ -433,12 +431,12 @@ fn gcs_copies_a_big_object_in_one_request() {
     let mut work = workload(&S3Provider::Gcs);
     work.copy_on_server(GIB);
     let estimate = estimate(&work);
-    // One `CopyObject` (no parts there): 1 Class A. The verifying HEAD only:
-    // the source's facts come from the listing, and the copy carries GCS's
-    // create-only precondition: 1 Class B. 1 × $5/M + 1 × $0.40/M.
+    // One `CopyObject` (no parts there): 1 Class A. HEAD source and the
+    // verifying HEAD; no HEAD before, since the copy carries GCS's create-only
+    // precondition: 2 Class B. 1 × $5/M + 2 × $0.40/M.
     assert_eq!(requests_in(&estimate, "Class A"), 1);
-    assert_eq!(requests_in(&estimate, "Class B"), 1);
-    close(estimate.total, 0.0000054);
+    assert_eq!(requests_in(&estimate, "Class B"), 2);
+    close(estimate.total, 0.0000058);
 }
 
 #[test]

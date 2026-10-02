@@ -25,9 +25,6 @@ pub(super) enum Child {
         /// Glacier Flexible Retrieval or Deep Archive: reads fail until
         /// restored.
         archived: bool,
-        /// What a server-side copy pins and proves its landing by
-        /// (`volume/listed.rs`).
-        etag: Option<String>,
         /// A folder of the object's own name sits beside it, so `name` is the
         /// key's last segment plus [`FILE_SUFFIX`] ([`settle`]).
         beside_folder: bool,
@@ -66,7 +63,6 @@ pub(super) fn settle(children: Vec<Child>) -> Vec<Child> {
             size,
             modified,
             archived,
-            etag,
             ..
         } if folders.contains(&name) => {
             let shown = format!("{name}{FILE_SUFFIX}");
@@ -75,7 +71,6 @@ pub(super) fn settle(children: Vec<Child>) -> Vec<Child> {
                 size,
                 modified,
                 archived,
-                etag,
                 beside_folder: true,
             })
         }
@@ -142,7 +137,6 @@ pub(super) fn children_of(page: &ObjectPage, prefix: &str) -> Vec<Child> {
                 size: object.size,
                 modified: object.last_modified,
                 archived: object.storage_class.is_archived(),
-                etag: object.etag.clone(),
                 beside_folder: false,
             });
         }

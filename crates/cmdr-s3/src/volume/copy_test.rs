@@ -147,37 +147,49 @@ async fn a_big_object_copies_in_parts_keeping_its_bytes_and_date(service: Fixtur
     assert!(unfinished_uploads(service, FIXTURE_BUCKET, &prefix).await.is_empty());
 }
 
-/// ❗ A source that never carried an mtime keeps its date through a copy in
-/// parts: its upload time is written as the copy's mtime. A one-request copy
-/// goes by `COPY` with no HEAD of its source, so there it keeps only an mtime
-/// the source carries (`server_copy.rs`).
-async fn a_source_without_an_mtime_keeps_its_date_through_a_copy_in_parts(service: FixtureService) {
+/// ❗ A source that never carried an mtime keeps its date through a copy, in
+/// one request or in parts: its upload time is written as the copy's mtime.
+async fn a_source_without_an_mtime_keeps_its_date(service: FixtureService) {
     let volume = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
     volume.set_part_floor(5 * MIB as u64);
     let prefix = scratch_prefix("copy-no-mtime");
+    let small = self_describing_bytes(MIB, "small");
     let big = self_describing_bytes(11 * MIB, "big");
+    let small_key = format!("{prefix}small.bin");
     let big_key = format!("{prefix}big.bin");
-    seed(service, FIXTURE_BUCKET, &[object(&big_key, &big)]).await;
-    let date = volume
+    seed(
+        service,
+        FIXTURE_BUCKET,
+        &[object(&small_key, &small), object(&big_key, &big)],
+    )
+    .await;
+    let small_date = volume
+        .get_metadata(&at(&volume, &small_key))
+        .await
+        .expect("a stat")
+        .modified_at;
+    let big_date = volume
         .get_metadata(&at(&volume, &big_key))
         .await
         .expect("a stat")
-        .modified_at
-        .expect("a seeded object has an upload time");
+        .modified_at;
 
-    let to = format!("{big_key}.copy");
-    copy(&volume, &volume, &big_key, &to, WriteMode::CreateNew, &Watch::default())
-        .await
-        .expect("the copy lands");
-    // Written as an mtime, so it can't be the copy's own upload time however
-    // fast the copy ran.
-    assert_eq!(
-        stored_mtime_header(service, FIXTURE_BUCKET, &to).await,
-        Some(date.to_string()),
-        "the source's date survives the copy"
-    );
-    let copied = volume.get_metadata(&at(&volume, &to)).await.expect("a stat");
-    assert_eq!(copied.modified_at, Some(date));
+    for (from, date) in [(&small_key, small_date), (&big_key, big_date)] {
+        let to = format!("{from}.copy");
+        copy(&volume, &volume, from, &to, WriteMode::CreateNew, &Watch::default())
+            .await
+            .expect("the copy lands");
+        // Written as an mtime, so it can't be the copy's own upload time
+        // however fast the copy ran.
+        let date = date.expect("a seeded object has an upload time");
+        assert_eq!(
+            stored_mtime_header(service, FIXTURE_BUCKET, &to).await,
+            Some(date.to_string()),
+            "{from}: the source's date survives the copy"
+        );
+        let copied = volume.get_metadata(&at(&volume, &to)).await.expect("a stat");
+        assert_eq!(copied.modified_at, Some(date));
+    }
 }
 
 /// Two places of one account copy between their buckets on the server.
@@ -571,9 +583,8 @@ on_both_fixtures! {
     a_big_object_copies_in_parts_keeping_its_bytes_and_date
         => a_big_object_copies_in_parts_keeping_its_bytes_and_date_on_versitygw,
            a_big_object_copies_in_parts_keeping_its_bytes_and_date_on_garage;
-    a_source_without_an_mtime_keeps_its_date_through_a_copy_in_parts
-        => a_source_without_an_mtime_keeps_its_date_through_a_copy_in_parts_on_versitygw,
-           a_source_without_an_mtime_keeps_its_date_through_a_copy_in_parts_on_garage;
+    a_source_without_an_mtime_keeps_its_date
+        => a_source_without_an_mtime_keeps_its_date_on_versitygw, a_source_without_an_mtime_keeps_its_date_on_garage;
     a_copy_between_two_buckets_of_one_account_runs_on_the_server
         => a_copy_between_two_buckets_of_one_account_runs_on_the_server_on_versitygw,
            a_copy_between_two_buckets_of_one_account_runs_on_the_server_on_garage;

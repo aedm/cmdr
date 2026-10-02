@@ -9,11 +9,7 @@
 //! - [`FakeS3::keep_cut_off_bodies`]: it stores what arrived of a PUT cut off
 //!   mid-body, the way VersityGW does, where S3 publishes nothing;
 //! - it refuses a listing prefix past S3's 1,024-byte key ceiling with `400
-//!   InvalidRequest` the way B2 does, where other servers answer an empty page;
-//! - a `CopyObject` keeps the source's ETag (a single-part source's content
-//!   hash), honours `x-amz-copy-source-if-match` and R2's
-//!   `cf-copy-destination-if-none-match`, and [`FakeS3::fresh_copy_etags`]
-//!   gives each copy a new ETag instead, the way a multipart source copies.
+//!   InvalidRequest` the way B2 does, where other servers answer an empty page.
 //!
 //! It speaks path style over plain HTTP, one request per connection, and
 //! knows HEAD, PUT, DELETE, `ListObjectsV2`, and the multipart calls. A cell
@@ -74,10 +70,6 @@ struct World {
     throttle_batch_deletes: usize,
     /// Every `DeleteObjects` request that reached the store.
     batch_deletes: usize,
-    /// A `CopyObject` answers a new ETag rather than the source's.
-    fresh_copy_etags: bool,
-    /// A `CopyObject` ignores `x-amz-copy-source-if-match` (Hetzner, Spaces).
-    ignores_copy_source_pin: bool,
 }
 
 pub(super) struct FakeS3 {
@@ -136,33 +128,6 @@ impl FakeS3 {
     /// not counted).
     pub(super) fn batch_deletes(&self) -> usize {
         self.world.lock_ignore_poison().batch_deletes
-    }
-
-    /// From now on, a `CopyObject` gives its copy a new ETag, the way a
-    /// provider copies a multipart-uploaded source as one object.
-    pub(super) fn fresh_copy_etags(&self) {
-        self.world.lock_ignore_poison().fresh_copy_etags = true;
-    }
-
-    /// From now on, a `CopyObject` ignores its source pin, as Hetzner does.
-    pub(super) fn ignore_copy_source_pin(&self) {
-        self.world.lock_ignore_poison().ignores_copy_source_pin = true;
-    }
-
-    /// Another writer replaces `key` with `len` bytes: a new version, a new
-    /// ETag, its metadata gone.
-    pub(super) fn replace(&self, key: &str, len: usize) {
-        let mut world = self.world.lock_ignore_poison();
-        world.writes += 1;
-        let etag = format!("\"r{}\"", world.writes);
-        world.objects.insert(
-            key.to_string(),
-            Stored {
-                len,
-                etag,
-                meta: Vec::new(),
-            },
-        );
     }
 
     pub(super) fn object(&self, key: &str) -> Option<Stored> {
@@ -335,18 +300,8 @@ async fn answer(
                 let Some(from) = world.objects.get(&source).cloned() else {
                     return Some(error("404 Not Found", "NoSuchKey"));
                 };
-                let pin_fails = header(head, "x-amz-copy-source-if-match").is_some_and(|pin| pin != from.etag);
-                let taken =
-                    header(head, "cf-copy-destination-if-none-match") == Some("*") && world.objects.contains_key(&key);
-                if (pin_fails && !world.ignores_copy_source_pin) || taken {
-                    return Some(error("412 Precondition Failed", "PreconditionFailed"));
-                }
                 world.writes += 1;
-                let etag = if world.fresh_copy_etags {
-                    format!("\"c{}\"", world.writes)
-                } else {
-                    from.etag.clone()
-                };
+                let etag = format!("\"c{}\"", world.writes);
                 let meta = if replace { meta_lines(head) } else { from.meta };
                 world.objects.insert(
                     key,
