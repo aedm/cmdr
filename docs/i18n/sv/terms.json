@@ -18,6 +18,13 @@
     "forms": "exclusive access → exklusiv åtkomst; skrivåtkomst; the macOS permission name uses Apple's tillgång (Full skivtillgång)",
     "sources": "MS terminology (access → åtkomst); catalog (errors.listing.*, fileExplorer.pane.connectedDirectlyToast)"
   },
+  "access-key-id": {
+    "chosen": "åtkomstnyckel-ID",
+    "accept": ["Åtkomstnyckel-ID"],
+    "forms": "definite åtkomstnyckel-ID:t",
+    "confidence": "tentative",
+    "sources": "catalog servers.sheet.accessKeyId and servers.sheet.identityLockedS3; MS access key → åtkomstnyckel; no AWS console ships Swedish"
+  },
   "account": {
     "chosen": "konto",
     "confidence": "high",
@@ -307,6 +314,13 @@
     "confidence": "high",
     "forms": "the picker's own OK button is Välj (Välj fil, Välj mapp)",
     "sources": "macOS Finder ConnectToWindow.strings 48.title = Bläddra"
+  },
+  "bucket": {
+    "chosen": "bucket",
+    "accept": ["bucketen", "bucketar", "bucketarna"],
+    "forms": "en bucket, bucketen, pl. bucketar; All buckets → Alla bucketar",
+    "confidence": "tentative",
+    "sources": "catalog servers.sheet.s3Bucket and servers.hub.forgetAccountConfirm; no AWS console ships Swedish, S3 users keep the English word"
   },
   "busy": {
     "accept": ["upptaget", "upptagna"],

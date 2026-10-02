@@ -85,6 +85,10 @@
   "@servers.hub.editNearbyHint": {
     "sourceHash": "64653de"
   },
+  "servers.hub.s3AllBuckets": "Alle Buckets",
+  "@servers.hub.s3AllBuckets": {
+    "sourceHash": "2a5828a"
+  },
   "servers.hub.openAccountHint": "{name} ist kein Ort, den du öffnen kannst. Öffne einen der Buckets darunter.",
   "@servers.hub.openAccountHint": {
     "sourceHash": "c52ee6f"
@@ -401,6 +405,10 @@
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
   },
+  "servers.sheet.secretKeptPlaceholder": "Im Schlüsselbund gespeichert. Zum Behalten leer lassen.",
+  "@servers.sheet.secretKeptPlaceholder": {
+    "sourceHash": "8711f6c"
+  },
   "servers.sheet.smbUsernamePlaceholder": "Optional",
   "@servers.sheet.smbUsernamePlaceholder": {
     "sourceHash": "59be713",
@@ -529,9 +537,9 @@
     "sourceHash": "c83b657",
     "sameAsSourceJustification": "„Bucket“ bleibt im Deutschen englisch: die deutschen Konsolen von AWS, Google Cloud und Hetzner führen „Bucket“ (der Bucket), ebenso MS-Terminologie (bucket → Bucket)."
   },
-  "servers.sheet.s3BucketHelp": "Leer lassen, um alle Buckets zu sehen, die dieser Schlüssel auflisten darf.",
+  "servers.sheet.s3BucketHelp": "Leer lassen, um alle Buckets zu sehen. Ist dein Schlüssel auf einen Bucket beschränkt, gib dessen Namen ein.",
   "@servers.sheet.s3BucketHelp": {
-    "sourceHash": "10751d7"
+    "sourceHash": "8d380d9"
   },
   "servers.sheet.s3UseRegion": "{region} verwenden",
   "@servers.sheet.s3UseRegion": {
@@ -552,6 +560,10 @@
   "servers.sheet.identityLockedS3": "Anbieter, Zugriffsschlüssel-ID und Bucket machen diesen Ort aus. Vergiss ihn und füge ihn erneut hinzu, um sie zu ändern.",
   "@servers.sheet.identityLockedS3": {
     "sourceHash": "fe4d469"
+  },
+  "servers.sheet.identityLockedS3Account": "Anbieter und Zugriffsschlüssel-ID machen dieses Konto aus. Vergiss es und füge es erneut hinzu, um sie zu ändern.",
+  "@servers.sheet.identityLockedS3Account": {
+    "sourceHash": "e03a769"
   },
   "servers.sheet.namePlaceholder": "Leer lassen, um {label} zu verwenden",
   "@servers.sheet.namePlaceholder": {

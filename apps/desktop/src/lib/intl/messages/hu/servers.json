@@ -83,6 +83,10 @@
   "@servers.hub.editNearbyHint": {
     "sourceHash": "64653de"
   },
+  "servers.hub.s3AllBuckets": "Az összes bucket",
+  "@servers.hub.s3AllBuckets": {
+    "sourceHash": "2a5828a"
+  },
   "servers.hub.openAccountHint": "Ez a fiók nem nyitható meg: {name}. Nyisd meg valamelyik bucketet a fiók alatt.",
   "@servers.hub.openAccountHint": {
     "sourceHash": "c52ee6f"
@@ -399,6 +403,10 @@
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
   },
+  "servers.sheet.secretKeptPlaceholder": "Mentve a kulcskarikában. Ha üresen hagyod, megmarad.",
+  "@servers.sheet.secretKeptPlaceholder": {
+    "sourceHash": "8711f6c"
+  },
   "servers.sheet.smbUsernamePlaceholder": "Nem kötelező",
   "@servers.sheet.smbUsernamePlaceholder": {
     "sourceHash": "59be713"
@@ -524,9 +532,9 @@
     "sourceHash": "c83b657",
     "sameAsSourceJustification": "A „bucket” az S3 szakszava, és a magyar szakmai szöveg is így használja, elöl képzett ragokkal (`S3 bucketbe`, `bucketben`, `bucketekkel`: cheppers.hu, aws.hu, cloudmentor.hu). A szolgáltatók konzoljai nem jelennek meg magyarul; a Microsoft `gyűjtő` szava más értelem, a Google gépi fordítású súgójának `csoport` szava ütközik a group szóval. Döntés: `docs/i18n/hu/decisions.md` § S3."
   },
-  "servers.sheet.s3BucketHelp": "Hagyd üresen, hogy lásd az összes bucketet, amelyet ez a kulcs felsorolhat.",
+  "servers.sheet.s3BucketHelp": "Hagyd üresen, hogy lásd az összes bucketet. Ha a kulcsod csak egy buckethez fér hozzá, írd be a nevét.",
   "@servers.sheet.s3BucketHelp": {
-    "sourceHash": "10751d7"
+    "sourceHash": "8d380d9"
   },
   "servers.sheet.s3UseRegion": "{region} használata",
   "@servers.sheet.s3UseRegion": {
@@ -547,6 +555,10 @@
   "servers.sheet.identityLockedS3": "A szolgáltató, a hozzáférési kulcs azonosítója és a bucket azonosítja ezt a helyet. A módosításukhoz felejtsd el ezt a helyet, és add hozzá újra.",
   "@servers.sheet.identityLockedS3": {
     "sourceHash": "fe4d469"
+  },
+  "servers.sheet.identityLockedS3Account": "A szolgáltató és a hozzáférési kulcs azonosítója azonosítja ezt a fiókot. A módosításukhoz felejtsd el ezt a fiókot, és add hozzá újra.",
+  "@servers.sheet.identityLockedS3Account": {
+    "sourceHash": "e03a769"
   },
   "servers.sheet.namePlaceholder": "Ha üresen hagyod: {label}",
   "@servers.sheet.namePlaceholder": {

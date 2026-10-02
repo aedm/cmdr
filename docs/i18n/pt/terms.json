@@ -17,6 +17,11 @@
     "confidence": "high",
     "sources": "macOS Finder pt-BR; shipped pt catalog"
   },
+  "access-key-id": {
+    "chosen": "ID da chave de acesso",
+    "confidence": "high",
+    "sources": "catalog servers.sheet.accessKeyId and servers.sheet.identityLockedS3; AWS console and docs in this language (outside the pile, not verified live) (pt-BR: ID da chave de acesso)"
+  },
   "account": {
     "chosen": "conta",
     "confidence": "high",
@@ -264,6 +269,13 @@
     "confidence": "confirmed",
     "sources": "macOS pt-BR (Choose… → Escolher…, Choose File… → Escolher Arquivo…)",
     "decision": "Server sheet and host keys"
+  },
+  "bucket": {
+    "chosen": "bucket",
+    "accept": ["buckets"],
+    "forms": "o bucket, pl. os buckets; All buckets → Todos os buckets",
+    "confidence": "high",
+    "sources": "AWS console and docs in this language (outside the pile, not verified live) (pt-BR keeps bucket); catalog servers.sheet.s3Bucket"
   },
   "buffer": {
     "chosen": "buffer",

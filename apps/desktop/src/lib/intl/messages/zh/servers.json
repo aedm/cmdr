@@ -83,6 +83,10 @@
   "@servers.hub.editNearbyHint": {
     "sourceHash": "64653de"
   },
+  "servers.hub.s3AllBuckets": "所有存储桶",
+  "@servers.hub.s3AllBuckets": {
+    "sourceHash": "2a5828a"
+  },
   "servers.hub.openAccountHint": "{name} 不是可以打开的位置。请打开这个账户下方的某个存储桶。",
   "@servers.hub.openAccountHint": {
     "sourceHash": "c52ee6f"
@@ -399,6 +403,10 @@
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
   },
+  "servers.sheet.secretKeptPlaceholder": "已保存在钥匙串中。留空则保持不变。",
+  "@servers.sheet.secretKeptPlaceholder": {
+    "sourceHash": "8711f6c"
+  },
   "servers.sheet.smbUsernamePlaceholder": "可选",
   "@servers.sheet.smbUsernamePlaceholder": {
     "sourceHash": "59be713"
@@ -523,9 +531,9 @@
   "@servers.sheet.s3Bucket": {
     "sourceHash": "c83b657"
   },
-  "servers.sheet.s3BucketHelp": "留空则显示这个密钥能列出的所有存储桶。",
+  "servers.sheet.s3BucketHelp": "留空则显示所有存储桶。如果你的密钥只能访问一个存储桶，就输入它的名称。",
   "@servers.sheet.s3BucketHelp": {
-    "sourceHash": "10751d7"
+    "sourceHash": "8d380d9"
   },
   "servers.sheet.s3UseRegion": "使用 {region}",
   "@servers.sheet.s3UseRegion": {
@@ -546,6 +554,10 @@
   "servers.sheet.identityLockedS3": "提供方、访问密钥 ID 和存储桶决定了这是哪个位置。要改这几项，先忘记它，再重新添加。",
   "@servers.sheet.identityLockedS3": {
     "sourceHash": "fe4d469"
+  },
+  "servers.sheet.identityLockedS3Account": "提供方和访问密钥 ID 决定了这是哪个账户。要改这两项，先忘记这个账户，再重新添加。",
+  "@servers.sheet.identityLockedS3Account": {
+    "sourceHash": "e03a769"
   },
   "servers.sheet.namePlaceholder": "留空则使用 {label}",
   "@servers.sheet.namePlaceholder": {

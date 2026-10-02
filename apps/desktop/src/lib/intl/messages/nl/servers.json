@@ -85,6 +85,10 @@
   "@servers.hub.editNearbyHint": {
     "sourceHash": "64653de"
   },
+  "servers.hub.s3AllBuckets": "Alle buckets",
+  "@servers.hub.s3AllBuckets": {
+    "sourceHash": "2a5828a"
+  },
   "servers.hub.openAccountHint": "{name} is geen plek om te openen. Open een van de buckets eronder.",
   "@servers.hub.openAccountHint": {
     "sourceHash": "c52ee6f"
@@ -403,6 +407,10 @@
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
   },
+  "servers.sheet.secretKeptPlaceholder": "Opgeslagen in Sleutelhanger. Laat leeg om te behouden.",
+  "@servers.sheet.secretKeptPlaceholder": {
+    "sourceHash": "8711f6c"
+  },
   "servers.sheet.smbUsernamePlaceholder": "Optioneel",
   "@servers.sheet.smbUsernamePlaceholder": {
     "sourceHash": "59be713"
@@ -528,9 +536,9 @@
     "sourceHash": "c83b657",
     "sameAsSourceJustification": "Dutch for an S3 bucket is \"bucket\": Microsoft terminology renders \"bucket\" (a virtual container) as \"bucket\" (DUTCH.tbx in the reference pile, 2026-10-02)."
   },
-  "servers.sheet.s3BucketHelp": "Laat dit leeg om alle buckets te zien die deze sleutel mag opsommen.",
+  "servers.sheet.s3BucketHelp": "Laat dit leeg om alle buckets te zien. Is je sleutel beperkt tot één bucket, typ dan de naam ervan.",
   "@servers.sheet.s3BucketHelp": {
-    "sourceHash": "10751d7"
+    "sourceHash": "8d380d9"
   },
   "servers.sheet.s3UseRegion": "Gebruik {region}",
   "@servers.sheet.s3UseRegion": {
@@ -551,6 +559,10 @@
   "servers.sheet.identityLockedS3": "De aanbieder, de toegangssleutel-ID en de bucket bepalen welke plek dit is. Vergeet deze plek en voeg hem opnieuw toe om ze te wijzigen.",
   "@servers.sheet.identityLockedS3": {
     "sourceHash": "fe4d469"
+  },
+  "servers.sheet.identityLockedS3Account": "De aanbieder en de toegangssleutel-ID bepalen welk account dit is. Vergeet dit account en voeg het opnieuw toe om ze te wijzigen.",
+  "@servers.sheet.identityLockedS3Account": {
+    "sourceHash": "e03a769"
   },
   "servers.sheet.namePlaceholder": "Laat leeg om {label} te gebruiken",
   "@servers.sheet.namePlaceholder": {

@@ -84,6 +84,10 @@
   "@servers.hub.editNearbyHint": {
     "sourceHash": "64653de"
   },
+  "servers.hub.s3AllBuckets": "Todos os buckets",
+  "@servers.hub.s3AllBuckets": {
+    "sourceHash": "2a5828a"
+  },
   "servers.hub.openAccountHint": "A conta {name} não é um local para abrir. Abra um dos buckets abaixo dela.",
   "@servers.hub.openAccountHint": {
     "sourceHash": "c52ee6f"
@@ -400,6 +404,10 @@
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
   },
+  "servers.sheet.secretKeptPlaceholder": "Salva no Acesso às Chaves. Deixe em branco para mantê-la.",
+  "@servers.sheet.secretKeptPlaceholder": {
+    "sourceHash": "8711f6c"
+  },
   "servers.sheet.smbUsernamePlaceholder": "Opcional",
   "@servers.sheet.smbUsernamePlaceholder": {
     "sourceHash": "59be713"
@@ -525,9 +533,9 @@
     "sourceHash": "c83b657",
     "sameAsSourceJustification": "S3 term kept as the providers’ pt-BR consoles keep it: the AWS S3 console and docs in pt-BR say “bucket” (“Criar bucket”), as does Google Cloud Storage pt-BR; the pt catalog uses “bucket” in every S3 string (servers.refusal.*, servers.hub.*)."
   },
-  "servers.sheet.s3BucketHelp": "Deixe em branco para ver todos os buckets que esta chave pode listar.",
+  "servers.sheet.s3BucketHelp": "Deixe em branco para ver todos os buckets. Se sua chave for limitada a um bucket, digite o nome dele.",
   "@servers.sheet.s3BucketHelp": {
-    "sourceHash": "10751d7"
+    "sourceHash": "8d380d9"
   },
   "servers.sheet.s3UseRegion": "Usar {region}",
   "@servers.sheet.s3UseRegion": {
@@ -548,6 +556,10 @@
   "servers.sheet.identityLockedS3": "O provedor, o ID da chave de acesso e o bucket identificam este local. Para mudá-los, esqueça este local e adicione-o de novo.",
   "@servers.sheet.identityLockedS3": {
     "sourceHash": "fe4d469"
+  },
+  "servers.sheet.identityLockedS3Account": "O provedor e o ID da chave de acesso identificam esta conta. Para mudá-los, esqueça esta conta e adicione-a de novo.",
+  "@servers.sheet.identityLockedS3Account": {
+    "sourceHash": "e03a769"
   },
   "servers.sheet.namePlaceholder": "Deixe em branco para usar {label}",
   "@servers.sheet.namePlaceholder": {

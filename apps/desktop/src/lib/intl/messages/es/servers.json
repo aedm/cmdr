@@ -83,6 +83,10 @@
   "@servers.hub.editNearbyHint": {
     "sourceHash": "64653de"
   },
+  "servers.hub.s3AllBuckets": "Todos los buckets",
+  "@servers.hub.s3AllBuckets": {
+    "sourceHash": "2a5828a"
+  },
   "servers.hub.openAccountHint": "{name} no se puede abrir. Abre uno de los buckets que hay debajo.",
   "@servers.hub.openAccountHint": {
     "sourceHash": "c52ee6f"
@@ -399,6 +403,10 @@
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
   },
+  "servers.sheet.secretKeptPlaceholder": "Guardada en el Llavero. Déjalo vacío para conservarla.",
+  "@servers.sheet.secretKeptPlaceholder": {
+    "sourceHash": "8711f6c"
+  },
   "servers.sheet.smbUsernamePlaceholder": "Opcional",
   "@servers.sheet.smbUsernamePlaceholder": {
     "sourceHash": "59be713"
@@ -524,9 +532,9 @@
     "sourceHash": "c83b657",
     "sameAsSourceJustification": "Las consolas de AWS y Google Cloud en español dicen «bucket» («Crear bucket»); el «cubo» del TBX de Microsoft es otra acepción (estructura de datos). Regla en terms.json (bucket)."
   },
-  "servers.sheet.s3BucketHelp": "Déjalo vacío y verás todos los buckets que esta clave pueda listar.",
+  "servers.sheet.s3BucketHelp": "Déjalo vacío y verás todos los buckets. Si tu clave está limitada a un bucket, escribe su nombre.",
   "@servers.sheet.s3BucketHelp": {
-    "sourceHash": "10751d7"
+    "sourceHash": "8d380d9"
   },
   "servers.sheet.s3UseRegion": "Usar {region}",
   "@servers.sheet.s3UseRegion": {
@@ -547,6 +555,10 @@
   "servers.sheet.identityLockedS3": "El proveedor, el ID de clave de acceso y el bucket son los que identifican este lugar. Para cambiarlos, olvida este lugar y vuelve a añadirlo.",
   "@servers.sheet.identityLockedS3": {
     "sourceHash": "fe4d469"
+  },
+  "servers.sheet.identityLockedS3Account": "El proveedor y el ID de clave de acceso son los que identifican esta cuenta. Para cambiarlos, olvida esta cuenta y vuelve a añadirla.",
+  "@servers.sheet.identityLockedS3Account": {
+    "sourceHash": "e03a769"
   },
   "servers.sheet.namePlaceholder": "Déjalo vacío y se usará {label}",
   "@servers.sheet.namePlaceholder": {

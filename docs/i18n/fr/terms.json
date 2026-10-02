@@ -19,6 +19,11 @@
     "forms": "exclusive access (to a device) → accès exclusif; access a place → accéder à",
     "sources": "macOS; MS terminology FRA"
   },
+  "access-key-id": {
+    "chosen": "ID de clé d’accès",
+    "confidence": "high",
+    "sources": "decisions.md \"Le stockage S3\" (AWS FR console, MS FRA); catalog servers.sheet.accessKeyId"
+  },
   "account": {
     "chosen": "compte",
     "confidence": "high",
@@ -307,6 +312,12 @@
     "confidence": "high",
     "note": "Same word as the browse cell of the archives setting; French doesn’t split the two senses.",
     "sources": "macOS Finder ConnectToWindow.strings 48.title (macOS 26.6.2 build 25G83, 2026-09-07)"
+  },
+  "bucket": {
+    "chosen": "compartiment",
+    "forms": "le compartiment, pl. les compartiments; All buckets → Tous les compartiments",
+    "confidence": "high",
+    "sources": "decisions.md \"Le stockage S3\" (AWS FR console); catalog servers.sheet.s3Bucket"
   },
   "buffer": {
     "accept": ["saturé"],

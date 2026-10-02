@@ -22,6 +22,13 @@
       "mtp.permissionDialog.title": "Can't access USB device → Az USB-eszköz nem érhető el: the house form for an unreachable device."
     }
   },
+  "access-key-id": {
+    "chosen": "hozzáférési kulcs azonosítója",
+    "accept": ["hozzáférési kulcs azonosító"],
+    "forms": "the S3 form label → Hozzáférési kulcs azonosítója",
+    "confidence": "tentative",
+    "sources": "catalog servers.sheet.accessKeyId and servers.sheet.identityLockedS3; MS access key → hozzáférési kulcs; no AWS console ships Hungarian"
+  },
   "account": {
     "chosen": "fiók",
     "forms": "the account you sign in with → a fiók; your account → a fiókod; Apple Account → Apple-fiók",
@@ -364,6 +371,19 @@
     "accept": ["böngész"],
     "confidence": "high",
     "sources": "macOS AppleAccountUI (PROFILE_BROWSE_PHOTO Browse... = Böngészés…)"
+  },
+  "bucket": {
+    "chosen": "bucket",
+    "accept": ["bucketet", "bucketben", "buckethez"],
+    "forms": "front-vowel suffixes (bucketet, bucketben, buckethez); All buckets → Az összes bucket",
+    "avoid": [
+      {
+        "form": "gyűjtő",
+        "why": "MS term for another sense"
+      }
+    ],
+    "confidence": "tentative",
+    "sources": "decisions.md \"S3\" (no console ships Hungarian, tech prose writes S3 bucketbe); catalog servers.sheet.s3Bucket"
   },
   "busy": {
     "chosen": "foglalt",

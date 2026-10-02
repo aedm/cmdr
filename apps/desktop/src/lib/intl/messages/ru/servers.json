@@ -83,6 +83,10 @@
   "@servers.hub.editNearbyHint": {
     "sourceHash": "64653de"
   },
+  "servers.hub.s3AllBuckets": "Все бакеты",
+  "@servers.hub.s3AllBuckets": {
+    "sourceHash": "2a5828a"
+  },
   "servers.hub.openAccountHint": "Учетную запись {name} нельзя открыть. Откройте один из бакетов под ней.",
   "@servers.hub.openAccountHint": {
     "sourceHash": "c52ee6f"
@@ -399,6 +403,10 @@
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
   },
+  "servers.sheet.secretKeptPlaceholder": "Сохранен в Связке ключей. Оставьте пустым, чтобы не менять.",
+  "@servers.sheet.secretKeptPlaceholder": {
+    "sourceHash": "8711f6c"
+  },
   "servers.sheet.smbUsernamePlaceholder": "Необязательно",
   "@servers.sheet.smbUsernamePlaceholder": {
     "sourceHash": "59be713"
@@ -523,9 +531,9 @@
   "@servers.sheet.s3Bucket": {
     "sourceHash": "c83b657"
   },
-  "servers.sheet.s3BucketHelp": "Оставьте пустым, чтобы увидеть все бакеты, список которых доступен этому ключу.",
+  "servers.sheet.s3BucketHelp": "Оставьте пустым, чтобы увидеть все бакеты. Если ваш ключ ограничен одним бакетом, введите его имя.",
   "@servers.sheet.s3BucketHelp": {
-    "sourceHash": "10751d7"
+    "sourceHash": "8d380d9"
   },
   "servers.sheet.s3UseRegion": "Использовать {region}",
   "@servers.sheet.s3UseRegion": {
@@ -546,6 +554,10 @@
   "servers.sheet.identityLockedS3": "Поставщик, идентификатор ключа доступа и бакет определяют это место. Чтобы изменить их, забудьте это место и добавьте заново.",
   "@servers.sheet.identityLockedS3": {
     "sourceHash": "fe4d469"
+  },
+  "servers.sheet.identityLockedS3Account": "Поставщик и идентификатор ключа доступа определяют эту учетную запись. Чтобы изменить их, забудьте эту учетную запись и добавьте заново.",
+  "@servers.sheet.identityLockedS3Account": {
+    "sourceHash": "e03a769"
   },
   "servers.sheet.namePlaceholder": "Оставьте пустым, чтобы использовать {label}",
   "@servers.sheet.namePlaceholder": {

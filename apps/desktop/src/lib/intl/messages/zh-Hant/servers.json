@@ -83,6 +83,10 @@
   "@servers.hub.editNearbyHint": {
     "sourceHash": "64653de"
   },
+  "servers.hub.s3AllBuckets": "所有儲存貯體",
+  "@servers.hub.s3AllBuckets": {
+    "sourceHash": "2a5828a"
+  },
   "servers.hub.openAccountHint": "{name} 不是可以開啟的位置。請開啟底下的其中一個儲存貯體。",
   "@servers.hub.openAccountHint": {
     "sourceHash": "c52ee6f"
@@ -399,6 +403,10 @@
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
   },
+  "servers.sheet.secretKeptPlaceholder": "已儲存在鑰匙圈中。留空就維持不變。",
+  "@servers.sheet.secretKeptPlaceholder": {
+    "sourceHash": "8711f6c"
+  },
   "servers.sheet.smbUsernamePlaceholder": "選填",
   "@servers.sheet.smbUsernamePlaceholder": {
     "sourceHash": "59be713"
@@ -523,9 +531,9 @@
   "@servers.sheet.s3Bucket": {
     "sourceHash": "c83b657"
   },
-  "servers.sheet.s3BucketHelp": "留空就能看到這組金鑰可以列出的所有儲存貯體。",
+  "servers.sheet.s3BucketHelp": "留空就能看到所有儲存貯體。如果你的金鑰只能存取一個儲存貯體，就輸入它的名稱。",
   "@servers.sheet.s3BucketHelp": {
-    "sourceHash": "10751d7"
+    "sourceHash": "8d380d9"
   },
   "servers.sheet.s3UseRegion": "使用 {region}",
   "@servers.sheet.s3UseRegion": {
@@ -546,6 +554,10 @@
   "servers.sheet.identityLockedS3": "提供者、存取金鑰 ID 和儲存貯體決定了這是哪個位置。要改這幾項，先忘記這個位置，再重新加入。",
   "@servers.sheet.identityLockedS3": {
     "sourceHash": "fe4d469"
+  },
+  "servers.sheet.identityLockedS3Account": "提供者和存取金鑰 ID 決定了這是哪個帳號。要改這兩項，先忘記這個帳號，再重新加入。",
+  "@servers.sheet.identityLockedS3Account": {
+    "sourceHash": "e03a769"
   },
   "servers.sheet.namePlaceholder": "留空就使用 {label}",
   "@servers.sheet.namePlaceholder": {

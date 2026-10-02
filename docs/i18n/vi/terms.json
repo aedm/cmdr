@@ -19,6 +19,11 @@
     "forms": "quyền truy cập (privacy access), không có quyền (no permission), quyền ghi (write access)",
     "sources": "Xfce Thunar (Quyền hạn, không có quyền), macOS (quyền truy cập)"
   },
+  "access-key-id": {
+    "chosen": "ID khóa truy cập",
+    "confidence": "tentative",
+    "sources": "catalog servers.sheet.accessKeyId and servers.sheet.identityLockedS3; MS access key → khóa truy cập; no AWS console ships Vietnamese"
+  },
   "account": {
     "chosen": "tài khoản",
     "confidence": "high",
@@ -266,6 +271,12 @@
     "confidence": "high",
     "forms": "button Duyệt… keeps the … (U+2026)",
     "sources": "macOS StandardAdditions ChooseApplication (Browse... → Duyệt...), Finder ConnectToWindow (Browse → Duyệt)"
+  },
+  "bucket": {
+    "chosen": "bộ chứa",
+    "forms": "All buckets → Tất cả bộ chứa",
+    "confidence": "tentative",
+    "sources": "catalog servers.sheet.s3Bucket and servers.hub.openAccountHint; no AWS console ships Vietnamese"
   },
   "button": {
     "chosen": "nút",

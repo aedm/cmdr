@@ -84,6 +84,10 @@
   "@servers.hub.editNearbyHint": {
     "sourceHash": "64653de"
   },
+  "servers.hub.s3AllBuckets": "Alla bucketar",
+  "@servers.hub.s3AllBuckets": {
+    "sourceHash": "2a5828a"
+  },
   "servers.hub.openAccountHint": "Kontot {name} är ingen plats att öppna. Öppna en bucket under kontot i stället.",
   "@servers.hub.openAccountHint": {
     "sourceHash": "c52ee6f"
@@ -400,6 +404,10 @@
   "@servers.sheet.password": {
     "sourceHash": "e7cf3ef"
   },
+  "servers.sheet.secretKeptPlaceholder": "Sparat i nyckelringen. Lämna fältet tomt för att behålla det.",
+  "@servers.sheet.secretKeptPlaceholder": {
+    "sourceHash": "8711f6c"
+  },
   "servers.sheet.smbUsernamePlaceholder": "Valfritt",
   "@servers.sheet.smbUsernamePlaceholder": {
     "sourceHash": "59be713"
@@ -526,9 +534,9 @@
     "sourceHash": "c83b657",
     "sameAsSourceJustification": "MS terminology renders the storage container bucket → bucket in Swedish, and Swedish cloud consoles keep the word; sv/terms.json bucket ruling. Deliberately identical."
   },
-  "servers.sheet.s3BucketHelp": "Lämna fältet tomt för att se alla bucketar som den här nyckeln kan lista.",
+  "servers.sheet.s3BucketHelp": "Lämna fältet tomt för att se alla bucketar. Om din nyckel är begränsad till en bucket skriver du in dess namn.",
   "@servers.sheet.s3BucketHelp": {
-    "sourceHash": "10751d7"
+    "sourceHash": "8d380d9"
   },
   "servers.sheet.s3UseRegion": "Använd {region}",
   "@servers.sheet.s3UseRegion": {
@@ -549,6 +557,10 @@
   "servers.sheet.identityLockedS3": "Leverantören, åtkomstnyckel-ID:t och bucketen är det som identifierar den här platsen. Glöm platsen och lägg till den igen om du vill ändra dem.",
   "@servers.sheet.identityLockedS3": {
     "sourceHash": "fe4d469"
+  },
+  "servers.sheet.identityLockedS3Account": "Leverantören och åtkomstnyckel-ID:t är det som identifierar det här kontot. Glöm kontot och lägg till det igen om du vill ändra dem.",
+  "@servers.sheet.identityLockedS3Account": {
+    "sourceHash": "e03a769"
   },
   "servers.sheet.namePlaceholder": "Lämna tomt för att använda {label}",
   "@servers.sheet.namePlaceholder": {

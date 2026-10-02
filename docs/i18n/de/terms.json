@@ -20,6 +20,11 @@
     "forms": "exclusive access → exklusiver Zugriff; file access in prose → Zugriff auf Dateien, as a switch label → Dateizugriff (settings.fileOperations.adbEnabled.label)",
     "sources": "macOS TCC ( … möchte Zugriff auf Dateien auf einem Wechselmedium); MS terminology"
   },
+  "access-key-id": {
+    "chosen": "Zugriffsschlüssel-ID",
+    "confidence": "high",
+    "sources": "catalog servers.sheet.accessKeyId and servers.sheet.identityLockedS3; AWS console and docs in this language (outside the pile, not verified live) (Zugriffsschlüssel-ID); MS access key → Zugriffsschlüssel"
+  },
   "account": {
     "accept": ["Konten"],
     "avoid": [
@@ -255,6 +260,13 @@
     "chosen": "Attribut",
     "confidence": "high",
     "sources": "MS terminology; standard German"
+  },
+  "bucket": {
+    "chosen": "Bucket",
+    "accept": ["Buckets"],
+    "forms": "der Bucket, pl. die Buckets; All buckets → Alle Buckets",
+    "confidence": "high",
+    "sources": "AWS console and docs in this language (outside the pile, not verified live) keep Bucket (der Bucket); catalog servers.sheet.s3Bucket; MS has no S3 sense (its bucket entries are a field or a generic container)"
   },
   "column": {
     "chosen": "Spalte",

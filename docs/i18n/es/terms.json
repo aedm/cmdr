@@ -18,6 +18,11 @@
     "confidence": "high",
     "sources": "macOS (acceso); catalog (errors.listing.*.suggestion)"
   },
+  "access-key-id": {
+    "chosen": "ID de clave de acceso",
+    "confidence": "high",
+    "sources": "catalog servers.sheet.accessKeyId; decisions.md \"S3\" (AWS console and docs in this language (outside the pile, not verified live))"
+  },
   "account": {
     "chosen": "cuenta",
     "forms": "la cuenta; ❌ never por su cuenta for the account (that locution means on its own)",
@@ -272,6 +277,18 @@
     "chosen": "Explorar…",
     "confidence": "high",
     "sources": "macOS Finder ConnectToWindow (48.title)"
+  },
+  "bucket": {
+    "chosen": "bucket",
+    "forms": "el bucket, pl. los buckets; All buckets → Todos los buckets",
+    "avoid": [
+      {
+        "form": "cubo",
+        "why": "MS term; AWS es keeps bucket"
+      }
+    ],
+    "confidence": "high",
+    "sources": "decisions.md \"S3\" (AWS console and docs in this language (outside the pile, not verified live)); catalog servers.sheet.s3Bucket"
   },
   "cache": {
     "chosen": "caché",

@@ -22,6 +22,11 @@
     "forms": "exclusive access → exclusieve toegang; in prose, \"trying to access a folder\" → een map proberen te openen (benaderen reads bookish)",
     "sources": "macOS (\"geen toegang\")"
   },
+  "access-key-id": {
+    "chosen": "toegangssleutel-ID",
+    "confidence": "high",
+    "sources": "decisions.md \"S3\" (MS toegangssleutel-ID); catalog servers.sheet.accessKeyId"
+  },
   "account": {
     "chosen": "account",
     "confidence": "high",
@@ -313,6 +318,13 @@
     "chosen": "Blader…",
     "confidence": "high",
     "sources": "macOS Finder ConnectToWindow.strings 48.title"
+  },
+  "bucket": {
+    "chosen": "bucket",
+    "accept": ["buckets"],
+    "forms": "de bucket, pl. de buckets; All buckets → Alle buckets",
+    "confidence": "high",
+    "sources": "decisions.md \"S3\" (MS bucket); catalog servers.sheet.s3Bucket"
   },
   "cache": {
     "chosen": "cache",
