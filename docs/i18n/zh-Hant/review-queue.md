@@ -41,6 +41,10 @@ worth keeping).
 - **`警告標記`** for the title-bar badge (`errors.write.trashRefused.suggestion.noFullDiskAccess`): descriptive.
 - **`僅存在雲端`** (`online-only`; prose says `只存在雲端`) and the three `fileOperations.delete.cloudOnlineOnly*` rows:
   a draft never read by a human; check the long warning bar for overflow too.
+- **`冷儲存空間`** (`cold-storage`, `fileExplorer.archivedFile.tooltip`): composed from MS `冷儲存體` + our `儲存空間`;
+  no provider console in the pile.
+- **Third-party labels quoted from memory**: Cloudflare's `帳戶 ID` / `概觀` (`servers.sheet.s3AccountId*`) and Google
+  Cloud's `「互通性」分頁` (`servers.sheet.s3GcsKeyHelp`); check them against the live zh-TW dashboards.
 
 ## Phrasing
 

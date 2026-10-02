@@ -476,19 +476,19 @@
   "@menu.context.copyGoogleDriveLink": {
     "sourceHash": "070b383"
   },
-  "menu.context.copyShareLink": "Copy share link",
+  "menu.context.copyShareLink": "複製分享連結",
   "@menu.context.copyShareLink": {
     "sourceHash": "d31483e"
   },
-  "menu.context.shareLinkSevenDays": "Expires in seven days",
+  "menu.context.shareLinkSevenDays": "7 天後過期",
   "@menu.context.shareLinkSevenDays": {
     "sourceHash": "06949d8"
   },
-  "menu.context.shareLinkOneDay": "Expires in one day",
+  "menu.context.shareLinkOneDay": "1 天後過期",
   "@menu.context.shareLinkOneDay": {
     "sourceHash": "5ff3dbc"
   },
-  "menu.context.shareLinkOneHour": "Expires in one hour",
+  "menu.context.shareLinkOneHour": "1 小時後過期",
   "@menu.context.shareLinkOneHour": {
     "sourceHash": "faf9c50"
   },

@@ -623,15 +623,15 @@
   "@errors.listing.deletePending.suggestion": {
     "sourceHash": "0531cd8"
   },
-  "errors.listing.coldStorage.title": "This file is archived",
+  "errors.listing.coldStorage.title": "這個檔案已封存",
   "@errors.listing.coldStorage.title": {
     "sourceHash": "73da082"
   },
-  "errors.listing.coldStorage.explanation": "`{path}` is archived, so its contents can’t be read until it’s restored.",
+  "errors.listing.coldStorage.explanation": "`{path}` 已封存，所以在回復之前無法讀取裡面的內容。",
   "@errors.listing.coldStorage.explanation": {
     "sourceHash": "78f52d7"
   },
-  "errors.listing.coldStorage.suggestion": "Here’s what to try:\n- Restore it in your storage provider’s console, then open it again\n- A restore can take anywhere from minutes to two days",
+  "errors.listing.coldStorage.suggestion": "可以這樣試試：\n- 到儲存服務提供者的主控台回復這個檔案，然後再開啟一次\n- 回復可能需要幾分鐘到 2 天不等",
   "@errors.listing.coldStorage.suggestion": {
     "sourceHash": "0becf43"
   },
@@ -1689,27 +1689,27 @@
   "@errors.write.deletePending.suggestion": {
     "sourceHash": "39e64a9"
   },
-  "errors.write.sourceInColdStorage.title": "This file is archived",
+  "errors.write.sourceInColdStorage.title": "這個檔案已封存",
   "@errors.write.sourceInColdStorage.title": {
     "sourceHash": "73da082"
   },
-  "errors.write.sourceInColdStorage.message": "The file at {path} is archived, so it can’t be read until it’s restored.",
+  "errors.write.sourceInColdStorage.message": "位於 {path} 的檔案已封存，所以在回復之前無法讀取。",
   "@errors.write.sourceInColdStorage.message": {
     "sourceHash": "1015fe5"
   },
-  "errors.write.sourceInColdStorage.suggestion": "Restore it in your storage provider’s console, then try again. A restore can take anywhere from minutes to two days.",
+  "errors.write.sourceInColdStorage.suggestion": "請先到儲存服務提供者的主控台回復這個檔案，再試一次。回復可能需要幾分鐘到 2 天不等。",
   "@errors.write.sourceInColdStorage.suggestion": {
     "sourceHash": "f279603"
   },
-  "errors.write.sourceChanged.title": "This file changed during the copy",
+  "errors.write.sourceChanged.title": "這個檔案在複製時變動了",
   "@errors.write.sourceChanged.title": {
     "sourceHash": "1c63c8b"
   },
-  "errors.write.sourceChanged.message": "The file at {path} changed while Cmdr was copying it, so Cmdr saved nothing. The file stays where it was.",
+  "errors.write.sourceChanged.message": "位於 {path} 的檔案在 Cmdr 複製時變動了，所以 Cmdr 什麼都沒儲存。這個檔案仍留在原本的位置。",
   "@errors.write.sourceChanged.message": {
     "sourceHash": "4c404e0"
   },
-  "errors.write.sourceChanged.suggestion": "Try again to copy the version that’s there now.",
+  "errors.write.sourceChanged.suggestion": "再試一次，就能複製現在的那個版本。",
   "@errors.write.sourceChanged.suggestion": {
     "sourceHash": "97fc945"
   },
@@ -1909,11 +1909,11 @@
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
   },
-  "errors.volume.coldStorage": "“{path}” is archived. Restore it in your storage provider’s console first.",
+  "errors.volume.coldStorage": "「{path}」已封存。請先到儲存服務提供者的主控台回復這個檔案。",
   "@errors.volume.coldStorage": {
     "sourceHash": "c742f7c"
   },
-  "errors.volume.sourceChanged": "“{path}” changed while Cmdr was copying it, so Cmdr saved nothing. Try again to copy the new version.",
+  "errors.volume.sourceChanged": "「{path}」在 Cmdr 複製時變動了，所以 Cmdr 什麼都沒儲存。再試一次，就能複製新的版本。",
   "@errors.volume.sourceChanged": {
     "sourceHash": "18062cb"
   },

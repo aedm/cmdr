@@ -150,13 +150,13 @@
   "@settings.appearance.tintLocal.description": {
     "sourceHash": "3c86b48"
   },
-  "settings.appearance.tintSmb.label": "為伺服器窗格著色（SMB、SFTP、WebDAV）",
+  "settings.appearance.tintSmb.label": "為伺服器窗格著色（SMB、SFTP、WebDAV、S3）",
   "@settings.appearance.tintSmb.label": {
-    "sourceHash": "d801804"
+    "sourceHash": "d912bcf"
   },
-  "settings.appearance.tintSmb.description": "為顯示 SMB 共享資料夾、SFTP 伺服器或 WebDAV 伺服器的窗格加上的背景著色。",
+  "settings.appearance.tintSmb.description": "為顯示 SMB 共享資料夾、SFTP 伺服器、WebDAV 伺服器或 S3 儲存空間的窗格加上的背景著色。",
   "@settings.appearance.tintSmb.description": {
-    "sourceHash": "2e071d3"
+    "sourceHash": "bddee40"
   },
   "settings.appearance.tintMtp.label": "為 MTP 窗格著色",
   "@settings.appearance.tintMtp.label": {

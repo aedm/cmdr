@@ -36,6 +36,11 @@
     "forms": "a filesystem or device → 存取 (無法存取 USB 裝置); Apple's privacy-pane verb → 取用 (完全取用磁碟); write access → 寫入權 / 可寫入; give an account access → 有權限",
     "sources": "catalog mtp.json throughout; AP-TW privacy pane (取用)"
   },
+  "access-key-id": {
+    "chosen": "存取金鑰 ID",
+    "confidence": "high",
+    "sources": "AWS zh-TW docs (存取金鑰 ID 和私密存取金鑰, MakingRequests, checked 2026-10-02); MS access key → 存取金鑰"
+  },
   "accessibility": {
     "avoid": [
       {
@@ -50,6 +55,10 @@
   "account": {
     "chosen": "帳號",
     "confidence": "high",
+    "exceptions": {
+      "servers.sheet.s3AccountId": "Quotes Cloudflare's own zh-TW label 帳戶 ID (cloudflare.com/zh-tw, checked 2026-10-02), a third-party UI the user must find.",
+      "servers.sheet.s3AccountIdHelp": "Same label as servers.sheet.s3AccountId: Cloudflare's 帳戶 ID."
+    },
     "sources": "catalog (errors.json six times, onboarding.json); matches Apple 帳號"
   },
   "action": {
@@ -365,6 +374,18 @@
     "confidence": "confirmed",
     "sources": "AP Finder ConnectToWindow.strings 48.title Browse → 瀏覽 (TW = HK)"
   },
+  "bucket": {
+    "avoid": [
+      {
+        "form": "值區",
+        "why": "Google Cloud's zh-TW word; AWS is the S3 reference and MS agrees on 貯體"
+      }
+    ],
+    "chosen": "儲存貯體",
+    "confidence": "high",
+    "forms": "S3 bucket → S3 儲存貯體; bucket name → 儲存貯體名稱",
+    "sources": "AWS zh-TW docs (docs.aws.amazon.com/zh_tw, 儲存貯體政策, checked 2026-10-02); MS bucket → 貯體"
+  },
   "bug": {
     "avoid": [
       {
@@ -440,6 +461,13 @@
     "chosen": "取消",
     "confidence": "confirmed",
     "sources": "AP-TW = AP-HK = AP-CN, MS"
+  },
+  "case-sensitive": {
+    "accept": ["大小寫", "大寫", "小寫"],
+    "chosen": "區分大小寫",
+    "confidence": "high",
+    "forms": "case-sensitive → 區分大小寫; lowercase letters → 小寫字母; uppercase → 大寫",
+    "sources": "AP-TW Finder (區分大小寫, 小寫, 不區分…大寫和小寫字母); MS lowercase → 小寫; catalog queryUi.scope.toggle.caseSensitive"
   },
   "certificate": {
     "avoid": [
@@ -545,8 +573,19 @@
   "cloud-provider": {
     "chosen": "雲端",
     "confidence": "high",
+    "exceptions": {
+      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim.",
+      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google's product name, kept Latin as its zh-TW console does."
+    },
     "forms": "cloud service → 雲端服務; the company behind it → 雲端服務供應商; cloud folder → 雲端資料夾; online-only → 僅存在雲端",
     "sources": "AP-TW Finder (Choose a cloud service → 選擇雲端服務), MS (HKG, TWN)"
+  },
+  "cold-storage": {
+    "chosen": "冷儲存空間",
+    "confidence": "tentative",
+    "forms": "archived (the file's state) → 已封存 (archive-chat's word, AWS zh-TW 封存); restore it → 回復 (restore ruling)",
+    "note": "AWS zh-TW restores archived objects with 還原, but the catalog spends 還原 on undo, so restore stays 回復.",
+    "sources": "MS cold storage → 冷儲存體, archive tier → 封存層; storage ruling 儲存空間"
   },
   "column": {
     "accept": ["欄"],
@@ -668,6 +707,12 @@
     },
     "forms": "a button or status → 連線 (已連線, 正在連線⋯); the verb in a sentence or command name → 連接 (連接伺服器⋯); casual → 連上 / 連著 / 連不上; a network connection → 網路連線",
     "sources": "AP-TW = AP-HK (Connect → 連線; Connect to Server… → 連接伺服器⋯), MS"
+  },
+  "console": {
+    "chosen": "主控台",
+    "confidence": "high",
+    "forms": "a storage provider's console → 儲存服務提供者的主控台",
+    "sources": "AWS zh-TW (AWS 管理主控台); MS console → 主控台; catalog settings.developer.verboseLogging.*"
   },
   "context-menu": {
     "accept": ["右鍵"],
@@ -1107,6 +1152,24 @@
     "forms": "a note after a number → （估算）; an estimated cost or size → 預估費用 / 預估大小",
     "sources": "AP-TW = AP-HK (Estimating time remaining… → 正在估計剩餘時間⋯); catalog askCmdr.context.tooltip, viewer.statusBar.badge.*"
   },
+  "example": {
+    "avoid": [
+      {
+        "form": "範例",
+        "why": "a gallery of samples (範例檔案), not the Example: prefix; servers.sheet.usernamePlaceholder was the lone 範例： and is realigned"
+      }
+    ],
+    "chosen": "例如",
+    "confidence": "high",
+    "forms": "placeholder prefix Example: X → 例如：X (full-width colon, no space before a Latin sample)",
+    "sources": "catalog (例如： in 10 placeholders, onboarding.cloudSetup.*, ai.cloud.modelPlaceholderExample, fileOperations.mkdir.placeholder)"
+  },
+  "expired": {
+    "chosen": "過期",
+    "confidence": "high",
+    "forms": "expired (state) → 已過期; expires in N → N 天後過期 / N 小時後過期",
+    "sources": "MS expire → 過期; catalog (12 values, askCmdr.renameReview.expired, errors.listing.authRequiredEauth.*); AP-TW 項目可能已過期"
+  },
   "exposure": {
     "accept": ["ISO 感光度", "光圈值"],
     "chosen": "曝光",
@@ -1405,6 +1468,19 @@
     "chosen": "知道了",
     "confidence": "high",
     "sources": "catalog ai.toast.gotIt, main.oldMacos.gotIt, updates.moveToApplicationsDialog.gotIt"
+  },
+  "grant": {
+    "accept": ["給", "拿到"],
+    "avoid": [
+      {
+        "form": "授與",
+        "why": "MS's variant, zero in the catalog"
+      }
+    ],
+    "chosen": "授予",
+    "confidence": "high",
+    "forms": "grant Cmdr access → 授予 Cmdr 存取權; macOS hasn't granted → 還沒授予…存取權; casual onboarding prose → 給 (只有在你信任 Cmdr 的時候才給); from Cmdr's side, hasn't been granted → 還沒拿到…權限",
+    "sources": "catalog (授予 in 14 values, errors.listing.*.suggestion); MS 授與 is a rarer variant with zero catalog use"
   },
   "group": {
     "chosen": "群組",
@@ -1779,6 +1855,10 @@
     "chosen": "列表",
     "confidence": "high",
     "decision": "Classifiers and list compounds",
+    "exceptions": {
+      "fileOperations.s3Cost.line": "list prices = a provider's published prices → 公開定價 (MS list price → 定價), not a UI list.",
+      "fileOperations.s3Cost.infoText": "Same as fileOperations.s3Cost.line: list prices → 公開的定價."
+    },
     "sources": "AP-TW (53), AP-HK (58), live TW (75), live HK (71)"
   },
   "load": {
@@ -2015,6 +2095,9 @@
     "accept": ["檔名", "名字", "同名", "原名", "重名"],
     "chosen": "名稱",
     "confidence": "high",
+    "exceptions": {
+      "servers.sheet.identityLockedS3": "name is a verb here (what identifies this place) → 決定了這是哪個位置, like servers.sheet.identityLocked."
+    },
     "forms": "filename → 檔名 (41/41) or 檔案名稱",
     "sources": "AP-TW = AP-HK Finder N220"
   },
@@ -2072,6 +2155,17 @@
     "chosen": "共享資料夾",
     "confidence": "tentative",
     "decision": "Mount and share-list sentences",
+    "exceptions": {
+      "commands.fileCopyShareLink.label": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
+      "commands.fileCopyShareLinkOneDay.label": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
+      "commands.fileCopyShareLinkOneHour.label": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
+      "commands.handler.shareLinkCopied.sevenDays": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
+      "commands.handler.shareLinkCopied.oneDay": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
+      "commands.handler.shareLinkCopied.oneHour": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
+      "commands.handler.shareLinkFailed": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
+      "commands.handler.shareLinkUnavailable": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾.",
+      "menu.context.copyShareLink": "A share link hands a file to anyone over the web: the share-menu sense → 分享連結, never an SMB 共享資料夾."
+    },
     "forms": "mounted share → 已裝載的共享資料夾; a share named X → 名為「X」的共享資料夾",
     "sources": "derived from Apple Shared → 已共享 + folder; NetAuthAgent EINFO_NO_SHARE says bare 共享"
   },
@@ -2524,6 +2618,11 @@
     "forms": "tight chip → 正規式; aria labels and tooltips → 正規表示式",
     "sources": "TC (WCMD.LNG 5616 正規表示式, 5615 正規式)"
   },
+  "region": {
+    "chosen": "區域",
+    "confidence": "high",
+    "sources": "AWS zh-TW docs and console; MS region → 區域"
+  },
   "reject": {
     "chosen": "拒絕",
     "confidence": "high",
@@ -2800,6 +2899,12 @@
     "forms": "search results → 搜尋結果; a path matches N items → 符合",
     "sources": "AP-TW = AP-HK (Search Results → 搜尋結果; 337/339 live), MS, TC, DOL, NAU"
   },
+  "secret-access-key": {
+    "chosen": "私密存取金鑰",
+    "confidence": "high",
+    "forms": "short mentions after the label → 金鑰 (不儲存金鑰直接登入); a key as a pair-noun takes 組 (那組私密存取金鑰, onboarding.cloudSetup.status.authError 那組金鑰)",
+    "sources": "AWS zh-TW docs (MakingRequests, checked 2026-10-02); MS secret key → 祕密金鑰 loses to the provider console"
+  },
   "see": {
     "accept": ["檢視", "看看", "看一下", "看到"],
     "chosen": "查看",
@@ -2869,6 +2974,12 @@
     "confidence": "confirmed",
     "forms": "Cmdr's own Settings in prose → 「設定」; a path → 「設定 › AI」",
     "sources": "AP-TW (160), AP-HK (160), MS"
+  },
+  "share-link": {
+    "chosen": "分享連結",
+    "confidence": "high",
+    "forms": "Copy share link → 複製分享連結; expires in N days → N 天後過期; works for N days → N 天內有效",
+    "sources": "share-menu ruling 分享 + catalog 連結 (commands.cloudCopyGoogleDriveLink 複製 Google Drive 連結)"
   },
   "share-menu": {
     "chosen": "分享",
@@ -3064,8 +3175,20 @@
     "accept": ["儲存"],
     "chosen": "儲存空間",
     "confidence": "confirmed",
+    "exceptions": {
+      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim.",
+      "servers.sheet.s3ProviderHetzner": "Product name Hetzner Object Storage, kept verbatim.",
+      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google's product name, kept Latin as its zh-TW console does."
+    },
     "forms": "Manage Storage… → 管理儲存空間⋯; cloud storage → 雲端儲存空間; storing logs (log storage) → 記錄檔儲存",
     "sources": "AP-TW = AP-HK, MS"
+  },
+  "store": {
+    "accept": ["存", "留"],
+    "chosen": "儲存",
+    "confidence": "high",
+    "forms": "store a secret in the Keychain → 存進鑰匙圈 (servers.refusal.secretNotStored); a stored password → 已儲存的密碼; a destination can't store a name → 存不下這個名稱",
+    "sources": "catalog (servers.refusal.secretNotStored, errors.volume.invalidName); AP-TW = AP-HK 儲存"
   },
   "streaming": {
     "chosen": "串流",
@@ -3216,6 +3339,18 @@
     "confidence": "high",
     "sources": "AP-TW = AP-HK (Notes), MS (HKG, TWN)"
   },
+  "tint": {
+    "avoid": [
+      {
+        "form": "濃淡",
+        "why": "MS's tint is a colour-shade property, not a tinted pane"
+      }
+    ],
+    "chosen": "著色",
+    "confidence": "high",
+    "forms": "Tint X panes → 為 X 窗格著色; background tint → 背景著色; no tint → 不著色; pane tints card → 窗格著色",
+    "sources": "catalog (settings.appearance.tint*, settings.tint.none, settings.appearance.card.paneTints: 10 values); AP-TW colour-adjust 著色; MS 濃淡 (a shade value, not an overlay) loses"
+  },
   "title-bar": {
     "chosen": "標題列",
     "confidence": "high",
@@ -3334,7 +3469,8 @@
     "chosen": "連不上",
     "confidence": "high",
     "exceptions": {
-      "viewer.copy.clipboardUnreachable": "a clipboard isn't a network target; Cmdr can't access it (無法存取)"
+      "viewer.copy.clipboardUnreachable": "a clipboard isn't a network target; Cmdr can't access it (無法存取)",
+      "servers.refusal.accessDenied": "The bucket refused the key (a permission answer, not a network one) → 無法存取."
     },
     "forms": "Cmdr couldn't reach X → Cmdr 連不上 X。; a path title → 無法連到 {path}",
     "sources": "catalog 連不上 (12, servers.refusal.unreachable, servers.paneState.unreachable), 無法連到 (2), 無法連線到 (2)"
