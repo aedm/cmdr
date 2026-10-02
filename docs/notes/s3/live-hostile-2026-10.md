@@ -43,7 +43,7 @@ the evidence.
 ## Outcome per cell
 
 "All six" means R2, Hetzner, GCS, Spaces, AWS, and Wasabi; B2 is listed where it differs. Every cell passed on every
-provider after the fixes, except `live_hostile_sizes` on B2 (§ "Open questions").
+provider after the fixes, except `live_hostile_sizes` on B2: unverified, cap hit (§ "B2's daily cap").
 
 - **`live_hostile_names_round_trip`**: 28 names (NFC and NFD `café`, emoji with a ZWJ sequence, Hebrew, Arabic, double
   spaces, leading space, trailing space, trailing dot, `...`, `100% sure`, a literal `%2e%2e` and `%20`, `+`, `#`, `?`,
@@ -64,9 +64,8 @@ provider after the fixes, except `live_hostile_sizes` on B2 (§ "Open questions"
   across a part edge, from the last byte, and from the end (empty); a download released mid-way then read whole; then 1
   GiB (300 MiB on Wasabi) in production 64 MiB parts, generated and verified without holding it. Passed on all six.
   Big-object rates (shared link, skewed): R2 20.5 up / 33.4 down MiB/s, Spaces 15.8 / 46.3, AWS 25.7 / 48.1, GCS 15.4 /
-  23.2, Wasabi 22.9 / 48.8, Hetzner 4.6 / 31.1 (Hetzner's upload overlapped a sibling's big run). B2: blocked by 403 on
-  every request by the time this cell reached it (§ "Open questions"); its edge sizes were covered by the other cells'
-  multipart and single-PUT paths.
+  23.2, Wasabi 22.9 / 48.8, Hetzner 4.6 / 31.1 (Hetzner's upload overlapped a sibling's big run). B2: unverified, cap
+  hit (§ "B2's daily cap"); the other cells covered its multipart and single-PUT paths before the cap.
 - **`live_hostile_cancel_uploads`**: a Cancel before the first part, mid second part, and right before the completion of
   a 16 MiB multipart upload, and mid-body and at the last piece of a 2 MiB PUT, each to a free key and over an original.
   All cancelled cases left nothing published, the original byte for byte, no upload on the server, and no open ledger
@@ -116,11 +115,26 @@ provider after the fixes, except `live_hostile_sizes` on B2 (§ "Open questions"
 - **A Cancel landing just after a PUT's body**: R2 answered the PUT later than the 200 ms progress tick, the others
   sooner; that difference is what exposed fix 1.
 
+## B2's daily cap
+
+Late in the campaign David's B2 account hit its free daily download cap (bandwidth and Class B transactions). From then
+on every B2 read answered 403: a HEAD bodyless, a GET with `<Code>AccessDenied</Code>` (the message names the download
+or Class B cap; per `live-providers` and `live-engine`, who read the body). LIST, PUT, and `DeleteObjects` kept working.
+It resets around 00:00 UTC, or when the cap is raised on B2's Caps & Alerts page.
+
+- **What the user sees in Cmdr**: `VolumeError::PermissionDenied` on any stat, read, or copy, and on a `CreateNew` write
+  too, since check-then-write starts with a HEAD (that's how every `live_hostile_sizes` write failed). The UI words that
+  as a permissions problem, which sends the user to their keys rather than their B2 caps. The code can't tell them
+  apart: the HEAD has no body, and the GET's `AccessDenied` code is the same as a real refusal; only the message text
+  differs, and classifying by message is off the table.
+- **Unverified on B2, cap hit**: `live_hostile_sizes` (the edge sizes and the ~1 GiB read-back). Every other hostile
+  cell ran on B2 before the cap and passed.
+- Rerun `live.sh b2 live_hostile_sizes` once it resets.
+
 ## Open questions for the lead
 
-1. **B2 went 403 on every request** late in the campaign (HEAD, PUT, GET on `cmdr-s3-test-58fb74`), after everything had
-   passed on it. Probably B2's daily free transaction cap (Class B/C at a $0 cap answers 403); asked `live-providers`.
-   Rerun `live.sh b2 live_hostile_sizes` once it clears.
+1. **B2's cap reads as "permission denied"** (§ "B2's daily cap"). Worth a sentence in the user-facing wording of an S3
+   `PermissionDenied` ("or the provider's usage cap was reached")? Judgment call; not changed.
 2. **A typed refusal for names a provider won't store?** GCS and B2 refusals surface as `IoError "HTTP 400"` /
    `"InvalidRequest (HTTP 400)"`. Mapping `InvalidObjectName` (and B2's control-character case) to
    `VolumeError::InvalidName` would let the UI say "this provider doesn't allow that name". Not done: `InvalidRequest`
