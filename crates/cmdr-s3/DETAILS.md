@@ -150,14 +150,14 @@ it tests. `copy_test.rs` covers server-side copy (whole and in parts, the date k
 the profile forbids it, cancel, pause between parts, no-overwrite) and `batch_test.rs` the batch delete past 1,000 keys,
 the capped tally, and `rename_work`, both on both fixtures; the app's `backend_suites/s3_rename_integration_test.rs`
 drives renames that run as moves end to end. Multipart cells cut 5 MiB parts (`S3Volume::set_part_floor`, testing only)
-except one per fixture at the production 64 MiB. **Live cells** (`live_protocol_test.rs`, `live_flow_test.rs`, over
-`live_support.rs`) run the same questions against real R2, Hetzner, GCS, and Spaces accounts, only through
-`apps/desktop/test/s3-servers/live.sh` (`CMDR_S3_LIVE=1` plus each account's variables; without them every cell skips
-silently, so the lanes never reach an account). Each protocol cell also asserts the profile against what it saw, so an
-allowlist trusting a header a provider ignores fails the run; § "Verified providers" holds the findings. The 1,005-key
-paging prefix (`cmdr-test-paging-1005/`) and the 65 MiB object (`cmdr-test-large-65mib/blob.bin`, `seed_once`) are
-seeded once per fixture and kept; every other cell works under a `scratch_prefix` of its own, since the stack's objects
-persist across runs.
+except one per fixture at the production 64 MiB. **Live cells** (`live_protocol_test.rs`, `live_flow_test.rs`,
+`live_connect_test.rs`, over `live_support.rs`) run the same questions against real accounts on all seven named presets,
+only through `apps/desktop/test/s3-servers/live.sh` (`CMDR_S3_LIVE=1` plus each account's variables; without them every
+cell skips silently, so the lanes never reach an account). Each protocol cell also asserts the profile against what it
+saw, so an allowlist trusting a header a provider ignores fails the run; § "Verified providers" holds the findings. The
+1,005-key paging prefix (`cmdr-test-paging-1005/`) and the 65 MiB object (`cmdr-test-large-65mib/blob.bin`, `seed_once`)
+are seeded once per fixture and kept; every other cell works under a `scratch_prefix` of its own, since the stack's
+objects persist across runs.
 
 ## The public surface is capped
 
@@ -203,13 +203,15 @@ they can't be reached over HTTP through this stack.
 
 `ProviderProfile::from_preset` turns the connect form's preset into everything a request needs:
 
-- **AWS**: `s3.<region>.amazonaws.com`, virtual-hosted. Put, Complete, and Copy all take `If-None-Match: *` (docs).
+- **AWS**: `s3.<region>.amazonaws.com`, virtual-hosted. Put, Complete, and Copy all take `If-None-Match: *` (docs and
+  live).
 - **R2**: `<account>.r2.cloudflarestorage.com`, region `auto`, path style. Put and Complete take `If-None-Match`; Copy
   takes `cf-copy-destination-if-none-match` (it ignores `If-None-Match`). Keys composed NFC before they leave
   (`nfc_keys`), because R2 stores them NFC and an NFD key would otherwise collide with its twin while our own
   comparisons said they differ. Jurisdictional endpoints (EU, FedRAMP) aren't offered yet.
-- **B2**: `s3.<region>.backblazeb2.com`, path style. No conditional writes (501, per corroboration only).
-- **Wasabi**: `s3.<region>.wasabisys.com`, path style (Wasabi's recommendation). Check-then-write (undocumented).
+- **B2**: `s3.<region>.backblazeb2.com`, path style. No conditional writes (`501 NotImplemented` on all three, live).
+- **Wasabi**: `s3.<region>.wasabisys.com`, path style (Wasabi's recommendation). Check-then-write: it ignores
+  `If-None-Match` on all three writes (live).
 - **Hetzner**: `<location>.your-objectstorage.com`, region = location, path style. Put takes `If-None-Match`; Complete
   and Copy check then write.
 - **GCS**: `storage.googleapis.com` for every bucket, region `auto`, path style (a GCS bucket name may hold dots and
@@ -244,11 +246,17 @@ one `HeadBucket` per bucket per session, which the cost estimate ignores.
 
 - ❗ **A bucket place doesn't route**: its connect probe's `WrongRegion` refusal names the region to use instead
   (`route_each_bucket` is called for the account root only).
-- **AWS only.** The research note documents no region redirect elsewhere (Wasabi says a wrong-region host serves GETs
-  but refuses writes, with no redirect named; unverified, no account).
-- **Verified against a fake AWS only** (`transport_routing_test.rs`: one local server behind every `*.amazonaws.com`
-  host, answering the way the S3 docs say), because the Docker fixtures have one region and there's no AWS account to
-  test with.
+- **AWS only.** ❗ Wasabi answers a wrong-region request exactly as AWS does (`301 PermanentRedirect` with
+  `x-amz-bucket-region` and a `Location`; `400 AuthorizationHeaderMalformed` with `<Region>` when only the signature is
+  off), but isn't routed: its account root lists buckets of every region and every request to one elsewhere fails as an
+  `IoError` "PermanentRedirect (HTTP 301)" (verified on Wasabi `us-east-1` → `eu-central-1`, live.sh and curl,
+  2026-10-02). A bucket place there is `WrongRegion { region }`, as on AWS. Hetzner and Spaces keep each location's
+  buckets apart (another location's root lists none, its bucket place is `NoSuchBucket`); B2's keys live in one region
+  (another region answers `KeysRejected`).
+- **Verified live** (`live_connect_test.rs::live_connect_aws_routes_each_bucket_to_its_region`, an `eu-north-1` root
+  reaching a `us-west-2` bucket: listed upfront, learned from a redirect, asked before an upload, a share link, and a
+  server-side copy across regions, 2026-10-02), and against a fake AWS (`transport_routing_test.rs`: one local server
+  behind every `*.amazonaws.com` host) for the paths a live account can't force.
 
 **A short body is refused only where we have evidence (`refuses_short_body`, an allowlist).** S3's contract is that a
 PUT whose body ends before its `Content-Length` publishes nothing and keeps the old object; VersityGW breaks it and
@@ -258,40 +266,46 @@ stores what arrived (fixture README). Trusted, each on evidence:
   HTTP header" (https://docs.aws.amazon.com/AmazonS3/latest/developerguide/ErrorResponses.html).
 - **R2**: documents error 10013 / `IncompleteBody` (400): "Request body terminated before expected `Content-Length`"
   (https://developers.cloudflare.com/r2/api/error-codes/).
-- **B2**: not documented; observed answering a short PUT with its own `InvalidRequest` (400) "The request body was too
-  small" (https://stackoverflow.com/questions/76163129). The weakest entry, unverified for want of an account; if it
-  doesn't hold, B2 comes off the list.
-- **R2, Hetzner, GCS, and Spaces, live** (2026-10-02, `live_a_cut_off_put_publishes_nothing`): a PUT promising 4 MiB and
-  cut off after 2 MiB, over an object and on a free key, kept the original and published nothing, looked at 2 s and 17 s
-  later.
+- **Every named preset, live** (`live_a_cut_off_put_publishes_nothing`, 2026-10-02; B2 and Wasabi in two runs each): a
+  PUT promising 4 MiB and cut off after 2 MiB, over an object and on a free key, kept the original and published
+  nothing, looked at 2 s and 17 s later. Neither B2 nor Wasabi documents it.
 
-Wasabi and "Other" (VersityGW, MinIO, Garage, anything) are off it, Garage included though it refuses too (fixture
-README): it's reached as "Other", and the list is per preset. Off the list, an overwrite of an existing object goes as a
+Only "Other" (VersityGW, MinIO, Garage, anything) is off it, Garage included though it refuses too (fixture README):
+it's reached as "Other", and the list is per preset. Off the list, an overwrite of an existing object goes as a
 multipart upload (§ "Overwrites in parts").
 
 **Conditional writes are an allowlist, ❌ never a probe.** A server can ignore `If-None-Match: *` and answer 200 while
 overwriting: Garage does on Put, Complete, and Copy, VersityGW on Copy (`apps/desktop/test/s3-servers/README.md`,
-observed 2026-10-01). A success proves nothing, so only an operation the provider documents enforcing carries a header
-(AWS's three; R2's Put, Complete, and its Copy header; Hetzner's and Spaces' Put); every other cell is `CheckThenWrite`.
-AWS's entries rest on its docs; the rest are verified live (§ "Verified providers"). A `501 NotImplemented`
+observed 2026-10-01), and so do Wasabi and GCS live. A success proves nothing, so only an operation seen enforcing
+carries a header (AWS's three; R2's Put, Complete, and its Copy header; Hetzner's and Spaces' Put); every other cell is
+`CheckThenWrite`. Every entry is verified live (§ "Verified providers"). A `501 NotImplemented`
 (`S3Error::is_not_implemented`) on an allowlisted operation means the caller should call
 `ProviderProfile::downgrade(op)`: that one operation becomes check-then-write for the session, and the first call logs.
 The cells are atomics because one profile serves every concurrent operation.
 
 ## Verified providers
 
-Live against real accounts on 2026-10-02 (`apps/desktop/test/s3-servers/live.sh`, every `live_` cell; R2, Hetzner
-`nbg1`, GCS `us-central1` through HMAC keys, Spaces `fra1`). Re-run it before changing an allowlist. AWS, B2, and Wasabi
-have no account: their entries rest on docs.
+Live against all seven named presets on 2026-10-02 (`apps/desktop/test/s3-servers/live.sh`, every `live_` cell; R2,
+Hetzner `nbg1`, GCS `us-central1` through HMAC keys, Spaces `fra1`, AWS `eu-north-1` plus a `us-west-2` bucket, B2
+`eu-central-003`, Wasabi `eu-central-1`). Re-run it before changing an allowlist; an addition needs both directions seen
+in two runs. Full per-cell findings: `docs/notes/s3/live-verification-2026-10.md`.
 
 - **Everyone**: a cut-off PUT publishes nothing; a cut-off part racing an abort leaves no upload and no object; a part
   sent after an abort is `NoSuchUpload`; `DeleteObjects` takes 1,000 keys and refuses 1,001 (`MalformedXML`, GCS
-  `InvalidMultiObjectDeleteRequest`, Hetzner a bodyless 400), so GCS needs no per-object fallback; a delimited
-  `ListObjectsV2` echoes `encoding-type=url` and round-trips `a b+c.txt` and `x + y/`; `x-amz-meta-mtime` comes back
-  verbatim (GCS adds `x-goog-metageneration` beside it); a seven-day presigned GET fetches unsigned; a part under 5 MiB
-  before the last is `EntityTooSmall`; a wrong secret is `SignatureDoesNotMatch` on `ListObjectsV2`, and `HeadBucket`
-  answers a bodyless 403. The SDKs' `x-amz-checksum-crc32` and `-crc64nvme` are accepted everywhere, and a WRONG crc32
-  is `BadDigest` on R2 only (the rest ignore it); we send none.
+  `InvalidMultiObjectDeleteRequest`, B2 `InvalidRequest`, Hetzner a bodyless 400; Wasabi takes it), so GCS needs no
+  per-object fallback; a delimited `ListObjectsV2` echoes `encoding-type=url` and round-trips `a b+c.txt` and `x + y/`;
+  `x-amz-meta-mtime` comes back verbatim (GCS adds `x-goog-metageneration` beside it); a seven-day presigned GET fetches
+  unsigned; a part under 5 MiB before the last is `EntityTooSmall`; a wrong secret is `SignatureDoesNotMatch` on
+  `ListObjectsV2`, and `HeadBucket` answers a bodyless 403. The SDKs' `x-amz-checksum-crc32` and `-crc64nvme` are
+  accepted everywhere, and a WRONG crc32 is `BadDigest` on AWS, R2, B2, and Wasabi (Hetzner, GCS, and Spaces ignore it);
+  we send none. Where one key reaches two buckets (AWS, B2, Wasabi, Hetzner), `CopyObject` and `UploadPartCopy` work
+  between them.
+- **Connect refusals** (`live_connect_test.rs::live_connect_refusals`): a wrong secret or key id is `KeysRejected` on
+  the bucket and the account root everywhere, except R2's wrong secret (`AccessDenied` / `BucketListRefused`: its
+  bucket-scoped key gets `AccessDenied` on `ListBuckets` whatever the secret); a missing bucket is `NoSuchBucket`
+  everywhere but R2 (`AccessDenied`); a bucket through another region's endpoint is `WrongRegion { region }` on AWS and
+  Wasabi, `NoSuchBucket` on Hetzner and Spaces, `KeysRejected` on B2; a B2 key scoped to one bucket opens it, gets
+  `AccessDenied` on another, and `BucketListRefused` on the account root.
 - **Two gotchas the fixtures hid**: GCS answers `411` to a bodyless POST (`CreateMultipartUpload`), and R2, Hetzner, and
   GCS to a zero-byte PUT (a folder marker), when it carries no `Content-Length`; hyper sends none for an empty body, so
   `S3Client::send` adds `content-length: 0` (`transport_test.rs`).
@@ -312,19 +326,30 @@ have no account: their entries rest on docs.
 - **Spaces**: `If-None-Match` enforced on Put only; parts of any sizes land; `UploadPartCopy` ignores
   `x-amz-copy-source-if-match`; NFD and NFC are two objects; the key is bucket-scoped (`ListBuckets` and `CreateBucket`
   refused), so a cross-bucket copy is unverified and stays off (§ "Providers").
+- **AWS**: every doc-based entry held: `If-None-Match` enforced on Put, Complete, and Copy; `x-amz-copy-source-if-match`
+  enforced (412); parts of any sizes land; `UploadPartCopy` takes a 1 MiB source as the last part; copies work across
+  buckets and regions; NFD and NFC are two objects; a second abort answers 204. `ListBuckets` names each bucket's
+  region, and region routing works end to end (§ "Providers").
+- **B2**: `501 NotImplemented` to `If-None-Match` on all three writes, old object kept; ❗ `x-amz-copy-source-if-match`
+  enforced (412 on a stale pin, the current one copies, two runs), hence `enforces_copy_source_pin`; parts of any sizes
+  land; copies work across buckets; NFD and NFC are two objects; a second abort is `NoSuchUpload`. The master key
+  doesn't work on the S3 API: an application key does.
+- **Wasabi**: `If-None-Match` ignored on all three writes (200 and overwritten); `x-amz-copy-source-if-match` ignored;
+  parts of any sizes land; copies work across buckets; `DeleteObjects` takes 1,001 keys; NFD and NFC are two objects.
 - **Throughput** (`live_throughput_by_part_width`, a ~250 Mbit/s uplink from Stockholm): a 140 MiB server-side copy in 8
   MiB parts at 4 / 8 / 16 in flight took R2 3.3 / 2.6 / 1.5 s, Hetzner 1.2 / 1.0 / 0.6 s, Spaces 0.7 / 0.5 / 0.4 s, with
   no throttle surfacing as an error (AIMD halvings aren't counted), so 16 stays everyone's copy width. A 64 MiB upload
   at 2 / 4 / 8 parts ran 24 / 26 / 23 MiB/s on R2, 30 / 31 / 31 on Hetzner, 27 / 27 / 21 on Spaces, and 7 / 13 / 18 on
-  GCS (far away, so latency-bound); four stays the upload width, since eight 64 MiB buffers is 512 MiB.
+  GCS (far away, so latency-bound); four stays the upload width, since eight 64 MiB buffers is 512 MiB. AWS, B2, and
+  Wasabi (2026-10-02, with two other live runners sharing the link, so skewed) agree: copies at 16 in flight were the
+  fastest or level, and a 64 MiB upload at 2 / 4 / 8 parts ran 22 / 24 / 24 MiB/s on AWS.
 - **Hetzner reached as "Other"** (`live_an_overwrite_off_the_allowlist_goes_in_one_part`, 2026-10-02): an overwrite goes
   as a one-part multipart upload (ETag `…-1`); one cancelled right before its completion kept the original byte for byte
   and left no upload.
-- **Unverified, and why**: AWS, B2, and Wasabi (no account), so AWS's region routing still rests on the fake AWS; a
-  cross-bucket copy on R2, GCS, and Spaces (each key reaches one bucket); B2's short-body entry.
-- ❗ **A copy's ETag pin is ignored on Hetzner and Spaces**, so a source replaced mid-copy could be stitched from two
-  versions there; only R2 (of the four) refuses the part. Hence `enforces_copy_source_pin` (AWS per its docs, R2) and
-  the HEAD before the completion everywhere else (§ "Server-side copy").
+- **Unverified, and why**: a cross-bucket copy on R2, GCS, and Spaces (each key reaches one bucket).
+- ❗ **A copy's ETag pin is ignored on Hetzner, Spaces, and Wasabi**, so a source replaced mid-copy could be stitched
+  from two versions there; AWS, R2, and B2 refuse the part. Hence `enforces_copy_source_pin` (AWS, R2, B2) and the HEAD
+  before the completion everywhere else (§ "Server-side copy").
 
 ## Writing
 

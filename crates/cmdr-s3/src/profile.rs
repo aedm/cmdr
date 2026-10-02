@@ -2,8 +2,8 @@
 //!
 //! The preset fixes the endpoint, the signing region, and the addressing
 //! style, plus what each provider enforces: conditional writes, short bodies,
-//! server-side copy, and part shapes. Verified live where an account exists,
-//! from docs elsewhere (`crates/cmdr-s3/DETAILS.md` § "Verified providers").
+//! server-side copy, and part shapes. Verified live on every named preset
+//! (`crates/cmdr-s3/DETAILS.md` § "Verified providers").
 //! Re-run `apps/desktop/test/s3-servers/live.sh` before changing an entry.
 //!
 //! ❗ Conditional writes are an allowlist, ❌ never a probe: a server can ignore
@@ -205,8 +205,8 @@ pub(crate) struct ProviderProfile {
     pub refuses_short_body: bool,
     /// Whether `UploadPartCopy` refuses a part whose source no longer matches
     /// `x-amz-copy-source-if-match`, so a source replaced mid-copy can't be
-    /// stitched from two versions. An allowlist: Hetzner and Spaces ignore
-    /// the pin (live, `DETAILS.md` § "Verified providers"), so off it a copy in
+    /// stitched from two versions. An allowlist: Hetzner, Spaces, and Wasabi
+    /// ignore the pin (live, `DETAILS.md` § "Verified providers"), so off it a copy in
     /// parts HEADs its source before completing (`volume/server_copy.rs`).
     pub enforces_copy_source_pin: bool,
     /// R2 stores keys NFC, so an NFD key and its NFC twin are one object
@@ -244,7 +244,8 @@ impl ProviderProfile {
                     [IfNoneMatch; 3],
                 );
                 aws.refuses_short_body = true;
-                // Documented: a part copy whose source fails the pin is 412.
+                // Documented and seen live: a part copy whose source fails
+                // the pin is 412.
                 aws.enforces_copy_source_pin = true;
                 aws
             }
@@ -270,15 +271,20 @@ impl ProviderProfile {
                     [CheckThenWrite; 3],
                 );
                 b2.refuses_short_body = true;
+                b2.enforces_copy_source_pin = true;
                 b2
             }
-            Preset::Wasabi { region } => Self::https(
-                ProviderKind::Wasabi,
-                format!("s3.{}.wasabisys.com", host_part(region)?),
-                region,
-                Addressing::Path,
-                [CheckThenWrite; 3],
-            ),
+            Preset::Wasabi { region } => {
+                let mut wasabi = Self::https(
+                    ProviderKind::Wasabi,
+                    format!("s3.{}.wasabisys.com", host_part(region)?),
+                    region,
+                    Addressing::Path,
+                    [CheckThenWrite; 3],
+                );
+                wasabi.refuses_short_body = true;
+                wasabi
+            }
             Preset::Hetzner { location } => {
                 let mut hetzner = Self::https(
                     ProviderKind::Hetzner,

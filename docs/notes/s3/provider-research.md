@@ -8,7 +8,7 @@ Providers: AWS S3 (general purpose buckets), Cloudflare R2, Backblaze B2 (S3-com
 Storage, Google Cloud Storage (XML API), DigitalOcean Spaces. MinIO is skipped: nothing trivially available that changes
 a decision here.
 
-**Live findings beat this note.** R2, Hetzner, GCS, and Spaces were tested against real accounts on 2026-10-02
+**Live findings beat this note.** All seven named providers were tested against real accounts on 2026-10-02
 (`apps/desktop/test/s3-servers/live.sh`); the results, and where they contradict a doc below (marked **Live:**), are in
 `crates/cmdr-s3/DETAILS.md` § "Verified providers".
 
@@ -528,7 +528,7 @@ https://docs.wasabi.com/apidocs/wasabi-api
 
 - No provider publishes per-request `CopyObject` / `UploadPartCopy` throughput (MB/s). AWS documents only request rates
   (3,500 `COPY` per second per prefix). Hetzner's 10 Gbit/s per-bucket cap is the only bandwidth number found. Measured
-  numbers for R2, Hetzner, GCS, and Spaces: `crates/cmdr-s3/DETAILS.md` § "Verified providers".
+  numbers for every named provider: `crates/cmdr-s3/DETAILS.md` § "Verified providers".
 
 ## Surprises / risks for Cmdr
 

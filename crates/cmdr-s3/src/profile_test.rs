@@ -361,10 +361,14 @@ fn a_bad_bucket_or_key_is_refused_before_any_url_exists() {
 
 /// ❗ An allowlist, like conditional writes: only a provider with evidence that
 /// it refuses a short body keeps writing an overwrite in place. VersityGW
-/// publishes a cut-off PUT, and "Other" may be VersityGW.
+/// publishes a cut-off PUT, and "Other" may be VersityGW. Every named preset
+/// was seen refusing one live (Wasabi in two runs, 2026-10-02).
 #[test]
-fn every_preset_but_wasabi_is_trusted_to_refuse_a_short_body() {
+fn every_preset_but_other_is_trusted_to_refuse_a_short_body() {
     let trusted = [
+        Preset::Wasabi {
+            region: "eu-central-2".into(),
+        },
         Preset::Aws {
             region: "us-east-1".into(),
         },
@@ -384,27 +388,20 @@ fn every_preset_but_wasabi_is_trusted_to_refuse_a_short_body() {
         let listed = profile(preset);
         assert!(listed.refuses_short_body, "{:?}", listed.kind);
     }
-    let untrusted = [
-        Preset::Wasabi {
-            region: "eu-central-2".into(),
-        },
-        Preset::Other {
-            endpoint: Url::parse("http://127.0.0.1:17480").unwrap(),
-            region: None,
-            path_style: true,
-        },
-    ];
-    for preset in untrusted {
-        let unlisted = profile(preset);
-        assert!(!unlisted.refuses_short_body, "{:?}", unlisted.kind);
-    }
+    let other = profile(Preset::Other {
+        endpoint: Url::parse("http://127.0.0.1:17480").unwrap(),
+        region: None,
+        path_style: true,
+    });
+    assert!(!other.refuses_short_body);
 }
 
-/// ❗ An allowlist too: Hetzner and Spaces ignore `x-amz-copy-source-if-match`
-/// on `UploadPartCopy` (live, 2026-10-02), so a copy there HEADs its source
-/// before completing. AWS documents the pin; R2 was seen enforcing it.
+/// ❗ An allowlist too: Hetzner, Spaces, and Wasabi ignore
+/// `x-amz-copy-source-if-match` on `UploadPartCopy`, so a copy there HEADs its
+/// source before completing. AWS, R2, and B2 were seen refusing a stale pin
+/// with 412 and taking the current one (live, B2 in two runs, 2026-10-02).
 #[test]
-fn only_aws_and_r2_are_trusted_to_enforce_the_copy_source_pin() {
+fn only_aws_r2_and_b2_are_trusted_to_enforce_the_copy_source_pin() {
     let enforcing = [
         Preset::Aws {
             region: "us-east-1".into(),
@@ -412,15 +409,15 @@ fn only_aws_and_r2_are_trusted_to_enforce_the_copy_source_pin() {
         Preset::R2 {
             account_id: "abc123".into(),
         },
+        Preset::B2 {
+            region: "us-east-005".into(),
+        },
     ];
     for preset in enforcing {
         let listed = profile(preset);
         assert!(listed.enforces_copy_source_pin, "{:?}", listed.kind);
     }
     let unverified = [
-        Preset::B2 {
-            region: "us-east-005".into(),
-        },
         Preset::Wasabi {
             region: "eu-central-2".into(),
         },

@@ -206,9 +206,8 @@ fn clash(source_size: u64, dest_size: u64, source_modified: Option<u64>, dest_mo
 }
 
 /// An upload onto Wasabi that overwrites a young object: the replaced object's
-/// remaining days, and nothing more (Wasabi is off the short-body allowlist,
-/// so a one-PUT overwrite goes as a one-part multipart upload, which writes
-/// nothing beside it to bill).
+/// remaining days, and nothing more (Wasabi refuses a short body, so a one-PUT
+/// overwrite goes straight to the key and writes nothing beside it to bill).
 #[test]
 fn an_upload_overwriting_on_wasabi_bills_only_the_replaced_object() {
     let sides = Sides {

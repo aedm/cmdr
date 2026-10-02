@@ -305,16 +305,32 @@ fn aws_overwriting_an_object_costs_nothing_extra() {
     );
 }
 
-/// Off the `refuses_short_body` allowlist a one-PUT overwrite goes as a
-/// one-part multipart upload: a HEAD finding the original, and Create, one
-/// part, and Complete in place of the PUT. Nothing is written beside it, so
-/// Wasabi bills no early deletion for it.
 #[test]
-fn wasabi_upload_over_an_object_goes_as_one_part_with_nothing_billed_beside_it() {
+fn wasabi_upload_over_an_object_goes_straight_to_the_key() {
     let mut work = workload(&wasabi());
+    work.upload_over(MIB);
+    close(estimate(&work).total, 0.0);
+    assert!(
+        work.requests.is_empty(),
+        "Wasabi refuses a short body (live), so the PUT goes straight to the key: {:?}",
+        work.requests
+    );
+}
+
+/// Off the `refuses_short_body` allowlist ("Other" alone, which no table
+/// prices) a one-PUT overwrite goes as a one-part multipart upload: a HEAD
+/// finding the original, and Create, one part, and Complete in place of the
+/// PUT. Nothing is written beside it.
+#[test]
+fn an_upload_over_an_object_off_the_short_body_allowlist_goes_as_one_part() {
+    let other = S3Provider::Other {
+        endpoint: url::Url::parse("http://127.0.0.1:17480").expect("a URL"),
+        region: None,
+        path_style: true,
+    };
+    let mut work = workload(&other);
     work.upload(GIB / 32);
     work.upload_over(GIB / 32);
-    close(estimate(&work).total, 0.0);
     assert_eq!(work.requests.get(&RequestKind::PutObject), None);
     assert_eq!(work.requests.get(&RequestKind::CreateMultipartUpload), Some(&1));
     assert_eq!(work.requests.get(&RequestKind::UploadPart), Some(&1));
