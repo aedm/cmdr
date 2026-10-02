@@ -380,6 +380,10 @@ boundary the user waits out, which over a sleeping NAS is seconds per directory.
 `spawn_blocking` can carry one across the closure, cloned once per scan and never per entry. Cost is ~2 ns per entry
 against the ~1–3 µs syscall or round trip the entry already costs.
 
+**The copy hands the same signal to its destination** through `VolumeReadStream::stop_signal`, for an upload that
+buffers ahead of the wire (S3's parts): the pause that parks the source stream can't reach bytes already read. The
+engine's checkpoint stream answers it; every other wrapper forwards its inner stream's answer.
+
 **A stopped scan returns `VolumeError::Cancelled`, ❌ never a partial `BatchScanResult`.** Callers read a scan's totals
 as the size of the transfer they're about to run, so a truncated total that looks successful is a progress bar finishing
 at 30% and a free-space check passing when it shouldn't.

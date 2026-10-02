@@ -52,6 +52,18 @@ pub trait VolumeReadStream: Send {
         None
     }
 
+    /// The operation's Cancel and pause, for a destination that reads AHEAD of
+    /// the wire. A pause parks the stream's own `next_chunk`, which stops a
+    /// destination that sends each piece as it reads it. One that buffers first
+    /// (S3 fills a whole part, then sends it) has the source drained long before
+    /// its bytes go out, so it parks its requests on this instead.
+    ///
+    /// Default: nobody can pause this stream. ❗ A wrapper stream forwards its
+    /// inner stream's answer, unless it IS the operation's checkpoint.
+    fn stop_signal(&self) -> ScanStop {
+        ScanStop::none()
+    }
+
     /// Promptly release any scarce backend resource this stream holds across
     /// chunks, before the stream is dropped. After this call the stream is spent;
     /// `next_chunk` must not be called again on it.

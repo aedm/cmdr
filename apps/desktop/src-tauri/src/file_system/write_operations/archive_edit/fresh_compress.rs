@@ -50,6 +50,14 @@ impl VolumeReadStream for PausableSpoolStream {
     fn bytes_read(&self) -> u64 {
         self.inner.bytes_read()
     }
+
+    /// This operation's own Cancel and pause, for a destination that buffers
+    /// ahead of this stream (S3).
+    fn stop_signal(&self) -> crate::file_system::volume::ScanStop {
+        crate::file_system::volume::ScanStop::new(
+            Arc::clone(&self.state) as Arc<dyn crate::file_system::volume::ScanStopSignal>
+        )
+    }
 }
 
 #[allow(
