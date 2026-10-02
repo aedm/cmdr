@@ -2327,7 +2327,7 @@
   },
   "errors.write.insufficientSpace.title": "The destination may not have enough space",
   "errors.write.insufficientSpace.message": "This needs up to {required}, and the destination has {available} free.",
-  "errors.write.insufficientSpace.suggestion": "Files already at the destination may mean it needs less, and if the destination fills up, Cmdr stops and tells you. To be safe, free up some space or choose a different location.",
+  "errors.write.insufficientSpace.suggestion": "Files already at the destination may mean the copy needs less space. If the destination fills up, Cmdr stops and tells you. To be safe, free up some space or choose a different location.",
   "@errors.write.insufficientSpace.title": {
     "description": "Title of the copy dialog shown BEFORE anything is copied, when the destination might be too full for the copy. It's an estimate, not a certainty, so keep the hedge (\"may\"). Plain text.",
     "screenshot": "transfer-error-insufficient_space.png"

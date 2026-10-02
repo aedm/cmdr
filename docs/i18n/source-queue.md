@@ -77,9 +77,8 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   checklist with the whole-run line, so locales can judge length and the spinner context. (all)
 - `indexing.overall.eta`: `{eta}` can be "Almost done", which arrives capitalized after the colon; several locales then
   read "Total: Almost done". Say in the description whether the inserted phrase is sentence-initial or not. (de, hu, vi)
-- `errors.write.insufficientSpace.suggestion`: "may mean it needs less" leaves "it" (the copy) implicit; locales named
-  the copy or the space outright. Say "the copy may need less". No screenshot of the dialog with "Copy anyway" either.
-  (all)
+- `errors.write.insufficientSpace.*`, `fileOperations.errorDialog.copyAnyway`: no screenshot of the dialog with "Copy
+  anyway". (all)
 - `downloads.fda.message`: the description requires keeping Full Disk Access in English. Instead require the localized
   macOS permission label, as other FDA keys do.
 - Plural instruction proposal: CLDR `one` does not mean exactly one. Audit counts such as 21/101; use `=1` for one-only
