@@ -76,7 +76,10 @@ async fn live_volume_flows_end_to_end() {
     for live in live_targets() {
         let client = live.client();
         let prefix = live_prefix("flows");
-        let volume = live.connect(Some(&live.bucket)).await.expect("the bucket connects");
+        let volume = live
+            .connect(Some(&live.bucket))
+            .await
+            .unwrap_or_else(|e| panic!("[{}] the bucket didn't connect: {e:?}", live.name));
 
         // One PUT, refused when occupied, then overwritten.
         let small = format!("{prefix}small.txt");
@@ -258,7 +261,10 @@ async fn live_throughput_by_part_width() {
     for live in live_targets() {
         let client = live.client();
         let prefix = live_prefix("throughput");
-        let volume = live.connect(Some(&live.bucket)).await.expect("the bucket connects");
+        let volume = live
+            .connect(Some(&live.bucket))
+            .await
+            .unwrap_or_else(|e| panic!("[{}] the bucket didn't connect: {e:?}", live.name));
 
         // 64 MiB in 8 MiB parts, so eight parts can be in flight.
         volume.set_part_floor((8 * MIB) as u64);
