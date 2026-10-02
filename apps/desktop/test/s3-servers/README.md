@@ -185,3 +185,8 @@ The shared fixture lane selects every `#[ignore]`d test in `package(cmdr-s3)`, p
 under a `scratch_prefix` of your own: the objects persist across runs. Seed with `testing::seed`, which goes through the
 crate's own request builders. Run a cell against BOTH servers when what it asserts could differ between them; a wrong
 secret already does (above). By hand: `./start.sh`, then `cargo nextest run -p cmdr-s3 --run-ignored only`.
+
+Every S3 fixture cell runs four at a time on nextest's `s3-fixture` test group with a 30 s cap (`.config/nextest.toml`):
+at full parallelism on a loaded machine all of them starved past the 8 s cap together. The group finds a `cmdr-s3` cell
+by its `_on_versitygw` / `_on_garage` suffix (or the connection-drop and reconnect modules) and an app cell by its
+`s3_integration_` prefix, so ❗ a new cell keeps that naming or it runs ungrouped. The lane takes about three minutes.

@@ -83,6 +83,14 @@ sftp-bench = { max-threads = 1 }
 # load and ALL of them blow their cap together, which is what a cold `pnpm check`
 # looked like. Serialized, one test pays and the rest are free.
 vision-model = { max-threads = 1 }
+# Every S3 fixture cell (the app crate's `s3_integration_` ones and `cmdr-s3`'s own).
+# They all talk to the one shared VersityGW + Garage stack, many move tens of MiB
+# (a 140 MiB multipart upload, a 1,005-object rename, a 70 MiB upload copied and
+# moved), and each lands in 1–5 s alone. Ninety-odd of them at full parallelism on a
+# loaded machine all hit the 8 s cap together (measured 2026-10-02, load average 9:
+# every one killed; at four at a time, every one green). Four at a time keeps the
+# stack busy without starving it; the 30 s cap below is the hang backstop.
+s3-fixture = { max-threads = 4 }
 
 [[profile.default.overrides]]
 # Disk-image fixtures: hdiutil create+attach+detach plus, for the FSEvents
@@ -436,27 +444,16 @@ slow-timeout = { period = "20s", terminate-after = 1 }
 retries = 2
 
 [[profile.default.overrides]]
-# The S3 folder rename past a thousand objects
-# (`backend_suites/s3_rename_integration_test.rs`), on both fixtures. It has to be
-# that big: the source sweep pages its `DeleteObjects` past the first 1,000 keys,
-# and that paging is the point. So a cell seeds 1,005 objects and the engine then
-# copies, verifies, and deletes each one, about four thousand requests. Alone it
-# runs in ~1.7 s (measured 2026-10-01, M3 Max); with the whole `s3_integration_`
-# lane running at once against the one shared fixture stack it passed 8 s and was
-# killed mid-copy. ❌ Don't read 30 s as a runtime: it's the hang backstop with
-# headroom for a busy stack.
-filter = 'test(a_folder_of_1005_objects_renames_through_the_engine)'
-slow-timeout = { period = "30s", terminate-after = 1 }
-
-[[profile.default.overrides]]
-# The S3 copy onto a bucket (`backend_suites/s3_transfer_integration_test.rs`), on
-# both fixtures. It uploads a 140 MiB file as a three-part multipart upload (the
-# multipart path is the point) and reads it back for a checksum, so it moves
-# ~280 MiB through one Docker server. Alone it took 7.2 s on Garage under a load
-# average of 10 (measured 2026-10-01, M3 Max), and the default 8 s cap killed it
-# on VersityGW in two full-lane runs. ❌ Don't read 30 s as a runtime: it's the
-# hang backstop with headroom for a busy stack.
-filter = 'test(copying_onto_a_bucket_lands_every_byte_and_the_mtime)'
+# Every S3 fixture cell, the app crate's (`s3_integration_`) and `cmdr-s3`'s own
+# (named `…_on_versitygw` / `…_on_garage`, plus the connection-drop and reconnect
+# cells): queued four at a time on the `s3-fixture` group (see its note above),
+# with the `smb_integration_` block's 30 s hang backstop. The slowest by design:
+# the 140 MiB multipart copy onto a bucket (7.2 s alone on Garage under a load
+# average of 10, 2026-10-01) and the 1,005-object rename. ❌ Don't read 30 s as a
+# runtime, and ❌ don't raise the global cap for these: the queue is what keeps
+# them under it. A new `cmdr-s3` fixture cell keeps the `_on_<fixture>` suffix.
+filter = 'test(s3_integration_) | (package(cmdr-s3) & (test(_on_versitygw) | test(_on_garage) | test(connection_drop_test::) | test(reconnect_test::)))'
+test-group = 's3-fixture'
 slow-timeout = { period = "30s", terminate-after = 1 }
 
 [[profile.default.overrides]]
