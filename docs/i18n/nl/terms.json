@@ -548,6 +548,12 @@
     "forms": "button Verbind; Connect to server → Verbind met server; Connect as guest → Verbind als gast; progress Verbinden met {name}…; status Verbonden; in a sentence verbinding maken; a phone plugged in by cable is aangesloten, not verbonden",
     "sources": "macOS Finder (Connect to server → Verbind met server, Connect As… → Verbind als…), AppKit (Connecting… → Verbinden…, Connected → Verbonden)"
   },
+  "provider-console": {
+    "chosen": "console",
+    "confidence": "high",
+    "forms": "a storage provider’s console → de console van je opslagaanbieder, after a first mention de console van je aanbieder",
+    "sources": "MS terminology (console → console); catalog errors.listing.coldStorage.suggestion"
+  },
   "context-menu": {
     "accept": ["rechtermuisknop"],
     "avoid": [
@@ -2646,6 +2652,13 @@
     "confidence": "high",
     "forms": "storage provider → opslagaanbieder (aanbieder per ai-provider); cold storage → koude opslag; S3 storage → S3-opslag",
     "sources": "Microsoft Terminology (storage → opslag; cold storage → koude opslag); macOS (Cloudopslag, Beheer opslag…)"
+  },
+  "store": {
+    "accept": ["opgeslagen", "slaat", "bewaren", "bewaard"],
+    "chosen": "opslaan",
+    "confidence": "high",
+    "forms": "a destination that can’t store a name → kan … niet opslaan / kan hier niet worden opgeslagen; keeping a file, secret, or address → bewaren / bewaard (the save ruling’s verb: FAT32 kan geen bestanden bewaren, bewaren in Sleutelhanger)",
+    "sources": "catalog errors.volume.invalidName, errors.write.invalidName.message"
   },
   "streaming": {
     "accept": ["streammodus", "stream"],

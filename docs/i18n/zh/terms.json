@@ -490,10 +490,10 @@
     "sources": "catalog (settings.ai.provider.opt.cloud)"
   },
   "cloud-provider": {
-    "accept": ["云挂载", "云端", "云服务"],
+    "accept": ["云挂载", "云端", "云服务", "云存储"],
     "chosen": "云服务商",
     "confidence": "high",
-    "forms": "云服务商; a cloud mount 云挂载; cloud folders 云端文件夹; cloud services 云服务",
+    "forms": "云服务商; a cloud mount 云挂载; cloud folders 云端文件夹; cloud services 云服务; object storage in the cloud (S3 and similar) 云存储, per the storage ruling",
     "sources": "catalog"
   },
   "cold-storage": {

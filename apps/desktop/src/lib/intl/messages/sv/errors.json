@@ -491,6 +491,18 @@
   "@errors.listing.permissionDenied.suggestion": {
     "sourceHash": "3450aff"
   },
+  "errors.listing.objectStoreRefused.title": "Din lagringsleverantör nekade det här",
+  "@errors.listing.objectStoreRefused.title": {
+    "sourceHash": "1039b5f"
+  },
+  "errors.listing.objectStoreRefused.explanation": "`{path}` ligger i molnlagring, och leverantören nekade förfrågan. Antingen har åtkomstnyckeln inte behörighet här, eller så har leverantören pausat åtkomsten till kontot, till exempel efter att en användningsgräns har nåtts eller på grund av ett faktureringsproblem.",
+  "@errors.listing.objectStoreRefused.explanation": {
+    "sourceHash": "b9f0f12"
+  },
+  "errors.listing.objectStoreRefused.suggestion": "Kontrollera åtkomstnyckelns behörigheter, eller titta i din leverantörs konsol efter en användningsgräns eller ett faktureringsmeddelande.",
+  "@errors.listing.objectStoreRefused.suggestion": {
+    "sourceHash": "718da2a"
+  },
   "errors.listing.remotePermissionDenied.title": "Servern öppnar inte den här mappen",
   "@errors.listing.remotePermissionDenied.title": {
     "sourceHash": "f9cb7bd"
@@ -1429,9 +1441,9 @@
   "@errors.write.invalidName.message": {
     "sourceHash": "ad395af"
   },
-  "errors.write.invalidName.suggestion": "Byt namn på den till något kortare och enklare och försök igen. Vissa mål avvisar också reserverade namn som CON, NUL eller LPT1.",
+  "errors.write.invalidName.suggestion": "Byt namn på den till något kortare och enklare och försök igen. Vissa mål avvisar tabbtecken eller radbrytningar i ett namn, och vissa avvisar reserverade namn som CON, NUL eller LPT1.",
   "@errors.write.invalidName.suggestion": {
-    "sourceHash": "3721c3d"
+    "sourceHash": "77cff09"
   },
   "errors.write.trashRefused.title": "Det gick inte att flytta till papperskorgen",
   "@errors.write.trashRefused.title": {
@@ -1536,6 +1548,10 @@
   "errors.write.permissionDenied.message.named": "Din macOS-användare kan inte ändra {folder}.",
   "@errors.write.permissionDenied.message.named": {
     "sourceHash": "0ffd79b"
+  },
+  "errors.write.permissionDenied.suggestion.objectStoreAccount": "Leverantören nekade, och det kan betyda två saker. Kontrollera åtkomstnyckelns behörigheter, eller titta i din leverantörs konsol efter en användningsgräns eller ett faktureringsmeddelande.",
+  "@errors.write.permissionDenied.suggestion.objectStoreAccount": {
+    "sourceHash": "31deca5"
   },
   "errors.write.permissionDenied.suggestion.needsAdminMac": "Det kräver administratörsbehörighet. Om du vill ge ditt eget konto åtkomst markerar du mappen i Finder, går till Visa info och tittar under Delning och behörigheter.",
   "@errors.write.permissionDenied.suggestion.needsAdminMac": {
@@ -1900,6 +1916,10 @@
   "errors.volume.notADirectory": "Det ligger en fil på ”{path}”, där det behöver finnas en mapp.",
   "@errors.volume.notADirectory": {
     "sourceHash": "2f66bc8"
+  },
+  "errors.volume.invalidNameNamed": "Namnet ”{name}” kan inte lagras här. Välj ett annat.",
+  "@errors.volume.invalidNameNamed": {
+    "sourceHash": "6f65c40"
   },
   "errors.volume.invalidName": "Målet kan inte lagra det namnet. Välj ett annat.",
   "@errors.volume.invalidName": {

@@ -614,6 +614,12 @@
     "note": "`se connecter` is the network action; signing in is `s’identifier`.",
     "sources": "macOS Finder (\"Se connecter comme…\", MenuBar 266.title, MN1 « Connexion à « ^0 »… »)"
   },
+  "provider-console": {
+    "chosen": "console",
+    "confidence": "high",
+    "forms": "a storage provider’s console → la console de votre fournisseur de stockage, after a first mention la console de votre fournisseur",
+    "sources": "MS terminology (console → console); catalog errors.listing.coldStorage.suggestion"
+  },
   "context-menu": {
     "accept": ["clic droit", "bouton droit"],
     "chosen": "menu contextuel",

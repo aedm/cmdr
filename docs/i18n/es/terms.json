@@ -519,6 +519,12 @@
     "sources": "macOS Finder (Conectar, MN1 Conectándose a ^0…, Conectarse a un servidor), NetAuthAgent (Conectando…)",
     "decision": "El hub de servidores: conectar, desconectar y olvidar"
   },
+  "provider-console": {
+    "chosen": "consola",
+    "confidence": "high",
+    "forms": "a storage provider’s console → la consola de tu proveedor de almacenamiento, after a first mention la consola de tu proveedor",
+    "sources": "MS terminology (console → consola); catalog errors.listing.coldStorage.suggestion"
+  },
   "context-menu": {
     "chosen": "menú contextual",
     "accept": ["menús contextuales", "clic derecho", "clic secundario"],

@@ -1840,6 +1840,13 @@
     "forms": "line number → 行號; line count → 行數 / 總行數; on line N → 第 N 行",
     "sources": "MS (line number → 行號)"
   },
+  "limit": {
+    "accept": ["限制", "預算"],
+    "chosen": "上限",
+    "confidence": "high",
+    "forms": "a cap (tab limit, a usage cap) → 上限 (已達分頁數量上限, 用量上限); a restriction → 限制; an AI step or time budget → 預算",
+    "sources": "catalog (上限 ×9, settings and errors families); MS terminology"
+  },
   "list": {
     "accept": ["列出"],
     "avoid": [
@@ -3686,5 +3693,12 @@
     "chosen": "原始碼是公開的",
     "confidence": "tentative",
     "sources": "Cmdr's license is the BSL (docs/business/README.md); catalog (onboarding.stepFda.con.body)"
+  },
+  "usage": {
+    "accept": ["使用量", "使用統計", "花費"],
+    "chosen": "用量",
+    "confidence": "high",
+    "forms": "a chat’s token usage → 這次對話的用量; memory usage → 記憶體用量; a usage cap → 用量上限; app usage stats → 使用統計; the spending section → 花費",
+    "sources": "catalog askCmdr and settings families; MS terminology’s 使用方式 is the how-it’s-used sense, not the amount"
   }
 }

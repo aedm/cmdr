@@ -491,6 +491,18 @@
   "@errors.listing.permissionDenied.suggestion": {
     "sourceHash": "3450aff"
   },
+  "errors.listing.objectStoreRefused.title": "你的儲存服務提供者拒絕了這個請求",
+  "@errors.listing.objectStoreRefused.title": {
+    "sourceHash": "1039b5f"
+  },
+  "errors.listing.objectStoreRefused.explanation": "`{path}` 在雲端儲存空間裡，提供者拒絕了這個請求。可能是存取金鑰在這裡沒有權限，也可能是提供者暫停了這個帳號的存取，例如用量達到上限，或帳單出了問題。",
+  "@errors.listing.objectStoreRefused.explanation": {
+    "sourceHash": "b9f0f12"
+  },
+  "errors.listing.objectStoreRefused.suggestion": "檢查存取金鑰的權限，或到提供者的主控台看看有沒有用量上限或帳單通知。",
+  "@errors.listing.objectStoreRefused.suggestion": {
+    "sourceHash": "718da2a"
+  },
   "errors.listing.remotePermissionDenied.title": "伺服器不讓開啟這個資料夾",
   "@errors.listing.remotePermissionDenied.title": {
     "sourceHash": "f9cb7bd"
@@ -1429,9 +1441,9 @@
   "@errors.write.invalidName.message": {
     "sourceHash": "ad395af"
   },
-  "errors.write.invalidName.suggestion": "把它改成短一點、單純一點的名稱再試一次。有些目標位置還會拒絕 CON、NUL、LPT1 這類保留名稱。",
+  "errors.write.invalidName.suggestion": "把它改成短一點、單純一點的名稱再試一次。有些目標位置不接受名稱裡的定位字元或換行字元，有些還會拒絕 CON、NUL、LPT1 這類保留名稱。",
   "@errors.write.invalidName.suggestion": {
-    "sourceHash": "3721c3d"
+    "sourceHash": "77cff09"
   },
   "errors.write.trashRefused.title": "無法移至垃圾桶",
   "@errors.write.trashRefused.title": {
@@ -1536,6 +1548,10 @@
   "errors.write.permissionDenied.message.named": "你的 macOS 使用者無法更改 {folder}。",
   "@errors.write.permissionDenied.message.named": {
     "sourceHash": "0ffd79b"
+  },
+  "errors.write.permissionDenied.suggestion.objectStoreAccount": "提供者拒絕了，這可能有兩種情況。檢查存取金鑰的權限，或到提供者的主控台看看有沒有用量上限或帳單通知。",
+  "@errors.write.permissionDenied.suggestion.objectStoreAccount": {
+    "sourceHash": "31deca5"
   },
   "errors.write.permissionDenied.suggestion.needsAdminMac": "這需要管理者權限。要讓你自己的帳號有權限，請在 Finder 裡選取這個資料夾，選擇「取得資訊」，然後查看「共享與權限」部分。",
   "@errors.write.permissionDenied.suggestion.needsAdminMac": {
@@ -1900,6 +1916,10 @@
   "errors.volume.notADirectory": "「{path}」是個檔案，但那裡需要一個資料夾。",
   "@errors.volume.notADirectory": {
     "sourceHash": "2f66bc8"
+  },
+  "errors.volume.invalidNameNamed": "「{name}」這個名稱在這裡存不下。請換一個。",
+  "@errors.volume.invalidNameNamed": {
+    "sourceHash": "6f65c40"
   },
   "errors.volume.invalidName": "目標位置存不下這個名稱。請換一個。",
   "@errors.volume.invalidName": {

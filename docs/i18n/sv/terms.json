@@ -563,6 +563,12 @@
     "forms": "ansluta, Anslut, Ansluter till {name}…, anslutning, ansluten; Connect as guest → Anslut som gäst",
     "sources": "macOS Finder (Anslut till server, Ansluter till ^0…)"
   },
+  "provider-console": {
+    "chosen": "konsol",
+    "confidence": "high",
+    "forms": "a storage provider’s console → din lagringsleverantörs konsol, after a first mention din leverantörs konsol",
+    "sources": "MS terminology (console → konsol); catalog errors.listing.coldStorage.suggestion"
+  },
   "context-menu": {
     "accept": ["högerklick"],
     "chosen": "snabbmeny",

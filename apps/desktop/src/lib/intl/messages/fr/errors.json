@@ -491,6 +491,18 @@
   "@errors.listing.permissionDenied.suggestion": {
     "sourceHash": "3450aff"
   },
+  "errors.listing.objectStoreRefused.title": "Votre fournisseur de stockage a refusé l’accès",
+  "@errors.listing.objectStoreRefused.title": {
+    "sourceHash": "1039b5f"
+  },
+  "errors.listing.objectStoreRefused.explanation": "`{path}` se trouve dans un stockage cloud, et le fournisseur a refusé la requête. Soit la clé d’accès n’a pas l’autorisation ici, soit le fournisseur a suspendu l’accès au compte, par exemple à cause d’un plafond d’utilisation atteint ou d’un problème de facturation.",
+  "@errors.listing.objectStoreRefused.explanation": {
+    "sourceHash": "b9f0f12"
+  },
+  "errors.listing.objectStoreRefused.suggestion": "Vérifiez les autorisations de la clé d’accès, ou cherchez dans la console de votre fournisseur un plafond d’utilisation ou un avis de facturation.",
+  "@errors.listing.objectStoreRefused.suggestion": {
+    "sourceHash": "718da2a"
+  },
   "errors.listing.remotePermissionDenied.title": "Le serveur n’ouvre pas ce dossier",
   "@errors.listing.remotePermissionDenied.title": {
     "sourceHash": "f9cb7bd"
@@ -1429,9 +1441,9 @@
   "@errors.write.invalidName.message": {
     "sourceHash": "ad395af"
   },
-  "errors.write.invalidName.suggestion": "Renommez-le avec quelque chose de plus court et de plus simple, puis réessayez. Certaines destinations refusent aussi les noms réservés comme CON, NUL ou LPT1.",
+  "errors.write.invalidName.suggestion": "Renommez-le avec quelque chose de plus court et de plus simple, puis réessayez. Certaines destinations refusent les tabulations ou les retours à la ligne dans un nom, et d’autres les noms réservés comme CON, NUL ou LPT1.",
   "@errors.write.invalidName.suggestion": {
-    "sourceHash": "3721c3d"
+    "sourceHash": "77cff09"
   },
   "errors.write.trashRefused.title": "Placement dans la corbeille impossible",
   "@errors.write.trashRefused.title": {
@@ -1536,6 +1548,10 @@
   "errors.write.permissionDenied.message.named": "Votre utilisateur macOS ne peut pas modifier {folder}.",
   "@errors.write.permissionDenied.message.named": {
     "sourceHash": "0ffd79b"
+  },
+  "errors.write.permissionDenied.suggestion.objectStoreAccount": "Le fournisseur a refusé, et cela peut signifier deux choses. Vérifiez les autorisations de la clé d’accès, ou cherchez dans la console de votre fournisseur un plafond d’utilisation ou un avis de facturation.",
+  "@errors.write.permissionDenied.suggestion.objectStoreAccount": {
+    "sourceHash": "31deca5"
   },
   "errors.write.permissionDenied.suggestion.needsAdminMac": "Cela demande des droits d’administrateur. Pour donner l’accès à votre propre compte, sélectionnez le dossier dans le Finder, choisissez Lire les informations, puis vérifiez la section Partage et permissions.",
   "@errors.write.permissionDenied.suggestion.needsAdminMac": {
@@ -1900,6 +1916,10 @@
   "errors.volume.notADirectory": "Un fichier se trouve à « {path} », là où il faut un dossier.",
   "@errors.volume.notADirectory": {
     "sourceHash": "2f66bc8"
+  },
+  "errors.volume.invalidNameNamed": "Le nom « {name} » ne peut pas être stocké ici. Choisissez-en un autre.",
+  "@errors.volume.invalidNameNamed": {
+    "sourceHash": "6f65c40"
   },
   "errors.volume.invalidName": "La destination ne peut pas stocker ce nom. Choisissez-en un autre.",
   "@errors.volume.invalidName": {

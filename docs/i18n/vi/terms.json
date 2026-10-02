@@ -506,6 +506,12 @@
     "forms": "connect to a server → kết nối tới (prose) but the label Kết nối với máy chủ… (Finder N84); reconnect → kết nối lại; the connection dropped → Đã mất kết nối",
     "sources": "Xfce Thunar (kết nối mạng), macOS Finder (Kết nối với máy chủ), CFNetwork (Đã mất kết nối mạng)"
   },
+  "provider-console": {
+    "chosen": "bảng điều khiển",
+    "confidence": "high",
+    "forms": "a storage provider’s console → bảng điều khiển của nhà cung cấp dịch vụ lưu trữ, after a first mention bảng điều khiển của nhà cung cấp",
+    "sources": "catalog errors.listing.coldStorage.suggestion; MS terminology says bàn điều khiển quản lí for management console, the catalog form kept"
+  },
   "context-menu": {
     "accept": ["chuột phải"],
     "chosen": "menu chuột phải",

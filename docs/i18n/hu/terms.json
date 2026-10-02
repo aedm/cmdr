@@ -683,6 +683,12 @@
     "note": "The two stems are a deliberate split: the pane title keeps Apple's kapcsolód-, the sheet's button and its siblings keep csatlakoz- because Connect is shared with fileExplorer.network.connect.",
     "decision": "A szerverlap, az SSH-kulcs jóváhagyása és a Go-to-path előnézete"
   },
+  "provider-console": {
+    "chosen": "konzol",
+    "confidence": "high",
+    "forms": "a storage provider’s console → a tárhelyszolgáltatód konzolja, after a first mention a szolgáltatód konzolja; on it → konzolján",
+    "sources": "MS terminology (console → konzol, management console → kezelőkonzol); catalog errors.listing.coldStorage.suggestion"
+  },
   "context-menu": {
     "chosen": "helyi menü",
     "accept": ["jobb gomb", "menü", "klikk"],
@@ -1387,6 +1393,16 @@
     "forms": "S3 storage → S3-tárhely; storage provider → tárhelyszolgáltató; cold storage → offline tárolás (ms)",
     "confidence": "high",
     "sources": "catalog (fileExplorer.mtp.noStorage, fileExplorer.diskSpace.noLimitNote, telefontárhely); ms (storage → tár / tárterület; cold storage → offline tárolás)"
+  },
+  "store": {
+    "accept": ["tárolható", "tárolni", "ment"],
+    "chosen": "tárol",
+    "confidence": "high",
+    "forms": "a destination that can’t store a name → nem tárolható itt / nem tudja tárolni; stored credentials or a secret in the keychain → mentett / menteni (the save verb, as macOS hu says for passwords)",
+    "sources": "catalog errors.write.invalidName.message, errors.write.* FAT32 family (7 hits)",
+    "exceptions": {
+      "errors.eject.unmountRefusedByDiskImage": "a disk image stored there → Ott még nyitva van egy lemezkép: Hungarian says the image is there, no storing verb."
+    }
   },
   "tint": {
     "chosen": "színezés",

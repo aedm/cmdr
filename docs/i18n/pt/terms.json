@@ -501,6 +501,12 @@
     "confidence": "confirmed",
     "sources": "macOS Finder pt-BR ConnectToWindow, NetAuthAgent (Conectar)"
   },
+  "provider-console": {
+    "chosen": "console",
+    "confidence": "high",
+    "forms": "masculine: no console do seu provedor de armazenamento, after a first mention no console do seu provedor",
+    "sources": "MS terminology pt-BR (console → console); catalog errors.listing.coldStorage.suggestion"
+  },
   "context-menu": {
     "chosen": "menu de contexto",
     "accept": ["botão direito"],

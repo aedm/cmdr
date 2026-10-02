@@ -634,6 +634,12 @@
     "forms": "button Verbinden; Connect to server → Mit Server verbinden( …); Connecting … → Verbindung wird hergestellt …; Connecting to {name} … → Verbindung zu {name} wird hergestellt …; Connected → Verbunden; Connect as guest → Als Gast verbinden; reflexive with du: wenn du dich … verbindest",
     "sources": "macOS Finder (Mit Server verbinden, Verbinden, Serveradresse); NetAuthAgent (CONNECT)"
   },
+  "provider-console": {
+    "chosen": "Konsole",
+    "confidence": "high",
+    "forms": "a storage provider’s console → die Konsole deines Speicheranbieters, after a first mention die Konsole deines Anbieters",
+    "sources": "MS terminology (console → Konsole); catalog errors.listing.coldStorage.suggestion"
+  },
   "context-menu": {
     "accept": ["rechten Maustaste", "Rechtsklick"],
     "chosen": "Kontextmenü",
@@ -3365,5 +3371,12 @@
     "confidence": "high",
     "forms": "cloud storage → Cloud-Speicher; S3 storage → S3-Speicher; storage provider → Speicheranbieter; cold storage → Cold Storage (MS terminology); product names (Hetzner Object Storage, Google Cloud Storage) verbatim",
     "sources": "MS terminology (storage provider → Speicheranbieter, cold storage → Cold Storage); catalog (iCloud-Speicher, freier Speicher)"
+  },
+  "store": {
+    "accept": ["gespeichert", "sichern", "liegt"],
+    "chosen": "speichern",
+    "confidence": "high",
+    "forms": "a destination that can’t store a name → … lässt sich hier nicht speichern / kann … nicht speichern",
+    "sources": "catalog errors.volume.invalidName, errors.write.invalidName.message (gespeichert per the save trap: storing data); a secret in the keychain → sichern (servers.refusal.secretNotStored, the save button’s verb); a disk image sitting there → liegt"
   }
 }

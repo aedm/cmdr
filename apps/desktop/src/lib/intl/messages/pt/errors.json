@@ -491,6 +491,18 @@
   "@errors.listing.permissionDenied.suggestion": {
     "sourceHash": "3450aff"
   },
+  "errors.listing.objectStoreRefused.title": "Seu provedor de armazenamento recusou o acesso",
+  "@errors.listing.objectStoreRefused.title": {
+    "sourceHash": "1039b5f"
+  },
+  "errors.listing.objectStoreRefused.explanation": "`{path}` está em um armazenamento na nuvem, e o provedor recusou a solicitação. Ou a chave de acesso não tem permissão aqui, ou o provedor suspendeu o acesso à conta, por exemplo por causa de um limite de uso atingido ou de um problema de cobrança.",
+  "@errors.listing.objectStoreRefused.explanation": {
+    "sourceHash": "b9f0f12"
+  },
+  "errors.listing.objectStoreRefused.suggestion": "Confira as permissões da chave de acesso ou procure no console do seu provedor um limite de uso ou um aviso de cobrança.",
+  "@errors.listing.objectStoreRefused.suggestion": {
+    "sourceHash": "718da2a"
+  },
   "errors.listing.remotePermissionDenied.title": "O servidor não abre esta pasta",
   "@errors.listing.remotePermissionDenied.title": {
     "sourceHash": "f9cb7bd"
@@ -1429,9 +1441,9 @@
   "@errors.write.invalidName.message": {
     "sourceHash": "ad395af"
   },
-  "errors.write.invalidName.suggestion": "Renomeie para algo mais curto e simples e tente de novo. Alguns destinos também recusam nomes reservados como CON, NUL ou LPT1.",
+  "errors.write.invalidName.suggestion": "Renomeie para algo mais curto e simples e tente de novo. Alguns destinos recusam tabulações ou quebras de linha em um nome, e outros recusam nomes reservados como CON, NUL ou LPT1.",
   "@errors.write.invalidName.suggestion": {
-    "sourceHash": "3721c3d"
+    "sourceHash": "77cff09"
   },
   "errors.write.trashRefused.title": "Não foi possível mover para o Lixo",
   "@errors.write.trashRefused.title": {
@@ -1536,6 +1548,10 @@
   "errors.write.permissionDenied.message.named": "Seu usuário do macOS não pode alterar {folder}.",
   "@errors.write.permissionDenied.message.named": {
     "sourceHash": "0ffd79b"
+  },
+  "errors.write.permissionDenied.suggestion.objectStoreAccount": "O provedor recusou, e isso pode significar duas coisas. Confira as permissões da chave de acesso ou procure no console do seu provedor um limite de uso ou um aviso de cobrança.",
+  "@errors.write.permissionDenied.suggestion.objectStoreAccount": {
+    "sourceHash": "31deca5"
   },
   "errors.write.permissionDenied.suggestion.needsAdminMac": "Para isso são necessárias permissões de administrador. Para dar acesso à sua própria conta, selecione a pasta no Finder, escolha Obter Informações e veja a seção Compartilhamento e Permissões.",
   "@errors.write.permissionDenied.suggestion.needsAdminMac": {
@@ -1900,6 +1916,10 @@
   "errors.volume.notADirectory": "Há um arquivo em “{path}”, onde precisa haver uma pasta.",
   "@errors.volume.notADirectory": {
     "sourceHash": "2f66bc8"
+  },
+  "errors.volume.invalidNameNamed": "O nome “{name}” não pode ser armazenado aqui. Escolha outro.",
+  "@errors.volume.invalidNameNamed": {
+    "sourceHash": "6f65c40"
   },
   "errors.volume.invalidName": "O destino não consegue armazenar esse nome. Escolha outro.",
   "@errors.volume.invalidName": {

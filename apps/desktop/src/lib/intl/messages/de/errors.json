@@ -491,6 +491,18 @@
   "@errors.listing.permissionDenied.suggestion": {
     "sourceHash": "3450aff"
   },
+  "errors.listing.objectStoreRefused.title": "Dein Speicheranbieter hat das abgelehnt",
+  "@errors.listing.objectStoreRefused.title": {
+    "sourceHash": "1039b5f"
+  },
+  "errors.listing.objectStoreRefused.explanation": "`{path}` liegt in einem Cloud-Speicher, und der Anbieter hat die Anfrage abgelehnt. Entweder hat der Zugriffsschlüssel hier keine Berechtigung, oder der Anbieter hat den Zugriff auf das Konto ausgesetzt, zum Beispiel nach Erreichen eines Nutzungslimits oder bei einem Problem mit der Abrechnung.",
+  "@errors.listing.objectStoreRefused.explanation": {
+    "sourceHash": "b9f0f12"
+  },
+  "errors.listing.objectStoreRefused.suggestion": "Prüfe die Berechtigungen des Zugriffsschlüssels oder sieh in der Konsole deines Anbieters nach einem Nutzungslimit oder einem Hinweis zur Abrechnung.",
+  "@errors.listing.objectStoreRefused.suggestion": {
+    "sourceHash": "718da2a"
+  },
   "errors.listing.remotePermissionDenied.title": "Der Server lässt diesen Ordner nicht öffnen",
   "@errors.listing.remotePermissionDenied.title": {
     "sourceHash": "f9cb7bd"
@@ -1429,9 +1441,9 @@
   "@errors.write.invalidName.message": {
     "sourceHash": "ad395af"
   },
-  "errors.write.invalidName.suggestion": "Benenne die Datei kürzer und schlichter um und versuche es noch einmal. Manche Ziele lehnen außerdem reservierte Namen wie CON, NUL oder LPT1 ab.",
+  "errors.write.invalidName.suggestion": "Benenne die Datei kürzer und schlichter um und versuche es noch einmal. Manche Ziele lehnen Tabulatoren oder Zeilenumbrüche in einem Namen ab, manche reservierte Namen wie CON, NUL oder LPT1.",
   "@errors.write.invalidName.suggestion": {
-    "sourceHash": "3721c3d"
+    "sourceHash": "77cff09"
   },
   "errors.write.trashRefused.title": "Bewegen in den Papierkorb nicht möglich",
   "@errors.write.trashRefused.title": {
@@ -1536,6 +1548,10 @@
   "errors.write.permissionDenied.message.named": "Dein macOS-Benutzer kann {folder} nicht ändern.",
   "@errors.write.permissionDenied.message.named": {
     "sourceHash": "0ffd79b"
+  },
+  "errors.write.permissionDenied.suggestion.objectStoreAccount": "Der Anbieter hat abgelehnt, und das kann zweierlei bedeuten. Prüfe die Berechtigungen des Zugriffsschlüssels oder sieh in der Konsole deines Anbieters nach einem Nutzungslimit oder einem Hinweis zur Abrechnung.",
+  "@errors.write.permissionDenied.suggestion.objectStoreAccount": {
+    "sourceHash": "31deca5"
   },
   "errors.write.permissionDenied.suggestion.needsAdminMac": "Dafür brauchst du Administratorrechte. Um deinem eigenen Benutzerkonto Zugriff zu geben, wähle den Ordner im Finder aus, öffne „Informationen“ und sieh unter „Teilen & Zugriffsrechte“ nach.",
   "@errors.write.permissionDenied.suggestion.needsAdminMac": {
@@ -1900,6 +1916,10 @@
   "errors.volume.notADirectory": "Unter „{path}“ liegt eine Datei, wo ein Ordner sein muss.",
   "@errors.volume.notADirectory": {
     "sourceHash": "2f66bc8"
+  },
+  "errors.volume.invalidNameNamed": "Der Name „{name}“ lässt sich hier nicht speichern. Wähle einen anderen.",
+  "@errors.volume.invalidNameNamed": {
+    "sourceHash": "6f65c40"
   },
   "errors.volume.invalidName": "Das Ziel kann diesen Namen nicht speichern. Wähle einen anderen.",
   "@errors.volume.invalidName": {

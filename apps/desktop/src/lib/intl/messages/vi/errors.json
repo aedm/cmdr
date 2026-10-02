@@ -491,6 +491,18 @@
   "@errors.listing.permissionDenied.suggestion": {
     "sourceHash": "3450aff"
   },
+  "errors.listing.objectStoreRefused.title": "Nhà cung cấp dịch vụ lưu trữ của bạn đã từ chối yêu cầu này",
+  "@errors.listing.objectStoreRefused.title": {
+    "sourceHash": "1039b5f"
+  },
+  "errors.listing.objectStoreRefused.explanation": "`{path}` nằm trên kho lưu trữ đám mây, và nhà cung cấp đã từ chối yêu cầu. Hoặc khóa truy cập không có quyền ở đây, hoặc nhà cung cấp đã tạm dừng quyền truy cập vào tài khoản, ví dụ sau khi chạm giới hạn sử dụng hoặc do vấn đề thanh toán.",
+  "@errors.listing.objectStoreRefused.explanation": {
+    "sourceHash": "b9f0f12"
+  },
+  "errors.listing.objectStoreRefused.suggestion": "Hãy kiểm tra quyền của khóa truy cập, hoặc xem trong bảng điều khiển của nhà cung cấp có giới hạn sử dụng hay thông báo thanh toán nào không.",
+  "@errors.listing.objectStoreRefused.suggestion": {
+    "sourceHash": "718da2a"
+  },
   "errors.listing.remotePermissionDenied.title": "Máy chủ không mở thư mục này",
   "@errors.listing.remotePermissionDenied.title": {
     "sourceHash": "f9cb7bd"
@@ -1429,9 +1441,9 @@
   "@errors.write.invalidName.message": {
     "sourceHash": "ad395af"
   },
-  "errors.write.invalidName.suggestion": "Hãy đổi tên nó thành tên ngắn hơn và đơn giản hơn, rồi thử lại. Một số đích cũng từ chối các tên dành riêng như CON, NUL hoặc LPT1.",
+  "errors.write.invalidName.suggestion": "Hãy đổi tên nó thành tên ngắn hơn và đơn giản hơn, rồi thử lại. Một số đích từ chối ký tự tab hoặc dấu xuống dòng trong tên, và một số khác từ chối các tên dành riêng như CON, NUL hoặc LPT1.",
   "@errors.write.invalidName.suggestion": {
-    "sourceHash": "3721c3d"
+    "sourceHash": "77cff09"
   },
   "errors.write.trashRefused.title": "Không thể chuyển vào thùng rác",
   "@errors.write.trashRefused.title": {
@@ -1536,6 +1548,10 @@
   "errors.write.permissionDenied.message.named": "Người dùng macOS của bạn không thể thay đổi {folder}.",
   "@errors.write.permissionDenied.message.named": {
     "sourceHash": "0ffd79b"
+  },
+  "errors.write.permissionDenied.suggestion.objectStoreAccount": "Nhà cung cấp đã từ chối, và điều đó có thể có hai nghĩa. Hãy kiểm tra quyền của khóa truy cập, hoặc xem trong bảng điều khiển của nhà cung cấp có giới hạn sử dụng hay thông báo thanh toán nào không.",
+  "@errors.write.permissionDenied.suggestion.objectStoreAccount": {
+    "sourceHash": "31deca5"
   },
   "errors.write.permissionDenied.suggestion.needsAdminMac": "Việc này cần quyền quản trị. Để cấp quyền cho chính tài khoản của bạn, hãy chọn thư mục trong Finder, chọn Lấy thông tin, rồi xem phần Chia sẻ & quyền.",
   "@errors.write.permissionDenied.suggestion.needsAdminMac": {
@@ -1900,6 +1916,10 @@
   "errors.volume.notADirectory": "Có một tệp ở “{path}”, nơi cần có một thư mục.",
   "@errors.volume.notADirectory": {
     "sourceHash": "2f66bc8"
+  },
+  "errors.volume.invalidNameNamed": "Không thể lưu tên “{name}” ở đây. Hãy chọn một tên khác.",
+  "@errors.volume.invalidNameNamed": {
+    "sourceHash": "6f65c40"
   },
   "errors.volume.invalidName": "Đích không dùng được tên đó. Hãy chọn một tên khác.",
   "@errors.volume.invalidName": {

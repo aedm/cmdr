@@ -491,6 +491,18 @@
   "@errors.listing.permissionDenied.suggestion": {
     "sourceHash": "3450aff"
   },
+  "errors.listing.objectStoreRefused.title": "你的存储提供方拒绝了这个请求",
+  "@errors.listing.objectStoreRefused.title": {
+    "sourceHash": "1039b5f"
+  },
+  "errors.listing.objectStoreRefused.explanation": "`{path}` 在云存储里，提供方拒绝了这个请求。可能是访问密钥在这里没有权限，也可能是提供方暂停了这个账户的访问，比如用量达到上限或者账单出了问题。",
+  "@errors.listing.objectStoreRefused.explanation": {
+    "sourceHash": "b9f0f12"
+  },
+  "errors.listing.objectStoreRefused.suggestion": "请检查访问密钥的权限，或者到提供方的控制台看看有没有用量上限或账单通知。",
+  "@errors.listing.objectStoreRefused.suggestion": {
+    "sourceHash": "718da2a"
+  },
   "errors.listing.remotePermissionDenied.title": "服务器不让打开这个文件夹",
   "@errors.listing.remotePermissionDenied.title": {
     "sourceHash": "f9cb7bd"
@@ -1428,9 +1440,9 @@
   "@errors.write.invalidName.message": {
     "sourceHash": "ad395af"
   },
-  "errors.write.invalidName.suggestion": "把它改成更短、更朴素的名称再试一次。有些目标位置还会拒绝 CON、NUL、LPT1 这类保留名称。",
+  "errors.write.invalidName.suggestion": "把它改成更短、更朴素的名称再试一次。有些目标位置不接受名称里的制表符或换行符，有些还会拒绝 CON、NUL、LPT1 这类保留名称。",
   "@errors.write.invalidName.suggestion": {
-    "sourceHash": "3721c3d"
+    "sourceHash": "77cff09"
   },
   "errors.write.trashRefused.title": "无法移到废纸篓",
   "@errors.write.trashRefused.title": {
@@ -1535,6 +1547,10 @@
   "errors.write.permissionDenied.message.named": "你的 macOS 用户无法更改 {folder}。",
   "@errors.write.permissionDenied.message.named": {
     "sourceHash": "0ffd79b"
+  },
+  "errors.write.permissionDenied.suggestion.objectStoreAccount": "提供方拒绝了，这可能有两种情况。请检查访问密钥的权限，或者到提供方的控制台看看有没有用量上限或账单通知。",
+  "@errors.write.permissionDenied.suggestion.objectStoreAccount": {
+    "sourceHash": "31deca5"
   },
   "errors.write.permissionDenied.suggestion.needsAdminMac": "这需要管理员权限。要给你自己的账户授权，请在 Finder 里选中这个文件夹，选取“显示简介”，然后查看“共享与权限”部分。",
   "@errors.write.permissionDenied.suggestion.needsAdminMac": {
@@ -1899,6 +1915,10 @@
   "errors.volume.notADirectory": "“{path}”是个文件，但那里需要一个文件夹。",
   "@errors.volume.notADirectory": {
     "sourceHash": "2f66bc8"
+  },
+  "errors.volume.invalidNameNamed": "“{name}”这个名称在这里存不下。请换一个名称。",
+  "@errors.volume.invalidNameNamed": {
+    "sourceHash": "6f65c40"
   },
   "errors.volume.invalidName": "目标位置存不下这个名称。请换一个名称。",
   "@errors.volume.invalidName": {

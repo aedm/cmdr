@@ -1738,7 +1738,7 @@
     "distinct": ["character", "row"],
     "en": "line",
     "match": ["line", "lines"],
-    "notMatch": ["one-time line"],
+    "notMatch": ["one-time line", "line break*"],
     "sense": "A line of text in the viewer, or a line in a config file."
   },
   "linux-distribution": {
@@ -2041,7 +2041,7 @@
     "distinct": ["warning"],
     "en": "notification",
     "match": ["notification", "notifications", "notice", "toast"],
-    "notMatch": ["notice cmdr"],
+    "notMatch": ["notice cmdr", "billing notice"],
     "sense": "A toast or system notification Cmdr shows."
   },
   "offline": {
@@ -2224,6 +2224,7 @@
     "distinct": ["resume", "stop"],
     "en": "pause",
     "match": ["pause", "pauses", "paused", "pausing"],
+    "notMatch": ["paused access"],
     "sense": "Temporarily halting a running operation or indexing pass."
   },
   "percent": {
@@ -3143,6 +3144,7 @@
     "distinct": ["tag"],
     "en": "tab",
     "match": ["tab", "tabs"],
+    "notMatch": ["tabs or line break*"],
     "sense": "A tab in a pane (several folders per pane)."
   },
   "tag": {

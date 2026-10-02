@@ -122,3 +122,7 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   changed after the split (about 11 per S3 brief). Compare against `git merge-base <ref> HEAD` instead. (all)
 - S3 keys (`servers.sheet.s3*`, `servers.refusal.*` S3 arms, `*shareLink*`, `*coldStorage*`, `fileOperations.s3Cost.*`):
   none has a `screenshot`. Capture the S3 form, a refusal, the share-link submenu, and the cost line. (all)
+- `errors.listing.objectStoreRefused.title`: "refused this" has no object most languages can keep; fr, pt, vi, zh, and
+  zh-Hant added "access" or "the request". Consider "Your storage provider refused access". (fr, pt, vi, zh, zh-Hant)
+- `errors.write.invalidName.suggestion` changed English (tabs and line breaks) in the same commit as the S3 batch but
+  wasn't in its `--keys` brief; the stale check caught it. Brief stale keys alongside new ones. (all)
