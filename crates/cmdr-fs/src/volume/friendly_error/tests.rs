@@ -496,6 +496,28 @@ fn permission_denied_below_an_open_tcc_gate_is_not_tcc_restricted() {
     );
 }
 
+/// ❗ A refusal on an S3 volume is the object store account's: its keys may lack
+/// the permission, or the provider may have paused the account (a usage cap, a
+/// billing hold), and the answer can't tell the two apart. Read off the app
+/// path's own scheme (`server_of_path`), ❌ never a message, and with no
+/// privacy-settings action: nothing on this Mac grants it.
+#[test]
+fn an_s3_refusal_is_the_object_store_accounts() {
+    let path = Path::new("s3://AKIATEST@s3.eu-central-003.backblazeb2.com:443/photos/a.jpg");
+    let err = VolumeError::PermissionDenied {
+        path: "/photos/a.jpg".to_string(),
+        raw_os_error: None,
+    };
+    let listing = listing_error_from_volume_error(&err, path);
+    match &listing.reason {
+        ListingErrorReason::ObjectStoreRefused { path: shown } => assert_eq!(shown, &path.display().to_string()),
+        other => panic!("expected ObjectStoreRefused, got {other:?}"),
+    }
+    assert_eq!(listing.category, ErrorCategory::NeedsAction);
+    assert_eq!(listing.action_kind, None);
+    assert!(!listing.retry_hint);
+}
+
 /// A share's own permissions are the file server's business, so the remote reason
 /// offers no privacy-settings action: there is nothing on this Mac to grant.
 ///

@@ -524,6 +524,24 @@ describe('getTechnicalDetails', () => {
     expect(result).toContain('Error type: source_not_found')
   })
 
+  // An object store refusal can be the key's permissions or a provider that
+  // paused the account (B2's daily cap answers 403 AccessDenied), and nothing in
+  // the answer tells them apart, so the advice names both.
+  it('names both causes when an object store account refuses', () => {
+    const error: WriteOperationError = {
+      type: 'permission_denied',
+      path: 's3://AKIATEST@s3.eu-central-003.backblazeb2.com:443/photos/a.jpg',
+      message: '/photos/a.jpg',
+      errno: null,
+      refusal: 'objectStoreAccount',
+      refusedFolder: null,
+      side: 'source',
+    }
+    const { suggestion } = getUserFriendlyMessage(error, 'copy')
+    expect(suggestion).toContain('permissions')
+    expect(suggestion).toContain('usage cap')
+  })
+
   // The errno is what a bug report needs and the prose deliberately never states:
   // 13 is a folder an administrator could write to, 1 is macOS refusing outright.
   it('includes the errno and the proved folder for a permission_denied error', () => {

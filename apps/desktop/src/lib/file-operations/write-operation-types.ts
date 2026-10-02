@@ -163,10 +163,12 @@ export type UnwritableReason = 'readOnlyFilesystem' | 'noPermission' | 'unexplai
  * `folderPermissions` (`EACCES`) is a folder an administrator could write to;
  * `systemProtected` (`EPERM`) is the OS itself refusing, where administrator
  * rights change nothing, so the advice has to be different. `unclassified` is a
- * backend that words its own refusals (MTP, SMB) or an errno outside the two. The
+ * backend that words its own refusals (MTP, SMB) or an errno outside the two.
+ * `objectStoreAccount` is an S3 account refusing: its keys, or a provider that
+ * paused it (a usage cap, a billing hold), which one answer covers. The
  * backend derives it from the errno and the frontend ❌ never re-derives one.
  */
-export type PermissionRefusal = 'folderPermissions' | 'systemProtected' | 'unclassified'
+export type PermissionRefusal = 'folderPermissions' | 'systemProtected' | 'unclassified' | 'objectStoreAccount'
 
 /** Error types for write operations (discriminated union). */
 export type WriteOperationError =

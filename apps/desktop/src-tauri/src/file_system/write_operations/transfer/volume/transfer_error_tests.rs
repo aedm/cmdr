@@ -137,6 +137,53 @@ fn test_map_volume_error_permission_denied() {
     );
 }
 
+/// ❗ An S3 refusal can be the key's permissions OR the provider pausing the
+/// account (a usage cap, a billing hold: B2's daily cap answers `403
+/// AccessDenied`, live), and the answer can't say which, so the refusal is
+/// typed for advice naming both. Read off the app path's own scheme, ❌ never a
+/// message.
+#[test]
+fn an_s3_refusal_is_the_object_store_accounts() {
+    let err = map_volume_error(
+        "s3://AKIATEST@s3.eu-central-003.backblazeb2.com:443/photos/a.jpg",
+        PathRole::Source,
+        VolumeError::PermissionDenied {
+            path: "/photos/a.jpg".to_string(),
+            raw_os_error: None,
+        },
+    );
+    assert!(
+        matches!(
+            &err,
+            WriteOperationError::PermissionDenied {
+                refusal: PermissionRefusal::ObjectStoreAccount,
+                errno: None,
+                side: Some(PermissionSide::Source),
+                ..
+            }
+        ),
+        "{err:?}"
+    );
+    let local = map_volume_error(
+        "/Users/me/a.jpg",
+        PathRole::Source,
+        VolumeError::PermissionDenied {
+            path: "/Users/me/a.jpg".to_string(),
+            raw_os_error: None,
+        },
+    );
+    assert!(
+        matches!(
+            &local,
+            WriteOperationError::PermissionDenied {
+                refusal: PermissionRefusal::Unclassified,
+                ..
+            }
+        ),
+        "{local:?}"
+    );
+}
+
 #[test]
 fn test_map_volume_error_already_exists() {
     let err = map_volume_error(

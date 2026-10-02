@@ -90,7 +90,13 @@ pub fn listing_error_from_volume_error(err: &VolumeError, path: &Path) -> Listin
             // ruled out, a denial on a mounted share came from the file server, and
             // sending the user to System Settings would have them hunt for a permission
             // they already hold. Everything else is ordinary filesystem permissions.
-            if crate::tcc_paths::tcc_denial_is_plausible(path) {
+            // An S3 path (its own scheme, `server_of_path`) never touches TCC or a
+            // mount: the refusal is the account's, keys or a paused account alike.
+            if crate::volume::server_of_path(&path_display)
+                .is_some_and(|server| server.kind == crate::volume::BackendKind::S3)
+            {
+                kinds::object_store_refused(&path_display, raw)
+            } else if crate::tcc_paths::tcc_denial_is_plausible(path) {
                 kinds::tcc_restricted(&path_display, raw)
             } else if crate::tcc_paths::is_network_volume_path(path) {
                 kinds::remote_permission_denied(&path_display, raw)

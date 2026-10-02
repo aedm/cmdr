@@ -247,6 +247,14 @@ pub enum ListingErrorReason {
         /// The path the failure was about.
         path: String,
     },
+    /// An object store account (S3) refused a path: its keys may lack the
+    /// permission, or the provider may have paused the account (a usage cap, a
+    /// billing hold). The answer can't tell the two apart, so the advice names
+    /// both.
+    ObjectStoreRefused {
+        /// The path the failure was about.
+        path: String,
+    },
     /// `VolumeError::AlreadyExists`: the destination is taken.
     AlreadyExists {
         /// The path the failure was about.

@@ -104,6 +104,10 @@ pub enum PermissionRefusal {
     /// No errno to classify: a backend that words its own refusals (MTP, SMB), or
     /// an errno outside the two above.
     Unclassified,
+    /// An object store account (S3) refused: its keys may lack the permission, or
+    /// the provider may have paused the account (a usage cap, a billing hold).
+    /// One answer covers both, so the advice names both.
+    ObjectStoreAccount,
 }
 
 impl PermissionRefusal {
@@ -506,6 +510,20 @@ impl WriteOperationError {
             errno,
             refusal: PermissionRefusal::from_errno(errno),
             refused_folder,
+            side,
+        }
+    }
+
+    /// [`PermissionDenied`](Self::PermissionDenied) from an object store
+    /// account (S3), which carries no errno: the refusal names the account, so
+    /// the advice covers both of its causes (`PermissionRefusal::ObjectStoreAccount`).
+    pub fn object_store_refused(path: String, message: String, side: Option<PermissionSide>) -> Self {
+        Self::PermissionDenied {
+            path,
+            message,
+            errno: None,
+            refusal: PermissionRefusal::ObjectStoreAccount,
+            refused_folder: None,
             side,
         }
     }

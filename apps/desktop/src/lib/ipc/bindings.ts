@@ -9616,6 +9616,17 @@ export type ListingErrorReason =
       // The path the failure was about.
       path: string
     }
+  /**
+   *  An object store account (S3) refused a path: its keys may lack the
+   *  permission, or the provider may have paused the account (a usage cap, a
+   *  billing hold). The answer can't tell the two apart, so the advice names
+   *  both.
+   */
+  | {
+      reason: 'objectStoreRefused'
+      // The path the failure was about.
+      path: string
+    }
   // `VolumeError::AlreadyExists`: the destination is taken.
   | {
       reason: 'alreadyExists'
@@ -11916,6 +11927,12 @@ export type PermissionRefusal =
    *  an errno outside the two above.
    */
   | 'unclassified'
+  /**
+   *  An object store account (S3) refused: its keys may lack the permission, or
+   *  the provider may have paused the account (a usage cap, a billing hold).
+   *  One answer covers both, so the advice names both.
+   */
+  | 'objectStoreAccount'
 
 /**
  *  Which half of a transfer refused on permission grounds, for

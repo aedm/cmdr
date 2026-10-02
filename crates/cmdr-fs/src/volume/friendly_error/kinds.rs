@@ -65,6 +65,19 @@ pub(super) fn remote_permission_denied(path_display: &str, raw_detail: String) -
     }
 }
 
+pub(super) fn object_store_refused(path_display: &str, raw_detail: String) -> ListingError {
+    ListingError {
+        category: ErrorCategory::NeedsAction,
+        reason: ListingErrorReason::ObjectStoreRefused {
+            path: path_display.to_string(),
+        },
+        provider: None,
+        action_kind: None,
+        retry_hint: false,
+        raw_detail,
+    }
+}
+
 pub(super) fn permission_denied(path_display: &str, raw_detail: String) -> ListingError {
     ListingError {
         category: ErrorCategory::NeedsAction,

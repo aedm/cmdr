@@ -105,6 +105,7 @@ const LISTING_REASONS: ListingErrorReason[] = [
   { reason: 'tccRestricted', path: PATH },
   { reason: 'permissionDenied', path: PATH },
   { reason: 'remotePermissionDenied', path: PATH },
+  { reason: 'objectStoreRefused', path: PATH },
   { reason: 'alreadyExists', path: PATH },
   { reason: 'cancelled' },
   { reason: 'deviceDisconnected', path: PATH },

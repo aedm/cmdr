@@ -102,6 +102,7 @@ export type ListingErrorReason =
   | { reason: 'tccRestricted'; path: string }
   | { reason: 'permissionDenied'; path: string }
   | { reason: 'remotePermissionDenied'; path: string }
+  | { reason: 'objectStoreRefused'; path: string }
   | { reason: 'alreadyExists'; path: string }
   | { reason: 'cancelled' }
   | { reason: 'deviceDisconnected'; path: string }

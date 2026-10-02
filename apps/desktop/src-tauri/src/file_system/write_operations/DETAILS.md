@@ -584,7 +584,9 @@ The errno survives the volume layer too: `VolumeError::PermissionDenied { path, 
 cross-volume move's source delete hitting a Finder-locked file, cmdr-reports#17) gets the same advice as a local one
 and the details block shows the OS's sentence rather than the path twice. A backend that words its own refusals
 (SMB, MTP, and ADB, whose errno is the DEVICE's and would earn macOS advice for an Android file) carries `None` and
-stays `Unclassified`.
+stays `Unclassified`. An errno-less refusal on an S3 app path (`server_of_path`) is `ObjectStoreAccount` instead
+(`WriteOperationError::object_store_refused`): the key's permissions or a provider that paused the account (a usage
+cap, a billing hold) answer alike, so its advice names both.
 
 **Why the folder is PROVED, never inferred.** A `rename(2)` needs write access to both parent folders, a `unlink(2)` to
 the one it removes from, and a `create_dir_all` to the deepest ancestor that exists; no errno says which refused. So
