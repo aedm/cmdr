@@ -491,9 +491,9 @@
   "@errors.listing.permissionDenied.suggestion": {
     "sourceHash": "3450aff"
   },
-  "errors.listing.objectStoreRefused.title": "Din lagringsleverantör nekade det här",
+  "errors.listing.objectStoreRefused.title": "Din lagringsleverantör nekade åtkomst",
   "@errors.listing.objectStoreRefused.title": {
-    "sourceHash": "1039b5f"
+    "sourceHash": "2c26546"
   },
   "errors.listing.objectStoreRefused.explanation": "`{path}` ligger i molnlagring, och leverantören nekade förfrågan. Antingen har åtkomstnyckeln inte behörighet här, eller så har leverantören pausat åtkomsten till kontot, till exempel efter att en användningsgräns har nåtts eller på grund av ett faktureringsproblem.",
   "@errors.listing.objectStoreRefused.explanation": {

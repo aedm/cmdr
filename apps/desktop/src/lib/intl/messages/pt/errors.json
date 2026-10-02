@@ -493,7 +493,7 @@
   },
   "errors.listing.objectStoreRefused.title": "Seu provedor de armazenamento recusou o acesso",
   "@errors.listing.objectStoreRefused.title": {
-    "sourceHash": "1039b5f"
+    "sourceHash": "2c26546"
   },
   "errors.listing.objectStoreRefused.explanation": "`{path}` está em um armazenamento na nuvem, e o provedor recusou a solicitação. Ou a chave de acesso não tem permissão aqui, ou o provedor suspendeu o acesso à conta, por exemplo por causa de um limite de uso atingido ou de um problema de cobrança.",
   "@errors.listing.objectStoreRefused.explanation": {

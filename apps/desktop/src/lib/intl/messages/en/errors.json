@@ -734,7 +734,7 @@
     "screenshot": "error-message-example.png",
     "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
-  "errors.listing.objectStoreRefused.title": "Your storage provider refused this",
+  "errors.listing.objectStoreRefused.title": "Your storage provider refused access",
   "errors.listing.objectStoreRefused.explanation": "`{path}` is in cloud storage, and the provider turned the request down. Either the access key doesn’t have permission here, or the provider has paused access to the account, for example after a usage cap or a billing issue.",
   "errors.listing.objectStoreRefused.suggestion": "Check the access key’s permissions, or your provider’s console for a usage cap or a billing notice.",
   "@errors.listing.objectStoreRefused.title": {

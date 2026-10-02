@@ -493,7 +493,7 @@
   },
   "errors.listing.objectStoreRefused.title": "Votre fournisseur de stockage a refusé l’accès",
   "@errors.listing.objectStoreRefused.title": {
-    "sourceHash": "1039b5f"
+    "sourceHash": "2c26546"
   },
   "errors.listing.objectStoreRefused.explanation": "`{path}` se trouve dans un stockage cloud, et le fournisseur a refusé la requête. Soit la clé d’accès n’a pas l’autorisation ici, soit le fournisseur a suspendu l’accès au compte, par exemple à cause d’un plafond d’utilisation atteint ou d’un problème de facturation.",
   "@errors.listing.objectStoreRefused.explanation": {
