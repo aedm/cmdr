@@ -576,7 +576,7 @@
   "@askCmdr.renameUndo.applied": {
     "sourceHash": "b06c599"
   },
-  "askCmdr.renameUndo.swapsSkipped": "Skipped {countText} {count, plural, one {rename} other {renames}} that swap names. Rename them one at a time.",
+  "askCmdr.renameUndo.swapsSkipped": "已跳过 {countText} {count, plural, other {项互换名称的重命名}}。请一个一个地重命名这些文件。",
   "@askCmdr.renameUndo.swapsSkipped": {
     "sourceHash": "90e8dfc"
   },

@@ -22,6 +22,11 @@
     "note": "Name the macOS permission as Apple does (完全磁盘访问权限, 文件和文件夹); a bare 访问 is the verb.",
     "sources": "macOS; MS terminology"
   },
+  "access-key-id": {
+    "chosen": "访问密钥 ID",
+    "confidence": "high",
+    "sources": "AWS zh-CN docs (访问密钥 ID 和秘密访问密钥, IAM id_credentials_access-keys, checked 2026-10-02); MS access key → 访问密钥"
+  },
   "account": {
     "chosen": "账户",
     "confidence": "high",
@@ -332,6 +337,12 @@
     "note": "Ellipsis is the single U+2026 character.",
     "sources": "AppleAccountUI PROFILE_BROWSE_PHOTO"
   },
+  "bucket": {
+    "chosen": "存储桶",
+    "confidence": "high",
+    "forms": "S3 bucket → S3 存储桶; bucket name → 存储桶名称",
+    "sources": "AWS zh-CN docs (访问 Amazon S3 通用存储桶, checked 2026-10-02); MS bucket → 桶 / Bucket"
+  },
   "button": {
     "chosen": "按钮",
     "confidence": "high",
@@ -362,9 +373,10 @@
     "sources": "macOS AppKit"
   },
   "case-sensitive": {
+    "accept": ["小写", "大写"],
     "chosen": "大小写",
     "confidence": "confirmed",
-    "forms": "区分大小写; upper and lower case → 大小写",
+    "forms": "区分大小写; upper and lower case → 大小写; lowercase letters → 小写字母; uppercase → 大写",
     "sources": "macOS/MS"
   },
   "certificate": {
@@ -481,8 +493,19 @@
     "accept": ["云挂载", "云端", "云服务"],
     "chosen": "云服务商",
     "confidence": "high",
+    "exceptions": {
+      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim.",
+      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google's product name, kept Latin as its zh-CN console does."
+    },
     "forms": "云服务商; a cloud mount 云挂载; cloud folders 云端文件夹; cloud services 云服务",
     "sources": "catalog"
+  },
+  "cold-storage": {
+    "chosen": "冷存储",
+    "confidence": "tentative",
+    "forms": "archived (the file's state) → 已存档 (archive-chat's word); restore it → 恢复 (restore ruling)",
+    "note": "AWS zh-CN calls the archive tier 归档, but one English \"Archived\" must keep one word (desktop-i18n-term-consistency pairs fileExplorer.archivedFile.label with askCmdr.sessions.archivedBadge), and MS backs 存档 for the tier.",
+    "sources": "MS cold storage → 冷存储, archive tier → 存档 / 存档访问层; storage ruling 存储"
   },
   "column": {
     "chosen": "列",
@@ -570,6 +593,12 @@
     },
     "forms": "Connecting to X… → 正在连接到 {name}…; Connect to server… → 连接服务器…; Connect as guest → 以来宾身份连接; internet connection → 联网 / 互联网连接",
     "sources": "macOS Finder, NetAuthAgent"
+  },
+  "console": {
+    "chosen": "控制台",
+    "confidence": "high",
+    "forms": "a storage provider's console → 存储提供方的控制台",
+    "sources": "AWS zh-CN (AWS 管理控制台, Amazon VPC 控制台); catalog settings.developer.verboseLogging.label"
   },
   "context-menu": {
     "accept": ["右键"],
@@ -662,6 +691,12 @@
     "note": "The pane's current folder, not the row under the cursor (光标所在的).",
     "sources": "catalog"
   },
+  "cursor": {
+    "chosen": "光标",
+    "confidence": "high",
+    "forms": "under the cursor → 光标所在的; move the cursor to X → 把光标移到 X 上",
+    "sources": "catalog (光标 in 15 values, commands.navOpenUnderCursor.label)"
+  },
   "custom": {
     "chosen": "自定义",
     "confidence": "confirmed",
@@ -746,6 +781,12 @@
     "confidence": "confirmed",
     "forms": "MTP 设备, USB 设备; prose 这个设备 (the busy tooltips: Cmdr 还在处理这个设备上的文件。)",
     "sources": "macOS/MS"
+  },
+  "dialog": {
+    "chosen": "对话框",
+    "confidence": "high",
+    "forms": "the Move dialog → “移动”对话框 (the command name quoted)",
+    "sources": "catalog (对话框 in 13 values); macOS zh-CN AppKit"
   },
   "disable": {
     "accept": ["停用", "禁用"],
@@ -978,7 +1019,7 @@
   "expired": {
     "chosen": "过期",
     "confidence": "high",
-    "forms": "valid until 有效期至",
+    "forms": "valid until 有效期至; expires in N → N 天后过期 / N 小时后过期 (Arabic numerals, like the settings duration options)",
     "sources": "standard"
   },
   "extension": {
@@ -1138,7 +1179,7 @@
     ],
     "chosen": "忘记",
     "confidence": "high",
-    "forms": "Forget server 忘记服务器; Forget (a trusted key) 忘记; Forget saved password → 清除保存的密码 (and its dialog 要清除 {name} 保存的密码吗？, the checkbox 同时清除保存的密码); Forget share 忘记共享; the one confirm button every Forget alert shares 忘记; toasts 已忘记 / 无法忘记 {hostName}; Ask Cmdr's notes 忘掉",
+    "forms": "Forget server 忘记服务器; Forget (a trusted key) 忘记; Forget saved password → 清除保存的密码 (and its dialog 要清除 {name} 保存的密码吗？, the checkbox 同时清除保存的密码; its S3 twin 同时清除这个账户的秘密访问密钥); Forget share 忘记共享; the one confirm button every Forget alert shares 忘记; toasts 已忘记 / 无法忘记 {hostName}; Ask Cmdr's notes 忘掉",
     "sources": "catalog"
   },
   "format": {
@@ -1545,6 +1586,10 @@
     "accept": ["列出"],
     "chosen": "列表",
     "confidence": "high",
+    "exceptions": {
+      "fileOperations.s3Cost.line": "list prices = a provider's published prices → 标价, not a UI list.",
+      "fileOperations.s3Cost.infoText": "Same as fileOperations.s3Cost.line: list prices → 公开的标价."
+    },
     "forms": "the Servers list “服务器”列表 (quoted, 列表 outside the quotes); the verb (Cmdr lists X) 列出",
     "sources": "macOS zh-CN Finder (最近使用的服务器的列表); catalog (43 uses)"
   },
@@ -1698,6 +1743,10 @@
     "accept": ["文件名", "名字", "同名", "重名", "文件夹名"],
     "chosen": "名称",
     "confidence": "confirmed",
+    "exceptions": {
+      "servers.refusal.endpointMalformed": "host name is the hostname concept, 主机名.",
+      "servers.sheet.identityLockedS3": "name is a verb here (what identifies this place) → 决定了这是哪个位置, like servers.sheet.identityLocked."
+    },
     "forms": "labels and the column 名称; spoken prose 名字 (换个名字, 同名, 重名); validation 文件名 / 文件夹名",
     "note": "A person's name is 姓名; \"the name was taken\" 已被占用.",
     "sources": "macOS Finder"
@@ -2247,6 +2296,17 @@
     "forms": "tight mode chips 正则; tooltips and accessible names spell out 正则表达式",
     "sources": "KDE; Double Commander"
   },
+  "region": {
+    "avoid": [
+      {
+        "form": "地域",
+        "why": "Alibaba Cloud's word; AWS, the S3 reference, says 区域"
+      }
+    ],
+    "chosen": "区域",
+    "confidence": "high",
+    "sources": "AWS zh-CN docs (区域, checked 2026-10-02)"
+  },
   "reject": {
     "chosen": "拒绝",
     "confidence": "high",
@@ -2356,6 +2416,18 @@
     "forms": "buttons and status lines take Apple's 重新启动 (立即重新启动, 重新启动 Cmdr); running prose may say the spoken 重启",
     "note": "A device's connection restarting is 连接已重启, never the device itself.",
     "sources": "macOS"
+  },
+  "restore": {
+    "avoid": [
+      {
+        "form": "还原",
+        "why": "AWS console's word for a Glacier restore, but the catalog spends 还原 on putting old names back (fileOperations.transferProgress.titleReversalRenamingBack)"
+      }
+    ],
+    "chosen": "恢复",
+    "confidence": "high",
+    "forms": "restore an archived file → 恢复这个文件; a restore (noun) → 恢复",
+    "sources": "macOS zh-CN AppKit Revisions (Restore → 恢复); catalog (恢复 in 14 values)"
   },
   "resume": {
     "avoid": [
@@ -2504,6 +2576,11 @@
     "forms": "previous / next result 上一个 / 下一个结果",
     "sources": "standard"
   },
+  "secret-access-key": {
+    "chosen": "秘密访问密钥",
+    "confidence": "high",
+    "sources": "AWS zh-CN docs (访问密钥 ID 和秘密访问密钥, IAM and S3 access-management, checked 2026-10-02)"
+  },
   "see": {
     "chosen": "查看",
     "confidence": "high",
@@ -2560,6 +2637,13 @@
     "confidence": "confirmed",
     "forms": "a path in a sentence: “设置 > AI” (whole path in full-width quotes, separator mirrors the English)",
     "sources": "macOS"
+  },
+  "share-link": {
+    "chosen": "共享链接",
+    "confidence": "high",
+    "forms": "Copy share link → 拷贝共享链接; with a duration → 拷贝共享链接（7 天）; the copied toast → 已拷贝共享链接，有效期 7 天。",
+    "note": "共享 is also macOS zh-CN's Share menu, so the SMB network-share word and the hand-to-others sense coincide here; no exception needed.",
+    "sources": "catalog (链接 in 18 values, commands.cloudCopyGoogleDriveLink.label); macOS zh-CN 共享"
   },
   "share-menu": {
     "chosen": "共享",
@@ -2691,6 +2775,25 @@
     "decision": "等待回答的队列行 + 回滚确认框",
     "forms": "the rollback tooltip's stop 停止 (never 取消); you stopped opening your phone 你停止了打开手机",
     "sources": "macOS AppKit"
+  },
+  "storage": {
+    "accept": ["储存空间"],
+    "chosen": "存储",
+    "confidence": "high",
+    "exceptions": {
+      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim.",
+      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google's product name, kept Latin as its zh-CN console does.",
+      "servers.sheet.s3ProviderHetzner": "Product name Hetzner Object Storage, kept verbatim."
+    },
+    "forms": "cloud / object / cold storage → 云存储 / 对象存储 / 冷存储; S3 storage → S3 存储; Apple's Storage pane and iCloud storage → 储存空间 (Apple's spelling)",
+    "sources": "catalog (存储 in 12 values, fileExplorer.mtp.noStorage); macOS zh-CN 储存空间"
+  },
+  "store": {
+    "accept": ["存储", "存入"],
+    "chosen": "存",
+    "confidence": "high",
+    "forms": "store X in the Keychain → 存到钥匙串; sign in without storing it → 不存…直接登录; a file system that can't store X → 无法存储",
+    "sources": "catalog (servers.refusal.secretNotStored 存到钥匙串, errors.write.filesTooLargeForFilesystem.message.one 无法存储)"
   },
   "streaming": {
     "chosen": "流式",
@@ -2826,6 +2929,18 @@
     "chosen": "超时",
     "confidence": "confirmed",
     "sources": "MS terminology"
+  },
+  "tint": {
+    "avoid": [
+      {
+        "form": "淡色",
+        "why": "Microsoft's word for the other sense (a pale colour variant)"
+      }
+    ],
+    "chosen": "着色",
+    "confidence": "high",
+    "forms": "Tint X panes → 为 X 窗格着色; background tint → 背景着色",
+    "sources": "macOS zh-CN; catalog (着色 in 15 values, settings.appearance.tint*)"
   },
   "title-bar": {
     "chosen": "标题栏",

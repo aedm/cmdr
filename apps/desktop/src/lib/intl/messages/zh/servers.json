@@ -83,19 +83,19 @@
   "@servers.hub.editNearbyHint": {
     "sourceHash": "64653de"
   },
-  "servers.hub.editAccountHint": "{name} keeps its settings on its buckets. Select one of the rows under it to edit it.",
+  "servers.hub.editAccountHint": "{name} 的设置都在各个存储桶上。要编辑，请选择这个账户下方的某一行。",
   "@servers.hub.editAccountHint": {
     "sourceHash": "29961f3"
   },
-  "servers.hub.openAccountHint": "{name} isn’t a place to open. Open one of the buckets under it.",
+  "servers.hub.openAccountHint": "{name} 不是可以打开的位置。请打开这个账户下方的某个存储桶。",
   "@servers.hub.openAccountHint": {
     "sourceHash": "c52ee6f"
   },
-  "servers.hub.forgetAccountConfirm": "Forget {name} and every bucket saved under it? Cmdr drops their connections and stops listing them. Your files stay in the buckets.",
+  "servers.hub.forgetAccountConfirm": "要忘记 {name} 以及保存在这个账户下的所有存储桶吗？Cmdr 会断开它们的连接，并且不再列出它们。你的文件会留在存储桶里。",
   "@servers.hub.forgetAccountConfirm": {
     "sourceHash": "e1c636e"
   },
-  "servers.hub.forgetSecretKeyToo": "Also forget the account’s secret access key",
+  "servers.hub.forgetSecretKeyToo": "同时清除这个账户的秘密访问密钥",
   "@servers.hub.forgetSecretKeyToo": {
     "sourceHash": "4f3ac6d"
   },
@@ -231,59 +231,59 @@
   "@servers.refusal.savedSecretNotUpdated": {
     "sourceHash": "2ae1e2b"
   },
-  "servers.refusal.s3AuthenticationRejected": "That secret access key didn’t work.",
+  "servers.refusal.s3AuthenticationRejected": "那个秘密访问密钥不起作用。",
   "@servers.refusal.s3AuthenticationRejected": {
     "sourceHash": "14f90c8"
   },
-  "servers.refusal.s3NeedsCredentials": "This account asks for a secret access key.",
+  "servers.refusal.s3NeedsCredentials": "这个账户需要秘密访问密钥。",
   "@servers.refusal.s3NeedsCredentials": {
     "sourceHash": "23695df"
   },
-  "servers.refusal.s3SecretMissing": "Enter the secret access key.",
+  "servers.refusal.s3SecretMissing": "输入秘密访问密钥。",
   "@servers.refusal.s3SecretMissing": {
     "sourceHash": "f1f32f2"
   },
-  "servers.refusal.s3SecretNotStored": "Cmdr couldn’t store this secret access key in your Keychain. Try again, or turn off “Remember in Keychain” to sign in without storing it.",
+  "servers.refusal.s3SecretNotStored": "Cmdr 没能把这个秘密访问密钥存到钥匙串。请再试一次，或者关闭“记住到钥匙串”，不存密钥直接登录。",
   "@servers.refusal.s3SecretNotStored": {
     "sourceHash": "f7a9fb0"
   },
-  "servers.refusal.s3SavedSecretNotUpdated": "Cmdr saved your changes but couldn’t update the secret access key in your Keychain. Save again to try once more.",
+  "servers.refusal.s3SavedSecretNotUpdated": "Cmdr 已保存你的更改，但没能更新钥匙串里的秘密访问密钥。再保存一次即可重试。",
   "@servers.refusal.s3SavedSecretNotUpdated": {
     "sourceHash": "1d2889d"
   },
-  "servers.refusal.accessDenied": "This key can’t reach this bucket. Check the bucket name and the secret access key, and that the key may read the bucket.",
+  "servers.refusal.accessDenied": "这个密钥无法访问这个存储桶。请检查存储桶名称和秘密访问密钥，并确认这个密钥有权读取这个存储桶。",
   "@servers.refusal.accessDenied": {
     "sourceHash": "8372e73"
   },
-  "servers.refusal.bucketListRefused": "This key can’t list the buckets on this account. Type a bucket name to open that bucket, or check the secret access key.",
+  "servers.refusal.bucketListRefused": "这个密钥无权列出这个账户里的存储桶。输入存储桶名称即可打开那个存储桶，或者检查秘密访问密钥。",
   "@servers.refusal.bucketListRefused": {
     "sourceHash": "1b9ebf5"
   },
-  "servers.refusal.bucketNotFound": "There’s no bucket by that name at {host}.",
+  "servers.refusal.bucketNotFound": "{host} 上没有叫这个名字的存储桶。",
   "@servers.refusal.bucketNotFound": {
     "sourceHash": "0f5a04d"
   },
-  "servers.refusal.regionMismatch": "This bucket is in a different region. Pick its region and try again.",
+  "servers.refusal.regionMismatch": "这个存储桶在另一个区域。请选择它所在的区域，然后重试。",
   "@servers.refusal.regionMismatch": {
     "sourceHash": "27a37f8"
   },
-  "servers.refusal.regionMismatchNamed": "This bucket is in {region}. Pick that region and try again.",
+  "servers.refusal.regionMismatchNamed": "这个存储桶在 {region}。请选择那个区域，然后重试。",
   "@servers.refusal.regionMismatchNamed": {
     "sourceHash": "30abb0d"
   },
-  "servers.refusal.clockSkewed": "This Mac’s clock is off by more than 15 minutes, so the server won’t accept Cmdr’s requests. Set the date and time automatically in System Settings, then try again.",
+  "servers.refusal.clockSkewed": "这台 Mac 的时钟偏差超过 15 分钟，所以服务器不接受 Cmdr 的请求。请在“系统设置”中开启自动设置日期与时间，然后重试。",
   "@servers.refusal.clockSkewed": {
     "sourceHash": "cdee0ef"
   },
-  "servers.refusal.notAnS3Endpoint": "Nothing at this address answers as S3 storage.",
+  "servers.refusal.notAnS3Endpoint": "这个地址上没有任何东西作为 S3 存储来响应。",
   "@servers.refusal.notAnS3Endpoint": {
     "sourceHash": "78557ec"
   },
-  "servers.refusal.s3FieldMalformed": "Use only lowercase letters, digits, and dashes here.",
+  "servers.refusal.s3FieldMalformed": "这里只能用小写字母、数字和短横线。",
   "@servers.refusal.s3FieldMalformed": {
     "sourceHash": "ac8fbea"
   },
-  "servers.refusal.endpointMalformed": "Enter the endpoint as http:// or https:// plus a host name, like https://s3.example.com.",
+  "servers.refusal.endpointMalformed": "请按 http:// 或 https:// 加主机名的格式输入端点，比如 https://s3.example.com。",
   "@servers.refusal.endpointMalformed": {
     "sourceHash": "beb63dd"
   },
@@ -441,109 +441,117 @@
   },
   "servers.sheet.protocolS3": "S3",
   "@servers.sheet.protocolS3": {
-    "sourceHash": "44d6a8a"
+    "sourceHash": "44d6a8a",
+    "sameAsSourceJustification": "Protocol name kept verbatim, like its picker siblings `SMB`, `SFTP`, and `WebDAV`; AWS zh-CN docs write Amazon S3 and S3 存储桶 with S3 Latin (checked 2026-10-02)."
   },
-  "servers.sheet.s3Provider": "Provider",
+  "servers.sheet.s3Provider": "提供方",
   "@servers.sheet.s3Provider": {
     "sourceHash": "472590a"
   },
   "servers.sheet.s3ProviderAws": "Amazon S3",
   "@servers.sheet.s3ProviderAws": {
-    "sourceHash": "a4f6352"
+    "sourceHash": "a4f6352",
+    "sameAsSourceJustification": "Product name kept verbatim: AWS zh-CN docs title the service Amazon Simple Storage Service / Amazon S3 in Latin (checked 2026-10-02)."
   },
   "servers.sheet.s3ProviderR2": "Cloudflare R2",
   "@servers.sheet.s3ProviderR2": {
-    "sourceHash": "9f2f1ed"
+    "sourceHash": "9f2f1ed",
+    "sameAsSourceJustification": "Product name kept verbatim: Cloudflare R2 has no Chinese product name; its zh-CN pages keep it Latin."
   },
   "servers.sheet.s3ProviderB2": "Backblaze B2",
   "@servers.sheet.s3ProviderB2": {
-    "sourceHash": "ed40187"
+    "sourceHash": "ed40187",
+    "sameAsSourceJustification": "Product name kept verbatim: Backblaze B2 ships no Chinese localization."
   },
   "servers.sheet.s3ProviderWasabi": "Wasabi",
   "@servers.sheet.s3ProviderWasabi": {
-    "sourceHash": "493861e"
+    "sourceHash": "493861e",
+    "sameAsSourceJustification": "Brand name kept verbatim: Wasabi ships no Chinese localization."
   },
   "servers.sheet.s3ProviderHetzner": "Hetzner Object Storage",
   "@servers.sheet.s3ProviderHetzner": {
-    "sourceHash": "a339b4f"
+    "sourceHash": "a339b4f",
+    "sameAsSourceJustification": "Product name kept verbatim: Hetzner Object Storage ships no Chinese localization, so the name the user meets in its console is the English one."
   },
   "servers.sheet.s3ProviderGcs": "Google Cloud Storage",
   "@servers.sheet.s3ProviderGcs": {
-    "sourceHash": "53fa0ba"
+    "sourceHash": "53fa0ba",
+    "sameAsSourceJustification": "Product name kept verbatim: Google Cloud zh-CN keeps Cloud Storage as a Latin product name."
   },
   "servers.sheet.s3ProviderDigitalOcean": "DigitalOcean Spaces",
   "@servers.sheet.s3ProviderDigitalOcean": {
-    "sourceHash": "c3f48e3"
+    "sourceHash": "c3f48e3",
+    "sameAsSourceJustification": "Product name kept verbatim: DigitalOcean Spaces ships no Chinese localization."
   },
-  "servers.sheet.s3GcsKeyHelp": "Sign in with an HMAC key from the Interoperability tab of your Cloud Storage settings.",
+  "servers.sheet.s3GcsKeyHelp": "用 Cloud Storage 设置里“互操作性”标签页中的 HMAC 密钥登录。",
   "@servers.sheet.s3GcsKeyHelp": {
     "sourceHash": "acb72a4"
   },
-  "servers.sheet.s3ProviderOther": "Other S3-compatible",
+  "servers.sheet.s3ProviderOther": "其他 S3 兼容服务",
   "@servers.sheet.s3ProviderOther": {
     "sourceHash": "13d2bdc"
   },
-  "servers.sheet.s3Region": "Region",
+  "servers.sheet.s3Region": "区域",
   "@servers.sheet.s3Region": {
     "sourceHash": "d3a008e"
   },
-  "servers.sheet.s3RegionOptionalPlaceholder": "Optional. Leave empty to use us-east-1",
+  "servers.sheet.s3RegionOptionalPlaceholder": "可选。留空则使用 us-east-1",
   "@servers.sheet.s3RegionOptionalPlaceholder": {
     "sourceHash": "12dd731"
   },
-  "servers.sheet.s3AccountId": "Account ID",
+  "servers.sheet.s3AccountId": "账户 ID",
   "@servers.sheet.s3AccountId": {
     "sourceHash": "919bb4c"
   },
-  "servers.sheet.s3AccountIdHelp": "The account ID on your Cloudflare R2 overview page.",
+  "servers.sheet.s3AccountIdHelp": "Cloudflare R2 概览页上的账户 ID。",
   "@servers.sheet.s3AccountIdHelp": {
     "sourceHash": "963d1f5"
   },
-  "servers.sheet.s3Location": "Location",
+  "servers.sheet.s3Location": "位置",
   "@servers.sheet.s3Location": {
     "sourceHash": "15b6197"
   },
-  "servers.sheet.s3Endpoint": "Endpoint",
+  "servers.sheet.s3Endpoint": "端点",
   "@servers.sheet.s3Endpoint": {
     "sourceHash": "3df9726"
   },
-  "servers.sheet.s3PathStyle": "Use path-style addressing",
+  "servers.sheet.s3PathStyle": "使用路径类型（path-style）寻址",
   "@servers.sheet.s3PathStyle": {
     "sourceHash": "627c522"
   },
-  "servers.sheet.s3PathStyleHelp": "Most self-hosted servers, like MinIO and Garage, need this.",
+  "servers.sheet.s3PathStyleHelp": "大多数自托管服务器（比如 MinIO 和 Garage）都需要这一项。",
   "@servers.sheet.s3PathStyleHelp": {
     "sourceHash": "bc6e240"
   },
-  "servers.sheet.s3Bucket": "Bucket",
+  "servers.sheet.s3Bucket": "存储桶",
   "@servers.sheet.s3Bucket": {
     "sourceHash": "c83b657"
   },
-  "servers.sheet.s3BucketPlaceholder": "Optional",
+  "servers.sheet.s3BucketPlaceholder": "可选",
   "@servers.sheet.s3BucketPlaceholder": {
     "sourceHash": "59be713"
   },
-  "servers.sheet.s3BucketHelp": "Leave it empty to see every bucket this key can list.",
+  "servers.sheet.s3BucketHelp": "留空则显示这个密钥能列出的所有存储桶。",
   "@servers.sheet.s3BucketHelp": {
     "sourceHash": "10751d7"
   },
-  "servers.sheet.s3UseRegion": "Use {region}",
+  "servers.sheet.s3UseRegion": "使用 {region}",
   "@servers.sheet.s3UseRegion": {
     "sourceHash": "5734184"
   },
-  "servers.sheet.accessKeyId": "Access key ID",
+  "servers.sheet.accessKeyId": "访问密钥 ID",
   "@servers.sheet.accessKeyId": {
     "sourceHash": "14eb0f9"
   },
-  "servers.sheet.secretAccessKey": "Secret access key",
+  "servers.sheet.secretAccessKey": "秘密访问密钥",
   "@servers.sheet.secretAccessKey": {
     "sourceHash": "3de6b75"
   },
-  "servers.sheet.examplePlaceholder": "Example: {example}",
+  "servers.sheet.examplePlaceholder": "示例：{example}",
   "@servers.sheet.examplePlaceholder": {
     "sourceHash": "9c7df45"
   },
-  "servers.sheet.identityLockedS3": "The provider, the access key ID, and the bucket are what name this place. Forget it and add it again to change them.",
+  "servers.sheet.identityLockedS3": "提供方、访问密钥 ID 和存储桶决定了这是哪个位置。要改这几项，先忘记它，再重新添加。",
   "@servers.sheet.identityLockedS3": {
     "sourceHash": "fe4d469"
   },

@@ -247,7 +247,7 @@
   "@fileOperations.transferDialog.targetWillBeCreatedCopy": {
     "sourceHash": "4e8d166"
   },
-  "fileOperations.transferDialog.renameByMoveHint": "Renaming this copies everything inside it on the server, so it runs as a move you can pause or cancel.",
+  "fileOperations.transferDialog.renameByMoveHint": "重命名它要在服务器上拷贝里面的全部内容，所以会作为一次移动来进行，你可以暂停或取消。",
   "@fileOperations.transferDialog.renameByMoveHint": {
     "sourceHash": "31987cc"
   },
@@ -303,15 +303,15 @@
   "@fileOperations.transferDialog.estimatedSizeTooltip": {
     "sourceHash": "2e8ba70"
   },
-  "fileOperations.s3Cost.line": "About {amount} at {provider} list prices",
+  "fileOperations.s3Cost.line": "按 {provider} 的标价计算，约 {amount}",
   "@fileOperations.s3Cost.line": {
     "sourceHash": "e8db02b"
   },
-  "fileOperations.s3Cost.infoLabel": "About this estimate",
+  "fileOperations.s3Cost.infoLabel": "关于这个估算",
   "@fileOperations.s3Cost.infoLabel": {
     "sourceHash": "19637c5"
   },
-  "fileOperations.s3Cost.infoText": "This uses the provider’s public list prices. Free tiers, discounts, included allowances, and minimum charges can make your bill lower or higher.",
+  "fileOperations.s3Cost.infoText": "这里用的是提供方公开的标价。免费额度、折扣、套餐内含用量和最低收费都可能让你的账单更低或更高。",
   "@fileOperations.s3Cost.infoText": {
     "sourceHash": "379665c"
   },

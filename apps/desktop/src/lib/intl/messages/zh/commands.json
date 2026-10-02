@@ -556,27 +556,27 @@
   "@commands.cloudAskGemini.description": {
     "sourceHash": "37d4e7c"
   },
-  "commands.fileCopyShareLink.label": "Copy share link (seven days)",
+  "commands.fileCopyShareLink.label": "拷贝共享链接（7 天）",
   "@commands.fileCopyShareLink.label": {
     "sourceHash": "314bee8"
   },
-  "commands.fileCopyShareLink.description": "Copies a link anyone can open to download the file for the next seven days",
+  "commands.fileCopyShareLink.description": "拷贝一个链接，任何人都能在接下来的 7 天内打开它，下载这个文件",
   "@commands.fileCopyShareLink.description": {
     "sourceHash": "eb35b64"
   },
-  "commands.fileCopyShareLinkOneDay.label": "Copy share link (one day)",
+  "commands.fileCopyShareLinkOneDay.label": "拷贝共享链接（1 天）",
   "@commands.fileCopyShareLinkOneDay.label": {
     "sourceHash": "468010c"
   },
-  "commands.fileCopyShareLinkOneDay.description": "Copies a link anyone can open to download the file for the next day",
+  "commands.fileCopyShareLinkOneDay.description": "拷贝一个链接，任何人都能在接下来的 1 天内打开它，下载这个文件",
   "@commands.fileCopyShareLinkOneDay.description": {
     "sourceHash": "70461ac"
   },
-  "commands.fileCopyShareLinkOneHour.label": "Copy share link (one hour)",
+  "commands.fileCopyShareLinkOneHour.label": "拷贝共享链接（1 小时）",
   "@commands.fileCopyShareLinkOneHour.label": {
     "sourceHash": "ffea990"
   },
-  "commands.fileCopyShareLinkOneHour.description": "Copies a link anyone can open to download the file for the next hour",
+  "commands.fileCopyShareLinkOneHour.description": "拷贝一个链接，任何人都能在接下来的 1 小时内打开它，下载这个文件",
   "@commands.fileCopyShareLinkOneHour.description": {
     "sourceHash": "45091c5"
   },
@@ -828,23 +828,23 @@
   "@commands.handler.googleDriveCopyFailed": {
     "sourceHash": "0af1fd3"
   },
-  "commands.handler.shareLinkCopied.sevenDays": "Copied a share link. It works for seven days.",
+  "commands.handler.shareLinkCopied.sevenDays": "已拷贝共享链接，有效期 7 天。",
   "@commands.handler.shareLinkCopied.sevenDays": {
     "sourceHash": "6f4055b"
   },
-  "commands.handler.shareLinkCopied.oneDay": "Copied a share link. It works for one day.",
+  "commands.handler.shareLinkCopied.oneDay": "已拷贝共享链接，有效期 1 天。",
   "@commands.handler.shareLinkCopied.oneDay": {
     "sourceHash": "ca08c52"
   },
-  "commands.handler.shareLinkCopied.oneHour": "Copied a share link. It works for one hour.",
+  "commands.handler.shareLinkCopied.oneHour": "已拷贝共享链接，有效期 1 小时。",
   "@commands.handler.shareLinkCopied.oneHour": {
     "sourceHash": "8b9f0cc"
   },
-  "commands.handler.shareLinkUnavailable": "Move the cursor to a file in an S3 bucket to copy a share link.",
+  "commands.handler.shareLinkUnavailable": "要拷贝共享链接，请把光标移到 S3 存储桶里的一个文件上。",
   "@commands.handler.shareLinkUnavailable": {
     "sourceHash": "c4ea112"
   },
-  "commands.handler.shareLinkFailed": "Couldn’t make a share link. {detail}",
+  "commands.handler.shareLinkFailed": "没能生成共享链接。{detail}",
   "@commands.handler.shareLinkFailed": {
     "sourceHash": "5ff44b7"
   },
