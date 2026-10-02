@@ -217,6 +217,19 @@
     "screenshot": "indexing-checklist.png"
   },
 
+  "indexing.overall.eta": "Overall: {eta}",
+  "@indexing.overall.eta": {
+    "description": "Line under the run-kind header in the drive-indexing checklist: how long the WHOLE run has left, across every step still to go, e.g. 'Overall: 12m left'. The step list below it still shows the current step's own time left; this one answers 'when is my drive done?'. Only shown when Cmdr remembers how long the remaining steps took on this drive last time, so it's an honest estimate. {eta} is an already-formatted time-left phrase (don't translate inside it); it can also be 'Almost done'.",
+    "placeholders": {
+      "eta": "the formatted time-remaining phrase, e.g. '12m left' or '1 hour 24 minutes left'"
+    }
+  },
+
+  "indexing.overall.estimating": "Overall: estimating…",
+  "@indexing.overall.estimating": {
+    "description": "Placeholder for the whole-run time-left line ('Overall: 12m left') in the drive-indexing checklist, shown for the few seconds the current step has no estimate of its own yet (for example right after a step starts) while more steps are still to come. The trailing '…' signals ongoing work; keep it."
+  },
+
   "indexing.eta.almostDone": "Almost done",
   "@indexing.eta.almostDone": {
     "description": "Time-remaining phrase shown when an indexing operation has under two seconds left (a precise countdown there would be noise). Reassuring and terse.",

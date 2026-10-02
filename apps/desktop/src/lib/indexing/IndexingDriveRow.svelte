@@ -22,6 +22,7 @@
     import {
         getVolumePhase,
         getVolumeScanRunKind,
+        getVolumeStepsAhead,
         isVolumeCoveredInPhases,
         getVolumeCoveragePhase,
         type VolumeIndexActivity,
@@ -113,7 +114,8 @@
         }
     })
 
-    const scanEta = $derived.by(() => {
+    // In seconds, so the overall figure can add to the exact estimate the step shows.
+    const scanEtaSeconds = $derived.by(() => {
         if (!scanning || scanProgress == null || scanTotal <= 0 || scanProcessed <= 0) return null
         const remaining = scanTotal - scanProcessed
 
@@ -121,16 +123,17 @@
         const elapsedBasedEta = computeElapsedEta(elapsedSec, scanProcessed, remaining)
         const windowBasedEta = computeWindowEta(scanWindowSnapshots, remaining)
         const blended = blendEtas(elapsedBasedEta, windowBasedEta)
-        if (blended != null) return formatEta(blended)
+        if (blended != null) return blended
 
         // Early signal (tier 1 only): before the blend has data, seed from the prior
-        // scan's duration minus elapsed. ms → seconds for formatEta.
+        // scan's duration minus elapsed. ms → seconds. Past the prior duration it
+        // reads as "Almost done", so it never goes negative.
         if (!scanRough && priorScanDurationMs != null && scanStartedAt > 0) {
-            const seedSeconds = (priorScanDurationMs - (Date.now() - scanStartedAt)) / 1000
-            return formatEta(seedSeconds)
+            return Math.max(0, (priorScanDurationMs - (Date.now() - scanStartedAt)) / 1000)
         }
         return null
     })
+    const scanEta = $derived(scanEtaSeconds != null ? formatEta(scanEtaSeconds) : null)
 
     const scanEtaDisplay = $derived(
         scanEta != null && scanRough && scanEta !== tString('indexing.eta.almostDone')
@@ -175,6 +178,10 @@
     // The windowed ETA for the body: scan or replay (aggregation computes its own
     // window-free ETA inside the body from `now`).
     const windowedEta = $derived(aggregating ? null : scanning ? scanEtaDisplay : replaying ? replayEta : null)
+    // The same scan estimate as a number, for the overall figure. Only the
+    // calibrated tier: a rough first scan has no history to add to anyway, and its
+    // estimate is too loose to sit in a sum.
+    const windowedEtaSeconds = $derived(aggregating || !scanning || scanRough ? null : scanEtaSeconds)
 
     // This volume's top-level pipeline phase (the checklist's authoritative driver
     // for the catch-up step) and whether it's a network drive (which skips the
@@ -193,6 +200,8 @@
     // Read here in the stateful wrapper (like `phase`); the body stays
     // presentational.
     const scanRunKind = $derived(getVolumeScanRunKind(activity.volumeId))
+    // What the steps after each one took last time, for the overall figure.
+    const stepsAhead = $derived(getVolumeStepsAhead(activity.volumeId))
 </script>
 
 <div class="drive-row">
@@ -204,6 +213,8 @@
         {aggregation}
         {now}
         {windowedEta}
+        {windowedEtaSeconds}
+        {stepsAhead}
         {phase}
         {isNetwork}
         {coveredInPhases}

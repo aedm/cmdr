@@ -43,7 +43,7 @@ import { getVolumes } from '$lib/stores/volume-store.svelte'
 import { NO_WALKED_GROUND, type WalkedGround } from './walked-ground'
 import { tString } from '$lib/intl/messages.svelte'
 import type { MessageKey } from '$lib/intl/keys.gen'
-import type { ScanRunKind } from '$lib/ipc/bindings'
+import type { ScanRunKind, StepsAheadMs } from '$lib/ipc/bindings'
 
 /** The local volume's id (mirrors `DEFAULT_VOLUME_ID` in `tauri-commands/storage`).
  *  Exported so the checklist can tell a local scan (all four steps) from a
@@ -173,6 +173,14 @@ const phase = new SvelteMap<string, ActivityPhase>()
 // omitted rather than guessed.
 const scanRunKind = new SvelteMap<string, ScanRunKind>()
 
+// Per-volume: what the steps after each one took on the last completed run of
+// this kind (`StepsAheadMs`, the backend's honest sum, `null` where there's no
+// history), the remembered half of the drive row's overall "~X left". Same
+// lifetime as `scanRunKind`: set at `index-scan-started`, kept through the whole
+// pipeline (the overall figure matters most during save and compute, after the
+// live scan entry is gone), cleared on the terminal phase and on an abort.
+const stepsAhead = new SvelteMap<string, StepsAheadMs>()
+
 // Per-volume ground under a walker, keyed by volume id, fed by the
 // coverage-branch events alone. Every kind of run announces its ground the same
 // way: a whole-volume walk names the volume root, a phased one names the branch
@@ -249,6 +257,14 @@ export function getVolumePhase(volumeId: string): ActivityPhase | undefined {
  *  both hold through aggregation and reconcile. */
 export function getVolumeScanRunKind(volumeId: string): ScanRunKind | undefined {
   return scanRunKind.get(volumeId)
+}
+
+/** What the steps after each one took on this volume's last completed run of
+ *  the same kind, or `undefined` when there's no plan (not indexing, or a reload
+ *  the status backfill didn't cover). Reactive. The drive row adds its live step
+ *  ETA to the active step's entry for the overall figure (`overall-eta.ts`). */
+export function getVolumeStepsAhead(volumeId: string): StepsAheadMs | undefined {
+  return stepsAhead.get(volumeId)
 }
 
 /** Every volume currently aggregating, in insertion order. Reactive. Lets the
@@ -350,6 +366,7 @@ export async function initIndexState(): Promise<void> {
     // The backend's own classification of this run, stashed for the run-kind
     // header and the per-step copy.
     scanRunKind.set(payload.volumeId, payload.scanRunKind)
+    stepsAhead.set(payload.volumeId, payload.stepsAheadMs)
     // Which family of steps this run produces, for the checklist. ❌ Nothing
     // about the size hourglass: the ground under the walker arrives on its own
     // events, whichever kind of run this is.
@@ -405,6 +422,7 @@ export async function initIndexState(): Promise<void> {
     // or a stale mid-pipeline phase would linger for the aborted volume.
     phase.delete(payload.volumeId)
     scanRunKind.delete(payload.volumeId)
+    stepsAhead.delete(payload.volumeId)
     walkedGround.delete(payload.volumeId)
     coveredInPhases.delete(payload.volumeId)
     coveragePhase.delete(payload.volumeId)
@@ -444,6 +462,7 @@ export async function initIndexState(): Promise<void> {
       phase.delete(payload.volumeId)
       // The pipeline ended, so the run-shape facts expire with it.
       scanRunKind.delete(payload.volumeId)
+      stepsAhead.delete(payload.volumeId)
       coveredInPhases.delete(payload.volumeId)
       coveragePhase.delete(payload.volumeId)
       // And so does every LIVE-PROGRESS entry, because each is fed by a stream
@@ -555,6 +574,13 @@ export async function initIndexState(): Promise<void> {
       // calibration the started event used, so the run-kind header and the
       // per-step copy recover on reload too.
       if (res.data.scanRunKind != null) scanRunKind.set(ROOT_VOLUME_ID, res.data.scanRunKind)
+      // And the overall figure's remembered half, from the same stash.
+      stepsAhead.set(ROOT_VOLUME_ID, {
+        findFiles: res.data.leftAfterFindFilesMs,
+        saveFileList: res.data.leftAfterSaveMs,
+        computeFolderSizes: res.data.leftAfterComputeMs,
+        catchUp: res.data.leftAfterCatchUpMs,
+      })
       // Same recovery for the ground and the step family: the response carries
       // exactly what the branch events would have said, so a reloaded window
       // rebuilds the map rather than inferring it from the kind of run.
@@ -588,6 +614,7 @@ export function destroyIndexState(): void {
   aggregation.clear()
   phase.clear()
   scanRunKind.clear()
+  stepsAhead.clear()
   walkedGround.clear()
   coveredInPhases.clear()
   coveragePhase.clear()

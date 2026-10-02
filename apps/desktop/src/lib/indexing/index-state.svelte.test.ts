@@ -26,6 +26,7 @@ import type {
   IndexStatusResponse,
   CoveragePhase,
   ScanRunKind,
+  StepsAheadMs,
 } from '$lib/ipc/bindings'
 
 // Captured callbacks the module registers via the wrappers below.
@@ -115,6 +116,7 @@ import {
   getEntriesScanned,
   getVolumePhase,
   getVolumeScanRunKind,
+  getVolumeStepsAhead,
   getActivePhaseVolumeIds,
   getAggregatingVolumeIds,
   isVolumeScanning,
@@ -345,6 +347,8 @@ describe('index-state per-volume pipeline phase', () => {
   })
 })
 
+const remembered: StepsAheadMs = { findFiles: 61_000, saveFileList: 21_000, computeFolderSizes: 2_000, catchUp: 0 }
+
 describe('index-state per-volume scan run kind (the run-kind header fact)', () => {
   beforeEach(async () => {
     destroyIndexState()
@@ -371,8 +375,25 @@ describe('index-state per-volume scan run kind (the run-kind header fact)', () =
       priorScanDurationMs: null,
       volumeUsedBytes: null,
       coveredInPhases,
+      stepsAheadMs: remembered,
     })
   }
+
+  it('keeps the remembered steps ahead through the pipeline, and drops them when it ends', () => {
+    if (!phaseCb || !scanAbortedCb) throw new Error('callbacks not registered')
+    emitStarted('root', 'change_check', 1000)
+    expect(getVolumeStepsAhead('root')).toEqual(remembered)
+    // The overall figure matters most during save and compute, after the live
+    // scan entry is gone.
+    phaseCb({ volumeId: 'root', phase: 'aggregating' })
+    expect(getVolumeStepsAhead('root')).toEqual(remembered)
+    phaseCb({ volumeId: 'root', phase: 'live' })
+    expect(getVolumeStepsAhead('root')).toBeUndefined()
+
+    emitStarted('smb-nas', 'change_check')
+    scanAbortedCb({ volumeId: 'smb-nas' })
+    expect(getVolumeStepsAhead('smb-nas')).toBeUndefined()
+  })
 
   it('takes the backend answer verbatim, including the case a prior-totals guess got wrong', () => {
     emitStarted('root', 'change_check', 405356)
@@ -498,6 +519,7 @@ describe('index-state walked ground', () => {
       priorScanDurationMs: null,
       volumeUsedBytes: null,
       coveredInPhases,
+      stepsAheadMs: { findFiles: null, saveFileList: null, computeFolderSizes: null, catchUp: null },
     })
   }
 
@@ -712,6 +734,7 @@ describe('index-state after the walk ends but before the run does', () => {
       priorScanDurationMs: null,
       volumeUsedBytes: null,
       coveredInPhases: true,
+      stepsAheadMs: { findFiles: null, saveFileList: null, computeFolderSizes: null, catchUp: null },
     })
     coveragePhaseCb({ volumeId: 'root', phase: 'wholeVolume' })
   }

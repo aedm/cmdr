@@ -1900,6 +1900,8 @@ export type MessageKey =
   | 'indexing.firstConnect.silenceDrive'
   | 'indexing.firstConnect.title'
   | 'indexing.needsFreshScan.afterDisconnect'
+  | 'indexing.overall.estimating'
+  | 'indexing.overall.eta'
   | 'indexing.phase.home'
   | 'indexing.phase.priorityFolders'
   | 'indexing.phase.wholeDrive'

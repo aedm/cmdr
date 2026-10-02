@@ -14,7 +14,7 @@ import { describe, it, expect } from 'vitest'
 import { mount, flushSync } from 'svelte'
 import IndexingStatusBody from './IndexingStatusBody.svelte'
 import type { VolumeIndexActivity, AggregationActivity } from './index-state.svelte'
-import type { ActivityPhase, CoveragePhase, ScanRunKind } from '$lib/ipc/bindings'
+import type { ActivityPhase, CoveragePhase, ScanRunKind, StepsAheadMs } from '$lib/ipc/bindings'
 
 function scanActivity(overrides: Partial<VolumeIndexActivity> = {}): VolumeIndexActivity {
   return {
@@ -49,6 +49,8 @@ function render(props: {
   aggregation?: AggregationActivity | undefined
   now?: number
   windowedEta?: string | null
+  windowedEtaSeconds?: number | null
+  stepsAhead?: StepsAheadMs
   phase?: ActivityPhase | undefined
   isNetwork?: boolean
   coveredInPhases?: boolean
@@ -217,5 +219,57 @@ describe('IndexingStatusBody header during a first index covered in phases', () 
       scanRunKind: 'first_scan',
     })
     expect(header(target)).toBe('First full scan')
+  })
+})
+
+describe('IndexingStatusBody overall figure', () => {
+  const remembered: StepsAheadMs = { findFiles: 120_000, saveFileList: 21_000, computeFolderSizes: 2_000, catchUp: 0 }
+
+  function overall(target: HTMLElement): string | null {
+    return target.querySelector('.overall-eta')?.textContent ?? null
+  }
+
+  it('adds the remembered steps ahead to the walk’s own estimate', () => {
+    const target = render({
+      activity: scanActivity({ priorTotalEntries: 100_000 }),
+      phase: 'scanning',
+      scanRunKind: 'change_check',
+      windowedEta: '3m left',
+      windowedEtaSeconds: 180,
+      stepsAhead: remembered,
+    })
+    // 3 min on this step + 2 min remembered for the steps after it.
+    expect(overall(target)).toBe('Overall: 5m left')
+    // The step keeps its own ETA beside the bar.
+    expect(target.textContent).toContain('3m left')
+  })
+
+  it('shows no overall line without a plan (a first index, or no history for a step ahead)', () => {
+    const first = render({
+      activity: scanActivity({ priorTotalEntries: 100_000 }),
+      phase: 'scanning',
+      windowedEta: '3m left',
+      windowedEtaSeconds: 180,
+    })
+    expect(overall(first)).toBeNull()
+
+    const gap = render({
+      activity: scanActivity({ priorTotalEntries: 100_000 }),
+      phase: 'scanning',
+      windowedEta: '3m left',
+      windowedEtaSeconds: 180,
+      stepsAhead: { ...remembered, findFiles: null },
+    })
+    expect(overall(gap)).toBeNull()
+  })
+
+  it('holds its place while the active step has no estimate yet', () => {
+    const target = render({
+      activity: scanActivity({ priorTotalEntries: 100_000 }),
+      phase: 'scanning',
+      windowedEtaSeconds: null,
+      stepsAhead: remembered,
+    })
+    expect(overall(target)).toBe('Overall: estimating…')
   })
 })
