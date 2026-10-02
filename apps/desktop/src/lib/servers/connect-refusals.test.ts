@@ -151,6 +151,18 @@ describe('S3 refusals', () => {
     expect(wordConnectRefusal('authentication_rejected', subject)).toContain('password')
   })
 
+  it('never names the access key ID as if it were a person', () => {
+    for (const kind of ['authentication_rejected', 'password_missing', 'access_denied'] as const) {
+      expect(wordConnectRefusal(kind, s3), kind).not.toContain('AKIAEXAMPLE')
+    }
+  })
+
+  it('points a refused bucket at its name too', () => {
+    // R2 answers AccessDenied, never NoSuchBucket, for a mistyped bucket when the key
+    // is scoped to one bucket, so the typo is one thing the refusal may mean.
+    expect(wordConnectRefusal('access_denied', s3)).toContain('bucket name')
+  })
+
   it('puts each S3 refusal under the field that fixes it', () => {
     expect(refusalField('access_denied')).toBe('secret')
     expect(refusalField('bucket_list_refused')).toBe('bucket')

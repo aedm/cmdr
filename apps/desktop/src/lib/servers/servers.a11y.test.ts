@@ -216,7 +216,7 @@ describe('the three renderers on their own', () => {
         onUseRegion: () => {},
         suggestedRegion: 'us-east-2',
         bucketRefusal: 'There’s no bucket by that name at s3.example.com.',
-        secretRefusal: 'That secret access key didn’t work for AKIAEXAMPLE.',
+        secretRefusal: 'That secret access key didn’t work.',
         advancedOpen: true,
         onChange: () => {},
       },
@@ -297,7 +297,7 @@ describe('the three renderers on their own', () => {
         remember: false,
         guest: false,
         disabled: false,
-        secretRefusal: 'That secret access key didn’t work for AKIAEXAMPLE.',
+        secretRefusal: 'That secret access key didn’t work.',
         onChange: () => {},
       },
     })

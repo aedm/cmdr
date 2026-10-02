@@ -252,7 +252,7 @@ describe('SignInSheet: the access_keys renderer', () => {
     // ❗ The key ID is the volume's identity, so the round sends no username.
     expect(submissions).toEqual([{ mode: 'sign-in', secret: { secret: 'wrong', remember: false }, username: null }])
     expect(document.body.querySelector('#sign-in-secret-refusal')?.textContent).toBe(
-      'That secret access key didn’t work for AKIAEXAMPLE.',
+      'That secret access key didn’t work.',
     )
   })
 })

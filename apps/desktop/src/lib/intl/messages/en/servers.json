@@ -315,23 +315,17 @@
   "@servers.refusal.savedSecretNotUpdated": {
     "description": "Shown under the password field of the edit server sheet when the server’s other settings were saved, but the system’s password store refused to keep or remove the password: the user clicked Deny on the system prompt, the keychain is locked, or no password store is available. ❗ The other changes DID save, so don’t word it as if nothing was saved. Pressing Save again is safe and only retries the password. “Save” is the sheet’s button (servers.sheet.save). “Keychain” is Apple’s name for the password store; use the name your language’s macOS uses."
   },
-  "servers.refusal.s3AuthenticationRejected": "That secret access key didn’t work for {username}.",
+  "servers.refusal.s3AuthenticationRejected": "That secret access key didn’t work.",
   "@servers.refusal.s3AuthenticationRejected": {
-    "description": "Shown when an S3 storage server refused the secret access key Cmdr offered for this access key ID. Factual, not accusing. “Secret access key” is the credential name S3 providers use; match the provider console’s term in your language if it has one, and use the same words as servers.sheet.secretAccessKey.",
-    "placeholders": {
-      "username": "the S3 access key ID, a code like \"AKIAIOSFODNN7EXAMPLE\"; never translated"
-    }
+    "description": "Shown when an S3 storage server refused the secret access key Cmdr offered for this access key ID. Factual, not accusing. “Secret access key” is the credential name S3 providers use; match the provider console’s term in your language if it has one, and use the same words as servers.sheet.secretAccessKey."
   },
   "servers.refusal.s3NeedsCredentials": "This account asks for a secret access key.",
   "@servers.refusal.s3NeedsCredentials": {
     "description": "Shown when an S3 account wants its secret access key and Cmdr has none stored. ❗ NOT a rejection: nothing was ever offered, so don’t word it as a wrong key. Same term as servers.sheet.secretAccessKey."
   },
-  "servers.refusal.s3SecretMissing": "Enter the secret access key for {username}.",
+  "servers.refusal.s3SecretMissing": "Enter the secret access key.",
   "@servers.refusal.s3SecretMissing": {
-    "description": "Under the secret access key field of the Add server sheet, when the field is empty and Cmdr has no stored key for this account, so nothing was sent yet. Same term as servers.sheet.secretAccessKey.",
-    "placeholders": {
-      "username": "the S3 access key ID, a code like \"AKIAIOSFODNN7EXAMPLE\"; never translated"
-    }
+    "description": "Under the secret access key field of the Add server sheet, when the field is empty and Cmdr has no stored key for this account, so nothing was sent yet. Same term as servers.sheet.secretAccessKey."
   },
   "servers.refusal.s3SecretNotStored": "Cmdr couldn’t store this secret access key in your Keychain. Try again, or turn off “Remember in Keychain” to sign in without storing it.",
   "@servers.refusal.s3SecretNotStored": {
@@ -341,12 +335,9 @@
   "@servers.refusal.s3SavedSecretNotUpdated": {
     "description": "The S3 twin of servers.refusal.savedSecretNotUpdated: the edit DID save, and only writing the secret access key to the system’s password store didn’t. Pressing Save again is safe. “Save” is servers.sheet.save. “Keychain” is Apple’s name; use the name your language’s macOS uses."
   },
-  "servers.refusal.accessDenied": "This bucket turned {username} away. Check the secret access key, and that this key may read the bucket.",
+  "servers.refusal.accessDenied": "This key can’t reach this bucket. Check the bucket name and the secret access key, and that the key may read the bucket.",
   "@servers.refusal.accessDenied": {
-    "description": "Under the secret access key field when an S3 bucket refused the key. The server can’t say whether the secret is wrong or the key has no rights to this bucket, so the sentence asks about both. “Bucket” is the S3 term for a top-level storage container; keep the provider console’s term.",
-    "placeholders": {
-      "username": "the S3 access key ID, a code like \"AKIAIOSFODNN7EXAMPLE\"; never translated"
-    }
+    "description": "Under the secret access key field when an S3 bucket refused the key. The server can’t say whether the bucket name is mistyped (Cloudflare R2 answers this way for a bucket that doesn’t exist), the secret is wrong, or the key has no rights to this bucket, so the sentence asks about all three. “Key” is the S3 access key; “bucket” is the S3 term for a top-level storage container; keep the provider console’s terms."
   },
   "servers.refusal.bucketListRefused": "This key can’t list the buckets on this account. Type a bucket name to open that bucket, or check the secret access key.",
   "@servers.refusal.bucketListRefused": {
