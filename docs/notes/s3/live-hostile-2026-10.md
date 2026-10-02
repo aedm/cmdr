@@ -170,3 +170,19 @@ It resets around 00:00 UTC, or when the cap is raised on B2's Caps & Alerts page
    server published before the connection dropped now reports the file. The cut-off cleanup removes only our object at a
    SHORT size. Still open: a server-side multipart copy whose completion answer is lost reports a failure though the
    copy landed (nothing is deleted).
+
+## Follow-up 2: S3's permission wording, and the last lost-answer case
+
+- **"Permission denied" names both causes on S3** (`16ee8a3b8`): a refusal on an S3 app path (its own `s3://` scheme,
+  `server_of_path`, never a message) is `ListingErrorReason::ObjectStoreRefused` in a pane and
+  `PermissionRefusal::ObjectStoreAccount` in a copy, move, or delete. The words: the access key may lack permission, or
+  the provider may have paused the account (a usage cap, a billing issue); "Check the access key's permissions, or your
+  provider's console for a usage cap or a billing notice." Other backends keep their wording. English only.
+- **A server-side copy in parts whose completion answer is lost** (`9a3cd6b6b`): such a copy now carries its own write
+  token in its creation metadata, so one HEAD proves the destination is ours and whole and the copy reports success.
+  Size plus the ETag's part count alone couldn't prove that (an earlier identical copy matches both). Otherwise it still
+  fails and aborts its upload, which is safe because a move keeps its source.
+- **Checks**: clippy and the `cmdr-s3` tests are green, as are the touched app Rust tests and the FE suites;
+  `bindings.ts` matches a regen. `pnpm check --fast` fails only `i18n-coverage` on the five new English keys
+  (`errors.volume.invalidNameNamed`, `errors.listing.objectStoreRefused.*`,
+  `errors.write.permissionDenied.suggestion.objectStoreAccount`), which wait for the translator agent.
