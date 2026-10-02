@@ -562,7 +562,7 @@
   },
   "commands.fileCopyShareLink.description": "Kopierar en länk som vem som helst kan öppna för att hämta filen de kommande sju dagarna",
   "@commands.fileCopyShareLink.description": {
-    "sourceHash": "eb35b64"
+    "sourceHash": "99e912e"
   },
   "commands.fileCopyShareLinkOneDay.label": "Kopiera delningslänk (en dag)",
   "@commands.fileCopyShareLinkOneDay.label": {

@@ -564,7 +564,7 @@
   },
   "commands.fileCopyShareLink.description": "Kopieert een link die iedereen de komende zeven dagen kan openen om het bestand te downloaden",
   "@commands.fileCopyShareLink.description": {
-    "sourceHash": "eb35b64"
+    "sourceHash": "99e912e"
   },
   "commands.fileCopyShareLinkOneDay.label": "Kopieer deellink (één dag)",
   "@commands.fileCopyShareLinkOneDay.label": {

@@ -562,7 +562,7 @@
   },
   "commands.fileCopyShareLink.description": "複製一個任何人都能開啟的連結，在接下來 7 天內可以用來下載這個檔案",
   "@commands.fileCopyShareLink.description": {
-    "sourceHash": "eb35b64"
+    "sourceHash": "99e912e"
   },
   "commands.fileCopyShareLinkOneDay.label": "複製分享連結（1 天）",
   "@commands.fileCopyShareLinkOneDay.label": {
