@@ -697,6 +697,19 @@ pub trait Volume: Send + Sync {
         })
     }
 
+    /// How many files one [`delete_files`](Self::delete_files) call removes in
+    /// a single request, for a backend that batches on the wire; `None` (the
+    /// default) when it deletes one file at a time.
+    ///
+    /// A delete walker hands such a backend its files in chunks of this size,
+    /// pausing and checking Cancel between chunks, instead of one
+    /// [`delete`](Self::delete) per file: on an object store that's a capped
+    /// listing, a stat, and a delete per object, three thousand requests for a
+    /// folder of a thousand files where two batches do.
+    fn delete_batch_size(&self) -> Option<std::num::NonZeroUsize> {
+        None
+    }
+
     // ========================================
     // Mutation notification
     // ========================================

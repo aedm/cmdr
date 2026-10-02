@@ -567,9 +567,12 @@ folder wins over an object of the same name (`NameHolds`), except where the list
   (`listing::can_hold_keys`): `<key>/` for a key at the ceiling can't match anything, and B2 refuses it with
   `400 InvalidRequest` rather than an empty page, which made such an object undeletable there (verified on B2,
   `live_hostile_names_round_trip`, 2026-10-02; pinned by `long_key_test.rs` over `fake_s3.rs`).
-- **`delete_files`** (`batch.rs`) is the batch a move's source sweep sends per folder level: `DeleteObjects`, 1,000 keys
-  a request with `Content-MD5`, quiet, its body parsed even on 200, each failed key reported against its own path
-  (matched NFC on R2). ❗ By key, with no folder check: the trait's contract is files the caller just listed.
+- **`delete_files`** (`batch.rs`) is the batch a move's source sweep sends per folder level, and a volume delete per
+  1,000 files (`delete_batch_size`): `DeleteObjects`, 1,000 keys a request with `Content-MD5`, quiet, its body parsed
+  even on 200, each failed key reported against its own path (matched NFC on R2). ❗ By key, with no folder check: the
+  trait's contract is files the caller just listed. A throttle, a server fault, or a failed connection sends the batch
+  again after 1 s and 2 s (`ask_again_on_a_blip`; the request is idempotent), pinned by `batch_retry_test.rs` over
+  `fake_s3.rs`.
 - **`rename`** moves one file of up to the part floor (64 MiB, `copies_whole`): `CopyObject` keeping the metadata (so
   the mtime survives), a HEAD proving the copy is ours, then the source's delete, so the worst a failure leaves is two
   copies. `force: false` refuses a taken name first.

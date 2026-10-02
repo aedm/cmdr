@@ -66,6 +66,10 @@ struct World {
     keep_cut_off_bodies: bool,
     /// The decoded key of every object request, in order.
     keys_seen: Vec<String>,
+    /// How many more `DeleteObjects` requests answer `503 SlowDown`.
+    throttle_batch_deletes: usize,
+    /// Every `DeleteObjects` request that reached the store.
+    batch_deletes: usize,
 }
 
 pub(super) struct FakeS3 {
@@ -83,10 +87,10 @@ impl FakeS3 {
             while let Ok((mut socket, _)) = listener.accept().await {
                 let world = Arc::clone(&serving);
                 tokio::spawn(async move {
-                    let Some((head, body_len, length)) = read_request(&mut socket).await else {
+                    let Some((head, body, length)) = read_request(&mut socket).await else {
                         return;
                     };
-                    let Some(response) = answer(&world, &head, body_len, length, answer_after).await else {
+                    let Some(response) = answer(&world, &head, &body, length, answer_after).await else {
                         return;
                     };
                     let _ = socket.write_all(response.as_bytes()).await;
@@ -112,6 +116,18 @@ impl FakeS3 {
     /// From now on, a PUT cut off mid-body stores what arrived.
     pub(super) fn keep_cut_off_bodies(&self) {
         self.world.lock_ignore_poison().keep_cut_off_bodies = true;
+    }
+
+    /// The next `count` `DeleteObjects` requests answer `503 SlowDown`,
+    /// deleting nothing.
+    pub(super) fn throttle_batch_deletes(&self, count: usize) {
+        self.world.lock_ignore_poison().throttle_batch_deletes = count;
+    }
+
+    /// How many `DeleteObjects` requests reached the store (throttled ones
+    /// not counted).
+    pub(super) fn batch_deletes(&self) -> usize {
+        self.world.lock_ignore_poison().batch_deletes
     }
 
     pub(super) fn object(&self, key: &str) -> Option<Stored> {
@@ -217,10 +233,11 @@ fn meta_lines(head: &str) -> Vec<String> {
 async fn answer(
     world: &Mutex<World>,
     head: &str,
-    body_len: usize,
+    body: &[u8],
     length: usize,
     answer_after: Duration,
 ) -> Option<String> {
+    let body_len = body.len();
     let mut line = head.lines().next().unwrap_or_default().split(' ');
     let method = line.next().unwrap_or_default().to_string();
     let target = line.next().unwrap_or_default().to_string();
@@ -365,6 +382,7 @@ async fn answer(
             ))
         }
         ("GET", None, None) if query.contains("list-type=2") => list(world, query),
+        ("POST", None, None) if param(query, "delete").is_some() => batch_delete(world, body),
         _ => "HTTP/1.1 501 Not Implemented\r\ncontent-length: 0\r\nconnection: close\r\n\r\n".into(),
     };
     Some(response)
@@ -395,8 +413,26 @@ fn list(world: &Mutex<World>, query: &str) -> String {
     ))
 }
 
+/// `DeleteObjects`: every `<Key>` in the body removed, a quiet (empty)
+/// `DeleteResult`, unless a throttle was scripted.
+fn batch_delete(world: &Mutex<World>, body: &[u8]) -> String {
+    let mut world = world.lock_ignore_poison();
+    if world.throttle_batch_deletes > 0 {
+        world.throttle_batch_deletes -= 1;
+        return error("503 Service Unavailable", "SlowDown");
+    }
+    world.batch_deletes += 1;
+    let text = String::from_utf8_lossy(body);
+    for piece in text.split("<Key>").skip(1) {
+        if let Some((key, _)) = piece.split_once("</Key>") {
+            world.objects.remove(key);
+        }
+    }
+    ok_xml("<DeleteResult></DeleteResult>")
+}
+
 /// The request head, the body bytes that arrived, and the `Content-Length`.
-async fn read_request(socket: &mut tokio::net::TcpStream) -> Option<(String, usize, usize)> {
+async fn read_request(socket: &mut tokio::net::TcpStream) -> Option<(String, Vec<u8>, usize)> {
     let mut buffer = Vec::new();
     let mut chunk = [0u8; 65536];
     let head_end = loop {
@@ -420,12 +456,21 @@ async fn read_request(socket: &mut tokio::net::TcpStream) -> Option<(String, usi
                 .then(|| value.trim().parse().ok())?
         })
         .unwrap_or(0);
-    let mut body_len = buffer.len() - head_end;
+    // The body is kept for the small requests that carry one to read
+    // (`DeleteObjects`); an upload's bytes are only counted.
+    let mut body = buffer[head_end..].to_vec();
+    let mut body_len = body.len();
     while body_len < length {
         match socket.read(&mut chunk).await {
             Ok(0) | Err(_) => break,
-            Ok(read) => body_len += read,
+            Ok(read) => {
+                body_len += read;
+                if body.len() < 1 << 20 {
+                    body.extend_from_slice(&chunk[..read]);
+                }
+            }
         }
     }
-    Some((head, body_len, length))
+    body.resize(body_len, 0);
+    Some((head, body, length))
 }

@@ -347,6 +347,11 @@ impl Volume for S3Volume {
         })
     }
 
+    /// `DeleteObjects` takes a thousand keys.
+    fn delete_batch_size(&self) -> Option<std::num::NonZeroUsize> {
+        std::num::NonZeroUsize::new(crate::ops::MAX_DELETE_KEYS)
+    }
+
     /// `CopyObject` or `UploadPartCopy` within one account, this place or a
     /// sibling (`server_copy.rs`). Whole-publish like every write here.
     fn copy_on_server<'a>(

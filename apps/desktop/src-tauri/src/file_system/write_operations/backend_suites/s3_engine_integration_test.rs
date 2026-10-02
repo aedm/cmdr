@@ -401,6 +401,7 @@ pub(super) async fn a_folder_of_1005_objects_deletes(target: &S3Target) {
         .collect();
     let seeds: Vec<_> = keys.iter().map(|key| object(key, b"x")).collect();
     target.seed(target.bucket(), &seeds).await;
+    take_sent_requests(&volume).await;
 
     let events = Arc::new(CollectorEventSink::new());
     delete_files_start(
@@ -424,6 +425,19 @@ pub(super) async fn a_folder_of_1005_objects_deletes(target: &S3Target) {
         .map(|e| format!("{:?}", e.error))
         .collect();
     assert!(errors.is_empty(), "the delete reported {errors:?}");
+
+    // ❗ The files go a thousand to a `DeleteObjects` (`Volume::delete_batch_size`),
+    // ❌ never a stat, a listing, and a delete per object (3,021 requests for
+    // this folder once). What's left: the top-level "is it a folder?" probe (a
+    // capped listing and a HEAD; the dialog's preview answers it in the app),
+    // the scan's two listing pages, two batches, and the emptied folder's own
+    // removal (a capped listing, then a HEAD, since it has no marker).
+    let sent = take_sent_requests(&volume).await;
+    let count = |kind: &str| sent.get(kind).copied().unwrap_or(0);
+    assert_eq!(count("DeleteObjects"), 2, "{sent:?}");
+    assert_eq!(count("DeleteObject"), 0, "{sent:?}");
+    assert!(count("HeadObject") <= 2, "{sent:?}");
+    assert!(count("ListObjectsV2") <= 4, "{sent:?}");
 
     assert!(matches!(
         volume.list_directory(&dir.join("folder"), None).await,

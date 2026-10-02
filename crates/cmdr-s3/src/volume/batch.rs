@@ -8,7 +8,9 @@
 //! - **`delete_files`** sends `DeleteObjects`, a thousand keys per request with
 //!   `Content-MD5`, quiet, so only failures come back, each reported against
 //!   its own path. ❗ By key, with no folder check: the trait's contract is
-//!   files the caller just listed (a move's source sweep).
+//!   files the caller just listed (a move's source sweep, a volume delete).
+//!   A throttled, faulted, or cut-off batch goes again after 1 s and 2 s: the
+//!   request is idempotent.
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -20,11 +22,13 @@ use cmdr_fs::volume::{ScannedFile, SubtreeTally, VolumeError};
 use super::S3Volume;
 use super::errors::map_s3_error;
 use super::listing::can_hold_keys;
+use super::multipart_upload::retry_after;
 use super::paths::{Target, target_of};
 use super::query::body_error;
 use crate::error::S3Error;
 use crate::ops::{self, ListObjectsParams, MAX_DELETE_KEYS};
 use crate::xml::{parse_delete_result, parse_list_objects};
+use log::debug;
 
 /// Adds every folder `relative` (a key under the tallied folder) sits in, or
 /// names as a marker: `sub/deeper/c.txt` adds `sub` and `sub/deeper`.
@@ -190,6 +194,40 @@ impl S3Volume {
         results
     }
 
+    /// Sends `request` (a `DeleteObjects`), and again after 1 s and 2 s while
+    /// the answer is a throttle, a server fault, or a connection that failed.
+    /// ❗ Safe because the request is idempotent: a key already gone answers
+    /// `Deleted`. A batch of a thousand keys that failed on one blip would
+    /// otherwise fail every one of them.
+    async fn ask_again_on_a_blip(
+        &self,
+        client: &crate::transport::S3Client,
+        request: crate::request::S3Request,
+        path: &str,
+    ) -> Result<crate::transport::Answer, VolumeError> {
+        let mut attempt = 1;
+        loop {
+            let blip = match client.exchange(request.clone(), crate::transport::QUERY_BUDGET).await {
+                Ok(answer) if answer.status.is_success() => return Ok(answer),
+                Ok(answer) => {
+                    let error = S3Error::from_response(answer.status, &answer.text());
+                    if !(error.is_throttle() || error.is_retryable()) {
+                        return Err(map_s3_error(&error, path));
+                    }
+                    map_s3_error(&error, path)
+                }
+                Err(e) => crate::transport::map_transport_error(&e, self.volume_id(), path),
+            };
+            // Two more tries at most (1 s, then 2 s), then the batch fails.
+            let Some(wait) = retry_after(attempt).filter(|_| attempt <= 2) else {
+                return Err(blip);
+            };
+            debug!(target: "volume", "s3: a batch delete answered {blip:?}; again in {wait:?}");
+            tokio::time::sleep(wait).await;
+            attempt += 1;
+        }
+    }
+
     /// One `DeleteObjects` request, its answer spread over `results`.
     async fn delete_batch(
         &self,
@@ -201,7 +239,7 @@ impl S3Volume {
         let keys: Vec<&str> = batch.iter().map(|doomed| doomed.key.as_str()).collect();
         let first_remote = batch.first().map_or("", |doomed| doomed.remote.as_str());
         let outcome = match ops::delete_objects(client.profile(), bucket, &keys) {
-            Ok(request) => self.ask(client, request, first_remote).await,
+            Ok(request) => self.ask_again_on_a_blip(client, request, first_remote).await,
             Err(_) => Err(VolumeError::NotFound(first_remote.to_string())),
         };
         let answer = match outcome {

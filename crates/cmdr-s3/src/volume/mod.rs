@@ -353,6 +353,8 @@ impl S3Volume {
 }
 
 #[cfg(test)]
+mod batch_retry_test;
+#[cfg(test)]
 mod batch_test;
 #[cfg(test)]
 mod beside_folder_test;
@@ -362,6 +364,8 @@ mod conformance_test;
 mod connection_drop_test;
 #[cfg(test)]
 mod copy_test;
+#[cfg(test)]
+mod fake_s3;
 #[cfg(test)]
 mod integration_test;
 #[cfg(test)]
@@ -377,19 +381,17 @@ mod live_hostile_support;
 #[cfg(test)]
 mod live_hostile_test;
 #[cfg(test)]
-mod fake_s3;
-#[cfg(test)]
-mod long_key_test;
-#[cfg(test)]
-mod refused_name_test;
-#[cfg(test)]
 mod live_protocol_test;
 #[cfg(test)]
 mod live_support;
 #[cfg(test)]
+mod long_key_test;
+#[cfg(test)]
 mod read_test;
 #[cfg(test)]
 mod reconnect_test;
+#[cfg(test)]
+mod refused_name_test;
 #[cfg(test)]
 mod share_link_test;
 #[cfg(test)]
