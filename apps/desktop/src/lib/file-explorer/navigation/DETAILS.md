@@ -210,8 +210,11 @@ The restore path has a second rule, PATH-shaped rather than state-shaped, in
 `app-status-store.ts::resolvePersistedPath`: a `<scheme>://` path is returned UNPROBED. Launch must not dial a server to
 find out whether it is reachable: four saved servers waking a Mac would be four Keychain reads and four network waits
 nobody asked for. The tab comes back on its subpath, greyed as `saved`, and dials when the user activates it, which is
-what `../pane/place-connect.svelte.ts` watches for. The four `volumeId === 'network'` exemptions at that function's call
-sites are the same idea, one fixed volume id at a time.
+what `../pane/place-connect.svelte.ts` watches for. The `volumeId === 'network'` exemptions at that function's call
+sites are the same idea, one fixed volume id at a time. A TAB on an SMB share is also handed back unprobed
+(`resolveTabPath`): its path is a plain `/Volumes/…` one that an unmounted share leaves missing, so
+`../pane/initialization.ts::restoreShareTab` decides with the saved list in hand, keeping it on an unmounted saved share
+and walking it like a plain folder otherwise.
 
 ### Non-blocking navigation pattern
 

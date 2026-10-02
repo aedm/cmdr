@@ -668,9 +668,9 @@ the migration, and what Forget does). What the code has to defend:
   (`volumes_linux::get_smb_mount_info`), so a `gio mount` share is recorded with no volume id: listed in the hub, never
   pinned, no `saved` row. The mount row's own id comes off the GVFS dirname (`volumes_linux/ids.rs`), which carries no
   port. The SMB E2E specs run on Linux only, so they can't cover pins until this closes.
-- **Known gap: a restored tab on an unmounted share lands at the share's root.** Launch probes a `/Volumes/<share>/…`
-  path like any local one (`app-status-store.ts::resolvePersistedPath`), and with the share gone the walk climbs to
-  `/Volumes`. The tab keeps the share's id, so its `saved` row dials and the pane enters the share, at its root.
+- **A restored tab on an unmounted saved share keeps its folder**: launch leaves the path unprobed and keeps the
+  share's id (`pane/initialization.ts::restoreShareTab`), the `saved` row dials, and the pane enters that folder or the
+  nearest one still there (`pane/DETAILS.md` § "A pane on a saved place").
 
 ## Telling the user about a kernel-mount fallback
 

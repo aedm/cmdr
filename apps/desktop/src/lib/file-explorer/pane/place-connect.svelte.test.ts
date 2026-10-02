@@ -13,12 +13,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { flushSync } from 'svelte'
 import type { VolumeInfo } from '../types'
 
-const { connectPlace, cancelPlaceConnect } = vi.hoisted(() => ({
+const { connectPlace, cancelPlaceConnect, resolveValidPath } = vi.hoisted(() => ({
   connectPlace: vi.fn(),
   cancelPlaceConnect: vi.fn().mockResolvedValue(undefined),
+  resolveValidPath: vi.fn(),
 }))
 
 vi.mock('$lib/servers/connect-flow', () => ({ connectPlace, cancelPlaceConnect }))
+vi.mock('../navigation/path-resolution', () => ({ resolveValidPath }))
 vi.mock('$lib/servers/connect-refusals', () => ({
   wordPaneRefusal: (kind: string, subject: { host: string; username: string; name: string }) =>
     `${kind} for ${subject.username} at ${subject.host}, named ${subject.name}`,
@@ -278,6 +280,43 @@ describe('createPlaceConnect: a saved SMB share', () => {
     volumePath = '/Volumes/naspi'
     currentPath = '/Volumes/naspi/docs'
     connectPlace.mockResolvedValue({ kind: 'connected', volumeId: savedShare.id })
+    // Every folder is there unless a cell says otherwise.
+    resolveValidPath.mockImplementation((path: string) => Promise.resolve(path))
+  })
+
+  /**
+   * ❗ A restored tab keeps the folder it was on inside an unmounted share, and that
+   * folder may be gone by the time the mount lands: the pane enters the deepest one
+   * that's still there, inside the share, ❌ never an error over a missing folder.
+   */
+  it('enters the nearest folder that still exists once the share is live', async () => {
+    currentPath = '/Volumes/naspi/docs/2026'
+    resolveValidPath.mockResolvedValue('/Volumes/naspi/docs')
+    const enter = create()
+    await vi.waitFor(() => {
+      expect(enter).toHaveBeenCalledWith({
+        volumeId: savedShare.id,
+        volumePath: '/Volumes/naspi',
+        targetPath: '/Volumes/naspi/docs',
+      })
+    })
+    expect(resolveValidPath).toHaveBeenCalledWith(
+      '/Volumes/naspi/docs/2026',
+      expect.objectContaining({ volumeRoot: '/Volumes/naspi', volumeId: savedShare.id }),
+    )
+  })
+
+  it('enters the share root when the walk finds nothing', async () => {
+    currentPath = '/Volumes/naspi/docs/2026'
+    resolveValidPath.mockResolvedValue(null)
+    const enter = create()
+    await vi.waitFor(() => {
+      expect(enter).toHaveBeenCalledWith({
+        volumeId: savedShare.id,
+        volumePath: '/Volumes/naspi',
+        targetPath: '/Volumes/naspi',
+      })
+    })
   })
 
   afterEach(() => {

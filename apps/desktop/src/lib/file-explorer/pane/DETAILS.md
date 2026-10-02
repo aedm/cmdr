@@ -498,6 +498,9 @@ no session behind it, so every listing on it would refuse until something dials.
   rather than waiting for the row to flip to `direct` on the next broadcast, which is what makes the place feel like it
   opened rather than waited. ❗ Entering, ❌ not reloading the listing: the root, the path, the listing, and the disk
   space have to move together.
+- **A share that just went live is entered at the deepest folder that still exists** (`folderThatExists`, inside the
+  share, else its root). A restored tab keeps the folder it stood on in an unmounted share (`initialization.ts`), and
+  that folder may be gone by the time the mount lands; ❌ don't drop the walk and leave an error over a missing folder.
 - **A live SMB share is followed to where its mount IS**, whenever the pane's root differs from it OR the folder the
   pane stands in is outside it, and `connected` / `already_live` land at the LIVE path before the saved row's remembered
   one. ❗ A kernel mount can finish after a Cancel without updating the saved row: the pane then sat at the stale path
