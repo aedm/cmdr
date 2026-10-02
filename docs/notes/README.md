@@ -18,6 +18,10 @@ Some notes here are load-bearing rather than historical. Those are grouped below
 
 **Load-bearing for a decision that hasn't been made yet:**
 
+- `ipc-dead-code-audit.md`: every frontend wrapper and Tauri command nothing called, as of 2026-10-03, with why. **Three
+  are missing features, not leftovers** (no way to remove a saved AI key, MCP's "focus settings" does nothing, and
+  indexing stops for memory without telling anyone), and three more are product calls. Read it before deleting an unused
+  IPC entry point: some of them are the only trace of a feature that lost its UI.
 - `self-move-to-applications-2026-08-25.md` — whether Cmdr could move itself to Applications instead of only telling the
   user to, measured on macOS 26.5.2 rather than reasoned. **The FDA worry is answered: nothing in TCC records a path**,
   so a moved bundle keeps its grant, and the note carries the four measurements plus the one 30-second check that closes
