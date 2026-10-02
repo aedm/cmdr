@@ -71,8 +71,8 @@ Index size updates don't pass through here: the backend works out which open lis
 
 ## Scan-state events (`index-state.svelte.ts`)
 
-Thirteen Tauri events drive the state. All of them carry a `volumeId`: scan and replay key the live-`activity` map,
-aggregation keys its own `aggregation` map, and the phase event keys its own `phase` map.
+Fourteen Tauri events drive the state. All but `index-memory-warning` carry a `volumeId`: scan and replay key the
+live-`activity` map, aggregation keys its own `aggregation` map, and the phase event keys its own `phase` map.
 
 - **`index-scan-started`**
   (`{ volumeId, scanRunKind, priorTotalEntries, priorScanDurationMs, volumeUsedBytes, coveredInPhases, stepsAheadMs }`):
@@ -111,6 +111,10 @@ aggregation keys its own `aggregation` map, and the phase event keys its own `ph
   don't replace each other's notice. Keeps NO state: the backend fires it once per marker write, ❌ never per launch, so
   there's no dedup to do on this side and nothing to clear on a terminal event. Nothing is asked of the person either —
   the rebuild is already arranged — so it exists to give the folder sizes about to be recomputed a reason.
+- **`index-memory-warning`** (process-wide, no `volumeId`): the memory watchdog acted. On `stoppedIndexing` (every
+  volume's index stopped at the 16 GB safety limit) show a persistent WARN toast (`indexing.memoryStop.paused`, id
+  `index-memory-stopped`): without it the person only sees folder sizes going stale, with no reason and no way out, and
+  it stays true until a restart. `stillGrowingAfterStop` is for the shipped report and shows nothing. Keeps NO state.
 - **`index-replay-progress`** (`{ volumeId, eventsProcessed, estimatedTotal }`): create/replace the volume's `activity`
   entry as `phase: 'replaying'`, update counters.
 - **`index-replay-complete`** (`{ volumeId, durationMs }`): remove the volume's replay entry.
@@ -464,7 +468,7 @@ Manual end-to-end testing runs the Rust indexer via `pnpm dev`.
 - `$lib/tauri-commands`: the `tauri-specta`-typed indexing event wrappers (`onIndexScan*`, `onIndexAggregation*`,
   `onIndexReplay*`, `onIndexRescanNotification`, `onIndexNeedsFreshScan`, `onIndexDirUpdated`) + `UnlistenFn`, in
   `tauri-commands/indexing.ts`.
-- `$lib/ui/toast`: `addToast` (the rescan-notification and needs-fresh-scan toasts).
+- `$lib/ui/toast`: `addToast` (the rescan-notification, needs-fresh-scan, and memory-stop toasts).
 - `$lib/file-explorer/selection/selection-info-utils`: `formatNumber` (indicator only, `'en-US'` locale).
 - `$lib/tooltip/tooltip`: `tooltip` action with the `contentEl` live-content param (indicator only).
 - `$lib/ui/ProgressBar.svelte`: size `sm` (drive row).

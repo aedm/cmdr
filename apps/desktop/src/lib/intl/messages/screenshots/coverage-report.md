@@ -16,13 +16,13 @@ Per catalog area, each renderable key is one of three:
 
 Coverage is PARTIAL by design. Uncoupled keys are expected, not bugs.
 
-**Total: 2612 / 3876 keys have a screenshot (67%):** 1399 direct (36%) and 1213 representative (31%). 1097 remain
+**Total: 2615 / 3880 keys have a screenshot (67%):** 1399 direct (36%) and 1216 representative (31%). 1098 remain
 uncoupled, and 167 are native surfaces a webview capture cannot reach.
 
 | Area           | Direct | Representative | Uncoupled | Native | Total | Any % |
 | -------------- | -----: | -------------: | --------: | -----: | ----: | ----: |
 | adb            |      3 |              0 |        17 |      0 |    20 |   15% |
-| ai             |      0 |            114 |         0 |      0 |   114 |  100% |
+| ai             |      0 |            116 |         0 |      0 |   116 |  100% |
 | askCmdr        |     65 |              0 |       127 |      0 |   192 |   34% |
 | commandPalette |      3 |              2 |         1 |      0 |     6 |   83% |
 | commands       |    152 |              1 |        74 |      0 |   227 |   67% |
@@ -35,14 +35,14 @@ uncoupled, and 167 are native surfaces a webview capture cannot reach.
 | fileExplorer   |    111 |             66 |       244 |      0 |   421 |   42% |
 | fileOperations |    107 |             67 |        77 |      0 |   251 |   69% |
 | goToPath       |      5 |              6 |         2 |      0 |    13 |   85% |
-| indexing       |     33 |             17 |        20 |      0 |    70 |   71% |
+| indexing       |     33 |             17 |        21 |      0 |    71 |   70% |
 | licensing      |     49 |             35 |        25 |      0 |   109 |   77% |
 | lowDiskSpace   |      0 |              0 |         5 |      0 |     5 |    0% |
 | main           |      7 |              0 |        32 |      2 |    41 |   17% |
 | menu           |      4 |              0 |         0 |    165 |   169 |    2% |
 | mtp            |     18 |              2 |         0 |      0 |    20 |  100% |
 | notifications  |      0 |              0 |         1 |      0 |     1 |    0% |
-| onboarding     |     96 |             38 |        20 |      0 |   154 |   87% |
+| onboarding     |     96 |             39 |        20 |      0 |   155 |   87% |
 | operationLog   |     26 |             26 |         0 |      0 |    52 |  100% |
 | queryUi        |     44 |            128 |         0 |      0 |   172 |  100% |
 | queue          |     25 |             11 |         1 |      0 |    37 |   97% |

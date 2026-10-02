@@ -332,6 +332,10 @@
       "name": "the drive’s display name (e.g. Backups)"
     }
   },
+  "indexing.memoryStop.paused": "Cmdr paused drive indexing because it was using too much memory. Folder sizes may be out of date until you restart Cmdr.",
+  "@indexing.memoryStop.paused": {
+    "description": "Warning toast that stays on screen until dismissed. Shown when Cmdr’s memory safety limit stopped the drive index on every drive, so folder sizes stop updating. \"It\" in \"it was using too much memory\" is Cmdr as a whole (the app’s total memory use), not the indexing alone. Restarting the app starts indexing again. “Cmdr” is the app name and must NOT be translated. “Drive indexing” is the background feature that computes folder sizes."
+  },
 
   "indexing.firstConnect.title": "Index {name}?",
   "@indexing.firstConnect.title": {

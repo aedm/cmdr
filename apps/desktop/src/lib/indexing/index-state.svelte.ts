@@ -27,6 +27,7 @@ import {
   onIndexCoverageBranchEnded,
   onIndexCoverageBranchStarted,
   onIndexCoveragePhaseStarted,
+  onIndexMemoryWarning,
   onIndexNeedsFreshScan,
   onIndexPhaseChanged,
   onIndexReplayComplete,
@@ -516,6 +517,19 @@ export async function initIndexState(): Promise<void> {
     })
   })
   unlistenHandles.push(unlistenNeedsFreshScan)
+
+  const unlistenMemoryWarning = await onIndexMemoryWarning((payload) => {
+    // The watchdog stopped EVERY volume's index to protect the machine. Without this the
+    // person only sees folder sizes going stale, with no reason and no way out. Persistent:
+    // it stays true until a restart. The later "still growing" report is for the logs.
+    if (payload.action !== 'stoppedIndexing') return
+    addToast(tString('indexing.memoryStop.paused'), {
+      level: 'warn',
+      dismissal: 'persistent',
+      id: 'index-memory-stopped',
+    })
+  })
+  unlistenHandles.push(unlistenMemoryWarning)
 
   const unlistenReplayProgress = await onIndexReplayProgress((payload) => {
     const existing = activity.get(payload.volumeId)
