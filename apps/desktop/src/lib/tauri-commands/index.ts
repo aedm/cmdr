@@ -199,7 +199,6 @@ export type { PaneFileEntry, PaneState, McpTabInfo, SelectedRows, ServicesSelect
 
 // Shared IPC types (timeout-aware wrappers)
 export type { TimedOut } from './ipc-types'
-export { throwIpcError } from './ipc-types'
 
 // Storage (volumes, space, permissions)
 export {

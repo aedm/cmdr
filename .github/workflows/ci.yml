@@ -410,6 +410,9 @@ jobs:
       - name: Check bare polls
         run: ./scripts/check/check --check desktop-svelte-bare-poll --ci
 
+      - name: Check IPC wrappers and commands have callers
+        run: ./scripts/check/check --check desktop-ipc-unused --ci
+
       - name: Check E2E stale selectors
         run: ./scripts/check/check --check desktop-svelte-e2e-stale-selector --ci
 

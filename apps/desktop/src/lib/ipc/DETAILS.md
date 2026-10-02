@@ -209,13 +209,10 @@ problem to the helper instead of solving it. Just rename the locals at the call 
    returns `Result`, unwrap it: throw a `TypedFailure` subclass (`typed-failure.ts`) when the refusal reaches a person,
    `throwIpcError` when it only ever reaches a log.
 
-**A command surface may land with no frontend calling it, and nothing warns.** The Rust side is reachable from
-`ipc_command_manifest!`, so no `#[allow(dead_code)]` is needed, and `knip.json` ignores both `src/lib/ipc/bindings.ts`
-and `src/lib/tauri-commands/**`, so an unused generated binding and its typed wrapper trip nothing either. That is what
-lets a backend ship its whole IPC surface ahead of the UI that will call it — `commands/sftp.rs` and
-`tauri-commands/sftp.ts` are the worked example — and it means "nothing calls this" is never the signal that a surface
-is unfinished. `crates/cmdr-sftp/DETAILS.md` § "Connecting from the frontend" is where a surface waiting for its UI says
-so out loud instead.
+**A command needs a caller, or an allowlist entry saying why not.** rustc never calls a registered command unused (the
+manifest reaches it) and knip ignores the generated `bindings.ts`, so the `desktop-ipc-unused` check is what fails on a
+`commands.*` entry nothing live calls. A backend shipping its IPC surface ahead of the UI allowlists each piece with a
+reason. The rule and what counts as a caller: `../tauri-commands/DETAILS.md` § "Unused wrappers and commands".
 
 ## Type shape constraints (specta rc.24)
 

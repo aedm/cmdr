@@ -1044,6 +1044,21 @@ var AllChecks = []CheckDefinition{
 		Run:         RunBarePoll,
 	},
 	{
+		ID:          "desktop-ipc-unused",
+		Nickname:    "ipc-unused",
+		DisplayName: "IPC wrappers and commands have callers",
+		App:         AppDesktop,
+		Tech:        "🎨 Svelte",
+		IsFast:      true,
+		// The frontend source (callers, wrappers, bindings) and the E2E trees whose
+		// raw `invoke('…')` calls count as uses.
+		Inputs: inputs([]string{
+			"apps/desktop/src/**",
+			"apps/desktop/test/**",
+		}, agentDocExclusions, runnerDataInputs(ipcUnusedAllowlistName)),
+		Run: RunIpcUnused,
+	},
+	{
 		ID:          "desktop-svelte-e2e-stale-selector",
 		Nickname:    "e2e-stale-selector",
 		DisplayName: "e2e-stale-selector",

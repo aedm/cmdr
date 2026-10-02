@@ -190,6 +190,24 @@ commands, and notable non-obvious placements.
 - OS appearance/environment reads → `appearance.ts`.
 - Dev/benchmark IPC → `debug.ts`.
 
+## Unused wrappers and commands
+
+Every exported function or const in a sub-file needs a production caller outside this folder, and every `commands.*`
+entry in `$lib/ipc/bindings` needs a live caller; otherwise it's deleted, wired up, or allowlisted with a reason in
+`scripts/check/checks/desktop-ipc-unused-allowlist.json`. The `desktop-ipc-unused` check (fast lane) enforces both,
+because nothing else can: knip counts the barrel's re-exports as uses, and rustc never calls a registered command
+unused. Before it existed, 37 dead commands and 28 dead wrappers piled up (`docs/notes/ipc-dead-code-audit.md`).
+
+- **Counts as a caller**: an import from `$lib/tauri-commands` (static, `await import(…)` with destructuring, or a
+  re-export) in a non-test file; `commands.<name>` outside this folder or inside a live wrapper; a raw `invoke('name')`
+  in production code or E2E (`test/e2e-*`). An export a sibling sub-file imports (`throwIpcError`) is folder plumbing
+  and counts too.
+- **Doesn't count**: test files, `test-*` harnesses, `vi.fn()` mocks, comments, and a wrapper calling a command when
+  that wrapper is itself unused (both get reported).
+- **Allowlisting**: an allowlisted wrapper covers the commands it calls. A surface shipped ahead of its UI, or a feature
+  missing its UI, gets an entry naming why; the check drops entries that gained a caller. Mechanics:
+  `scripts/check/checks/DETAILS.md` § "IPC dead code".
+
 ## Notable non-obvious placements
 
 `ask-cmdr.ts` holds `onAskCmdrTurn`, the subscription every turn's progress arrives on (rail sends and the agent's own

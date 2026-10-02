@@ -17,7 +17,7 @@ recipe for adding one is § "Adding a new check". Only the layout rules live her
 - **An allowlist is a sibling JSON named `<check>-allowlist.json`**, and it's NEVER hand-edited: the owning check
   shrink-wraps it on local runs, so you run the check and commit its rewrite (`.claude/rules/file-length-allowlist.md`).
   The shared staleness policy, and why it lives inside each check rather than a meta-check, is § "Allowlist
-  shrink-wrap". Eleven exist today; `a11y-coverage-allowlist.json` and `ui-primitive-coverage-allowlist.json` are the
+  shrink-wrap". Twelve exist today; `a11y-coverage-allowlist.json` and `ui-primitive-coverage-allowlist.json` are the
   two with no § of their own (both are exempt-with-reason lists whose checks FAIL on a dead or redundant entry rather
   than auto-removing it). `macos-availability-selectors.json` is a sibling JSON that isn't an allowlist: it's the SDK's
   own answer, cached so the Linux CI lanes can enforce it (§ "macOS availability"). Neither is
@@ -885,6 +885,31 @@ it can't resolve fails the check, so every call site stays readable to it. Every
 leaves the page, the caller sees a generic network failure, and dev serves no CSP, so the blog's like button and the
 `?r=` lookup were both dead in production for months with nothing failing anywhere. Violations it can't see (third-party
 scripts) reach Discord through `/csp-report` (`apps/api-server/src/website/DETAILS.md` § CSP reports).
+
+## IPC dead code
+
+`desktop-ipc-unused` (`IsFast`, an error) fails on an exported wrapper in `apps/desktop/src/lib/tauri-commands/*.ts`
+with no production caller outside that folder, and on a `commands.*` entry in `lib/ipc/bindings.ts` with no live caller.
+The rule and what counts as a caller live in `apps/desktop/src/lib/tauri-commands/DETAILS.md` § "Unused wrappers and
+commands"; this is how the scan reads it.
+
+- **Token scanning, no parser.** Production files are tracked `.ts` / `.svelte` / `.js` under `apps/desktop/src`, minus
+  `*.test.*`, `*.spec.*`, and `test-*`. Full-line comments (`//`, `*`, `/*`, `<!--`) are dropped first; trailing ones
+  stay, because stripping them safely needs a tokenizer (`'https://…'`, `'**/*.ts'`).
+- **Wrappers** are `export function` / `export const` at column 0 of a sub-file (`index.ts` excluded). A wrapper is used
+  when a production file outside the folder names it in an import clause whose module path ends in `tauri-commands` (or
+  a sub-file of it), or a sibling sub-file imports it from `./x`.
+- **Commands** are the 2-space-indented keys of `export const commands = {`, each paired with the first string its
+  `__TAURI_INVOKE` call passes. A wrapper file is cut into top-level declarations; `commands.<key>` and raw invokes count
+  only inside a LIVE one (a used or allowlisted export, or any non-exported helper). Raw `invoke('snake')` in production
+  code and in `apps/desktop/test/e2e-*` counts too.
+- **The allowlist** has `wrappers` (by name) and `commands` (by snake_case name), each value a mandatory reason; a blank
+  reason fails. Shrink-wrap drops an entry whose wrapper or command is gone or now has a caller; CI only warns. Adding
+  one needs David's OK (`.claude/rules/file-length-allowlist.md`).
+- **Events are out of scope**: an `events.*` entry nothing listens to has no `commands` entry, so only its `on…`
+  wrapper, if one exists, is checked.
+- **Verified** against the tree before the audit's deletion (`128e9f10b^`, 2026-10-03): it named every command and
+  wrapper the audit deleted or kept (46 and 34), nothing else, and it passes after it.
 
 ## Allowlist shrink-wrap
 
@@ -1956,7 +1981,8 @@ doubles as production code.
   stylelint, css-unused, a11y-contrast, a11y-coverage (every component has a tier-3 a11y test, colocated or in a
   directory-level `*.a11y.test.ts` that imports it), ui-primitive-coverage (every top-level `lib/ui/*.svelte` primitive
   has a Debug > Components catalog section), dialog-gallery-coverage (every `SOFT_DIALOG_REGISTRY` id has a row in the
-  Debug > Soft dialogs gallery, and every row names a registered id), btn-restyle, bare-poll, e2e-stale-selector (ERROR;
+  Debug > Soft dialogs gallery, and every row names a registered id), btn-restyle, bare-poll, ipc-unused (every
+  `tauri-commands` wrapper and `commands.*` binding has a caller; § "IPC dead code"), e2e-stale-selector (ERROR;
   a Playwright selector naming a class or `data-*` attribute that appears nowhere in `apps/desktop/src`, see § "E2E
   stale selectors"), svelte-check, import-cycles, jscpd (the frontend clone list, TypeScript and Svelte),
   message-keys-fresh (regenerate-and-diff `keys.gen.ts` from the message catalogs), message-key-naming (the
