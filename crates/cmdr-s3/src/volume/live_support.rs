@@ -10,7 +10,7 @@
 //! Objects live under `cmdr-live/<run>/` and each cell deletes its own;
 //! `live_cleanup_removes_every_leftover` sweeps whatever a crashed run left.
 
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 use std::time::Duration;
 
 use bytes::Bytes;
@@ -34,96 +34,9 @@ use crate::xml::{parse_initiate_multipart, parse_list_multipart_uploads, parse_l
 
 pub(super) const MIB: usize = 1024 * 1024;
 
-/// Every live object sits under this prefix, so the sweep can find them.
-pub(super) const LIVE_ROOT: &str = "cmdr-live/";
-
-/// One real account this run reaches.
-pub(super) struct Live {
-    /// `r2`, `hetzner`, `gcs`, `spaces`, `aws`, `b2`, `wasabi`: what each
-    /// finding is printed under.
-    pub name: &'static str,
-    pub provider: S3Provider,
-    pub key_id: String,
-    secret: String,
-    pub bucket: String,
-    /// A second bucket the same key reaches, for the cross-bucket cells.
-    pub bucket_2: Option<String>,
-}
-
-fn var(name: &str) -> Option<String> {
-    std::env::var(name).ok().filter(|value| !value.is_empty())
-}
-
-/// The accounts this run reaches: none unless `CMDR_S3_LIVE=1`, then each one
-/// whose variables are all set (`CMDR_S3_LIVE_ONLY=r2,gcs` narrows it).
-pub(super) fn live_targets() -> Vec<Live> {
-    if var("CMDR_S3_LIVE").as_deref() != Some("1") {
-        return Vec::new();
-    }
-    let only = var("CMDR_S3_LIVE_ONLY");
-    let wanted = |name: &str| {
-        only.as_deref()
-            .is_none_or(|list| list.split(',').any(|n| n.trim() == name))
-    };
-    let mut targets = Vec::new();
-    let mut add = |name: &'static str, provider: Option<S3Provider>| {
-        let upper = name.to_uppercase();
-        let field = |suffix: &str| var(&format!("CMDR_S3_LIVE_{upper}_{suffix}"));
-        if let (true, Some(provider), Some(key_id), Some(secret), Some(bucket)) = (
-            wanted(name),
-            provider,
-            field("KEY_ID"),
-            field("SECRET"),
-            field("BUCKET"),
-        ) {
-            targets.push(Live {
-                name,
-                provider,
-                key_id,
-                secret,
-                bucket,
-                bucket_2: field("BUCKET_2"),
-            });
-        }
-    };
-    add(
-        "r2",
-        var("CMDR_S3_LIVE_R2_ACCOUNT").map(|account_id| S3Provider::R2 { account_id }),
-    );
-    add(
-        "hetzner",
-        var("CMDR_S3_LIVE_HETZNER_LOCATION").map(|location| S3Provider::Hetzner { location }),
-    );
-    add("gcs", Some(S3Provider::Gcs));
-    add(
-        "spaces",
-        var("CMDR_S3_LIVE_SPACES_REGION").map(|region| S3Provider::DigitalOcean { region }),
-    );
-    add(
-        "aws",
-        var("CMDR_S3_LIVE_AWS_REGION").map(|region| S3Provider::Aws { region }),
-    );
-    add(
-        "b2",
-        var("CMDR_S3_LIVE_B2_REGION").map(|region| S3Provider::B2 { region }),
-    );
-    add(
-        "wasabi",
-        var("CMDR_S3_LIVE_WASABI_REGION").map(|region| S3Provider::Wasabi { region }),
-    );
-    targets
-}
-
-/// A token unique to this run, under [`LIVE_ROOT`].
-fn run_token() -> &'static str {
-    static TOKEN: OnceLock<String> = OnceLock::new();
-    TOKEN.get_or_init(|| uuid::Uuid::new_v4().simple().to_string()[..10].to_string())
-}
-
-/// `cmdr-live/<run>/<label>/`.
-pub(super) fn live_prefix(label: &str) -> String {
-    format!("{LIVE_ROOT}{}/{label}/", run_token())
-}
+/// The accounts this run reaches and the prefix every live object sits
+/// under, one list with the app crate's engine flows (`testing::live`).
+pub(super) use super::testing::live::{LIVE_ROOT, LiveAccount as Live, live_accounts as live_targets, live_prefix};
 
 /// Prints one finding, the line the docs are written from.
 #[allow(
