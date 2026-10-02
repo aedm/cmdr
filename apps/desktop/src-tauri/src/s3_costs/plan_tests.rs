@@ -125,11 +125,12 @@ fn a_move_within_one_aws_account_copies_on_the_server_and_deletes_the_source() {
     // and its listing plus the walk's (2), readying the destination (3) and
     // checking the move (3), the name probe (1), making the folder (3), the
     // sweep's two and the emptied folder's capped one (3): 16. HEADs: the
-    // stat, the probe, two making the folder, the copy's source and verify
-    // (no no-overwrite HEAD in a fresh folder), the sweep's: 7. Plus one
-    // `CopyObject` and the marker's PUT; the deletes are free.
+    // stat, the probe, two making the folder, the copy's verify (its source
+    // facts come from the listing, and no no-overwrite HEAD in a fresh
+    // folder), the sweep's: 6. Plus one `CopyObject` and the marker's PUT;
+    // the deletes are free.
     assert_eq!(planned.len(), 1);
-    close(totals(&planned)[0], 18.0 * 5e-6 + 7.0 * 4e-7);
+    close(totals(&planned)[0], 18.0 * 5e-6 + 6.0 * 4e-7);
 }
 
 #[test]

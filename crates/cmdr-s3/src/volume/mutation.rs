@@ -37,7 +37,7 @@ use super::paths::{Holder, Resolved, Target, target_of};
 use super::query::body_error;
 use super::writes::{Landed, Landing, judge_landing, refuse_unstorable};
 use crate::error::S3Error;
-use crate::ops::{self, BuildError, CopySource, ListObjectsParams, MetadataDirective, ObjectMetadata, Overwrite};
+use crate::ops::{self, BuildError, CopySource, ListObjectsParams, ObjectMetadata, Overwrite};
 use crate::transport::S3Client;
 use crate::xml::{parse_copy_result, parse_list_objects};
 
@@ -287,14 +287,7 @@ impl S3Volume {
             bucket: from_bucket,
             key: from_key,
         };
-        let built = match ops::copy_object(
-            client.profile(),
-            source,
-            to_bucket,
-            to_key,
-            overwrite,
-            &MetadataDirective::Copy,
-        ) {
+        let built = match ops::copy_object(client.profile(), source, None, to_bucket, to_key, overwrite) {
             Ok(built) => built,
             // A provider that copies within one bucket only (Spaces).
             Err(BuildError::CrossBucketCopy) => return Err(VolumeError::NotSupported),

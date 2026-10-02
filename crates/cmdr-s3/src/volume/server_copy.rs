@@ -4,13 +4,16 @@
 //!   upload of `UploadPartCopy` ranges, even under S3's 5 GB `CopyObject`
 //!   ceiling, so progress moves per part and a pause lands between parts. One
 //!   part size per copy (`multipart.rs`, R2's rule).
-//! - **Up to the profile's `copy_concurrency()` parts in flight**, halved on every throttle
-//!   (`SlowDown`, 503, 429) and grown back by one per finished part ([`Window`]).
-//! - ❗ **The source is HEADed once**, which gives its size, its ETag (every
-//!   part is pinned to that version with `x-amz-copy-source-if-match`), and its
-//!   metadata. A copy keeps the source's `x-amz-meta-mtime`; a source without
-//!   one has its `Last-Modified` written as the mtime, so the date survives the
-//!   copy either way.
+//! - **The parts themselves** run in `part_copy.rs`: up to the profile's
+//!   `copy_concurrency()` in flight, the window halved on every throttle.
+//! - ❗ **A one-request copy needs no HEAD of its source**: its size and ETag
+//!   come from the listing the engine just took (`listed.rs`), it goes by
+//!   `COPY` (the server keeps the source's metadata and content headers), and
+//!   it's pinned to that ETag with `x-amz-copy-source-if-match`.
+//! - **A copy in parts HEADs its source once**: every part is pinned to its
+//!   ETag, and the creation restates its metadata. It keeps the source's
+//!   `x-amz-meta-mtime`; a source without one has its `Last-Modified` written
+//!   as the mtime.
 //! - ❗ **Parse every 200**: `CopyObject` and `UploadPartCopy` can fail inside
 //!   one.
 //! - **No-overwrite** follows the allowlist (`profile.rs`): R2's
@@ -20,31 +23,28 @@
 //! - **Cancel aborts the multipart upload**, recorded in the ledger before its
 //!   first part and confirmed gone by listing (`multipart_upload.rs`).
 
-use std::collections::VecDeque;
 use std::ops::ControlFlow;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
 use cmdr_fs::volume::{ServerCopyProgress, Volume, VolumeError, WriteMode};
-use futures_util::StreamExt;
-use futures_util::stream::FuturesUnordered;
 use log::{debug, warn};
 
 use super::S3Volume;
 use super::errors::map_s3_error;
-use super::multipart_upload::{abort_upload, retry_after, upload_refusal};
+use super::listed::ListedObject;
+use super::multipart_upload::abort_upload;
 use super::paths::{Target, target_of};
 use super::query::{body_error, stored_mtime};
 use super::writes::{WriteTarget, normalize_etag, overwrite_for, refuse_unstorable};
-use crate::error::{S3Error, S3ErrorCode};
+use crate::error::S3Error;
 use crate::metadata::{MTIME_HEADER, WRITE_TOKEN_HEADER};
 use crate::multipart::{MAX_COPY_OBJECT_SIZE, PartPlan, TooLarge, plan_parts_with_floor};
-use crate::ops::{self, BuildError, CopySource, MetadataDirective, ObjectMetadata};
+use crate::ops::{self, BuildError, CopySource, ObjectMetadata};
 use crate::profile::ConditionalOp;
 use crate::transport::{Answer, COMPLETE_BUDGET, S3Client, map_transport_error};
-use crate::xml::build::CompletedPart;
 use crate::xml::parse_copy_result;
 
 /// The system headers a copy restates when it can't keep them by `COPY`.
@@ -90,11 +90,10 @@ impl SourceObject {
         }
     }
 
-    /// The metadata every server-side copy writes: the source's date (its
-    /// `x-amz-meta-mtime`, else its `Last-Modified`), its content headers, and
-    /// its other user metadata, never another write's token. A one-request
-    /// copy sends it as `REPLACE`, a multipart copy at `CreateMultipartUpload`,
-    /// each beside a token of its own.
+    /// The metadata a copy in parts writes at `CreateMultipartUpload`, beside
+    /// a token of its own: the source's date (its `x-amz-meta-mtime`, else its
+    /// `Last-Modified`), its content headers, and its other user metadata,
+    /// never another write's token.
     pub(super) fn restated(&self) -> ObjectMetadata {
         ObjectMetadata {
             mtime: self.mtime,
@@ -104,174 +103,38 @@ impl SourceObject {
     }
 }
 
-/// How many parts may be in flight: AIMD, halved on a throttle, one more per
-/// part that lands, never below one or above the ceiling.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct Window {
-    pub width: usize,
-    ceiling: usize,
+/// What a copy knows about its source: its listing's size and ETag, or its
+/// HEAD, which a copy in parts needs for the metadata it restates.
+pub(super) enum SourceFacts {
+    Listed(ListedObject),
+    Headed(SourceObject),
 }
 
-impl Window {
-    pub(super) fn new(ceiling: usize) -> Self {
-        Self {
-            width: ceiling.max(1),
-            ceiling: ceiling.max(1),
+impl SourceFacts {
+    pub(super) fn size(&self) -> u64 {
+        match self {
+            Self::Listed(listed) => listed.size,
+            Self::Headed(object) => object.size,
         }
     }
 
-    pub(super) fn landed(&mut self) {
-        self.width = (self.width + 1).min(self.ceiling);
-    }
-
-    pub(super) fn throttled(&mut self) {
-        self.width = (self.width / 2).max(1);
-    }
-}
-
-/// One part's copy in flight.
-type PartFuture = std::pin::Pin<Box<dyn Future<Output = Result<(CompletedPart, u64), PartFailure>> + Send>>;
-
-/// How one part's copy failed, for the loop that decides what's next.
-struct PartFailure {
-    number: u32,
-    attempt: u32,
-    error: VolumeError,
-    /// The server asked us to slow down: halve the window.
-    throttle: bool,
-    /// Worth sending again after a back-off.
-    retryable: bool,
-}
-
-/// One part's copy, owning what it needs so it can run beside the others.
-struct PartCopy {
-    client: Arc<S3Client>,
-    bucket: String,
-    key: String,
-    upload_id: String,
-    number: u32,
-    attempt: u32,
-    source_bucket: String,
-    source_key: String,
-    range: (u64, u64),
-    source_etag: Option<String>,
-    /// The source's path, what a `SourceChanged` names.
-    source_remote: String,
-    remote: String,
-    volume_id: String,
-    /// Set when the server says the upload is gone (`NoSuchUpload`).
-    gone: Arc<AtomicBool>,
-    /// A back-off before sending, for a part sent again.
-    delay: Option<Duration>,
-}
-
-impl PartCopy {
-    async fn send(self) -> Result<(CompletedPart, u64), PartFailure> {
-        if let Some(delay) = self.delay {
-            tokio::time::sleep(delay).await;
-        }
-        let length = self.range.1 - self.range.0 + 1;
-        let fail = |error: VolumeError, throttle: bool, retryable: bool| PartFailure {
-            number: self.number,
-            attempt: self.attempt,
-            error,
-            throttle,
-            retryable,
-        };
-        let source = CopySource {
-            bucket: &self.source_bucket,
-            key: &self.source_key,
-        };
-        let request = ops::upload_part_copy(
-            self.client.profile(),
-            &self.bucket,
-            &self.key,
-            &self.upload_id,
-            self.number,
-            source,
-            self.range,
-            self.source_etag.as_deref(),
-        )
-        .map_err(|_| fail(VolumeError::NotFound(self.remote.clone()), false, false))?;
-        let answer = match self.client.exchange(request, COMPLETE_BUDGET).await {
-            Ok(answer) => answer,
-            Err(e) => {
-                return Err(fail(
-                    map_transport_error(&e, &self.volume_id, &self.remote),
-                    false,
-                    true,
-                ));
-            }
-        };
-        if !answer.status.is_success() {
-            let error = S3Error::from_response(answer.status, &answer.text());
-            return Err(fail(self.refusal(&error), error.is_throttle(), error.is_retryable()));
-        }
-        // ❗ A part copy can fail inside a 200.
-        match parse_copy_result(&answer.text()) {
-            Ok(copied) => {
-                let etag = copied.etag.ok_or_else(|| {
-                    fail(
-                        VolumeError::IoError {
-                            message: format!("{}: part {} answered without an ETag", self.remote, self.number),
-                            raw_os_error: None,
-                        },
-                        false,
-                        false,
-                    )
-                })?;
-                Ok((
-                    CompletedPart {
-                        number: self.number,
-                        etag,
-                    },
-                    length,
-                ))
-            }
-            Err(crate::xml::BodyError::Embedded(error)) => {
-                Err(fail(self.refusal(&error), error.is_throttle(), error.is_retryable()))
-            }
-            Err(other) => Err(fail(body_error(&other, &self.remote), false, false)),
+    /// The version the copy pins (`x-amz-copy-source-if-match`) and proves a
+    /// lost answer by.
+    pub(super) fn etag(&self) -> Option<&str> {
+        match self {
+            Self::Listed(listed) => Some(&listed.etag),
+            Self::Headed(object) => object.etag.as_deref(),
         }
     }
-
-    fn refusal(&self, error: &S3Error) -> VolumeError {
-        part_refusal(
-            error,
-            self.source_etag.is_some(),
-            &self.source_remote,
-            &self.remote,
-            &self.gone,
-        )
-    }
 }
 
-/// A refused part copy in the `Volume` vocabulary. ❗ A failed precondition is
-/// the source's ETag pin (the only precondition a part copy carries): the
-/// source changed since its HEAD, ❌ never the destination being taken. So is
-/// `InvalidRange`: every range comes from that HEAD's size, so the source
-/// shrank, and on a provider that ignores the pin (Spaces, Hetzner) that's how
-/// a smaller replacement shows.
-pub(super) fn part_refusal(
-    error: &S3Error,
-    pinned: bool,
-    source_remote: &str,
-    remote: &str,
-    gone: &AtomicBool,
-) -> VolumeError {
-    if (pinned && error.is_precondition_failed()) || error.code == S3ErrorCode::InvalidRange {
-        return VolumeError::SourceChanged(source_remote.to_string());
-    }
-    upload_refusal(error, remote, gone)
-}
-
-/// Where a copy reads from, resolved to a bucket, a key, and what its HEAD said.
+/// Where a copy reads from, resolved to a bucket, a key, and what's known of it.
 pub(super) struct CopyFrom<'a> {
     pub bucket: &'a str,
     pub key: &'a str,
     /// The source's server-side path, what an error about it names.
     pub remote: &'a str,
-    pub object: &'a SourceObject,
+    pub facts: SourceFacts,
 }
 
 impl S3Volume {
@@ -315,24 +178,44 @@ impl S3Volume {
             // A provider that copies within one bucket only: stream it instead.
             return Err(VolumeError::NotSupported);
         }
-        let head = self
-            .head_object(&client, from_bucket, from_key, &from_remote)
-            .await?
-            .ok_or_else(|| VolumeError::NotFound(from_remote.clone()))?;
-        let object = SourceObject::from_head(&head);
+        // The engine listed the source's folder (or stat'd the file) right
+        // before, so its facts cost no HEAD here (`listed.rs`).
+        let facts = match peer.take_listed(&from_remote) {
+            Some(listed) => SourceFacts::Listed(listed),
+            None => SourceFacts::Headed(self.head_source(&client, from_bucket, from_key, &from_remote).await?),
+        };
         let copy_from = CopyFrom {
             bucket: from_bucket,
             key: from_key,
             remote: &from_remote,
-            object: &object,
+            facts,
         };
-        self.copy_key(&client, &copy_from, to_bucket, to_key, &to_remote, mode, progress)
+        self.copy_key(&client, copy_from, to_bucket, to_key, &to_remote, mode, progress)
             .await
+    }
+
+    /// The source's HEAD, `NotFound` when nothing is at its key.
+    async fn head_source(
+        &self,
+        client: &S3Client,
+        bucket: &str,
+        key: &str,
+        remote: &str,
+    ) -> Result<SourceObject, VolumeError> {
+        let head = self
+            .head_object(client, bucket, key, remote)
+            .await?
+            .ok_or_else(|| VolumeError::NotFound(remote.to_string()))?;
+        Ok(SourceObject::from_head(&head))
     }
 
     /// Copies one object to `to_key` in `to_bucket`, whole or in parts by
     /// size, refusing an occupied key under `CreateNew`. Verified by a HEAD,
     /// like every write. Returns the bytes copied.
+    ///
+    /// ❗ Listed facts go stale: a one-request copy whose pin fails asks the
+    /// source once and copies what's there now, and a copy in parts asks it
+    /// for the metadata it restates anyway.
     #[allow(
         clippy::too_many_arguments,
         reason = "one copy's whole context: the client, the source, the destination's bucket, key, and path, the mode, and the progress hook"
@@ -340,46 +223,56 @@ impl S3Volume {
     pub(super) async fn copy_key(
         &self,
         client: &Arc<S3Client>,
-        from: &CopyFrom<'_>,
+        mut from: CopyFrom<'_>,
         to_bucket: &str,
         to_key: &str,
         to_remote: &str,
         mode: WriteMode,
         progress: &dyn ServerCopyProgress,
     ) -> Result<u64, VolumeError> {
-        let size = from.object.size;
-        let in_parts = client.profile().copies_in_parts;
-        if !in_parts && size > MAX_COPY_OBJECT_SIZE {
-            // No `UploadPartCopy` (GCS), and too big for one `CopyObject`:
-            // the engine streams it.
-            return Err(VolumeError::NotSupported);
-        }
-        if self.copies_whole(size) || !in_parts {
-            return self
-                .copy_whole(client, from, to_bucket, to_key, to_remote, mode, progress)
-                .await;
-        }
-        let plan = plan_parts_with_floor(size, self.part_floor(), client.profile().short_tail).map_err(|TooLarge| {
-            VolumeError::IoError {
-                message: format!("{to_remote}: too big for one S3 object (10,000 parts of 5 GiB)"),
-                raw_os_error: None,
+        loop {
+            let size = from.facts.size();
+            let in_parts = client.profile().copies_in_parts;
+            if !in_parts && size > MAX_COPY_OBJECT_SIZE {
+                // No `UploadPartCopy` (GCS), and too big for one `CopyObject`:
+                // the engine streams it.
+                return Err(VolumeError::NotSupported);
             }
-        })?;
-        // This copy's own token rides in the creation metadata, so a completion
-        // whose answer is lost can still prove the destination is ours and whole
-        // (`landed_whole`). The source's token is never carried (`from_head`).
-        let metadata = ObjectMetadata {
-            write_token: Some(crate::metadata::write_token()),
-            ..from.object.restated()
-        };
-        let target = WriteTarget {
-            bucket: to_bucket,
-            key: to_key,
-            remote: to_remote,
-            mode,
-            metadata: &metadata,
-        };
-        self.copy_in_parts(client, from, &target, plan, progress).await
+            let listed = matches!(from.facts, SourceFacts::Listed(_));
+            if self.copies_whole(size) || !in_parts {
+                match self
+                    .copy_whole(client, &from, to_bucket, to_key, to_remote, mode, progress)
+                    .await
+                {
+                    Err(VolumeError::SourceChanged(_)) if listed => {}
+                    outcome => return outcome,
+                }
+            } else if let SourceFacts::Headed(object) = &from.facts {
+                let plan = plan_parts_with_floor(size, self.part_floor(), client.profile().short_tail).map_err(
+                    |TooLarge| VolumeError::IoError {
+                        message: format!("{to_remote}: too big for one S3 object (10,000 parts of 5 GiB)"),
+                        raw_os_error: None,
+                    },
+                )?;
+                // This copy's own token rides in the creation metadata, so a
+                // completion whose answer is lost can still prove the
+                // destination is ours and whole (`landed_whole`). The source's
+                // token is never carried (`from_head`).
+                let metadata = ObjectMetadata {
+                    write_token: Some(crate::metadata::write_token()),
+                    ..object.restated()
+                };
+                let target = WriteTarget {
+                    bucket: to_bucket,
+                    key: to_key,
+                    remote: to_remote,
+                    mode,
+                    metadata: &metadata,
+                };
+                return self.copy_in_parts(client, &from, &target, plan, progress).await;
+            }
+            from.facts = SourceFacts::Headed(self.head_source(client, from.bucket, from.key, from.remote).await?);
+        }
     }
 
     /// Whether an object of `size` copies in one `CopyObject`: up to the part
@@ -389,7 +282,15 @@ impl S3Volume {
         size <= self.part_floor()
     }
 
-    /// One `CopyObject`.
+    /// One `CopyObject`, by `COPY`: the server carries the source's metadata
+    /// and content headers, so nothing is restated and no HEAD of the source
+    /// is needed. Pinned to the source's known ETag.
+    ///
+    /// ❗ No write token: a copy whose answer is lost proves its landing by the
+    /// result, the destination's size and ETag equal to the source's
+    /// ([`Self::landed_after_all`]). The source's own `x-amz-meta-cmdr-write`
+    /// rides along, harmless: a token is fresh per write, so it never matches
+    /// a later write's.
     #[allow(
         clippy::too_many_arguments,
         reason = "one copy's whole context, as `copy_key` carries it"
@@ -404,21 +305,13 @@ impl S3Volume {
         mode: WriteMode,
         progress: &dyn ServerCopyProgress,
     ) -> Result<u64, VolumeError> {
-        let size = from.object.size;
-        // ❗ Always `REPLACE`, restating the source's date and headers beside
-        // this copy's own token, so a copy whose answer is lost can prove the
-        // destination is ours and whole (`landed_whole`) instead of reporting a
-        // failure the engine would then stream over, and refuse, its own copy
-        // (live, Hetzner, 2026-10-02). Same one request as a `COPY`.
-        let metadata = ObjectMetadata {
-            write_token: Some(crate::metadata::write_token()),
-            ..from.object.restated()
-        };
-        let directive = MetadataDirective::Replace(metadata.clone());
+        let size = from.facts.size();
+        let pin = from.facts.etag();
         let source = CopySource {
             bucket: from.bucket,
             key: from.key,
         };
+        let metadata = ObjectMetadata::default();
         let target = WriteTarget {
             bucket: to_bucket,
             key: to_key,
@@ -428,14 +321,7 @@ impl S3Volume {
         };
         let mut retried_without_header = false;
         loop {
-            let built = match ops::copy_object(
-                client.profile(),
-                source,
-                to_bucket,
-                to_key,
-                overwrite_for(mode),
-                &directive,
-            ) {
+            let built = match ops::copy_object(client.profile(), source, pin, to_bucket, to_key, overwrite_for(mode)) {
                 Ok(built) => built,
                 Err(BuildError::CrossBucketCopy) => return Err(VolumeError::NotSupported),
                 Err(_) => return Err(VolumeError::NotFound(to_remote.to_string())),
@@ -453,7 +339,7 @@ impl S3Volume {
                 Err(e) => {
                     let failure = map_transport_error(&e, self.volume_id(), to_remote);
                     return self
-                        .landed_after_all(client, &target, size, progress)
+                        .landed_after_all(client, &target, from, progress)
                         .await
                         .ok_or(failure);
                 }
@@ -465,12 +351,18 @@ impl S3Volume {
                     retried_without_header = true;
                     continue;
                 }
+                if pin.is_some()
+                    && error.is_precondition_failed()
+                    && self.source_moved_on(client, from, conditional).await
+                {
+                    return Err(VolumeError::SourceChanged(from.remote.to_string()));
+                }
                 let failure = map_s3_error(&error, to_remote);
                 // A server fault may come after the copy applied (S3 says a
                 // 500 can mean either).
                 if error.is_retryable() {
                     return self
-                        .landed_after_all(client, &target, size, progress)
+                        .landed_after_all(client, &target, from, progress)
                         .await
                         .ok_or(failure);
                 }
@@ -479,24 +371,58 @@ impl S3Volume {
             // ❗ A copy can fail inside a 200.
             let copied = parse_copy_result(&answer.text()).map_err(|e| body_error(&e, to_remote))?;
             let _ = progress.advanced(size, size);
-            self.verify_landing(client, &target, size, copied.etag.as_deref())
-                .await?;
+            let ours = copied.etag.as_deref();
+            let size = if client.profile().enforces_copy_source_pin || same_etag(ours, pin) {
+                self.verify_landing(client, &target, size, ours).await?;
+                size
+            } else {
+                // The pin may have been ignored and a newer source copied: what
+                // the copy answered is the proof, at whatever size it holds.
+                self.verify_landing_as_found(client, &target, size, ours).await?
+            };
             debug!(target: "volume", "s3 copied {} bytes to {to_remote} in one request", size);
             return Ok(size);
         }
     }
 
-    /// After a `CopyObject` whose answer never came (or came as a fault): our
-    /// whole copy at the key, carrying this copy's token, means the server
-    /// applied it, so it's reported as copied. One HEAD, ❌ never a delete.
+    /// A `412` to a pinned copy names either the pin or the no-overwrite
+    /// condition. Without the latter it's the pin; with both, one HEAD of the
+    /// source says which: a source no longer at its pinned ETag moved on.
+    async fn source_moved_on(&self, client: &S3Client, from: &CopyFrom<'_>, conditional: bool) -> bool {
+        if !conditional {
+            return true;
+        }
+        match self.head_object(client, from.bucket, from.key, from.remote).await {
+            Ok(Some(head)) => !same_etag(head.header("etag"), from.facts.etag()),
+            Ok(None) => true,
+            Err(_) => false,
+        }
+    }
+
+    /// After a `CopyObject` whose answer never came (or came as a fault): the
+    /// source's size and ETag at the key mean the server applied it, so it's
+    /// reported as copied. Even a file that was already there with those bytes
+    /// is the result the copy wanted. Where the ETags can't match by design
+    /// (a multipart source copied as one object gets a fresh ETag), this
+    /// answers `None` and the copy reports its failure: a move keeps its
+    /// source. One HEAD, ❌ never a delete.
     async fn landed_after_all(
         &self,
         client: &S3Client,
         target: &WriteTarget<'_>,
-        size: u64,
+        from: &CopyFrom<'_>,
         progress: &dyn ServerCopyProgress,
     ) -> Option<u64> {
-        let head = self.landed_whole(client, target, size).await?;
+        let size = from.facts.size();
+        let pin = from.facts.etag()?;
+        let head = self
+            .head_object(client, target.bucket, target.key, target.remote)
+            .await
+            .ok()
+            .flatten()?;
+        if head.object_length() != Some(size) || !same_etag(head.header("etag"), Some(pin)) {
+            return None;
+        }
         warn!(
             target: "volume",
             "s3: the answer to a copy into {} never came, but the server applied it",
@@ -605,7 +531,7 @@ impl S3Volume {
             return Ok(());
         }
         let now = self.head_object(client, from.bucket, from.key, from.remote).await?;
-        let unchanged = match (&now, from.object.etag.as_deref()) {
+        let unchanged = match (&now, from.facts.etag()) {
             (None, _) => false,
             // A source that answered no ETag at the start has nothing to compare.
             (Some(_), None) => true,
@@ -617,136 +543,11 @@ impl S3Volume {
         warn!(target: "volume", "s3: {} changed during a copy; nothing was published", from.remote);
         Err(VolumeError::SourceChanged(from.remote.to_string()))
     }
-
-    /// Copies every part, up to the window's width at once, asking the
-    /// progress hook's checkpoint before starting each one. Answers the parts
-    /// in order. ❗ Leaves the upload for the caller to complete or abort.
-    #[allow(
-        clippy::too_many_arguments,
-        reason = "one copy's whole context: the client, the source, the target, the upload id, the plan, progress, and the upload-gone flag"
-    )]
-    async fn copy_parts(
-        &self,
-        client: &Arc<S3Client>,
-        from: &CopyFrom<'_>,
-        target: &WriteTarget<'_>,
-        upload_id: &str,
-        plan: PartPlan,
-        progress: &dyn ServerCopyProgress,
-        gone: &Arc<AtomicBool>,
-    ) -> Result<Vec<CompletedPart>, VolumeError> {
-        let part = |number: u32, attempt: u32, delay: Option<Duration>| PartCopy {
-            client: Arc::clone(client),
-            bucket: target.bucket.to_string(),
-            key: target.key.to_string(),
-            upload_id: upload_id.to_string(),
-            number,
-            attempt,
-            source_bucket: from.bucket.to_string(),
-            source_key: from.key.to_string(),
-            range: plan.range(number),
-            source_etag: from.object.etag.clone(),
-            source_remote: from.remote.to_string(),
-            remote: target.remote.to_string(),
-            volume_id: self.volume_id().to_string(),
-            gone: Arc::clone(gone),
-            delay,
-        };
-        let mut waiting: VecDeque<u32> = (1..=plan.part_count).collect();
-        let mut in_flight: FuturesUnordered<PartFuture> = FuturesUnordered::new();
-        let volume_id = self.volume_id();
-        let mut window = Window::new(client.profile().copy_concurrency());
-        let mut parts: Vec<CompletedPart> = Vec::with_capacity(plan.part_count as usize);
-        let mut done_bytes = 0u64;
-        loop {
-            while in_flight.len() < window.width
-                && let Some(&number) = waiting.front()
-            {
-                // ❗ A pause lands here, between parts, while the parts already
-                // in flight finish: their requests keep being driven.
-                let flow = {
-                    let gate = progress.checkpoint();
-                    tokio::pin!(gate);
-                    loop {
-                        tokio::select! {
-                            biased;
-                            flow = &mut gate => break flow,
-                            Some(finished) = in_flight.next(), if !in_flight.is_empty() => {
-                                let mut copy = CopyState { parts: &mut parts, done_bytes: &mut done_bytes, window: &mut window, in_flight: &mut in_flight };
-                                settle_part(finished, &mut copy, &part, plan.total, progress, volume_id)?;
-                            }
-                        }
-                    }
-                };
-                if flow.is_break() {
-                    return Err(VolumeError::Cancelled(self.volume_id().to_string()));
-                }
-                waiting.pop_front();
-                in_flight.push(Box::pin(part(number, 1, None).send()));
-            }
-            let Some(finished) = in_flight.next().await else {
-                break;
-            };
-            let mut copy = CopyState {
-                parts: &mut parts,
-                done_bytes: &mut done_bytes,
-                window: &mut window,
-                in_flight: &mut in_flight,
-            };
-            settle_part(finished, &mut copy, &part, plan.total, progress, volume_id)?;
-        }
-        parts.sort_by_key(|part| part.number);
-        Ok(parts)
-    }
 }
 
-/// The copy loop's running state, as one settle step updates it.
-struct CopyState<'a> {
-    parts: &'a mut Vec<CompletedPart>,
-    done_bytes: &'a mut u64,
-    window: &'a mut Window,
-    in_flight: &'a mut FuturesUnordered<PartFuture>,
-}
-
-/// Folds one finished part into the copy: a landed part moves the bar and
-/// widens the window; a throttle halves it and sends the part again after a
-/// back-off, as does any other retryable failure; anything else ends the copy.
-fn settle_part(
-    finished: Result<(CompletedPart, u64), PartFailure>,
-    copy: &mut CopyState<'_>,
-    part: &impl Fn(u32, u32, Option<Duration>) -> PartCopy,
-    total: u64,
-    progress: &dyn ServerCopyProgress,
-    volume_id: &str,
-) -> Result<(), VolumeError> {
-    match finished {
-        Ok((landed, length)) => {
-            *copy.done_bytes += length;
-            copy.parts.push(landed);
-            copy.window.landed();
-            if progress.advanced(*copy.done_bytes, total).is_break() {
-                return Err(VolumeError::Cancelled(volume_id.to_string()));
-            }
-            Ok(())
-        }
-        Err(failure) if failure.retryable => {
-            if failure.throttle {
-                copy.window.throttled();
-            }
-            let Some(wait) = retry_after(failure.attempt) else {
-                return Err(failure.error);
-            };
-            warn!(
-                target: "volume",
-                "s3: part {} of a server-side copy failed (attempt {}): {}; again in {wait:?}, {} in flight at most",
-                failure.number, failure.attempt, failure.error, copy.window.width
-            );
-            copy.in_flight
-                .push(Box::pin(part(failure.number, failure.attempt + 1, Some(wait)).send()));
-            Ok(())
-        }
-        Err(failure) => Err(failure.error),
-    }
+/// Whether two ETags name one version, quotes and case aside.
+fn same_etag(one: Option<&str>, other: Option<&str>) -> bool {
+    matches!((one, other), (Some(one), Some(other)) if normalize_etag(one) == normalize_etag(other))
 }
 
 #[cfg(test)]

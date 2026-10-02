@@ -32,9 +32,11 @@ use upload_ledger::UploadLedger;
 
 mod batch;
 mod errors;
+mod listed;
 mod listing;
 mod multipart_upload;
 mod mutation;
+mod part_copy;
 mod paths;
 mod query;
 mod reconnect;
@@ -123,6 +125,10 @@ struct S3VolumeInner {
     /// Entries a write just verified, by server-side path, for the pane patch
     /// that follows it (`writes.rs`). Bounded; taken on read.
     written: std::sync::Mutex<HashMap<String, FileEntry>>,
+    /// What the last listing or stat said about a file, by server-side path,
+    /// for the server-side copy that follows (`listed.rs`). Bounded; taken on
+    /// read.
+    listed: std::sync::Mutex<HashMap<String, listed::ListedObject>>,
     /// The smallest part a multipart upload cuts: `MIN_PART_SIZE`, except in a
     /// Docker cell that wants several parts from a small file.
     part_floor: AtomicU64,
@@ -345,6 +351,7 @@ impl S3Volume {
                 host,
                 ledger,
                 written: std::sync::Mutex::new(HashMap::new()),
+                listed: std::sync::Mutex::new(HashMap::new()),
                 beside_folders: std::sync::Mutex::new(HashSet::new()),
                 part_floor: AtomicU64::new(MIN_PART_SIZE),
             }),

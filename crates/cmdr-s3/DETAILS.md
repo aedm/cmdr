@@ -628,21 +628,35 @@ and so is a cross-bucket copy where the provider copies within one bucket only (
 - **No-overwrite**: `CopyObject` takes R2's `cf-copy-destination-if-none-match`, else a HEAD first (VersityGW and Garage
   ignore `If-None-Match` on a copy, fixture README); a multipart copy refuses at its completion, as an upload does. A
   HEAD after every copy verifies it.
-- **The date survives**: every server-side copy restates the source's metadata (`REPLACE`): its `x-amz-meta-mtime`, else
-  its `Last-Modified` as the mtime, its content headers (`Content-Type`, `Content-Encoding`, `Cache-Control`,
-  `Content-Disposition`, `Content-Language`), and its other user metadata (both fixtures honour `REPLACE`,
-  `copy_test.rs`). A multipart copy names the same metadata at its creation. Lost by restating: `Expires` and a website
-  redirect, which nothing Cmdr writes uses.
-- ❗ **Every server-side copy carries its own write token** (`x-amz-meta-cmdr-write`, never the source's), so a copy
-  whose answer is lost asks `landed_whole` (one HEAD, never a delete): our token at the source's size means the server
-  applied it, and the copy reports it. For a `CompleteMultipartUpload` that's any failed completion; for a one-request
-  `CopyObject`, a transport failure or a server fault. Size and ETag shape alone can't prove it (an earlier identical
-  copy matches both). No token, any other size, or no object: the copy fails (a multipart one aborts its upload), which
-  is safe because a move keeps its source. Decision/Why the one-request copy too: before it, a `CopyObject` whose answer
-  was lost failed, the engine fell back to streaming the file, and the streamed write's no-overwrite check refused the
-  name the copy itself had taken, so a rename stopped with `DestinationExists` on a fresh key (live, Hetzner, once in
-  six 1,005-object renames, 2026-10-02). Restating instead of `COPY` costs no request: the source HEAD it reads from is
-  sent either way. Pinned by `late_cancel_test.rs` (parts) and `copy_landed_test.rs` (one request), both over
+- **A one-request copy goes by `COPY`, with no HEAD of its source** (`server_copy.rs::copy_whole`): its size and ETag
+  come from the listing the engine just took, or the scan's stat of a selected file (`listed.rs`, a bounded map taken on
+  use), and the server carries the source's metadata and content headers itself. It's pinned to that ETag
+  (`x-amz-copy-source-if-match`). Listed facts can be stale, so: where the provider enforces the pin (AWS, R2, B2), a
+  `412` whose source no longer matches (one HEAD tells it from R2's no-overwrite `412`) asks the source once and copies
+  what's there now; where the pin is ignored (Hetzner, Spaces, Wasabi), a copy whose answered ETag differs from the
+  listed one is verified at whatever size it landed (`verify_landing_as_found`). Decision/Why: the source HEAD was one
+  request per file, half the HEADs of a folder rename (B2's 1,005-object rename to a new folder sent about 2,010).
+- **What `COPY` keeps and loses**: the source's own `x-amz-meta-mtime` (every file Cmdr wrote) and its other metadata
+  ride along. ❗ A source without one (another tool's upload) gets the copy's time as its date in a one-request copy;
+  restating its `Last-Modified` would need the HEAD back. Pane listings show `LastModified`, the copy's time, either
+  way. ❗ The source's own `x-amz-meta-cmdr-write` rides along too, harmless: a token is fresh per write, so a copied
+  one never matches a later write's, and the cut-off cleanup (`writes.rs`) only removes an object carrying the token of
+  the write in hand.
+- **A copy in parts HEADs its source once** and restates its metadata at the upload's creation: its `x-amz-meta-mtime`,
+  else its `Last-Modified` as the mtime, its content headers (`Content-Type`, `Content-Encoding`, `Cache-Control`,
+  `Content-Disposition`, `Content-Language`), and its other user metadata (`copy_test.rs`). Lost by restating: `Expires`
+  and a website redirect, which nothing Cmdr writes uses.
+- ❗ **A copy whose answer is lost proves its landing, never deletes** (one HEAD). A one-request `CopyObject` (a
+  transport failure or a server fault) is proven by its result: the destination's size and ETag equal the source's. The
+  bytes at the name are then the source's bytes, so even an identical file that was already there is the result the copy
+  wanted. Where the ETags can't match by design (some providers give a multipart-uploaded source copied as one object a
+  fresh ETag), the proof fails and the copy reports the failure, which is safe because a move keeps its source. A copy
+  in parts carries its own write token (`x-amz-meta-cmdr-write`, never the source's) in its creation metadata, and a
+  failed completion asks `landed_whole`: our token at the source's size means the server completed it. Decision/Why the
+  one-request proof: before it, a `CopyObject` whose answer was lost failed, the engine fell back to streaming the file,
+  and the streamed write's no-overwrite check refused the name the copy itself had taken, so a rename stopped with
+  `DestinationExists` on a fresh key (live, Hetzner, once in six 1,005-object renames, 2026-10-02). Pinned by
+  `late_cancel_test.rs` (parts) and `copy_landed_test.rs` (one request, Hetzner's shape included), both over
   `fake_s3.rs`.
 
 ## Responses
@@ -742,14 +756,14 @@ request: the inputs are the scan the dialog already ran.
   `max(size, minimum object) × remaining days × storagePerGbMonth / 30`, in GiB. Whole days of age, rounded down; a date
   in the future counts as brand new; an object with no date costs nothing (we don't guess).
 - **`Workload` mirrors the write paths**, method by method, with the shapes in each doc comment: an upload is one PUT up
-  to the part floor or Create + parts + Complete, then a verifying HEAD; a server copy adds the source's HEAD; a
-  provider off the conditional-write list (everyone but AWS and R2) adds a no-overwrite HEAD (two for parts). Deletes
-  batch 1,000 keys a `DeleteObjects`; a folder's removal is a capped listing plus the marker's delete. An overwrite is
-  `replace_object` (the replaced object's remaining days, with no request of its own) plus, for an upload,
-  `upload_over`: off the `refuses_short_body` allowlist a one-PUT overwrite goes as a one-part multipart upload (a HEAD
-  finding the original, then Create, a part, and Complete in place of the PUT; § "Overwrites in parts"). A write into a
-  folder the operation made (`upload_fresh`, `copy_on_server_fresh`) has no no-overwrite HEAD; a multipart copy off the
-  pin allowlist has one more source HEAD.
+  to the part floor or Create + parts + Complete, then a verifying HEAD; a one-request server copy takes its source's
+  facts from the listing (no HEAD), a copy in parts HEADs its source once; a provider off the conditional-write list
+  (everyone but AWS and R2) adds a no-overwrite HEAD (two for parts). Deletes batch 1,000 keys a `DeleteObjects`; a
+  folder's removal is a capped listing plus the marker's delete. An overwrite is `replace_object` (the replaced object's
+  remaining days, with no request of its own) plus, for an upload, `upload_over`: off the `refuses_short_body` allowlist
+  a one-PUT overwrite goes as a one-part multipart upload (a HEAD finding the original, then Create, a part, and
+  Complete in place of the PUT; § "Overwrites in parts"). A write into a folder the operation made (`upload_fresh`,
+  `copy_on_server_fresh`) has no no-overwrite HEAD; a multipart copy off the pin allowlist has one more source HEAD.
 - **The engine's own requests are counted too**, one method per engine step, so the estimate is exact for the shapes the
   dialogs price: `stat_selection` (the scan's top-level stat), `list_folder` (each listing page, read once by the scan
   and once by the walk), `open_destination` and `check_move_within`, `probe_name` (each selected name at the
