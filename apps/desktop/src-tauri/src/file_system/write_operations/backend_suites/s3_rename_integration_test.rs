@@ -105,11 +105,10 @@ pub(super) async fn a_folder_of_1005_objects_renames_through_the_engine(target: 
     let (events, _) = start(&volume_id, at(&volume, &format!("{prefix}folder")), "renamed").await;
     settle(&events, "the folder rename to settle").await;
 
-    // ❗ One HEAD per object, the landing check. ❌ No source HEAD: the copy
-    // takes the source's size and ETag from the walk's listing (`cmdr-s3`'s
-    // `listed.rs`). ❌ No per-object no-overwrite HEAD: `renamed/` is a folder
-    // this rename made, so its creation proved it empty
-    // (`WriteMode::CreateNewInFreshFolder`). The rest is per folder.
+    // ❗ One HEAD per object, the source's (its date and headers, for the
+    // copy's `REPLACE`). ❌ No per-object no-overwrite HEAD and ❌ no verifying
+    // one: `renamed/` is a folder this rename made, so its creation proved it
+    // empty (`WriteMode::CreateNewInFreshFolder`). The rest is per folder.
     let sent = take_sent_requests(&volume).await;
     let heads = sent.get("HeadObject").copied().unwrap_or(0);
     assert!(heads <= 1_005 + 20, "{sent:?}");

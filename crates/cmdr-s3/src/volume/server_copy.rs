@@ -479,8 +479,14 @@ impl S3Volume {
             // ❗ A copy can fail inside a 200.
             let copied = parse_copy_result(&answer.text()).map_err(|e| body_error(&e, to_remote))?;
             let _ = progress.advanced(size, size);
-            self.verify_landing(client, &target, size, copied.etag.as_deref())
-                .await?;
+            // ❗ Not under `CreateNewInFreshFolder`: the folder's creation proved
+            // it empty moments ago, which is all this HEAD could add (another
+            // writer at the name). Same accepted window as the skipped
+            // no-overwrite HEAD (`DETAILS.md` § "No-overwrite writes").
+            if mode != WriteMode::CreateNewInFreshFolder {
+                self.verify_landing(client, &target, size, copied.etag.as_deref())
+                    .await?;
+            }
             debug!(target: "volume", "s3 copied {} bytes to {to_remote} in one request", size);
             return Ok(size);
         }

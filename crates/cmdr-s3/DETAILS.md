@@ -357,9 +357,9 @@ in two runs. Full per-cell findings: `docs/notes/s3/live-verification-2026-10.md
 - **A one-request `CopyObject` and its ETag** (`live_protocol_test.rs::live_copy_object_etags`, 2026-10-02, six
   providers, B2 not run): a single-part source's copy keeps its ETag everywhere (Spaces answers it unquoted). A
   multipart source's copy keeps its `-N` ETag on Hetzner and Spaces, and gets a fresh whole-object ETag on AWS, R2, and
-  Wasabi, so there a lost answer reports a failure (§ "Server-side copy"). A wrong `x-amz-copy-source-if-match` is `412`
-  on AWS, R2, GCS, and Hetzner, and ignored on Spaces and Wasabi. ❗ GCS answers `400 InvalidArgument` to a pin naming a
-  multipart ETag, quoted or not, hence `refuses_multipart_copy_pin`.
+  Wasabi. A wrong `x-amz-copy-source-if-match` is `412` on AWS, R2, GCS, and Hetzner, and ignored on Spaces and Wasabi.
+  ❗ GCS answers `400 InvalidArgument` to a pin naming a multipart ETag, quoted or not, so a single `CopyObject` stays
+  unpinned (its lost answer is proven by the write token, § "Server-side copy").
 - **Connect refusals** (`live_connect_test.rs::live_connect_refusals`): a wrong secret or key id is `KeysRejected` on
   the bucket and the account root everywhere, except R2's wrong secret (`AccessDenied` / `BucketListRefused`: its
   bucket-scoped key gets `AccessDenied` on `ListBuckets` whatever the secret); a missing bucket is `NoSuchBucket`
@@ -523,14 +523,18 @@ for that operation right now. Making the flag part of the return type is what ke
 - **A fresh folder skips the check-then-write HEADs** (`WriteMode::CreateNewInFreshFolder`, `refuse_if_taken`): the
   engine's merge walker hands it down for every name in a folder its own `create_directory` just made, which that
   creation proved empty (a rename to a new name, or a copy of a folder into a place without one). The header paths still
-  apply (they cost nothing); the HEAD before the write, and before a multipart completion, doesn't go. The verifying
-  HEAD after the write stays. Decision/Why: one HEAD per object was a third of a folder rename's requests (1,005 of
-  3,021 for 1,005 objects on B2's check-then-write profile, the requests behind its daily Class B cap) and protects
-  nothing the folder's creation didn't. ❗ The accepted window: a file another writer puts in the brand-new folder while
-  the operation runs is overwritten, where the HEAD would have refused it if it had landed before that HEAD. A merge
-  into a folder that already existed keeps every check: that's where another writer's files plausibly are. Pinned by
-  `fresh_folder_test.rs` over `fake_s3.rs` and the app's `a_folder_of_1005_objects_renames_through_the_engine` (at most
-  two HEADs per object).
+  apply (they cost nothing); the HEAD before the write, and before a multipart completion, doesn't go. A one-request
+  server-side copy (`server_copy.rs::copy_whole`) also skips its verifying HEAD; an upload and a copy in parts keep
+  theirs. A copy whose answer is lost still HEADs (`landed_whole`), but only then. Decision/Why: one HEAD per object was
+  a third of a folder rename's requests (1,005 of 3,021 for 1,005 objects on B2's check-then-write profile, the requests
+  behind its daily Class B cap) and protects nothing the folder's creation didn't. ❗ The accepted window: a file
+  another writer puts in the brand-new folder while the operation runs is overwritten, where the HEAD would have refused
+  it if it had landed before that HEAD. ❗ The verify HEAD a fresh-folder copy skips detects only that same writer
+  (another object at a name in a folder that didn't exist moments ago), and only when it lands between our copy and that
+  HEAD, so skipping it widens nothing the accepted window doesn't already cover. B2's 1,005-object rename to a new
+  folder: about 1,005 HEADs (the sources') plus LISTs. A merge into a folder that already existed keeps every check:
+  that's where another writer's files plausibly are. Pinned by `fresh_folder_test.rs` over `fake_s3.rs` and the app's
+  `a_folder_of_1005_objects_renames_through_the_engine` (at most one HEAD per object).
 - **Garage ends an upload when another write replaces its object** (`NoSuchUpload` on the next part or the completion;
   `apps/desktop/test/s3-servers/README.md`). Under `CreateNew` that's read as the name being taken, after a HEAD
   confirms it, ❌ never as the destination "not found".
@@ -754,8 +758,8 @@ request: the inputs are the scan the dialog already ran.
   `replace_object` (the replaced object's remaining days, with no request of its own) plus, for an upload,
   `upload_over`: off the `refuses_short_body` allowlist a one-PUT overwrite goes as a one-part multipart upload (a HEAD
   finding the original, then Create, a part, and Complete in place of the PUT; § "Overwrites in parts"). A write into a
-  folder the operation made (`upload_fresh`, `copy_on_server_fresh`) has no no-overwrite HEAD; a multipart copy off the
-  pin allowlist has one more source HEAD.
+  folder the operation made (`upload_fresh`, `copy_on_server_fresh`) has no no-overwrite HEAD, and a one-request copy
+  there no verifying HEAD; a multipart copy off the pin allowlist has one more source HEAD.
 - **The engine's own requests are counted too**, one method per engine step, so the estimate is exact for the shapes the
   dialogs price: `stat_selection` (the scan's top-level stat), `list_folder` (each listing page, read once by the scan
   and once by the walk), `open_destination` and `check_move_within`, `probe_name` (each selected name at the

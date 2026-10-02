@@ -57,7 +57,7 @@ async fn an_upload_into_a_fresh_folder_sends_no_no_overwrite_head() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_server_copy_into_a_fresh_folder_sends_no_no_overwrite_head() {
+async fn a_server_copy_into_a_fresh_folder_sends_no_head_at_its_destination() {
     let s3 = FakeS3::start(Duration::ZERO).await;
     s3.seed("src.bin", 100);
     let volume = s3.volume_for(wasabi());
@@ -77,7 +77,8 @@ async fn a_server_copy_into_a_fresh_folder_sends_no_no_overwrite_head() {
         assert!(matches!(copied, Ok(100)), "{copied:?}");
     }
 
-    // HEAD before, the copy, verifying HEAD; then the same minus the first.
+    // HEAD before, the copy, verifying HEAD; then the copy alone: the
+    // folder's creation proved what both HEADs would ask.
     assert_eq!(s3.requests_about("checked.bin"), 3);
-    assert_eq!(s3.requests_about("fresh/unchecked.bin"), 2);
+    assert_eq!(s3.requests_about("fresh/unchecked.bin"), 1);
 }

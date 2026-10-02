@@ -559,3 +559,17 @@ fn unknown_operations_providers_and_fields_are_ignored() {
     let json = format!(r#"{{"schemaVersion": 1, "providers": {{"aws": {provider}, "newcloud": {provider}}}}}"#);
     assert!(PriceTable::parse(&json).is_ok());
 }
+
+/// Into a folder the operation made, a one-request copy sends only its source
+/// HEAD: no no-overwrite HEAD and no verifying one (`server_copy.rs`). A copy
+/// in parts keeps its verify and, off the pin allowlist, its stand-in.
+#[test]
+fn a_copy_into_a_fresh_folder_heads_only_its_source() {
+    let heads = |size: u64| {
+        let mut work = workload(&hetzner());
+        work.copy_on_server_fresh(size);
+        work.counted_requests().get("HeadObject").copied().unwrap_or(0)
+    };
+    assert_eq!(heads(MIB), 1);
+    assert_eq!(heads(GIB), 3);
+}

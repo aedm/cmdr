@@ -111,9 +111,20 @@ impl Workload {
     /// `CopyObject`'s ceiling without parts, the engine streams it: a download
     /// and an upload.
     pub fn copy_on_server(&mut self, size: u64) {
+        self.copy_on_server_as(size, false);
+    }
+
+    /// [`copy_on_server`](Self::copy_on_server), `fresh` when it lands in a
+    /// folder this operation made: no no-overwrite HEAD, and a one-request
+    /// copy sends no verifying HEAD either.
+    fn copy_on_server_as(&mut self, size: u64, fresh: bool) {
         if !self.copies_in_parts && size > MAX_COPY_OBJECT_SIZE {
             self.download(size);
-            self.upload(size);
+            if fresh {
+                self.upload_fresh(size);
+            } else {
+                self.upload(size);
+            }
             return;
         }
         // `copies_whole` is `size <= part floor`, which differs from the
@@ -126,9 +137,14 @@ impl Workload {
             self.add(RequestKind::UploadPartCopy, self.part_count(size));
             self.add(RequestKind::CompleteMultipartUpload, 1);
         }
-        let checks = if whole { self.checks.copy } else { self.checks.complete };
+        let checks = match (fresh, whole) {
+            (true, _) => 0,
+            (false, true) => self.checks.copy,
+            (false, false) => self.checks.complete,
+        };
+        let verify = u64::from(!(fresh && whole));
         let pin_stand_in = u64::from(!whole && !self.pins_copy_source);
-        self.add(RequestKind::HeadObject, 2 + checks + pin_stand_in);
+        self.add(RequestKind::HeadObject, 1 + verify + checks + pin_stand_in);
     }
 
     /// One object deleted, in a `DeleteObjects` batch (`volume/batch.rs`).
@@ -244,16 +260,10 @@ impl Workload {
     }
 
     /// [`copy_on_server`](Self::copy_on_server) into a folder this operation
-    /// made: no no-overwrite HEAD.
+    /// made (`WriteMode::CreateNewInFreshFolder`): no no-overwrite HEAD, and a
+    /// one-request copy no verifying HEAD (`volume/server_copy.rs`).
     pub fn copy_on_server_fresh(&mut self, size: u64) {
-        let saved = self.checks;
-        self.checks = Checks {
-            put: 0,
-            copy: 0,
-            complete: 0,
-        };
-        self.copy_on_server(size);
-        self.checks = saved;
+        self.copy_on_server_as(size, true);
     }
 
     /// One folder level a move's source sweep clears
