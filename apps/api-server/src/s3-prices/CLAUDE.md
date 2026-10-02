@@ -12,4 +12,9 @@ Worker deploy. No D1, no KV, no secrets, no IP touch.
 - **The path's `v1` is the table's `schemaVersion`.** A breaking schema change serves at `/s3-prices/v2` beside v1,
   since shipped apps keep fetching v1 for as long as they run.
 
+- **A monthly claude.ai routine watches the prices** ("S3 price table watch (monthly)", the 3rd of each month, 07:17
+  UTC). It reads each provider's `source` page on `origin/main`'s table: no change means a one-line report and nothing
+  else, while a change opens a `claude-created` PR updating both copies. Keep each entry's `source` pointing at the
+  official pricing page, since that's what it reads.
+
 Response headers, caching, and why there's no rate limit: `DETAILS.md`.
