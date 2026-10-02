@@ -70,6 +70,13 @@ volume is the user: it feeds full paths as the entries' `name` field, so the nam
 `useShortenMiddle` (snapping to `/` when the name carries one, `.` otherwise). Unset, FullList renders identically: same
 grid template, same fetch loop, same DOM.
 
+**Both views take a `loadingOverlay?: Snippet` for a slow load.** The pane passes its `LoadingIcon` once a load outlasts
+the grace period, and the view lays it over a `.row-area` wrapper around the scroller, so the header above stays. While
+it's up the scroller is `visibility: hidden` (`is-covered`): the retained rows keep their layout, so scroll and
+measurements hold, but neither paint nor reach the a11y tree, and the pane's own background shows through. The "empty
+folder" text stays hidden too. ❌ Don't render the loading view in place of the list: unmounting the list is what
+blinked the column header out on every slow navigation (`../pane/DETAILS.md` has the pane side).
+
 ### FullList's siblings
 
 `FullList.svelte` keeps what needs the component (the props contract, the reactive readers, the `$effect`s, the DOM

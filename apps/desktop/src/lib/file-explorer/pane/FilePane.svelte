@@ -407,6 +407,8 @@
         getLoading: () => loading,
         getParentRow: () => ({ hasParent, parentPath: hasParent && canonicalPath ? parentOf(canonicalPath) : '' }),
     })
+    /** A load past the grace period: the list's rows give way to `LoadingIcon`, its header stays. */
+    const showLoadingView = $derived(loading && listingPresentation.showLoading)
 
     // Volume root path from listing-complete event (accurate for MTP and all volume types)
     let volumeRootFromEvent = $state<string | undefined>(undefined)
@@ -1962,6 +1964,9 @@
          renders it unconditionally and it decides. -->
     <AdbHint {volumeId} />
     <div class="content">
+        {#snippet listLoadingView()}
+            <LoadingIcon {openingFolder} loadedCount={loadingCount} {finalizingCount} showCancelHint={true} />
+        {/snippet}
         <TypeToJumpIndicator
             buffer={jump.buffer}
             visible={jump.indicatorVisible}
@@ -2026,9 +2031,7 @@
                 onRetry={() => navigateToPath(currentPath)}
                 onGoBack={() => { loader.handleCancelLoading() }}
             />
-        {:else if loading && listingPresentation.showLoading}
-            <LoadingIcon {openingFolder} loadedCount={loadingCount} {finalizingCount} showCancelHint={true} />
-        {:else if friendlyError}
+        {:else if friendlyError && !showLoadingView}
             <ErrorPane
                 friendly={friendlyError}
                 folderPath={currentPath}
@@ -2038,11 +2041,14 @@
                 onGoHome={() => onOpenHome?.()}
                 {isFocused}
             />
-        {:else if error}
+        {:else if error && !showLoadingView}
             <div class="error-message">{error}</div>
         {:else if viewMode === 'brief'}
+            <!-- ❗ The list stays mounted through a load, so its column header never blinks
+                 out; only its rows give way to the loading view. -->
             <BriefList
                 bind:this={briefListRef}
+                loadingOverlay={showLoadingView ? listLoadingView : undefined}
                 listingId={listingPresentation.listingId}
                 {volumeId}
                 totalCount={listingPresentation.totalCount}
@@ -2082,9 +2088,14 @@
                 onStartRename={startRename}
                 onDragInitiate={clearJumpState}
             />
+            {#if loading}
+                <!-- Retained rows and the header are visual continuity only; loading still blocks every action. -->
+                <div class="loading-shield" aria-hidden="true"></div>
+            {/if}
         {:else}
             <FullList
                 bind:this={fullListRef}
+                loadingOverlay={showLoadingView ? listLoadingView : undefined}
                 listingId={listingPresentation.listingId}
                 {volumeId}
                 totalCount={listingPresentation.totalCount}
@@ -2126,10 +2137,9 @@
                 onVisibleRangeChange={handleVisibleRangeChange}
                 onDragInitiate={clearJumpState}
             />
-        {/if}
-        {#if loading && !listingPresentation.showLoading && listingPresentation.listingId}
-            <!-- Old rows are visual continuity only; loading still blocks every action. -->
-            <div class="loading-shield" aria-hidden="true"></div>
+            {#if loading}
+                <div class="loading-shield" aria-hidden="true"></div>
+            {/if}
         {/if}
     </div>
     <!-- The status footer: which panes get it, and which of those talk about disk

@@ -1114,13 +1114,18 @@ owns the full listing teardown (`cancelListing` + `listDirectoryEnd` + `evictPer
 `listingId`, row count, and `..` row (`parentRow`) for 100 ms after the next load starts. The `..` row belongs to the
 listing it heads: the lists once got the new path's `..` over the old rows, and a jump from `/a` to `/a/b/c` made it
 `/a/b`, a row `/a` also lists, which threw Svelte's `each_key_duplicate`. ❌ Don't feed the lists the live `hasParent` /
-`parentPath`. If that load settles inside the grace period, the
-loading screen never mounts; if it outlasts the threshold, the ordinary cancellable `LoadingIcon` takes over. The old
-rows are presentation only: a transparent shield blocks pointer input, while `FilePane.isLoading()` keeps keyboard and
-command paths blocked. Once the listing lands, Brief and Full fetch the new visible range and atomically replace the old
-rows rather than clearing first. Startup still shows loading immediately because there is no settled listing to
-preserve. The timer and snapshot contract are pinned in `listing-presentation.svelte.test.ts`; the atomic swap and a
-late old-range response are pinned in `../views/full-list-cache.test.ts`.
+`parentPath`. If that load settles inside the grace period, the loading screen never mounts; if it outlasts the
+threshold, the cancellable `LoadingIcon` covers the ROW AREA through the list's `loadingOverlay` snippet. ❗ The list
+itself stays mounted through every load, so its column header never blinks out on a slow volume (a GCS bucket, a busy
+share); swapping the whole list for `LoadingIcon` is what made it vanish. The old rows and the header are presentation
+only: a transparent `.loading-shield` (rendered in the list branches so it never covers a connect view or an error)
+blocks pointer input for the whole load, while `FilePane.isLoading()` keeps keyboard and command paths blocked. Once the
+listing lands, Brief and Full fetch the new visible range and atomically replace the old rows rather than clearing
+first. Startup shows the loading view immediately because there is no settled listing to preserve, header included; the
+list hides its "empty folder" text while the overlay is up. An error or a stalled listing still takes the whole content
+area. Pinned in `file-pane-loading-header.svelte.test.ts`. The timer and snapshot contract are pinned in
+`listing-presentation.svelte.test.ts`; the atomic swap and a late old-range response are pinned in
+`../views/full-list-cache.test.ts`.
 
 **No pane hosts a credential form.** Every credential ask in the app is the one modal sign-in sheet
 (`$lib/servers/sign-in-sheet-state.svelte.ts`), raised for SMB through `../network/smb-sign-in.ts`. A pane that could

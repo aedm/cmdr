@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { untrack } from 'svelte'
+    import { untrack, type Snippet } from 'svelte'
     import { dependOn } from '$lib/utils/reactivity'
     import type { FileEntry, SelectPayload, SortColumn, SortOrder, SyncStatus, VisibleRangePayload } from '../types'
     import type { FileIndexState, FolderCoverage } from '$lib/tauri-commands'
@@ -132,6 +132,11 @@
         onStartRename?: () => void
         /** Called when a drag actually initiates (threshold crossed) from this view. */
         onDragInitiate?: () => void
+        /**
+         * The host pane's loading view. When set, it covers the row area while the
+         * column header stays on screen, so a slow load never blinks the header out.
+         */
+        loadingOverlay?: Snippet
     }
 
     const {
@@ -169,6 +174,7 @@
         onRenameShakeEnd,
         onStartRename,
         onDragInitiate,
+        loadingOverlay,
     }: Props = $props()
 
     // ==== Cached entries (prefetch buffer) ====
@@ -928,9 +934,13 @@
         />
     </div>
 
+    <!-- The row area: the scroller plus, during a slow load, the pane's loading view
+         laid over it, so the header above never leaves. -->
+    <div class="row-area">
     <!-- Scrollable file list -->
     <div
         class="brief-list"
+        class:is-covered={loadingOverlay !== undefined}
         data-file-list-surface
         bind:this={scrollContainer}
         bind:clientHeight={containerHeight}
@@ -1033,7 +1043,11 @@
             </div>
         </div>
     </div>
-    {#if (hasParent ? totalCount - 1 : totalCount) === 0}
+    {#if loadingOverlay}
+        <div class="loading-overlay">{@render loadingOverlay()}</div>
+    {/if}
+    </div>
+    {#if !loadingOverlay && (hasParent ? totalCount - 1 : totalCount) === 0}
         <div class="empty-folder-overlay">{tString('fileExplorer.list.empty')}</div>
     {/if}
 </div>
@@ -1087,6 +1101,25 @@
        level deeper so the padding stays out of its row-area height).
        `clientWidth`/`clientHeight` INCLUDE this padding, so the column math subtracts
        it — see `usableWidth` / `usableHeight`. */
+    .row-area {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .loading-overlay {
+        position: absolute;
+        inset: 0;
+    }
+
+    /* The previous folder's rows stay laid out (scroll and measurements hold) but
+       unpainted and out of the a11y tree while the loading view stands in for them. */
+    .brief-list.is-covered {
+        visibility: hidden;
+    }
+
     .brief-list {
         padding: var(--spacing-xs);
         overflow-x: auto;

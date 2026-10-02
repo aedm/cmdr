@@ -167,6 +167,30 @@ vi.mock('$lib/settings', () => ({
   onSettingChange: vi.fn(() => () => {}),
 }))
 
+// A pane mounts its list from the first load on (the header stays while it loads),
+// and the list reads its row height off reactive-settings. The `$lib/settings` mock
+// answers `undefined` for every setting, which crashes `getRowHeight`'s
+// `densityMappings[uiDensity]`, so pin the list's getters to safe defaults.
+vi.mock('$lib/settings/reactive-settings.svelte', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/settings/reactive-settings.svelte')>()),
+  getRowHeight: vi.fn().mockReturnValue(24),
+  getIconSize: vi.fn().mockReturnValue(16),
+  getIsCompactDensity: vi.fn().mockReturnValue(false),
+  getUseAppIconsForDocuments: vi.fn().mockReturnValue(false),
+  getDirectorySortMode: vi.fn().mockReturnValue('likeFiles'),
+  getIsCmdrGold: vi.fn().mockReturnValue(false),
+  getSizeDisplayMode: vi.fn().mockReturnValue('size'),
+  getSizeMismatchWarning: vi.fn().mockReturnValue(false),
+  getFileSizeUnit: vi.fn().mockReturnValue('binary'),
+  getFileSizeFormat: vi.fn().mockReturnValue('short'),
+  getStripedRows: vi.fn().mockReturnValue(false),
+  getShowExtensionInName: vi.fn().mockReturnValue(false),
+  getBriefColumnWidthMode: vi.fn().mockReturnValue('auto'),
+  getBriefColumnWidthMaxPx: vi.fn().mockReturnValue(400),
+  getNetworkEnabled: vi.fn().mockReturnValue(true),
+  getTypeToJumpResetDelay: vi.fn().mockReturnValue(1000),
+}))
+
 describe('DualPaneExplorer', () => {
   it('renders dual pane container', () => {
     const target = document.createElement('div')

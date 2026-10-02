@@ -1,4 +1,5 @@
 <script lang="ts">
+    import type { Snippet } from 'svelte'
     import Icon from '$lib/ui/Icon.svelte'
     import StatusGlyph from '$lib/ui/StatusGlyph.svelte'
     import { dependOn } from '$lib/utils/reactivity'
@@ -161,6 +162,11 @@
          * click reads "Sort by relevance". See `SortableHeader`'s prop.
          */
         clearsSortLabel?: string
+        /**
+         * The host pane's loading view. When set, it covers the row area while the
+         * column header stays on screen, so a slow load never blinks the header out.
+         */
+        loadingOverlay?: Snippet
     }
 
     const {
@@ -202,6 +208,7 @@
         onDragInitiate,
         staticEntries,
         clearsSortLabel,
+        loadingOverlay,
     }: Props = $props()
 
     /**
@@ -688,11 +695,15 @@
         {clearsSortLabel}
         {onSortChange}
     />
+    <!-- The row area: the scroller plus, during a slow load, the pane's loading view
+         laid over it, so the header above never leaves. -->
+    <div class="row-area">
     <!-- Scrollable file list. `role="listbox"` lives on the inner rows wrapper
          because a listbox's children must be options/groups, and the scroller also
          holds the "empty folder" message. -->
     <div
         class="full-list"
+        class:is-covered={loadingOverlay !== undefined}
         data-file-list-surface
         bind:this={scrollContainer}
         bind:clientHeight={rowAreaHeight}
@@ -926,9 +937,13 @@
         <!-- Sibling of the listbox, not a child: the empty-state text is not an
              option, and a listbox holding a non-option child is an
              aria-required-children violation. An EMPTY listbox is fine. -->
-        {#if (hasParent ? totalCount - 1 : totalCount) === 0}
+        {#if !loadingOverlay && (hasParent ? totalCount - 1 : totalCount) === 0}
             <div class="empty-folder-message">{tString('fileExplorer.list.empty')}</div>
         {/if}
+    </div>
+    {#if loadingOverlay}
+        <div class="loading-overlay">{@render loadingOverlay()}</div>
+    {/if}
     </div>
 </div>
 
@@ -939,6 +954,25 @@
         flex: 1;
         min-height: 0;
         width: 100%;
+    }
+
+    .row-area {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .loading-overlay {
+        position: absolute;
+        inset: 0;
+    }
+
+    /* The previous folder's rows stay laid out (scroll and measurements hold) but
+       unpainted and out of the a11y tree while the loading view stands in for them. */
+    .full-list.is-covered {
+        visibility: hidden;
     }
 
     .full-list {

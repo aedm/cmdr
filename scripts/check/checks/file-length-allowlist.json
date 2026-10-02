@@ -125,11 +125,11 @@
       "reason": "TODO: the `onListingError` handler inside `loadDirectory` (the MTP fallback, the archive-password prompt, the not-connected refusal, and the deleted-path existence probe plus walk-up, about 110 lines) is one decision, what a failed listing turns into, and reads only the load's captured `volumeId` / `loadPath` plus a handful of deps. Move it to `listing-error-outcome.ts` as a function taking those, beside `listing-loader.outcomes.test.ts`, which already tests exactly that branch."
     },
     "apps/desktop/src/lib/file-explorer/views/BriefList.svelte": {
-      "lines": 1111,
+      "lines": 1246,
       "reason": "TODO: Brief is the only view that still inlines what Full has already factored out. Its roughly 830-line script holds the prefetch buffer (`cachedEntries`, `cachedRange`, `isFetching`, `parentDirStats`, `fetchVisibleRange`, `visibleColumns`, and the hard-reset/soft-refresh `$effect`, about 220 lines) and the whole `handleMouseDown` drag-payload decision plus `handleClick`, `handleDoubleClick`, and `maybeStartClickToRename` (about 120 lines), while `FullList` reaches the same behavior through `full-list-cache.svelte.ts` and `full-list-mouse.ts`. Mirror those two: a `brief-list-cache.svelte.ts` wrapping the `file-list-utils.ts` helpers it already calls, and a `brief-list-mouse.ts` with a `planRowMouseDown` twin, then move `buildDirTooltip` and `buildNameTooltip` (about 40 lines) beside the `full-list-utils.ts` building blocks they compose. Markup (about 150) and `<style>` (about 170) are already lean and stay put."
     },
     "apps/desktop/src/lib/file-explorer/views/FullList.svelte": {
-      "lines": 1215,
+      "lines": 1343,
       "reason": "TODO: The script (about 635 lines) is already down to wiring since `full-list-cache.svelte.ts`, `full-list-git-column.svelte.ts`, `full-list-mouse.ts`, and `measure-column-widths.ts` left, and about 130 of it is the `Props` interface, which can't move. The remaining bulk is the Size cell: one `col-size` span spanning about 90 markup lines over five nested branches (`sizeOverride`, the `dir` and `scanning` placeholders, the lower-bound prefix, the size triads, the hourglass, the mismatch warning) plus about 60 lines of `.col-size` and `.size-*` style. Pull it into a `FullListSizeCell.svelte` taking `file`, `sizeOverride`, `dirDisplaySize`, `fileDisplaySize`, `sizeFormatOpts`, `isSizeUpdating`, and `showSizeMismatchWarning`; it keeps importing `getDirSizeDisplayState` and `pickSizeDisplay` from `full-list-utils.ts`, so the renderer-and-measurer single-source contract that `views/CLAUDE.md` pins stays intact. That is roughly 150 lines out and leaves the row template readable."
     },
     "apps/desktop/src/lib/file-operations/delete/DeleteDialog.svelte": {
