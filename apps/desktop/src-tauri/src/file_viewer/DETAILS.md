@@ -524,8 +524,11 @@ Per-session, a manager thread (`spawn_watcher_manager`) does the FSEvents subscr
 - `LineIndexBackend::extend_to(new_size, cancel)` opens the file, seeks to `self.total_bytes`, drives a
   `NewlineScanner` started at that offset over the new range, clones the checkpoint vec and appends new entries.
 - `ByteSeekBackend::extend_to` returns a fresh `ByteSeekBackend` with the updated size field.
-- `FullLoadBackend::extend_to_boxed` returns `ViewerError::Io` — the session is responsible for escalating FullLoad →
-  ByteSeek before any append crosses `FULL_LOAD_THRESHOLD`.
+- `FullLoadBackend::extend_to_boxed` returns `ViewerError::Io`: it can't extend in place. So `apply_tail_extend`
+  never calls it on a FullLoad session; it reopens through `reopen_backend` instead (FullLoad while the file still
+  fits under `FULL_LOAD_THRESHOLD`, ByteSeek once it crosses), under the same snapshot-and-`Arc::ptr_eq` swap, and
+  updates `backend_type` with it. A small, fresh log (`cmdr.log` after a rotation) is the common case. Pinned by
+  `tail_mode_on_a_full_load_file_reopens_it_to_take_in_the_append`.
 
 ## Gotchas (tail mode)
 

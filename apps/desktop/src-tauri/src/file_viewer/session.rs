@@ -1397,18 +1397,7 @@ pub fn reload(session_id: &str) -> Result<(), ViewerError> {
         encoding = *session.encoding.lock_ignore_poison();
     }
 
-    let metadata = std::fs::metadata(&path)?;
-    let file_size = metadata.len();
-    let new_backend: Box<dyn FileViewerBackend> = if file_size <= FULL_LOAD_THRESHOLD {
-        Box::new(FullLoadBackend::open_with_encoding(&path, encoding)?)
-    } else {
-        Box::new(ByteSeekBackend::open_with_encoding(&path, encoding)?)
-    };
-    let new_type = if file_size <= FULL_LOAD_THRESHOLD {
-        BackendType::FullLoad
-    } else {
-        BackendType::ByteSeek
-    };
+    let (new_backend, new_type) = reopen_backend(&path, encoding)?;
 
     let sessions = SESSIONS.lock_ignore_poison();
     if let Some(session) = sessions.get(session_id) {
@@ -1419,6 +1408,26 @@ pub fn reload(session_id: &str) -> Result<(), ViewerError> {
         *session.pending_grew.lock_ignore_poison() = None;
     }
     Ok(())
+}
+
+/// A fresh backend for the file as it is on disk now: FullLoad under the
+/// threshold, ByteSeek above it.
+fn reopen_backend(
+    path: &Path,
+    encoding: FileEncoding,
+) -> Result<(Box<dyn FileViewerBackend>, BackendType), ViewerError> {
+    let file_size = std::fs::metadata(path)?.len();
+    if file_size <= FULL_LOAD_THRESHOLD {
+        Ok((
+            Box::new(FullLoadBackend::open_with_encoding(path, encoding)?),
+            BackendType::FullLoad,
+        ))
+    } else {
+        Ok((
+            Box::new(ByteSeekBackend::open_with_encoding(path, encoding)?),
+            BackendType::ByteSeek,
+        ))
+    }
 }
 
 /// Manager thread spawned once per session. Does the (blocking,
@@ -1564,10 +1573,14 @@ fn handle_watcher_event(session_id: &str, event: WatcherEvent) {
 /// detect that case and discard the stale extend instead of clobbering the
 /// fresh backend. The new EOF is re-queued into `pending_grew` so the rebuild
 /// swap or a follow-up watcher event still catches up.
+///
+/// FullLoad can't extend in place, so it reopens instead, through the same
+/// snapshot-and-compare: still FullLoad while the file fits, ByteSeek once it
+/// crosses the threshold. Without this, tail mode does nothing under 1 MB.
 fn apply_tail_extend(session_id: &str, new_size: u64) {
     let dummy_cancel = AtomicBool::new(false);
 
-    let backend_snapshot = {
+    let (backend_snapshot, reopen_from) = {
         let sessions = SESSIONS.lock_ignore_poison();
         let Some(session) = sessions.get(session_id) else {
             return;
@@ -1582,16 +1595,26 @@ fn apply_tail_extend(session_id: &str, new_size: u64) {
         if new_size <= backend.total_bytes() {
             return;
         }
-        backend
+        let reopen_from = matches!(*session.backend_type.lock_ignore_poison(), BackendType::FullLoad)
+            .then(|| (session.path.clone(), *session.encoding.lock_ignore_poison()));
+        (backend, reopen_from)
     };
 
-    let extended = match backend_snapshot.extend_to_boxed(new_size, &dummy_cancel) {
-        Ok(b) => b,
-        Err(_) => {
-            // The active backend can't extend (FullLoad). The viewer remains
-            // valid against the older byte range until the user reloads.
-            return;
-        }
+    let (extended, new_type) = match reopen_from {
+        Some((path, encoding)) => match reopen_backend(&path, encoding) {
+            Ok((backend, backend_type)) => (backend, Some(backend_type)),
+            Err(e) => {
+                debug!("apply_tail_extend: reopening session {session_id} failed: {e}");
+                return;
+            }
+        },
+        None => match backend_snapshot.extend_to_boxed(new_size, &dummy_cancel) {
+            Ok(b) => (b, None),
+            Err(e) => {
+                debug!("apply_tail_extend: extending session {session_id} failed: {e}");
+                return;
+            }
+        },
     };
 
     // Re-acquire the lock and verify the backend we extended is still the one
@@ -1604,6 +1627,9 @@ fn apply_tail_extend(session_id: &str, new_size: u64) {
     let current = session.backend.load_full();
     if Arc::ptr_eq(&current, &backend_snapshot) {
         session.backend.store(Arc::new(extended));
+        if let Some(new_type) = new_type {
+            *session.backend_type.lock_ignore_poison() = new_type;
+        }
     } else {
         // A fresh backend was installed during our extend. Discard the stale
         // extend and re-queue the EOF so the rebuild's drain-and-swap (or a

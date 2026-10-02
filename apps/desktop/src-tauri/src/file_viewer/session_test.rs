@@ -1496,6 +1496,45 @@ fn tail_mode_on_extends_backend_when_watcher_reports_grew() {
     session::close_session(&sid).unwrap();
 }
 
+#[test]
+fn tail_mode_on_a_full_load_file_reopens_it_to_take_in_the_append() {
+    // FullLoad can't extend in place, so a small file (a fresh `cmdr.log`) must
+    // reopen on growth; without that, tail mode does nothing below 1 MB.
+    let dir = create_test_dir("tail_full_load");
+    let path = write_test_file(&dir, "small.log", "first line\nsecond line\n");
+
+    let result = session::open_session(path.to_str().unwrap(), "root").unwrap();
+    let sid = result.session_id.clone();
+    assert!(matches!(result.backend_type, session::BackendType::FullLoad));
+    wait_for_watcher_subscribed();
+    session::set_tail_mode(&sid, true).unwrap();
+
+    {
+        use std::io::Write;
+        let mut f = fs::OpenOptions::new().append(true).open(&path).unwrap();
+        f.write_all(b"appended while tailing\n").unwrap();
+    }
+    let want_size = fs::metadata(&path).unwrap().len();
+    let sent = super::watcher::test_only_emit(
+        &fs::canonicalize(&path).unwrap(),
+        super::watcher::WatcherEvent::Grew(want_size),
+    );
+    assert!(sent > 0, "test_only_emit should have found a subscriber");
+
+    wait_until(
+        Duration::from_secs(3),
+        "the tail-mode handler to reopen the FullLoad file",
+        || {
+            session::get_lines(&sid, super::SeekTarget::Row(2), 1, &AtomicBool::new(false))
+                .expect("get lines")
+                .texts()
+                == vec!["appended while tailing"]
+        },
+    );
+
+    session::close_session(&sid).unwrap();
+}
+
 // ─── Audit fix coverage ────────────────────────────────────────────────────────────
 
 #[test]

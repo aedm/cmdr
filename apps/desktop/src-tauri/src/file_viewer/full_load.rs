@@ -107,10 +107,10 @@ impl FullLoadBackend {
         }
     }
 
-    /// `extend_to` doesn't apply to FullLoad: the session escalates to
-    /// ByteSeek/LineIndex on the first append that crosses
-    /// `FULL_LOAD_THRESHOLD`. Calling it is a bug; we panic so the call site
-    /// surfaces fast rather than silently dropping the append.
+    /// `extend_to` doesn't apply to FullLoad: on an append, the session's
+    /// `apply_tail_extend` reopens the file instead (FullLoad again, or ByteSeek
+    /// past `FULL_LOAD_THRESHOLD`). Calling it is a bug; we panic so the call
+    /// site surfaces fast rather than silently dropping the append.
     #[allow(dead_code, reason = "called by session::tail_mode_extend defensively")]
     pub fn extend_to(&self, _new_size: u64, _cancel: &AtomicBool) -> Self {
         unreachable!(
@@ -151,10 +151,9 @@ impl FullLoadBackend {
 
 impl FileViewerBackend for FullLoadBackend {
     fn extend_to_boxed(&self, _new_size: u64, _cancel: &AtomicBool) -> Result<Box<dyn FileViewerBackend>, ViewerError> {
-        // The session is responsible for escalating FullLoad → ByteSeek before
-        // calling extend_to. Reaching here means the caller violated that
-        // contract; surface a typed error rather than panicking inside a
-        // watcher thread.
+        // The session reopens a FullLoad file instead of extending it. Reaching
+        // here means the caller skipped that; surface a typed error rather than
+        // panicking inside a watcher thread.
         Err(ViewerError::Io {
             message: "FullLoadBackend cannot extend in place; session must escalate first".to_string(),
         })
