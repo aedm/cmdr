@@ -228,12 +228,13 @@
     {#if currentVolume?.usbSpeed}
         <UsbSpeedDot speed={currentVolume.usbSpeed} breadcrumb />
     {/if}
+    <!-- The chip's dot only ever shows a LIVE session (the pane's connect views own the
+         other states), so it earns its place only where the OS mount is the other way in
+         (SMB). On any other server it could only say "connected" about what you're browsing. -->
     {#if currentVolume?.connectionState === 'direct'}
-        <ConnectionDot
-            state="direct"
-            hasOsMountFallback={currentVolume.capabilities?.hasOsMountFallback ?? false}
-            breadcrumb
-        />
+        {#if currentVolume.capabilities?.hasOsMountFallback}
+            <ConnectionDot state="direct" hasOsMountFallback breadcrumb />
+        {/if}
     {:else if currentVolume?.connectionState === 'os_mount'}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->

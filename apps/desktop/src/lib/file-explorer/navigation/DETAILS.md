@@ -353,7 +353,10 @@ its OWN tooltip sentence (`getConnectionTooltip`, a `Record` over the union, so 
 `connection-tooltips.test.ts` also catches a BORROWED one, since five states once shared two sentences and a signed-out
 SFTP server hovered as "Using system connection". `direct` has two sentences: "Connected directly…" only when the
 volume's `capabilities.hasOsMountFallback` says the OS mount is the other way in (SMB), plain "Connected" everywhere
-else (SFTP, WebDAV, S3, ADB), where no other way exists. Both placements pass it as a `ConnectionDot` prop.
+else (SFTP, WebDAV, S3, ADB), where no other way exists. The CHIP renders a dot only for a live session (`direct`, or
+SMB's amber `os_mount` trigger; the pane's connect views own every other state), so it shows the green one only where
+`hasOsMountFallback` is set: on any other server it could only say "connected" about what the pane is browsing. The
+switcher rows keep every state's dot, since there grey, amber, red, and hollow are all reachable.
 
 ❌ Never read `connectionState` with `!= null` — `connection-state.ts` holds the named predicates (`hasReconnectLoop`,
 `isLiveSession`, `showsDisconnect`), and `eject-predicate.ts` composes two of them. On the chip, yellow state is a
