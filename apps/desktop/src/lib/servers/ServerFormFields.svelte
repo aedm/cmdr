@@ -83,6 +83,8 @@
         onAddAnyway?: () => void
         /** The sentence under the secret field. */
         secretRefusal?: string
+        /** Edit mode, over a stored secret: what an empty secret field keeps. */
+        secretPlaceholder?: string
         /** The sentence under the root folder. */
         rootRefusal?: string
         /** The sentence under the start folder. */
@@ -131,6 +133,7 @@
         onTryNextcloudAddress,
         onAddAnyway,
         secretRefusal,
+        secretPlaceholder,
         rootRefusal,
         startFolderRefusal,
         regionRefusal,
@@ -352,6 +355,7 @@
             {disabled}
             invalid={secretRefusal !== undefined}
             aria-describedby={secretRefusal ? 'server-secret-refusal' : undefined}
+            placeholder={secretPlaceholder}
             autocomplete={isS3 ? 'off' : 'current-password'}
         />
         {#if secretRefusal}

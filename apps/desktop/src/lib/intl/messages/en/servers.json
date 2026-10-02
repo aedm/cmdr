@@ -517,6 +517,10 @@
     "description": "Label of the password field. One word, NOUN.",
     "screenshot": "server-sign-in-add-prefilled.png"
   },
+  "servers.sheet.secretKeptPlaceholder": "Saved in Keychain. Leave empty to keep it.",
+  "@servers.sheet.secretKeptPlaceholder": {
+    "description": "Placeholder inside the empty Password field (or the Secret access key field, for S3 storage) of the Edit server sheet, when Cmdr already has that secret stored in the macOS Keychain. Cmdr never shows a stored secret, so the field is always empty; this says one is saved, and that leaving the field empty and pressing Save keeps it. “It” is the password or the key, whichever the field is for. “Keychain” is the macOS feature name; use the name your language’s macOS uses (same as in servers.sheet.remember). Short: it has to fit inside a text field."
+  },
   "servers.sheet.smbUsernamePlaceholder": "Optional",
   "@servers.sheet.smbUsernamePlaceholder": {
     "description": "Placeholder inside the optional Username field of the Add server sheet when SMB is selected. One word saying the field may stay empty.",

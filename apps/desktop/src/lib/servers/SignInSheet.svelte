@@ -114,6 +114,8 @@
     let storedSecretWarning = $state<string | null>(null)
     /** What Remember said when the sheet opened, so a flip can be written once, deliberately. */
     let rememberWhenOpened = false
+    /** Edit mode: whether the store held a secret when the sheet opened, for the password field's placeholder. */
+    let secretStoredWhenOpened = $state(false)
     /** The submission to repeat once a host key is trusted. */
     let pendingSubmission: SignInSubmission | null = null
     /**
@@ -181,6 +183,17 @@
         const fallback = nameFallbackOf(form, savedServers)
         return fallback === null ? undefined : tString('servers.sheet.namePlaceholder', { label: fallback })
     })
+
+    /**
+     * Edit mode's password placeholder over a stored secret. ❗ The field opens
+     * empty every time (a secret is never read back out of the Keychain), and a
+     * bare empty box read as "no password saved". It says what an empty field
+     * does on Save, which is keep it (`writeTypedSecret`), and goes once Remember
+     * is off, since Save then forgets it.
+     */
+    const secretPlaceholder = $derived(
+        isEdit && secretStoredWhenOpened && form.remember ? tString('servers.sheet.secretKeptPlaceholder') : undefined,
+    )
 
     const submitLabel = $derived.by(() => {
         if (request.mode === 'edit') return tString('servers.sheet.save')
@@ -354,6 +367,7 @@
         form = (await savedEditForm(server, id)) ?? form
         form.remember = await hasServerSecret(id)
         rememberWhenOpened = form.remember
+        secretStoredWhenOpened = form.remember
         storedSecretWarning = await unattendedReconnectWarning(id, server.protocol)
         await tick()
         focusFirstEditableField()
@@ -747,6 +761,7 @@
                       }
                     : undefined}
                 secretRefusal={refusalWhere === 'secret' ? refusalText : undefined}
+                {secretPlaceholder}
                 rootRefusal={refusalWhere === 'root' ? refusalText : undefined}
                 startFolderRefusal={startFolderRefusalText}
                 storedSecretWarning={storedSecretWarning ?? undefined}

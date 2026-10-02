@@ -2972,6 +2972,7 @@ export type MessageKey =
   | 'servers.sheet.s3UseRegion'
   | 'servers.sheet.save'
   | 'servers.sheet.secretAccessKey'
+  | 'servers.sheet.secretKeptPlaceholder'
   | 'servers.sheet.signIn'
   | 'servers.sheet.signInTitle'
   | 'servers.sheet.signInWithCredentials'

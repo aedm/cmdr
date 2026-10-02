@@ -211,9 +211,12 @@ about sign-in mode, where username editability is the SHAPE VARIANT's property (
 **Edit mode's password field writes what it shows.** A non-empty value on Save goes through `saveSftpCredentials` /
 `saveWebdavCredentials` keyed on the target's tuple, and the Remember box then reports on, because the store holds one.
 An EMPTY field means "I didn't come here to change the password", ❌ never "store an empty one": the field opens empty
-every time, since a stored secret is never read back out of the Keychain to prefill it. The typed password is written
-LAST, after the Remember flip, so it wins over a box the same visit turned off: a password field with text in it and
-Save pressed stores that password. A flip or a write that breaks down after the edit saved answers
+every time, since a stored secret is never read back out of the Keychain to prefill it. ❗ So over a stored secret
+(`hasServerSecret` at open) it carries `servers.sheet.secretKeptPlaceholder` ("Saved in Keychain. Leave empty to keep
+it."), dropped while Remember is off, since Save then forgets it: a bare empty box read as "no password saved". One
+field serves SFTP, WebDAV, and S3 (`ServerFormFields`); an SMB host's edit has no password field. The typed password is
+written LAST, after the Remember flip, so it wins over a box the same visit turned off: a password field with text in it
+and Save pressed stores that password. A flip or a write that breaks down after the edit saved answers
 `saved_secret_not_updated` under the password field, ❌ never the dial's `unreachable`: the edit landed and no server
 was contacted, and Save again re-saves the same edit and retries the write.
 

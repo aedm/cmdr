@@ -921,6 +921,45 @@ describe('SignInSheet: edit mode', () => {
     expect(vi.mocked(commands.saveSftpCredentials)).not.toHaveBeenCalled()
     expect(vi.mocked(commands.forgetServerSecret)).not.toHaveBeenCalled()
   })
+
+  it('says a stored password is kept when its field stays empty, and keeps it on Save', async () => {
+    const commands = await import('$lib/tauri-commands')
+    vi.mocked(commands.hasServerSecret).mockResolvedValueOnce(true)
+    const { done } = await renderSheet({ mode: 'edit', server: SAVED })
+
+    // ❗ A blank field over a stored secret read as "no password saved".
+    const secret = document.body.querySelector<HTMLInputElement>('#server-secret')
+    expect(secret?.value).toBe('')
+    expect(secret?.placeholder).toBe('Saved in Keychain. Leave empty to keep it.')
+
+    buttonSaying('Save').click()
+    await flush()
+
+    expect(done).toEqual([{ kind: 'saved' }])
+    expect(vi.mocked(commands.saveSftpCredentials)).not.toHaveBeenCalled()
+    expect(vi.mocked(commands.forgetServerSecret)).not.toHaveBeenCalled()
+  })
+
+  it('drops the "saved" placeholder once Remember goes off, since Save then forgets the password', async () => {
+    const commands = await import('$lib/tauri-commands')
+    vi.mocked(commands.hasServerSecret).mockResolvedValueOnce(true)
+    await renderSheet({ mode: 'edit', server: SAVED })
+    expect(document.body.querySelector<HTMLInputElement>('#server-secret')?.placeholder).not.toBe('')
+
+    const remember = [...document.body.querySelectorAll('label')].find((l) =>
+      l.textContent.includes('Remember in Keychain'),
+    )
+    remember?.click()
+    await flush()
+
+    expect(document.body.querySelector<HTMLInputElement>('#server-secret')?.placeholder ?? '').toBe('')
+  })
+
+  it('shows no "saved" placeholder when nothing is stored', async () => {
+    await renderSheet({ mode: 'edit', server: SAVED })
+
+    expect(document.body.querySelector<HTMLInputElement>('#server-secret')?.placeholder ?? '').toBe('')
+  })
 })
 
 /**
