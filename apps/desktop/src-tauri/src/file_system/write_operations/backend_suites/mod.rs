@@ -86,11 +86,21 @@ mod smb_transfer_semantics_test;
 
 // S3: gated on the Docker fixture and named for the `s3_integration_` lane.
 // Copies onto, off, and between buckets; renames that run as moves, and
-// copies inside one account.
+// copies inside one account; the shared semantics and safety scenarios. Every
+// scenario takes an `S3Target`, so `s3_live_engine_test` runs the same bodies
+// against real accounts (skipped unless `CMDR_S3_LIVE=1`).
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod s3_engine_integration_test;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod s3_live_engine_test;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod s3_rename_integration_test;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod s3_transfer_integration_test;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod s3_transfer_safety_test;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod s3_transfer_semantics_test;
 
 // WebDAV: gated on the Docker fixture and named for the `webdav_integration_` lane.
 #[cfg(any(target_os = "macos", target_os = "linux"))]

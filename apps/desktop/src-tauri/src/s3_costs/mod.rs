@@ -67,19 +67,38 @@ pub fn estimate(request: &CostEstimateRequest, data_dir: Option<&Path>) -> Vec<C
     let Some(facts) = cached_cost_facts(&request.preview_id) else {
         return Vec::new();
     };
-    let sides = Sides {
-        source: source_s3.map(S3Volume::cost_workload),
-        destination: destination_s3.map(S3Volume::cost_workload),
-        server_copy: matches!((source_s3, destination_s3), (Some(from), Some(to)) if to.copies_on_server_from(from)),
-    };
     let overwrites = request.clashes.as_ref().map(overwritten).unwrap_or_default();
     priced(
         request.operation,
-        sides,
+        sides_of(source_s3, destination_s3),
         &facts,
         &overwrites,
         &price_source::current(data_dir),
     )
+}
+
+/// Each end's empty workload, and whether the two copy on the server.
+fn sides_of(source: Option<&S3Volume>, destination: Option<&S3Volume>) -> Sides {
+    Sides {
+        source: source.map(S3Volume::cost_workload),
+        destination: destination.map(S3Volume::cost_workload),
+        server_copy: matches!((source, destination), (Some(from), Some(to)) if to.copies_on_server_from(from)),
+    }
+}
+
+/// The billed work [`estimate`] prices for `operation` between these ends, for
+/// a cell comparing it with the requests the engine actually sent
+/// (`backend_suites/s3_engine_integration_test.rs`).
+#[cfg(test)]
+pub(crate) fn planned_workloads(
+    operation: CostedOperation,
+    source: Option<&S3Volume>,
+    destination: Option<&S3Volume>,
+    facts: &ScanCostFacts,
+    clashes: Option<&ClashPlan>,
+) -> Vec<cmdr_s3::cost::Workload> {
+    let overwrites = clashes.map(overwritten).unwrap_or_default();
+    plan(operation, sides_of(source, destination), facts, &overwrites)
 }
 
 /// What renaming an entry on `volume_id` costs when the rename runs as a move

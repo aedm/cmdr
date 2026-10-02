@@ -47,6 +47,18 @@ const SETTLE_BUDGET: Duration = Duration::from_secs(6);
 /// whose conflict never comes still has room to say so before the cap lands.
 const CONFLICT_BUDGET: Duration = Duration::from_secs(5);
 
+/// `fixture_budget`, or ten minutes when the scenario runs against a real
+/// account (`CMDR_S3_LIVE=1`, `s3_live_engine_test.rs`): a home uplink moves a
+/// 140 MiB upload in tens of seconds, not the fixture's two. The live runner
+/// goes through `cargo test`, so the nextest cap above doesn't apply there.
+pub(super) fn budget(fixture_budget: Duration) -> Duration {
+    if std::env::var("CMDR_S3_LIVE").as_deref() == Ok("1") {
+        Duration::from_secs(600)
+    } else {
+        fixture_budget
+    }
+}
+
 // ── Bytes ────────────────────────────────────────────────────────────
 
 /// A payload whose every position says where it belongs, so a hole or a
@@ -185,7 +197,7 @@ impl RunningCopy {
     /// event and after every cleanup the driver owns. Anything the destination
     /// still holds at that point, it means to hold.
     pub(super) async fn settle(&self) {
-        crate::test_support::wait_until_async(SETTLE_BUDGET, "the copy to settle", || {
+        crate::test_support::wait_until_async(budget(SETTLE_BUDGET), "the copy to settle", || {
             !self.events.settled.lock_ignore_poison().is_empty()
         })
         .await;
@@ -213,7 +225,7 @@ impl RunningCopy {
     /// the copy settles turns that case into a sentence about what the copy did.
     async fn await_one_conflict(&self) -> super::super::types::WriteConflictEvent {
         crate::test_support::wait_until_async(
-            CONFLICT_BUDGET,
+            budget(CONFLICT_BUDGET),
             "the copy to raise its clash or settle without one",
             || {
                 !self.events.conflicts.lock_ignore_poison().is_empty()
@@ -514,9 +526,11 @@ pub(super) async fn a_cancelled_upload_leaves_nothing_behind(remote: Arc<dyn Vol
     // run — bytes offered, nothing ingested — satisfy every "nothing was left
     // behind" claim below without a byte ever landing.
     source.gate.add_permits(2);
-    crate::test_support::wait_until_async(SETTLE_BUDGET, "the upload to get two chunks into the server", || {
-        source.handed_out.load(std::sync::atomic::Ordering::SeqCst) >= 2
-    })
+    crate::test_support::wait_until_async(
+        budget(SETTLE_BUDGET),
+        "the upload to get two chunks into the server",
+        || source.handed_out.load(std::sync::atomic::Ordering::SeqCst) >= 2,
+    )
     .await;
     cancel_write_operation(&running.operation_id, false);
     // Let the source answer again, so a backend that only notices the cancel on

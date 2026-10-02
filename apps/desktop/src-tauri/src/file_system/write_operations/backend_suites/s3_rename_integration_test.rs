@@ -10,7 +10,9 @@
 //! leaving every source whole, and a copy between two buckets of one account
 //! running on the server unless the provider copies within a bucket only.
 //!
-//! The cells stay named for the `s3_integration_` lane prefix.
+//! The cells stay named for the `s3_integration_` lane prefix. The scenarios
+//! take an `S3Target`, so `s3_live_engine_test.rs` runs the same bodies against
+//! real accounts.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -18,10 +20,7 @@ use std::time::Duration;
 
 use cmdr_fs::volume::{Volume, VolumeError};
 use cmdr_s3::S3Volume;
-use cmdr_s3::volume::testing::{
-    FIXTURE_BUCKET, FIXTURE_BUCKET_2, FixtureService, GARAGE, Seed, VERSITYGW, connect_fixture, distant_mtime, object,
-    scratch_prefix, seed, self_describing_bytes, stored_mtime_header, stored_write_token, unfinished_uploads,
-};
+use cmdr_s3::volume::testing::{GARAGE, S3Target, Seed, VERSITYGW, distant_mtime, object, self_describing_bytes};
 
 use super::network_transfer_test_support::{read_all, run_copy, sha256};
 use crate::file_system::volume::manager::get_volume_manager;
@@ -40,18 +39,18 @@ const MIB: usize = 1024 * 1024;
 /// on a fixture several suites share.
 const SETTLE_BUDGET: Duration = Duration::from_secs(120);
 
-/// A bucket place on `service`, registered with the volume manager under a
+/// A bucket place on `target`, registered with the volume manager under a
 /// fresh id the way a connect registers it, plus a scratch prefix and its
 /// folder.
-async fn registered(service: FixtureService, label: &str, part_floor: Option<u64>) -> (String, Arc<S3Volume>, String) {
-    let volume = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
+async fn registered(target: &S3Target, label: &str, part_floor: Option<u64>) -> (String, Arc<S3Volume>, String) {
+    let volume = target.connect(Some(target.bucket())).await;
     if let Some(floor) = part_floor {
         volume.set_part_floor(floor);
     }
     let volume = Arc::new(volume);
     let volume_id = format!("{}-{label}", volume.volume_id());
     get_volume_manager().register(&volume_id, Arc::clone(&volume) as Arc<dyn Volume>);
-    (volume_id, volume, scratch_prefix(label))
+    (volume_id, volume, target.prefix(label))
 }
 
 fn at(volume: &S3Volume, key: &str) -> PathBuf {
@@ -92,11 +91,11 @@ async fn settle(events: &CollectorEventSink, what: &str) {
 /// ❗ A folder past a thousand objects renames through the engine: every
 /// object arrives under the new name, and the sources go in `DeleteObjects`
 /// batches, the second one paging past the first thousand.
-async fn a_folder_of_1005_objects_renames_through_the_engine(service: FixtureService) {
-    let (volume_id, volume, prefix) = registered(service, "rename-1005", None).await;
+pub(super) async fn a_folder_of_1005_objects_renames_through_the_engine(target: &S3Target) {
+    let (volume_id, volume, prefix) = registered(target, "rename-1005", None).await;
     let keys: Vec<String> = (0..1_005).map(|n| format!("{prefix}folder/f{n:04}.txt")).collect();
     let seeds: Vec<Seed<'_>> = keys.iter().map(|key| object(key, b"x")).collect();
-    seed(service, FIXTURE_BUCKET, &seeds).await;
+    target.seed(target.bucket(), &seeds).await;
 
     let (events, _) = start(&volume_id, at(&volume, &format!("{prefix}folder")), "renamed").await;
     settle(&events, "the folder rename to settle").await;
@@ -119,20 +118,20 @@ async fn a_folder_of_1005_objects_renames_through_the_engine(service: FixtureSer
 
 /// A file past the part floor renames by multipart copy: the bytes and the
 /// source's date arrive, the old key goes, and no upload stays open.
-async fn a_big_file_renames_by_multipart_copy_keeping_its_date(service: FixtureService) {
-    let (volume_id, volume, prefix) = registered(service, "rename-big", Some(5 * MIB as u64)).await;
+pub(super) async fn a_big_file_renames_by_multipart_copy_keeping_its_date(target: &S3Target) {
+    let (volume_id, volume, prefix) = registered(target, "rename-big", Some(5 * MIB as u64)).await;
     let bytes = self_describing_bytes(17 * MIB, "big");
     let from_key = format!("{prefix}clip.mov");
-    seed(
-        service,
-        FIXTURE_BUCKET,
-        &[Seed {
-            key: &from_key,
-            bytes: &bytes,
-            mtime: Some(distant_mtime()),
-        }],
-    )
-    .await;
+    target
+        .seed(
+            target.bucket(),
+            &[Seed {
+                key: &from_key,
+                bytes: &bytes,
+                mtime: Some(distant_mtime()),
+            }],
+        )
+        .await;
 
     let (events, _) = start(&volume_id, at(&volume, &from_key), "renamed.mov").await;
     settle(&events, "the big file's rename to settle").await;
@@ -143,12 +142,12 @@ async fn a_big_file_renames_by_multipart_copy_keeping_its_date(service: FixtureS
         sha256(&bytes)
     );
     assert_eq!(
-        stored_mtime_header(service, FIXTURE_BUCKET, &to_key).await,
+        target.stored_mtime_header(target.bucket(), &to_key).await,
         Some(rclone_mtime_of_distant()),
         "the source's date survives the rename"
     );
     assert!(!volume.exists(&at(&volume, &from_key)).await, "the old name is gone");
-    assert!(unfinished_uploads(service, FIXTURE_BUCKET, &prefix).await.is_empty());
+    assert!(target.unfinished_uploads(target.bucket(), &prefix).await.is_empty());
 }
 
 /// The rclone-format mtime of `distant_mtime()`, which is whole seconds.
@@ -162,11 +161,11 @@ fn rclone_mtime_of_distant() -> String {
 
 /// ❗ A paused rename copies nothing until resumed, and a cancel while it's
 /// parked leaves the source whole, nothing at the new name, and no upload.
-async fn a_paused_then_cancelled_rename_keeps_the_source_whole(service: FixtureService) {
-    let (volume_id, volume, prefix) = registered(service, "rename-pause-cancel", Some(5 * MIB as u64)).await;
+pub(super) async fn a_paused_then_cancelled_rename_keeps_the_source_whole(target: &S3Target) {
+    let (volume_id, volume, prefix) = registered(target, "rename-pause-cancel", Some(5 * MIB as u64)).await;
     let bytes = self_describing_bytes(20 * MIB, "kept");
     let from_key = format!("{prefix}kept.bin");
-    seed(service, FIXTURE_BUCKET, &[object(&from_key, &bytes)]).await;
+    target.seed(target.bucket(), &[object(&from_key, &bytes)]).await;
 
     let (events, operation_id) = start(&volume_id, at(&volume, &from_key), "gone.bin").await;
     assert!(pause_write_operation(&operation_id) || !events.settled.lock_ignore_poison().is_empty());
@@ -181,7 +180,7 @@ async fn a_paused_then_cancelled_rename_keeps_the_source_whole(service: FixtureS
         sha256(&bytes),
         "the source stays whole"
     );
-    assert!(unfinished_uploads(service, FIXTURE_BUCKET, &prefix).await.is_empty());
+    assert!(target.unfinished_uploads(target.bucket(), &prefix).await.is_empty());
     if volume.exists(&at(&volume, &format!("{prefix}gone.bin"))).await {
         // A cancel that landed after the copy published is a finished copy
         // with its source kept: a duplicate, never a loss.
@@ -193,11 +192,11 @@ async fn a_paused_then_cancelled_rename_keeps_the_source_whole(service: FixtureS
 }
 
 /// A paused rename resumes and lands.
-async fn a_paused_rename_resumes_and_lands(service: FixtureService) {
-    let (volume_id, volume, prefix) = registered(service, "rename-pause", Some(5 * MIB as u64)).await;
+pub(super) async fn a_paused_rename_resumes_and_lands(target: &S3Target) {
+    let (volume_id, volume, prefix) = registered(target, "rename-pause", Some(5 * MIB as u64)).await;
     let bytes = self_describing_bytes(12 * MIB, "resumed");
     let from_key = format!("{prefix}a.bin");
-    seed(service, FIXTURE_BUCKET, &[object(&from_key, &bytes)]).await;
+    target.seed(target.bucket(), &[object(&from_key, &bytes)]).await;
 
     let (events, operation_id) = start(&volume_id, at(&volume, &from_key), "b.bin").await;
     assert!(
@@ -217,17 +216,14 @@ async fn a_paused_rename_resumes_and_lands(service: FixtureService) {
 /// A reviewed batch with a folder in it (Ask Cmdr's proposals and the bulk
 /// rename both start here) runs as ONE move with the new names, and lands
 /// every one of them.
-async fn a_batch_with_a_folder_renames_as_one_move(service: FixtureService) {
+pub(super) async fn a_batch_with_a_folder_renames_as_one_move(target: &S3Target) {
     use crate::file_system::write_operations::{BulkRenameRow, SourceFingerprint, start_renames};
 
-    let (volume_id, volume, prefix) = registered(service, "rename-batch", None).await;
+    let (volume_id, volume, prefix) = registered(target, "rename-batch", None).await;
     let (folder_file, note) = (format!("{prefix}album/a.jpg"), format!("{prefix}note.txt"));
-    seed(
-        service,
-        FIXTURE_BUCKET,
-        &[object(&folder_file, b"jpeg"), object(&note, b"n")],
-    )
-    .await;
+    target
+        .seed(target.bucket(), &[object(&folder_file, b"jpeg"), object(&note, b"n")])
+        .await;
     let mut rows = Vec::new();
     for (id, from, to) in [("1", "album", "photos"), ("2", "note.txt", "memo.txt")] {
         let source = at(&volume, &format!("{prefix}{from}"));
@@ -261,22 +257,23 @@ async fn a_batch_with_a_folder_renames_as_one_move(service: FixtureService) {
 
 /// A copy between two buckets of one account runs on the server: the object
 /// arrives without the token a streamed PUT writes.
-async fn a_copy_between_two_buckets_runs_on_the_server(service: FixtureService) {
-    let source = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
-    let destination = connect_fixture(service, Some(FIXTURE_BUCKET_2)).await;
-    let prefix = scratch_prefix("engine-cross-bucket");
+pub(super) async fn a_copy_between_two_buckets_runs_on_the_server(target: &S3Target) {
+    let second = target.bucket_2().expect("a cross-bucket cell needs a second bucket");
+    let source = target.connect(Some(target.bucket())).await;
+    let destination = target.connect(Some(second)).await;
+    let prefix = target.prefix("engine-cross-bucket");
     let bytes = self_describing_bytes(3 * MIB, "cross");
     let key = format!("{prefix}moved.bin");
-    seed(
-        service,
-        FIXTURE_BUCKET,
-        &[Seed {
-            key: &key,
-            bytes: &bytes,
-            mtime: Some(distant_mtime()),
-        }],
-    )
-    .await;
+    target
+        .seed(
+            target.bucket(),
+            &[Seed {
+                key: &key,
+                bytes: &bytes,
+                mtime: Some(distant_mtime()),
+            }],
+        )
+        .await;
     let dest_dir = destination.root().join(prefix.trim_end_matches('/'));
     let source_path = source.root().join(&key);
     let destination: Arc<dyn Volume> = Arc::new(destination);
@@ -294,7 +291,7 @@ async fn a_copy_between_two_buckets_runs_on_the_server(service: FixtureService) 
         sha256(&bytes)
     );
     assert_eq!(
-        stored_write_token(service, FIXTURE_BUCKET_2, &key).await,
+        target.stored_write_token(second, &key).await,
         None,
         "copied on the server, so no streamed PUT wrote it"
     );
@@ -302,14 +299,15 @@ async fn a_copy_between_two_buckets_runs_on_the_server(service: FixtureService) 
 
 /// A provider that copies within one bucket only (Hetzner) streams a
 /// cross-bucket copy through the Mac instead, with the same bytes landing.
-async fn a_bucket_bound_provider_streams_a_cross_bucket_copy(service: FixtureService) {
-    let source = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
-    let destination = connect_fixture(service, Some(FIXTURE_BUCKET_2)).await;
+pub(super) async fn a_bucket_bound_provider_streams_a_cross_bucket_copy(target: &S3Target) {
+    let second = target.bucket_2().expect("a cross-bucket cell needs a second bucket");
+    let source = target.connect(Some(target.bucket())).await;
+    let destination = target.connect(Some(second)).await;
     destination.forbid_cross_bucket_copy().await;
-    let prefix = scratch_prefix("engine-bucket-bound");
+    let prefix = target.prefix("engine-bucket-bound");
     let bytes = self_describing_bytes(2 * MIB, "streamed");
     let key = format!("{prefix}moved.bin");
-    seed(service, FIXTURE_BUCKET, &[object(&key, &bytes)]).await;
+    target.seed(target.bucket(), &[object(&key, &bytes)]).await;
     let dest_dir = destination.root().join(prefix.trim_end_matches('/'));
     let source_path = source.root().join(&key);
     let destination: Arc<dyn Volume> = Arc::new(destination);
@@ -327,7 +325,7 @@ async fn a_bucket_bound_provider_streams_a_cross_bucket_copy(service: FixtureSer
         sha256(&bytes)
     );
     assert!(
-        stored_write_token(service, FIXTURE_BUCKET_2, &key).await.is_some(),
+        target.stored_write_token(second, &key).await.is_some(),
         "streamed through the Mac, so a PUT wrote it"
     );
 }
@@ -338,83 +336,83 @@ async fn a_bucket_bound_provider_streams_a_cross_bucket_copy(service: FixtureSer
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn s3_integration_a_folder_of_1005_objects_renames_through_the_engine_on_versitygw() {
-    a_folder_of_1005_objects_renames_through_the_engine(VERSITYGW).await;
+    a_folder_of_1005_objects_renames_through_the_engine(&S3Target::Fixture(VERSITYGW)).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn s3_integration_a_folder_of_1005_objects_renames_through_the_engine_on_garage() {
-    a_folder_of_1005_objects_renames_through_the_engine(GARAGE).await;
+    a_folder_of_1005_objects_renames_through_the_engine(&S3Target::Fixture(GARAGE)).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn s3_integration_a_big_file_renames_by_multipart_copy_keeping_its_date_on_versitygw() {
-    a_big_file_renames_by_multipart_copy_keeping_its_date(VERSITYGW).await;
+    a_big_file_renames_by_multipart_copy_keeping_its_date(&S3Target::Fixture(VERSITYGW)).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn s3_integration_a_big_file_renames_by_multipart_copy_keeping_its_date_on_garage() {
-    a_big_file_renames_by_multipart_copy_keeping_its_date(GARAGE).await;
+    a_big_file_renames_by_multipart_copy_keeping_its_date(&S3Target::Fixture(GARAGE)).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn s3_integration_a_paused_then_cancelled_rename_keeps_the_source_whole_on_versitygw() {
-    a_paused_then_cancelled_rename_keeps_the_source_whole(VERSITYGW).await;
+    a_paused_then_cancelled_rename_keeps_the_source_whole(&S3Target::Fixture(VERSITYGW)).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn s3_integration_a_paused_then_cancelled_rename_keeps_the_source_whole_on_garage() {
-    a_paused_then_cancelled_rename_keeps_the_source_whole(GARAGE).await;
+    a_paused_then_cancelled_rename_keeps_the_source_whole(&S3Target::Fixture(GARAGE)).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn s3_integration_a_paused_rename_resumes_and_lands_on_versitygw() {
-    a_paused_rename_resumes_and_lands(VERSITYGW).await;
+    a_paused_rename_resumes_and_lands(&S3Target::Fixture(VERSITYGW)).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn s3_integration_a_paused_rename_resumes_and_lands_on_garage() {
-    a_paused_rename_resumes_and_lands(GARAGE).await;
+    a_paused_rename_resumes_and_lands(&S3Target::Fixture(GARAGE)).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn s3_integration_a_batch_with_a_folder_renames_as_one_move_on_versitygw() {
-    a_batch_with_a_folder_renames_as_one_move(VERSITYGW).await;
+    a_batch_with_a_folder_renames_as_one_move(&S3Target::Fixture(VERSITYGW)).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn s3_integration_a_batch_with_a_folder_renames_as_one_move_on_garage() {
-    a_batch_with_a_folder_renames_as_one_move(GARAGE).await;
+    a_batch_with_a_folder_renames_as_one_move(&S3Target::Fixture(GARAGE)).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn s3_integration_a_copy_between_two_buckets_runs_on_the_server_on_versitygw() {
-    a_copy_between_two_buckets_runs_on_the_server(VERSITYGW).await;
+    a_copy_between_two_buckets_runs_on_the_server(&S3Target::Fixture(VERSITYGW)).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn s3_integration_a_copy_between_two_buckets_runs_on_the_server_on_garage() {
-    a_copy_between_two_buckets_runs_on_the_server(GARAGE).await;
+    a_copy_between_two_buckets_runs_on_the_server(&S3Target::Fixture(GARAGE)).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn s3_integration_a_bucket_bound_provider_streams_a_cross_bucket_copy_on_versitygw() {
-    a_bucket_bound_provider_streams_a_cross_bucket_copy(VERSITYGW).await;
+    a_bucket_bound_provider_streams_a_cross_bucket_copy(&S3Target::Fixture(VERSITYGW)).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the S3 fixture stack: apps/desktop/test/s3-servers/start.sh (s3-fixture)"]
 async fn s3_integration_a_bucket_bound_provider_streams_a_cross_bucket_copy_on_garage() {
-    a_bucket_bound_provider_streams_a_cross_bucket_copy(GARAGE).await;
+    a_bucket_bound_provider_streams_a_cross_bucket_copy(&S3Target::Fixture(GARAGE)).await;
 }
