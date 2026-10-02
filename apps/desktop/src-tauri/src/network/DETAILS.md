@@ -664,7 +664,7 @@ the migration, and what Forget does). What the code has to defend:
   password for the host, and answers `NeedsCredentials` rather than trying guest when there is none. Cancel stops the
   wait; a kernel mount under way may still finish. A password the sheet offered is stored only after the mount went
   through.
-- **Known gap: a Linux GVFS mount saves no place.** `smb_upgrade::mounted_volume_id` reads only `/proc/mounts` CIFS rows
+- **Known gap (#348): a Linux GVFS mount saves no place.** `smb_upgrade::mounted_volume_id` reads only `/proc/mounts` CIFS rows
   (`volumes_linux::get_smb_mount_info`), so a `gio mount` share is recorded with no volume id: listed in the hub, never
   pinned, no `saved` row. The mount row's own id comes off the GVFS dirname (`volumes_linux/ids.rs`), which carries no
   port. The SMB E2E specs run on Linux only, so they can't cover pins until this closes.
