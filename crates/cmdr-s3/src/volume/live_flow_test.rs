@@ -271,6 +271,7 @@ async fn live_throughput_by_part_width() {
             let secs = started.elapsed().as_secs_f64();
             report(
                 &live,
+                // allowed-pluralize-noun: `width` is 2, 4, or 8
                 &format!("upload 64 MiB, {width} parts in flight"),
                 format!("{:?} in {secs:.2} s ({:.1} MiB/s)", outcome.map(|_| "ok"), 64.0 / secs),
             );

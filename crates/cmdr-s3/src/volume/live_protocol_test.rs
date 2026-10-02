@@ -246,8 +246,10 @@ async fn live_a_cut_off_put_publishes_nothing() {
                 Ok(answer) => format!("answered {}", verdict(answer)),
                 Err(_) => "the request failed on our side".to_string(),
             };
+            // allowed-test-sleep: a real provider's settle time is what's measured; there's no condition to wait on
             tokio::time::sleep(Duration::from_secs(2)).await;
             let soon = live.length(&client, key).await;
+            // allowed-test-sleep: a real provider's settle time is what's measured; there's no condition to wait on
             tokio::time::sleep(Duration::from_secs(15)).await;
             let later = live.length(&client, key).await;
             let which = if key == &existing {
@@ -303,10 +305,12 @@ async fn live_a_cut_off_part_racing_an_abort_leaves_nothing() {
             let (client, go) = (Arc::clone(&client), Arc::clone(&go));
             tokio::spawn(async move { client.upload(request, stalled_body(go)).await.map(|a| verdict(&a)) })
         };
+        // allowed-test-sleep: a real provider's settle time is what's measured; there's no condition to wait on
         tokio::time::sleep(Duration::from_secs(2)).await;
         let aborted = live.abort(&client, &key, &upload_id).await;
         go.notify_one();
         let part = part.await.expect("the part task ends");
+        // allowed-test-sleep: a real provider's settle time is what's measured; there's no condition to wait on
         tokio::time::sleep(Duration::from_secs(2)).await;
         let listed = live.uploads_under(&client, &prefix).await;
         let object = live.length(&client, &key).await;
@@ -621,6 +625,7 @@ async fn live_list_and_abort_uploads() {
         live.upload_part(&client, &key, &upload_id, 1, pattern(MIB, 5))
             .await
             .expect("a part lands");
+        // allowed-test-sleep: a real provider's settle time is what's measured; there's no condition to wait on
         tokio::time::sleep(Duration::from_secs(3)).await;
         let later = live.uploads_under(&client, &prefix).await;
         let aborted = live.abort(&client, &key, &upload_id).await;
