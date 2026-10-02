@@ -1016,6 +1016,7 @@ export type MessageKey =
   | 'errors.volume.passwordRejected'
   | 'errors.volume.permissionDenied'
   | 'errors.volume.readOnly'
+  | 'errors.volume.sourceChanged'
   | 'errors.volume.staleDestinationHandle'
   | 'errors.volume.storageFull'
   | 'errors.write.archiveEntryNameRefused.message.empty'
