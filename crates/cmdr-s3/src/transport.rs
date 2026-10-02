@@ -140,6 +140,10 @@ pub(crate) struct S3Client {
     /// Each bucket's region, on an AWS account root only
     /// ([`Self::route_each_bucket`]); `None` sends everything to the profile's.
     regions: Option<BucketRegions>,
+    /// Every request signed so far, by S3 operation, for a cell comparing
+    /// what a write path sent with its `cost::Workload`.
+    #[cfg(any(test, feature = "testing"))]
+    sent: std::sync::Mutex<std::collections::BTreeMap<&'static str, u64>>,
 }
 
 impl S3Client {
@@ -191,6 +195,8 @@ impl S3Client {
             credentials,
             liveness: Arc::new(Liveness::new()),
             regions: None,
+            #[cfg(any(test, feature = "testing"))]
+            sent: std::sync::Mutex::default(),
         })
     }
 
@@ -289,6 +295,30 @@ impl S3Client {
         }
     }
 
+    /// Counts `request` under its S3 operation. A no-op outside tests.
+    #[cfg_attr(not(any(test, feature = "testing")), allow(clippy::unused_self))]
+    fn note_sent(&self, request: &S3Request) {
+        #[cfg(any(test, feature = "testing"))]
+        {
+            let operation = operation_of(request);
+            *self
+                .sent
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .entry(operation)
+                .or_default() += 1;
+        }
+        #[cfg(not(any(test, feature = "testing")))]
+        let _ = request;
+    }
+
+    /// Every request signed so far, by S3 operation (`ListObjectsV2`,
+    /// `PutObject`, ...), and starts counting again from zero.
+    #[cfg(any(test, feature = "testing"))]
+    pub(crate) fn take_sent(&self) -> std::collections::BTreeMap<&'static str, u64> {
+        std::mem::take(&mut *self.sent.lock().unwrap_or_else(std::sync::PoisonError::into_inner))
+    }
+
     /// The provider profile every request is built against.
     pub(crate) fn profile(&self) -> &ProviderProfile {
         &self.profile
@@ -338,6 +368,7 @@ impl S3Client {
             region,
             time: &time,
         };
+        self.note_sent(&request);
         let signed = sign(request, &scope);
         let writes = signed.method == Method::POST || signed.method == Method::PUT;
         let mut builder = self
@@ -398,6 +429,7 @@ impl S3Client {
             region: &region,
             time: &time,
         };
+        self.note_sent(&request);
         let signed = sign(request, &scope);
         let mut response = self
             .http
@@ -467,6 +499,7 @@ impl S3Client {
             region,
             time: &time,
         };
+        self.note_sent(&request);
         let signed = sign(request, &scope);
         let sent = self
             .http
@@ -548,6 +581,41 @@ impl S3Client {
             BucketCheck::Open => Ok(()),
             BucketCheck::Refused(error) => Err(error),
         }
+    }
+}
+
+/// The S3 operation `request` is, by its method, query, and copy-source
+/// header: the names the price table (`cost/prices.rs`) and the API reference
+/// spell.
+#[cfg(any(test, feature = "testing"))]
+fn operation_of(request: &S3Request) -> &'static str {
+    let has = |name: &str| request.query.iter().any(|(key, _)| key == name);
+    let copies = request.headers.contains_key("x-amz-copy-source");
+    // A path-style request names the bucket in its first segment; a
+    // virtual-hosted one in its host.
+    let path = request.path.trim_start_matches('/');
+    let key = match request.bucket.as_deref() {
+        Some(bucket) if path == bucket => "",
+        Some(bucket) if path.starts_with(&format!("{bucket}/")) => &path[bucket.len() + 1..],
+        _ => path,
+    };
+    match request.method {
+        Method::GET if request.bucket.is_none() => "ListBuckets",
+        Method::GET if has("uploads") => "ListMultipartUploads",
+        Method::GET if has("list-type") => "ListObjectsV2",
+        Method::GET => "GetObject",
+        Method::HEAD if key.is_empty() => "HeadBucket",
+        Method::HEAD => "HeadObject",
+        Method::PUT if copies && has("partNumber") => "UploadPartCopy",
+        Method::PUT if copies => "CopyObject",
+        Method::PUT if has("partNumber") => "UploadPart",
+        Method::PUT => "PutObject",
+        Method::POST if has("uploads") => "CreateMultipartUpload",
+        Method::POST if has("uploadId") => "CompleteMultipartUpload",
+        Method::POST if has("delete") => "DeleteObjects",
+        Method::DELETE if has("uploadId") => "AbortMultipartUpload",
+        Method::DELETE => "DeleteObject",
+        _ => "Other",
     }
 }
 

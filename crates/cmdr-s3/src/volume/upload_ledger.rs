@@ -131,7 +131,7 @@ impl UploadLedger {
     /// flight or not. A fixture cell asks it about its own scratch prefix: the
     /// registry is process-wide, so an unscoped question would see another
     /// cell's records of the same account.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "testing"))]
     pub(super) fn open_under(&self, account: &str, prefix: &str) -> Vec<UnfinishedUpload> {
         let mut guard = registry();
         let registry = guard.get_or_insert_with(Registry::default);

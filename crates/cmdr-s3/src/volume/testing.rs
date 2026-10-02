@@ -23,11 +23,12 @@ use tokio_util::sync::CancellationToken;
 use url::Url;
 
 use super::{S3Volume, connect_s3_volume};
-use crate::ops::{self, ObjectMetadata, Overwrite};
 use crate::params::{S3ConnectionParams, S3Provider};
-use crate::request::Body;
-use crate::sigv4::Credentials;
-use crate::transport::{QUERY_BUDGET, S3Client};
+
+pub mod live;
+mod target;
+
+pub use target::{S3Target, Seed};
 
 /// The access key id both fixture servers know. Public on purpose: these are
 /// fixtures (`apps/desktop/test/s3-servers/README.md`).
@@ -178,66 +179,10 @@ pub fn scratch_prefix(label: &str) -> String {
     )
 }
 
-/// A signed client for a fixture server, for seeding.
-fn seeding_client(service: FixtureService) -> S3Client {
-    let params = fixture_params(service, None);
-    let profile = params.profile().expect("the fixture provider is valid by construction");
-    S3Client::new(profile, Credentials::new(FIXTURE_ACCESS_KEY, fixture_secret()))
-        .expect("a client builds for the fixture")
-}
-
-/// What to put at one key.
-pub struct Seed<'a> {
-    /// The full key, prefix included.
-    pub key: &'a str,
-    /// The object's bytes. Empty for a folder marker (`a/`).
-    pub bytes: &'a [u8],
-    /// The `x-amz-meta-mtime` to write, rclone's format.
-    pub mtime: Option<SystemTime>,
-}
-
 /// Puts objects in `bucket` on a fixture server, up to 32 at a time,
 /// panicking on the first that doesn't land.
 pub async fn seed(service: FixtureService, bucket: &str, seeds: &[Seed<'_>]) {
-    let client = Arc::new(seeding_client(service));
-    for batch in seeds.chunks(32) {
-        let mut puts = Vec::with_capacity(batch.len());
-        for seed in batch {
-            let metadata = ObjectMetadata {
-                mtime: seed.mtime,
-                write_token: None,
-                carried: Vec::new(),
-            };
-            let built = ops::put_object(
-                client.profile(),
-                bucket,
-                seed.key,
-                seed.bytes.len() as u64,
-                Overwrite::Replace,
-                &metadata,
-            )
-            .unwrap_or_else(|e| panic!("building a PUT for {:?}: {e:?}", seed.key));
-            let mut request = built.request;
-            request.body = Body::Bytes(seed.bytes.to_vec());
-            let client = Arc::clone(&client);
-            let key = seed.key.to_string();
-            puts.push(tokio::spawn(async move {
-                let answer = client
-                    .exchange(request, QUERY_BUDGET)
-                    .await
-                    .unwrap_or_else(|e| panic!("seeding {key:?}: {e}"));
-                assert!(
-                    answer.status.is_success(),
-                    "seeding {key:?} answered {}: {}",
-                    answer.status,
-                    answer.text()
-                );
-            }));
-        }
-        for put in puts {
-            put.await.expect("a seeding task finished");
-        }
-    }
+    S3Target::Fixture(service).seed(bucket, seeds).await;
 }
 
 /// Puts `bytes()` at `key` unless an object of that exact length is already
@@ -245,13 +190,10 @@ pub async fn seed(service: FixtureService, bucket: &str, seeds: &[Seed<'_>]) {
 /// once per run. ❗ The key is fixed and shared across runs, so treat it as
 /// read-only.
 pub async fn seed_once(service: FixtureService, bucket: &str, key: &str, len: usize, bytes: impl FnOnce() -> Vec<u8>) {
-    let client = seeding_client(service);
-    let head = ops::head_object(client.profile(), bucket, key).expect("a fixture key builds");
-    let answer = client
-        .exchange(head, QUERY_BUDGET)
-        .await
-        .unwrap_or_else(|e| panic!("probing {key:?}: {e}"));
-    if answer.status.is_success() && answer.header("content-length") == Some(len.to_string().as_str()) {
+    let stored = S3Target::Fixture(service)
+        .stored_header(bucket, key, "content-length")
+        .await;
+    if stored == Some(len.to_string()) {
         return;
     }
     let bytes = bytes();
@@ -294,91 +236,32 @@ pub fn distant_mtime() -> SystemTime {
 /// Starts a multipart upload straight through the protocol, with no Cmdr
 /// record of it: what another tool's live upload looks like to a sweep.
 pub async fn start_foreign_upload(service: FixtureService, bucket: &str, key: &str) -> String {
-    let client = seeding_client(service);
-    let request = ops::create_multipart_upload(client.profile(), bucket, key, &ObjectMetadata::default())
-        .expect("a fixture key builds");
-    let answer = client
-        .exchange(request, QUERY_BUDGET)
-        .await
-        .unwrap_or_else(|e| panic!("starting an upload of {key:?}: {e}"));
-    assert!(
-        answer.status.is_success(),
-        "starting an upload answered {}",
-        answer.status
-    );
-    crate::xml::parse_initiate_multipart(&answer.text())
-        .expect("an InitiateMultipartUploadResult")
-        .upload_id
+    S3Target::Fixture(service).start_foreign_upload(bucket, key).await
 }
 
 /// Every unfinished upload under `prefix`, as `(key, upload id)`.
 pub async fn unfinished_uploads(service: FixtureService, bucket: &str, prefix: &str) -> Vec<(String, String)> {
-    let client = seeding_client(service);
-    let mut found = Vec::new();
-    let mut markers: Option<(String, String)> = None;
-    loop {
-        let request = ops::list_multipart_uploads(
-            client.profile(),
-            bucket,
-            prefix,
-            markers.as_ref().map(|(key, id)| (key.as_str(), id.as_str())),
-        )
-        .expect("a fixture listing builds");
-        let answer = client
-            .exchange(request, QUERY_BUDGET)
-            .await
-            .unwrap_or_else(|e| panic!("listing uploads under {prefix:?}: {e}"));
-        assert!(answer.status.is_success(), "listing uploads answered {}", answer.status);
-        let page = crate::xml::parse_list_multipart_uploads(&answer.text()).expect("a ListMultipartUploadsResult");
-        found.extend(page.uploads.into_iter().map(|upload| (upload.key, upload.upload_id)));
-        match (page.is_truncated, page.next_key_marker, page.next_upload_id_marker) {
-            (true, Some(key), Some(id)) => markers = Some((key, id)),
-            _ => break,
-        }
-    }
-    found
+    S3Target::Fixture(service).unfinished_uploads(bucket, prefix).await
 }
 
 /// Aborts one upload straight through the protocol, for a cell's cleanup.
 pub async fn abort_foreign_upload(service: FixtureService, bucket: &str, key: &str, upload_id: &str) {
-    let client = seeding_client(service);
-    let request = ops::abort_multipart_upload(client.profile(), bucket, key, upload_id).expect("a fixture key builds");
-    let _ = client.exchange(request, QUERY_BUDGET).await;
+    S3Target::Fixture(service).abort_upload(bucket, key, upload_id).await;
 }
 
 /// The `x-amz-meta-mtime` an object carries, as stored.
 pub async fn stored_mtime_header(service: FixtureService, bucket: &str, key: &str) -> Option<String> {
-    let client = seeding_client(service);
-    let request = ops::head_object(client.profile(), bucket, key).expect("a fixture key builds");
-    let answer = client
-        .exchange(request, QUERY_BUDGET)
-        .await
-        .unwrap_or_else(|e| panic!("probing {key:?}: {e}"));
-    answer.header(crate::metadata::MTIME_HEADER).map(str::to_string)
+    S3Target::Fixture(service).stored_mtime_header(bucket, key).await
 }
 
-/// The `x-amz-meta-cmdr-write` token an object carries: every PUT Cmdr streams
-/// writes a fresh one, and a server-side copy of an object that had none
-/// writes none, so it tells a streamed copy from a server-side one.
+/// The `x-amz-meta-cmdr-write` token an object carries (`S3Target::stored_write_token`).
 pub async fn stored_write_token(service: FixtureService, bucket: &str, key: &str) -> Option<String> {
-    let client = seeding_client(service);
-    let request = ops::head_object(client.profile(), bucket, key).expect("a fixture key builds");
-    let answer = client
-        .exchange(request, QUERY_BUDGET)
-        .await
-        .unwrap_or_else(|e| panic!("probing {key:?}: {e}"));
-    answer.header(crate::metadata::WRITE_TOKEN_HEADER).map(str::to_string)
+    S3Target::Fixture(service).stored_write_token(bucket, key).await
 }
 
 /// The ETag an object carries, as stored: a multipart upload's ends in `-<parts>`.
 pub async fn stored_etag(service: FixtureService, bucket: &str, key: &str) -> Option<String> {
-    let client = seeding_client(service);
-    let request = ops::head_object(client.profile(), bucket, key).expect("a fixture key builds");
-    let answer = client
-        .exchange(request, QUERY_BUDGET)
-        .await
-        .unwrap_or_else(|e| panic!("probing {key:?}: {e}"));
-    answer.header("etag").map(str::to_string)
+    S3Target::Fixture(service).stored_etag(bucket, key).await
 }
 
 /// Bytes as a copy's source: in pieces of `piece` bytes, with a known length
@@ -457,4 +340,22 @@ pub async fn read_back(volume: &S3Volume, path: &Path) -> Vec<u8> {
         bytes.extend(piece.unwrap_or_else(|e| panic!("reading {} back: {e:?}", path.display())));
     }
     bytes
+}
+
+/// Every request `volume` has sent since the last call, by S3 operation
+/// (`ListObjectsV2`, `PutObject`, …), counted as each was signed: what a cell
+/// compares with `cost::Workload::counted_requests` for the same operation.
+/// Empty once the volume has lost its client.
+pub async fn take_sent_requests(volume: &S3Volume) -> std::collections::BTreeMap<&'static str, u64> {
+    match volume.clone_client().await {
+        Ok(client) => client.take_sent(),
+        Err(_) => std::collections::BTreeMap::new(),
+    }
+}
+
+/// How many multipart uploads under `prefix` this volume's account still has
+/// on record (`upload_ledger.rs`), in flight or not: zero once every upload
+/// was completed or aborted.
+pub fn recorded_uploads_under(volume: &S3Volume, prefix: &str) -> usize {
+    volume.inner.ledger.open_under(&volume.inner.account(), prefix).len()
 }

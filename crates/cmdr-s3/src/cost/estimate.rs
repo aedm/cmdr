@@ -122,7 +122,7 @@ impl LineItem {
 }
 
 /// Keys per `DeleteObjects`, S3's cap and what `volume/batch.rs` sends.
-const DELETE_BATCH: u64 = 1_000;
+pub(super) const DELETE_BATCH: u64 = 1_000;
 
 /// Providers bill by the binary gigabyte (AWS's "GB" is 2^30 bytes, and
 /// Wasabi's FAQ divides a TB by 1,024).

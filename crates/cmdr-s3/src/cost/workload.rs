@@ -182,6 +182,24 @@ impl Workload {
         self.add(RequestKind::ListObjectsV2, 1);
     }
 
+    /// The requests this workload counts, by S3 operation, with the deletes
+    /// batched the way the estimate bills them: what a live cell compares with
+    /// the requests a write path actually sent (`testing::take_sent_requests`).
+    #[cfg(any(test, feature = "testing"))]
+    pub fn counted_requests(&self) -> std::collections::BTreeMap<&'static str, u64> {
+        let mut counted: std::collections::BTreeMap<&'static str, u64> = self
+            .requests
+            .iter()
+            .map(|(kind, count)| (kind.name(), *count))
+            .collect();
+        let batches = self.deleted_objects.div_ceil(super::estimate::DELETE_BATCH);
+        if batches > 0 {
+            *counted.entry(RequestKind::DeleteObjects.name()).or_default() += batches;
+        }
+        counted.retain(|_, count| *count > 0);
+        counted
+    }
+
     fn add(&mut self, kind: RequestKind, count: u64) {
         *self.requests.entry(kind).or_default() += count;
     }
