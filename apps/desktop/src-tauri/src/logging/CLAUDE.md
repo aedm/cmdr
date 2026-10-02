@@ -45,9 +45,8 @@ Dispatch-tree shape, why fern + file-rotate, timestamp formats, and decisions: `
   ever-changing number lands in the file dedup key, so floods coalesce less: accepted debug-mode tradeoff.
 - **Cap = 0 disables the file chain entirely** (`init` skips it). The terminal and the verbose toggle still work; the
   error bundle ships an empty `logs/`.
-- **`file-rotate` bakes keep-N at startup; it can't be reconfigured live.** `set_keep_count` / `eager_prune` update the
-  in-RAM count and delete excess files now, but restart-to-apply stands (DETAILS § "Cap changes at runtime"). So ❌
-  never read `keep_count()` as "this session writes a file"; that's `debug_log_path()`'s startup flag.
+- **`file-rotate` bakes keep-N at startup.** `set_keep_count` / `eager_prune` act now; restart-to-apply stands (DETAILS §
+  "Cap changes at runtime"). ❌ So `keep_count()` never means "this session writes a file": `debug_log_path()` does.
 - **Trust mtime, not the filename, for log ordering**: `file-rotate` uses `.1`, `.2`, … suffixes, not timestamps.
   Anything off the active-file pattern, legacy `Cmdr_<timestamp>.log` included, is swept at startup (DETAILS § "What
   lives in `mod.rs`").
