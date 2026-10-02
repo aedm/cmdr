@@ -248,6 +248,10 @@
   "@fileOperations.transferDialog.targetWillBeCreatedCopy": {
     "sourceHash": "4e8d166"
   },
+  "fileOperations.transferDialog.renameByMoveHint": "Чтобы переименовать этот объект, Cmdr скопирует на сервере все его содержимое, поэтому переименование пройдет как перемещение: его можно приостановить или отменить.",
+  "@fileOperations.transferDialog.renameByMoveHint": {
+    "sourceHash": "31987cc"
+  },
   "fileOperations.transferDialog.targetWillBeCreatedMove": "Этой папки еще нет. Cmdr создаст ее при перемещении.",
   "@fileOperations.transferDialog.targetWillBeCreatedMove": {
     "sourceHash": "1246331"
@@ -299,6 +303,18 @@
   "fileOperations.transferDialog.estimatedSizeTooltip": "Приблизительный размер упакованного zip. Фактический размер может отличаться.",
   "@fileOperations.transferDialog.estimatedSizeTooltip": {
     "sourceHash": "2e8ba70"
+  },
+  "fileOperations.s3Cost.line": "Примерно {amount} по прейскуранту {provider}",
+  "@fileOperations.s3Cost.line": {
+    "sourceHash": "e8db02b"
+  },
+  "fileOperations.s3Cost.infoLabel": "Об этой оценке",
+  "@fileOperations.s3Cost.infoLabel": {
+    "sourceHash": "19637c5"
+  },
+  "fileOperations.s3Cost.infoText": "Оценка основана на публичных ценах поставщика. Из-за бесплатных лимитов, скидок, включенных объемов и минимальных платежей итоговый счет может оказаться меньше или больше.",
+  "@fileOperations.s3Cost.infoText": {
+    "sourceHash": "379665c"
   },
   "fileOperations.transferDialog.scanUnresponsive": "Источник не отвечает. Указан только размер, который удалось подсчитать.",
   "@fileOperations.transferDialog.scanUnresponsive": {

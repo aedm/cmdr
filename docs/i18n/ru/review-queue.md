@@ -73,3 +73,9 @@ item once settled, and record the outcome in `terms.json` or `decisions.md`.
   well?
 - **Fixed shortcut badge** (`shortcuts.section.fixedBadge`): `Закреплено` may read as Dock pinning; `Встроено` would
   match `shortcuts.section.fixedTooltip`.
+- **S3 terms** (`servers.sheet.s3Bucket`, `servers.sheet.accessKeyId`, `commands.fileCopyShareLink*`,
+  `fileExplorer.archivedFile.label`): `бакет`, `идентификатор ключа доступа`, `публичная ссылка`, and
+  `В архивном хранилище` are tentative, sourced from Yandex Cloud and AWS's Russian docs outside the pile. Do they match
+  what Russian S3 users see?
+- **Google's tab name** (`servers.sheet.s3GcsKeyHelp`): kept `«Interoperability»` in Latin; what does Google Cloud's
+  Russian console call that Cloud Storage settings tab?

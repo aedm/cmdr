@@ -404,6 +404,10 @@
     ],
     "ru": [
       {
+        "source": "Archived",
+        "reason": "Two senses of one English word. `askCmdr.sessions.archivedBadge` marks a chat the user put away (`В архиве`); `fileExplorer.archivedFile.label` marks a file in an S3 cold-storage class (`В архивном хранилище`). In a file list `В архиве` reads as inside a zip, which hides why the file won't open. See `docs/i18n/ru/terms.json` `cold-storage`."
+      },
+      {
         "source": "Both",
         "reason": "Оба типа covers files and folders in the type filter; Оба варианта covers notification choices."
       },

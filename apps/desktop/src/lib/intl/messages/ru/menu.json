@@ -476,6 +476,22 @@
   "@menu.context.copyGoogleDriveLink": {
     "sourceHash": "070b383"
   },
+  "menu.context.copyShareLink": "Скопировать публичную ссылку",
+  "@menu.context.copyShareLink": {
+    "sourceHash": "d31483e"
+  },
+  "menu.context.shareLinkSevenDays": "Истекает через семь дней",
+  "@menu.context.shareLinkSevenDays": {
+    "sourceHash": "06949d8"
+  },
+  "menu.context.shareLinkOneDay": "Истекает через один день",
+  "@menu.context.shareLinkOneDay": {
+    "sourceHash": "5ff3dbc"
+  },
+  "menu.context.shareLinkOneHour": "Истекает через один час",
+  "@menu.context.shareLinkOneHour": {
+    "sourceHash": "faf9c50"
+  },
   "menu.context.askGemini": "Спросить Gemini",
   "@menu.context.askGemini": {
     "sourceHash": "7eec77f"

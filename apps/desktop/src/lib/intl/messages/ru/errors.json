@@ -491,6 +491,18 @@
   "@errors.listing.permissionDenied.suggestion": {
     "sourceHash": "3450aff"
   },
+  "errors.listing.objectStoreRefused.title": "Поставщик хранилища отказал в доступе",
+  "@errors.listing.objectStoreRefused.title": {
+    "sourceHash": "2c26546"
+  },
+  "errors.listing.objectStoreRefused.explanation": "`{path}` находится в облачном хранилище, и поставщик отклонил запрос. Либо права ключа доступа не распространяются на это место, либо поставщик приостановил доступ к учетной записи, например после превышения лимита использования или из-за проблемы с оплатой.",
+  "@errors.listing.objectStoreRefused.explanation": {
+    "sourceHash": "b9f0f12"
+  },
+  "errors.listing.objectStoreRefused.suggestion": "Проверьте права ключа доступа или загляните в консоль поставщика: нет ли там превышенного лимита использования или уведомления об оплате.",
+  "@errors.listing.objectStoreRefused.suggestion": {
+    "sourceHash": "718da2a"
+  },
   "errors.listing.remotePermissionDenied.title": "Сервер не открывает папку",
   "@errors.listing.remotePermissionDenied.title": {
     "sourceHash": "f9cb7bd"
@@ -622,6 +634,18 @@
   "errors.listing.deletePending.suggestion": "Что можно сделать:\n- Подождите немного и повторите попытку: после закрытия последнего дескриптора файл исчезнет\n- Закройте другие приложения, в которых файл может быть открыт\n- Если файл остается, перезапустите Cmdr, чтобы закрыть оставшиеся дескрипторы",
   "@errors.listing.deletePending.suggestion": {
     "sourceHash": "0531cd8"
+  },
+  "errors.listing.coldStorage.title": "Этот файл в архивном хранилище",
+  "@errors.listing.coldStorage.title": {
+    "sourceHash": "73da082"
+  },
+  "errors.listing.coldStorage.explanation": "`{path}` находится в архивном хранилище, поэтому прочитать содержимое можно будет только после восстановления.",
+  "@errors.listing.coldStorage.explanation": {
+    "sourceHash": "78f52d7"
+  },
+  "errors.listing.coldStorage.suggestion": "Что можно сделать:\n- Восстановите файл в консоли поставщика хранилища, затем откройте его снова\n- Восстановление может занять от нескольких минут до двух дней",
+  "@errors.listing.coldStorage.suggestion": {
+    "sourceHash": "0becf43"
   },
   "errors.listing.invalidName.title": "Это имя здесь недопустимо",
   "@errors.listing.invalidName.title": {
@@ -1417,9 +1441,9 @@
   "@errors.write.invalidName.message": {
     "sourceHash": "ad395af"
   },
-  "errors.write.invalidName.suggestion": "Дайте объекту более короткое и простое имя и повторите попытку. В некоторых местах также запрещены зарезервированные имена вроде CON, NUL или LPT1.",
+  "errors.write.invalidName.suggestion": "Дайте объекту более короткое и простое имя и повторите попытку. Некоторые места не принимают в имени табуляцию и переносы строк, а другие не принимают зарезервированные имена вроде CON, NUL или LPT1.",
   "@errors.write.invalidName.suggestion": {
-    "sourceHash": "3721c3d"
+    "sourceHash": "77cff09"
   },
   "errors.write.trashRefused.title": "Не удалось переместить в Корзину",
   "@errors.write.trashRefused.title": {
@@ -1524,6 +1548,10 @@
   "errors.write.permissionDenied.message.named": "Ваша учетная запись macOS не может изменять папку {folder}.",
   "@errors.write.permissionDenied.message.named": {
     "sourceHash": "0ffd79b"
+  },
+  "errors.write.permissionDenied.suggestion.objectStoreAccount": "Поставщик отказал, и у этого может быть две причины. Проверьте права ключа доступа или загляните в консоль поставщика: нет ли там превышенного лимита использования или уведомления об оплате.",
+  "@errors.write.permissionDenied.suggestion.objectStoreAccount": {
+    "sourceHash": "31deca5"
   },
   "errors.write.permissionDenied.suggestion.needsAdminMac": "Для изменения нужны права администратора. Чтобы дать доступ своей учетной записи, выделите папку в Finder, выберите «Свойства» и откройте раздел «Общий доступ и права доступа».",
   "@errors.write.permissionDenied.suggestion.needsAdminMac": {
@@ -1676,6 +1704,30 @@
   "errors.write.deletePending.suggestion": "Подождите немного и повторите попытку. После закрытия последнего дескриптора файл исчезнет. Если он остается, закройте другие приложения, в которых файл может быть открыт.",
   "@errors.write.deletePending.suggestion": {
     "sourceHash": "39e64a9"
+  },
+  "errors.write.sourceInColdStorage.title": "Этот файл в архивном хранилище",
+  "@errors.write.sourceInColdStorage.title": {
+    "sourceHash": "73da082"
+  },
+  "errors.write.sourceInColdStorage.message": "Файл {path} находится в архивном хранилище, поэтому прочитать его можно будет только после восстановления.",
+  "@errors.write.sourceInColdStorage.message": {
+    "sourceHash": "1015fe5"
+  },
+  "errors.write.sourceInColdStorage.suggestion": "Восстановите файл в консоли поставщика хранилища и повторите попытку. Восстановление может занять от нескольких минут до двух дней.",
+  "@errors.write.sourceInColdStorage.suggestion": {
+    "sourceHash": "f279603"
+  },
+  "errors.write.sourceChanged.title": "Файл изменился во время копирования",
+  "@errors.write.sourceChanged.title": {
+    "sourceHash": "1c63c8b"
+  },
+  "errors.write.sourceChanged.message": "Файл {path} изменился, пока Cmdr его копировал, поэтому Cmdr ничего не сохранил. Файл остался на месте.",
+  "@errors.write.sourceChanged.message": {
+    "sourceHash": "4c404e0"
+  },
+  "errors.write.sourceChanged.suggestion": "Повторите попытку, чтобы скопировать версию, которая там сейчас.",
+  "@errors.write.sourceChanged.suggestion": {
+    "sourceHash": "97fc945"
   },
   "errors.write.newDataKeptAt.title": "Новый файл сохранен под другим именем",
   "@errors.write.newDataKeptAt.title": {
@@ -1865,6 +1917,10 @@
   "@errors.volume.notADirectory": {
     "sourceHash": "2f66bc8"
   },
+  "errors.volume.invalidNameNamed": "Имя «{name}» здесь нельзя сохранить. Выберите другое.",
+  "@errors.volume.invalidNameNamed": {
+    "sourceHash": "6f65c40"
+  },
   "errors.volume.invalidName": "Целевое место не поддерживает это имя. Выберите другое.",
   "@errors.volume.invalidName": {
     "sourceHash": "531488f"
@@ -1872,6 +1928,14 @@
   "errors.volume.deletePending": "Файл уже удаляется, но что-то еще держит его открытым. Попробуйте еще раз чуть позже.",
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
+  },
+  "errors.volume.coldStorage": "«{path}» находится в архивном хранилище. Сначала восстановите файл в консоли поставщика хранилища.",
+  "@errors.volume.coldStorage": {
+    "sourceHash": "c742f7c"
+  },
+  "errors.volume.sourceChanged": "Файл «{path}» изменился во время копирования, поэтому Cmdr ничего не сохранил. Повторите попытку, чтобы скопировать новую версию.",
+  "@errors.volume.sourceChanged": {
+    "sourceHash": "18062cb"
   },
   "errors.volume.ambiguousName": "На сервере несколько объектов соответствуют «{path}», поэтому Cmdr ничего не выбрал. Выберите объект в его папке.",
   "@errors.volume.ambiguousName": {

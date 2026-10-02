@@ -556,6 +556,30 @@
   "@commands.cloudAskGemini.description": {
     "sourceHash": "37d4e7c"
   },
+  "commands.fileCopyShareLink.label": "Скопировать публичную ссылку (семь дней)",
+  "@commands.fileCopyShareLink.label": {
+    "sourceHash": "314bee8"
+  },
+  "commands.fileCopyShareLink.description": "Скопировать ссылку, по которой кто угодно сможет открыть и скачать файл в течение семи дней",
+  "@commands.fileCopyShareLink.description": {
+    "sourceHash": "99e912e"
+  },
+  "commands.fileCopyShareLinkOneDay.label": "Скопировать публичную ссылку (один день)",
+  "@commands.fileCopyShareLinkOneDay.label": {
+    "sourceHash": "468010c"
+  },
+  "commands.fileCopyShareLinkOneDay.description": "Скопировать ссылку, по которой кто угодно сможет открыть и скачать файл в течение одного дня",
+  "@commands.fileCopyShareLinkOneDay.description": {
+    "sourceHash": "c2a30be"
+  },
+  "commands.fileCopyShareLinkOneHour.label": "Скопировать публичную ссылку (один час)",
+  "@commands.fileCopyShareLinkOneHour.label": {
+    "sourceHash": "ffea990"
+  },
+  "commands.fileCopyShareLinkOneHour.description": "Скопировать ссылку, по которой кто угодно сможет открыть и скачать файл в течение одного часа",
+  "@commands.fileCopyShareLinkOneHour.description": {
+    "sourceHash": "c334535"
+  },
   "commands.tagsToggleGrey.label": "Переключить серый тег",
   "@commands.tagsToggleGrey.label": {
     "sourceHash": "1309c09"
@@ -803,6 +827,26 @@
   "commands.handler.googleDriveCopyFailed": "Не удалось скопировать ссылку Google Drive. {detail}",
   "@commands.handler.googleDriveCopyFailed": {
     "sourceHash": "0af1fd3"
+  },
+  "commands.handler.shareLinkCopied.sevenDays": "Публичная ссылка скопирована. Она действует семь дней.",
+  "@commands.handler.shareLinkCopied.sevenDays": {
+    "sourceHash": "6f4055b"
+  },
+  "commands.handler.shareLinkCopied.oneDay": "Публичная ссылка скопирована. Она действует один день.",
+  "@commands.handler.shareLinkCopied.oneDay": {
+    "sourceHash": "ca08c52"
+  },
+  "commands.handler.shareLinkCopied.oneHour": "Публичная ссылка скопирована. Она действует один час.",
+  "@commands.handler.shareLinkCopied.oneHour": {
+    "sourceHash": "8b9f0cc"
+  },
+  "commands.handler.shareLinkUnavailable": "Переместите курсор на файл в бакете S3, чтобы скопировать публичную ссылку.",
+  "@commands.handler.shareLinkUnavailable": {
+    "sourceHash": "c4ea112"
+  },
+  "commands.handler.shareLinkFailed": "Не удалось создать публичную ссылку. {detail}",
+  "@commands.handler.shareLinkFailed": {
+    "sourceHash": "5ff44b7"
   },
   "commands.handler.openTerminalHere.hint": "Папка открыта в вашем терминале. Хотите, чтобы Cmdr в следующий раз открывал другое приложение? Выберите его в настройках, в разделе «Навигация и файловые операции».",
   "@commands.handler.openTerminalHere.hint": {

@@ -28,6 +28,10 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
 - `list` concept: matches the verb "lists" (Cmdr lists …); add a verb-sense `notMatch` so locales stop needing
   exceptions.
 - `go-back` concept: matches "forward" while its headword is "Go back"; split or rename.
+- `servers.refusal.s3FieldMalformed`: "lowercase letters" means Latin a–z, but a Cyrillic or accented letter is
+  lowercase too. Say "Latin letters" in the English or the description (ru added `латинские`).
+- `fileExplorer.archivedFile.label`, `askCmdr.sessions.archivedBadge`: both are "Archived" in English, so every locale
+  needs a term-consistency allowlist entry. Consider "In cold storage" for the file glyph.
 - `fileExplorer.network.share.signIn{Title,Message}`, `fileExplorer.networkMount.signIn{Title,Message}`: the screenshot
   is the servers list, not the calm sign-in screen these strings sit on. Capture that pane (with and without the sheet).
 - `fileOperations.transferProgress.stage*` (compress and archive-upload phases, and their `*Step` variants): coupled to

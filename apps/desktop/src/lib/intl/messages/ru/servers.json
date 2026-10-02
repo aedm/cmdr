@@ -83,6 +83,22 @@
   "@servers.hub.editNearbyHint": {
     "sourceHash": "64653de"
   },
+  "servers.hub.editAccountHint": "Настройки учетной записи {name} хранятся в ее бакетах. Чтобы изменить бакет, выберите одну из строк под учетной записью.",
+  "@servers.hub.editAccountHint": {
+    "sourceHash": "29961f3"
+  },
+  "servers.hub.openAccountHint": "Учетную запись {name} нельзя открыть. Откройте один из бакетов под ней.",
+  "@servers.hub.openAccountHint": {
+    "sourceHash": "c52ee6f"
+  },
+  "servers.hub.forgetAccountConfirm": "Забыть учетную запись {name} и все сохраненные в ней бакеты? Cmdr закроет их подключения и перестанет показывать эти бакеты. Ваши файлы останутся в бакетах.",
+  "@servers.hub.forgetAccountConfirm": {
+    "sourceHash": "e1c636e"
+  },
+  "servers.hub.forgetSecretKeyToo": "Также забыть секретный ключ доступа учетной записи",
+  "@servers.hub.forgetSecretKeyToo": {
+    "sourceHash": "4f3ac6d"
+  },
   "servers.hub.forgetShare": "Забыть общую папку",
   "@servers.hub.forgetShare": {
     "sourceHash": "8888a9d"
@@ -214,6 +230,62 @@
   "servers.refusal.savedSecretNotUpdated": "Изменения сохранены, но Cmdr не удалось обновить пароль в Связке ключей. Нажмите «Сохранить» еще раз, чтобы повторить попытку.",
   "@servers.refusal.savedSecretNotUpdated": {
     "sourceHash": "2ae1e2b"
+  },
+  "servers.refusal.s3AuthenticationRejected": "Этот секретный ключ доступа не подошел.",
+  "@servers.refusal.s3AuthenticationRejected": {
+    "sourceHash": "14f90c8"
+  },
+  "servers.refusal.s3NeedsCredentials": "Эта учетная запись запрашивает секретный ключ доступа.",
+  "@servers.refusal.s3NeedsCredentials": {
+    "sourceHash": "23695df"
+  },
+  "servers.refusal.s3SecretMissing": "Введите секретный ключ доступа.",
+  "@servers.refusal.s3SecretMissing": {
+    "sourceHash": "f1f32f2"
+  },
+  "servers.refusal.s3SecretNotStored": "Cmdr не удалось сохранить секретный ключ доступа в Связке ключей. Повторите попытку или выключите «Запомнить в Связке ключей», чтобы войти без сохранения ключа.",
+  "@servers.refusal.s3SecretNotStored": {
+    "sourceHash": "f7a9fb0"
+  },
+  "servers.refusal.s3SavedSecretNotUpdated": "Изменения сохранены, но Cmdr не удалось обновить секретный ключ доступа в Связке ключей. Нажмите «Сохранить» еще раз, чтобы повторить попытку.",
+  "@servers.refusal.s3SavedSecretNotUpdated": {
+    "sourceHash": "1d2889d"
+  },
+  "servers.refusal.accessDenied": "Этот ключ не дает доступа к бакету. Проверьте имя бакета и секретный ключ доступа, а также есть ли у ключа право читать бакет.",
+  "@servers.refusal.accessDenied": {
+    "sourceHash": "8372e73"
+  },
+  "servers.refusal.bucketListRefused": "Этому ключу нельзя просматривать список бакетов этой учетной записи. Введите имя бакета, чтобы открыть этот бакет, или проверьте секретный ключ доступа.",
+  "@servers.refusal.bucketListRefused": {
+    "sourceHash": "1b9ebf5"
+  },
+  "servers.refusal.bucketNotFound": "На сервере {host} нет бакета с таким именем.",
+  "@servers.refusal.bucketNotFound": {
+    "sourceHash": "0f5a04d"
+  },
+  "servers.refusal.regionMismatch": "Этот бакет находится в другом регионе. Выберите его регион и повторите попытку.",
+  "@servers.refusal.regionMismatch": {
+    "sourceHash": "27a37f8"
+  },
+  "servers.refusal.regionMismatchNamed": "Этот бакет находится в регионе {region}. Выберите этот регион и повторите попытку.",
+  "@servers.refusal.regionMismatchNamed": {
+    "sourceHash": "30abb0d"
+  },
+  "servers.refusal.clockSkewed": "Часы этого Mac сбились больше чем на 15 минут, поэтому сервер не принимает запросы Cmdr. Включите автоматическую установку даты и времени в Системных настройках и повторите попытку.",
+  "@servers.refusal.clockSkewed": {
+    "sourceHash": "cdee0ef"
+  },
+  "servers.refusal.notAnS3Endpoint": "По этому адресу не отвечает хранилище S3.",
+  "@servers.refusal.notAnS3Endpoint": {
+    "sourceHash": "78557ec"
+  },
+  "servers.refusal.s3FieldMalformed": "Используйте здесь только строчные латинские буквы, цифры и дефисы.",
+  "@servers.refusal.s3FieldMalformed": {
+    "sourceHash": "ac8fbea"
+  },
+  "servers.refusal.endpointMalformed": "Введите URL сервиса: http:// или https:// и имя хоста, например https://s3.example.com.",
+  "@servers.refusal.endpointMalformed": {
+    "sourceHash": "beb63dd"
   },
   "servers.sheet.addTitle": "Добавить сервер",
   "@servers.sheet.addTitle": {
@@ -366,6 +438,122 @@
   "servers.sheet.name": "Имя",
   "@servers.sheet.name": {
     "sourceHash": "dcd1d52"
+  },
+  "servers.sheet.protocolS3": "S3",
+  "@servers.sheet.protocolS3": {
+    "sourceHash": "44d6a8a",
+    "sameAsSourceJustification": "Название протокола S3 без русской формы, как SMB, SFTP и WebDAV в том же списке (servers.sheet.protocolSmb, servers.sheet.protocolWebdav); описание `@key` просит оставить как есть."
+  },
+  "servers.sheet.s3Provider": "Поставщик",
+  "@servers.sheet.s3Provider": {
+    "sourceHash": "472590a"
+  },
+  "servers.sheet.s3ProviderAws": "Amazon S3",
+  "@servers.sheet.s3ProviderAws": {
+    "sourceHash": "a4f6352",
+    "sameAsSourceJustification": "Название продукта Amazon S3: поставщик не переводит его и на русском, а описание `@key` просит оставить как есть."
+  },
+  "servers.sheet.s3ProviderR2": "Cloudflare R2",
+  "@servers.sheet.s3ProviderR2": {
+    "sourceHash": "9f2f1ed",
+    "sameAsSourceJustification": "Название продукта Cloudflare R2: поставщик не переводит его и на русском, а описание `@key` просит оставить как есть."
+  },
+  "servers.sheet.s3ProviderB2": "Backblaze B2",
+  "@servers.sheet.s3ProviderB2": {
+    "sourceHash": "ed40187",
+    "sameAsSourceJustification": "Название продукта Backblaze B2: поставщик не переводит его и на русском, а описание `@key` просит оставить как есть."
+  },
+  "servers.sheet.s3ProviderWasabi": "Wasabi",
+  "@servers.sheet.s3ProviderWasabi": {
+    "sourceHash": "493861e",
+    "sameAsSourceJustification": "Название продукта Wasabi: поставщик не переводит его и на русском, а описание `@key` просит оставить как есть."
+  },
+  "servers.sheet.s3ProviderHetzner": "Hetzner Object Storage",
+  "@servers.sheet.s3ProviderHetzner": {
+    "sourceHash": "a339b4f",
+    "sameAsSourceJustification": "Название продукта Hetzner Object Storage: поставщик не переводит его и на русском, а описание `@key` просит оставить как есть."
+  },
+  "servers.sheet.s3ProviderGcs": "Google Cloud Storage",
+  "@servers.sheet.s3ProviderGcs": {
+    "sourceHash": "53fa0ba",
+    "sameAsSourceJustification": "Название продукта Google Cloud Storage: поставщик не переводит его и на русском, а описание `@key` просит оставить как есть."
+  },
+  "servers.sheet.s3ProviderDigitalOcean": "DigitalOcean Spaces",
+  "@servers.sheet.s3ProviderDigitalOcean": {
+    "sourceHash": "c3f48e3",
+    "sameAsSourceJustification": "Название продукта DigitalOcean Spaces: поставщик не переводит его и на русском, а описание `@key` просит оставить как есть."
+  },
+  "servers.sheet.s3GcsKeyHelp": "Войдите с ключом HMAC со вкладки «Interoperability» в настройках Cloud Storage.",
+  "@servers.sheet.s3GcsKeyHelp": {
+    "sourceHash": "acb72a4"
+  },
+  "servers.sheet.s3ProviderOther": "Другое хранилище, совместимое с S3",
+  "@servers.sheet.s3ProviderOther": {
+    "sourceHash": "13d2bdc"
+  },
+  "servers.sheet.s3Region": "Регион",
+  "@servers.sheet.s3Region": {
+    "sourceHash": "d3a008e"
+  },
+  "servers.sheet.s3RegionOptionalPlaceholder": "Необязательно. Оставьте пустым, чтобы использовать us-east-1",
+  "@servers.sheet.s3RegionOptionalPlaceholder": {
+    "sourceHash": "12dd731"
+  },
+  "servers.sheet.s3AccountId": "ID учетной записи",
+  "@servers.sheet.s3AccountId": {
+    "sourceHash": "919bb4c"
+  },
+  "servers.sheet.s3AccountIdHelp": "ID учетной записи на странице обзора Cloudflare R2.",
+  "@servers.sheet.s3AccountIdHelp": {
+    "sourceHash": "963d1f5"
+  },
+  "servers.sheet.s3Location": "Расположение",
+  "@servers.sheet.s3Location": {
+    "sourceHash": "15b6197"
+  },
+  "servers.sheet.s3Endpoint": "URL сервиса",
+  "@servers.sheet.s3Endpoint": {
+    "sourceHash": "3df9726"
+  },
+  "servers.sheet.s3PathStyle": "Использовать адресацию в стиле пути",
+  "@servers.sheet.s3PathStyle": {
+    "sourceHash": "627c522"
+  },
+  "servers.sheet.s3PathStyleHelp": "Это нужно большинству собственных серверов, например MinIO и Garage.",
+  "@servers.sheet.s3PathStyleHelp": {
+    "sourceHash": "bc6e240"
+  },
+  "servers.sheet.s3Bucket": "Бакет",
+  "@servers.sheet.s3Bucket": {
+    "sourceHash": "c83b657"
+  },
+  "servers.sheet.s3BucketPlaceholder": "Необязательно",
+  "@servers.sheet.s3BucketPlaceholder": {
+    "sourceHash": "59be713"
+  },
+  "servers.sheet.s3BucketHelp": "Оставьте пустым, чтобы увидеть все бакеты, список которых доступен этому ключу.",
+  "@servers.sheet.s3BucketHelp": {
+    "sourceHash": "10751d7"
+  },
+  "servers.sheet.s3UseRegion": "Использовать {region}",
+  "@servers.sheet.s3UseRegion": {
+    "sourceHash": "5734184"
+  },
+  "servers.sheet.accessKeyId": "Идентификатор ключа доступа",
+  "@servers.sheet.accessKeyId": {
+    "sourceHash": "14eb0f9"
+  },
+  "servers.sheet.secretAccessKey": "Секретный ключ доступа",
+  "@servers.sheet.secretAccessKey": {
+    "sourceHash": "3de6b75"
+  },
+  "servers.sheet.examplePlaceholder": "Пример: {example}",
+  "@servers.sheet.examplePlaceholder": {
+    "sourceHash": "9c7df45"
+  },
+  "servers.sheet.identityLockedS3": "Поставщик, идентификатор ключа доступа и бакет определяют это место. Чтобы изменить их, забудьте это место и добавьте заново.",
+  "@servers.sheet.identityLockedS3": {
+    "sourceHash": "fe4d469"
   },
   "servers.sheet.namePlaceholder": "Оставьте пустым, чтобы использовать {label}",
   "@servers.sheet.namePlaceholder": {

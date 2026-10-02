@@ -46,6 +46,13 @@
     "sources": "MS (access → доступ); Nautilus (Access → Доступ); macOS Privacy & Security (Полный доступ к диску)",
     "proseAccept": ["обращ"]
   },
+  "access-key-id": {
+    "chosen": "идентификатор ключа доступа",
+    "accept": ["идентификатор ключа"],
+    "forms": "the S3 form label → Идентификатор ключа доступа; the secret half is secret-access-key (Секретный ключ доступа)",
+    "confidence": "tentative",
+    "sources": "MS (access key → ключ доступа); AWS's Russian documentation names it идентификатор ключа доступа (outside the pile, not verified live)"
+  },
   "accessibility": {
     "chosen": "Универсальный доступ",
     "accept": ["Универсальн"],
@@ -556,6 +563,23 @@
     "sources": "macOS live Localizable (Browse… → Обзор…); Thunar (Browse the computer → Обзор компьютера)",
     "note": "macOS's own pick-a-file button reads Выбрать… (AppKit Common Choose…); Cmdr's English says Browse, so Обзор…."
   },
+  "bucket": {
+    "chosen": "бакет",
+    "accept": ["бакет"],
+    "forms": "the S3 form label → Бакет; pl. бакеты; in a bucket → в бакете",
+    "avoid": [
+      {
+        "form": "корзина",
+        "why": "collides with Корзина (Trash) in a file manager, though AWS's Russian docs use it"
+      },
+      {
+        "form": "контейнер",
+        "why": "MS's term, Azure's own storage object; S3 users don't call a bucket that"
+      }
+    ],
+    "confidence": "tentative",
+    "sources": "MS (bucket → контейнер, группа); Yandex Cloud and VK Cloud Object Storage write бакет (outside the pile, not verified live)"
+  },
   "buffer": {
     "chosen": "буфер",
     "accept": ["буфер"],
@@ -836,6 +860,19 @@
     "confidence": "high",
     "sources": "macOS Finder Localizable (Choose a cloud service → Выбрать облачный сервис), LocalizableMerged SD11.1 and MenuBar (Cloud Storage → Облачное хранилище); MS (cloud service → облачная служба)",
     "note": "An AI vendor is поставщик (ai-provider); keep the two apart."
+  },
+  "cold-storage": {
+    "chosen": "архивное хранилище",
+    "accept": ["архивн"],
+    "forms": "This file is archived → Этот файл в архивном хранилище; the file-list glyph → В архивном хранилище; getting it back → восстановить",
+    "avoid": [
+      {
+        "form": "в архиве",
+        "why": "in a file manager it reads as inside a zip, and it's the archived-chat badge (archive-chat)"
+      }
+    ],
+    "confidence": "tentative",
+    "sources": "MS (archive tier → архивный уровень хранилища; rehydrate → восстановить)"
   },
   "column": {
     "chosen": "Колонка",
@@ -3512,6 +3549,13 @@
     "confidence": "high",
     "sources": "MS protocol → «протокол»; macOS live AirPortSettings Protocol → «Протокол»"
   },
+  "provider-console": {
+    "chosen": "консоль",
+    "accept": ["консол"],
+    "forms": "a storage provider’s console → консоль поставщика хранилища, after a first mention консоль поставщика",
+    "confidence": "high",
+    "sources": "MS (console → консоль; management console → консоль управления)"
+  },
   "put-back": {
     "chosen": "Восстановить",
     "accept": ["восстан", "возвращ", "вернут"],
@@ -3690,6 +3734,13 @@
     "confidence": "high",
     "sources": "MS regex and regular expression → «регулярное выражение»",
     "decision": "Regex and Hex"
+  },
+  "region": {
+    "chosen": "регион",
+    "accept": ["регион"],
+    "forms": "the S3 form label → Регион; in {region} → в регионе {region}",
+    "confidence": "high",
+    "sources": "MS (region → регион; Azure region → регион Azure)"
   },
   "register-shortcut": {
     "chosen": "зарегистрировано",
@@ -4142,6 +4193,13 @@
     "note": "Same word as scan, as de and hu do. In the viewer the walk through a file is a search to the user, so prose may say «поиск».",
     "decision": "Folder walk"
   },
+  "secret-access-key": {
+    "chosen": "секретный ключ доступа",
+    "accept": ["секретн"],
+    "forms": "the S3 form label → Секретный ключ доступа; That secret access key didn't work → Этот секретный ключ доступа не подошел",
+    "confidence": "high",
+    "sources": "MS (secret key → секретный ключ; access key → ключ доступа)"
+  },
   "see": {
     "chosen": "Просмотр",
     "accept": ["просмотр", "посмотр", "смотр"],
@@ -4189,6 +4247,7 @@
       "commands.networkSelectHost.label": "Opening a network host is choose: «Выбрать сетевой хост».",
       "servers.hub.editPickHint": "Picking one server in the list to edit is choose.",
       "servers.hub.editShareHint": "Picking the server's row to edit it is choose.",
+      "servers.hub.editAccountHint": "Picking a bucket's row in the Servers list to edit it is choose, like servers.hub.editShareHint.",
       "commands.navDown.label": "Moves the cursor, marks nothing; say «Следующий файл».",
       "commands.navUp.label": "Moves the cursor, marks nothing; say «Предыдущий файл».",
       "queue.row.selectAria": "Checkbox picking operation rows to cancel together: choosing items in a list, not marking files in a pane, so «выбрать» stays.",
@@ -4269,6 +4328,23 @@
       "settings.mediaIndex.reclaim.line": "The indexing setting is described by its resulting coverage, «охват».",
       "settings.sidebar.searchPlaceholder": "The Settings sidebar supplies the context; «Поиск…» fits the actual input at 125% text size, while «Поиск настроек…» exceeds its available width."
     }
+  },
+  "share-link": {
+    "chosen": "публичная ссылка",
+    "accept": ["публичн"],
+    "forms": "Copy share link → Скопировать публичную ссылку; Copied a share link → Публичная ссылка скопирована; in a description prose may say ссылка, по которой кто угодно сможет скачать файл",
+    "avoid": [
+      {
+        "form": "ссылка для скачивания",
+        "why": "скачать is prose-only under download, so it can't sit in a command name"
+      },
+      {
+        "form": "общая ссылка",
+        "why": "общая reads as the SMB network share (общая папка)"
+      }
+    ],
+    "confidence": "tentative",
+    "sources": "macOS live Finder (Copy iCloud link → Скопировать ссылку iCloud); Yandex Disk and Cloud Mail.ru call a link anyone can open публичная ссылка (outside the pile, not verified live)"
   },
   "share-menu": {
     "chosen": "Поделиться",
