@@ -570,7 +570,7 @@
   },
   "commands.fileCopyShareLinkOneDay.description": "拷贝一个链接，任何人都能在接下来的 1 天内打开它，下载这个文件",
   "@commands.fileCopyShareLinkOneDay.description": {
-    "sourceHash": "70461ac"
+    "sourceHash": "c2a30be"
   },
   "commands.fileCopyShareLinkOneHour.label": "拷贝共享链接（1 小时）",
   "@commands.fileCopyShareLinkOneHour.label": {

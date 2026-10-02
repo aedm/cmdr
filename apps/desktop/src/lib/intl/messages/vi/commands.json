@@ -570,7 +570,7 @@
   },
   "commands.fileCopyShareLinkOneDay.description": "Sao chép một liên kết mà ai cũng mở được để tải tệp về trong một ngày tới",
   "@commands.fileCopyShareLinkOneDay.description": {
-    "sourceHash": "70461ac"
+    "sourceHash": "c2a30be"
   },
   "commands.fileCopyShareLinkOneHour.label": "Sao chép liên kết chia sẻ (một giờ)",
   "@commands.fileCopyShareLinkOneHour.label": {

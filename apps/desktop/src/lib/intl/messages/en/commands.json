@@ -677,7 +677,7 @@
   "@commands.fileCopyShareLinkOneDay.label": {
     "description": "Command name that copies a share link to the selected file in an S3 bucket (cloud storage), valid for one day. A share link is a web address anyone can open to download that one file, without signing in, until it expires. It copies a link, not the file. Appears in the command palette, only while the focused pane is on a bucket."
   },
-  "commands.fileCopyShareLinkOneDay.description": "Copies a link anyone can open to download the file for the next day",
+  "commands.fileCopyShareLinkOneDay.description": "Copies a link anyone can open to download the file for one day",
   "@commands.fileCopyShareLinkOneDay.description": {
     "description": "Longer help text for the \"Copy share link (one day)\" command, shown as a secondary line in the command palette."
   },

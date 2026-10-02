@@ -570,7 +570,7 @@
   },
   "commands.fileCopyShareLinkOneDay.description": "Olyan linket másol, amelyet egy napig bárki megnyithat a fájl letöltéséhez",
   "@commands.fileCopyShareLinkOneDay.description": {
-    "sourceHash": "70461ac"
+    "sourceHash": "c2a30be"
   },
   "commands.fileCopyShareLinkOneHour.label": "Megosztási link másolása (egy óra)",
   "@commands.fileCopyShareLinkOneHour.label": {
