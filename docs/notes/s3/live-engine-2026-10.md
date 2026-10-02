@@ -40,13 +40,13 @@ cleanup.
   - R2: ok; the 1,005-object rename takes 168 s, past the suite's old 120 s wait (now stretched on live runs).
   - Hetzner: ok in five of six runs; once the 1,005-object rename failed with `DestinationExists` on a fresh destination
     key (`renamed/f0053.txt`). Open question 3.
-  - B2: four of five failed with `PermissionDenied` on the source. Not a Cmdr bug: the account's daily Class B cap was
-    used up (below).
+  - B2: unverified, cap hit. Four of five failed with `PermissionDenied` on the source once the account's daily Class B
+    cap was used up (open question 4); pause then cancel passed before the cap was reached.
 - **Merges and moves** (merge under Skip, Overwrite, Rename (keep both), OverwriteSmaller; a move-merge onto that spares
   what it skipped; a folder moved onto and off; a file saved over or added mid-move off; same-bucket move-merge, folder
   move, and tree copy; a missing nested destination; a 6 MiB odd-length file; 40 files at full concurrency): 15 of 15 on
   R2, AWS, Spaces, Wasabi, Hetzner, and GCS (GCS's first run lost the network mid-cell, open question 6; the rerun was
-  clean). B2 not run (cap).
+  clean). B2: unverified, cap hit.
 - **Safety, cancel, rollback, delete** (a failed merge copy or move onto the user's folder, a delete bound to a
   local-shaped preview, a recursive delete that takes exactly the selection, an unknown source type, cancel
   mid-download, cancel between multipart parts, a cut-off Overwrite keeps the original, pause and resume between parts,
@@ -55,7 +55,7 @@ cleanup.
   - Wasabi: 12 of 12 on the rerun; the first run's 1,005-object delete stopped at `f0530.txt` with `DeviceDisconnected`
     (one transport blip ends the whole delete, open question 1).
   - GCS: 11 of 11; the 1,005-object delete didn't finish inside the remaining seven minutes (614 objects gone).
-  - B2: not run (cap).
+  - B2: unverified, cap hit.
   - After every cancel: no object at the name, no unfinished upload on the server, no open record in the upload ledger.
     After every rollback: nothing left but the destination folder the copy itself made.
 - **A name taken mid-upload** (informational, the documented blind window): another writer's file survived on R2, AWS,
@@ -63,7 +63,7 @@ cleanup.
   check-then-write window `crates/cmdr-s3/DETAILS.md` § "No-overwrite writes" accepts. Whether Wasabi honours
   `If-None-Match` on PUT (which would close it) is for the profile owner to verify.
 - **Between providers** (a 50 MiB file plus a nested tree, streamed): ok for R2 → GCS, GCS → Spaces, Spaces → AWS, AWS →
-  Wasabi, Wasabi → R2, Hetzner → AWS, and AWS → Hetzner. B2 not run.
+  Wasabi, Wasabi → R2, Hetzner → AWS, and AWS → Hetzner. B2: unverified, cap hit.
 - **Archived objects** (AWS, `GLACIER` and `DEEP_ARCHIVE`, uploaded with the storage class): ok. The listing marks each
   `in_cold_storage`, a read answers `VolumeError::ColdStorage`, and a copy stops at once with
   `WriteOperationError::SourceInColdStorage`, nothing landing locally.
@@ -79,7 +79,11 @@ cleanup.
    (which is why R2 never showed it; R2 also offers HTTP/1.1 only). Fix: the host is signed as the request URL spells it
    and travels in the URL alone. Red first: `sigv4_test.rs::the_signed_request_carries_no_explicit_host_header` and
    `the_host_is_signed_as_the_url_spells_it`. The crate now declares `http2` itself (a sibling's `69b2330b5`).
-2. **Test infrastructure**: the gated source served the same bytes for every path (now per file, `gated_files`); live
+2. **The estimate missed a HEAD on multipart server-side copies off the pin allowlist** (`6e9ad525e`, reported by
+   live-providers from the tally). Hetzner, Spaces, Wasabi, and "Other" HEAD the source once more before completing
+   (`source_unchanged`); `Workload::copy_on_server` now counts it. Red first:
+   `cost_test.rs:: a_multipart_copy_off_the_pin_allowlist_heads_its_source_again`.
+3. **Test infrastructure**: the gated source served the same bytes for every path (now per file, `gated_files`); live
    seeding at 32 concurrent PUTs drew `503 SlowDown` from Hetzner (now eight on a live account, a 503 sent again).
 
 ## Cost estimates
@@ -119,10 +123,22 @@ the plan `estimate` prices. The fixture cells and the live cell assert the reque
    streaming, whose `CreateNew` then refuses the name the copy itself took; or a transport error after Hetzner applied
    the copy. No data lost (the source stays), but the rename stops with a wrong reason. Candidates: retry throttled
    idempotent requests (HEAD, a 503'd `CopyObject`) in the backend, and have the fallback recognize its own landed copy.
-4. **B2's daily Class B cap.** The 1,005-object cells (a HEAD or two per object) used up the account's cap; from then on
-   every B2 GET and HEAD answered `403 AccessDenied` ("download bandwidth or transaction (Class B) cap exceeded") until
-   the daily reset. A sibling's `16ee8a3b8` now words such a refusal as a possible usage cap. B2's renames, merges,
-   safety cells, and cross-provider copies need a rerun after the reset (or a raised cap).
+4. **B2's daily Class B cap.** The 1,005-object cells used up the account's cap. From then on every B2 GET answered
+   `403` with `<Code>AccessDenied</Code>` ("Cannot download file, download bandwidth or transaction (Class B) cap
+   exceeded", read with the AWS CLI), and every HEAD a bodyless `403`. Cmdr maps both to `VolumeError::PermissionDenied`
+   (a stat, a read, a delete's fallback HEAD); in a transfer that's `WriteOperationError::PermissionDenied` with
+   `refusal: Unclassified` and `side: Source`, which the dialog words as a permission problem (a sibling's `16ee8a3b8`
+   now adds that it may be a usage cap). LIST, PUT, and `DeleteObjects` kept working. B2's renames, merges, safety
+   cells, and cross-provider copies are unverified until a rerun after the reset. Where the HEADs come from, a
+   1,005-object folder rename counted on VersityGW (whose "Other" profile copies the way B2's does: check-then-write, no
+   conditional copy): 1,005 `CopyObject`, 3,021 `HeadObject`, 19 LISTs, 2 `DeleteObjects`, 1 PUT from the engine; the
+   test's own checks add 1 HEAD and 3 LISTs. Three HEADs per object, all in `server_copy.rs::copy_whole`: the source's,
+   the no-overwrite `refuse_if_taken` on the destination, and `verify_landing`. `Workload` counts 3,015 for B2 (the plan
+   3,017), so the estimate matches. A HEAD is Class B on B2, so this one rename exceeds B2's free 2,500 a day.
+   Recommendation (not made): one LIST of the destination prefix up front in place of the per-object no-overwrite HEAD
+   (the blind window grows from milliseconds per object to the whole operation), and each source's size, ETag, and
+   `LastModified` from the scan's listing instead of a HEAD for a one- request `COPY`-directive copy, keeping the verify
+   HEAD: about 1,000 HEADs in place of 3,000.
 5. **Small-object throughput.** The 1,005-object rename: AWS 28 s, Spaces 49 s, Hetzner 52 s, Wasabi 109 s, R2 168 s,
    GCS 234 s; 40 small files at full concurrency: AWS 6 s, R2 52 s, GCS 64 s. Per-request latency from Stockholm
    dominates, so how many requests run at once per object matters more than bandwidth here.
