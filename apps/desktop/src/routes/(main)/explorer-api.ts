@@ -160,6 +160,12 @@ export interface ExplorerAPI {
    */
   isPaneLoading: (pane: 'left' | 'right') => boolean
   /**
+   * Whether the pane's folder stopped answering mid-read (`listing-stalled`). Its load
+   * stays in flight and retries, so the MCP navigation adapters answer on this rather
+   * than waiting for a rest that may be minutes away.
+   */
+  isPaneStalled: (pane: 'left' | 'right') => boolean
+  /**
    * Switch a pane to a volume by name. Resolves once the switch has committed, with the
    * volume it chose and `navigate()`'s result; the pane's final folder is decided when
    * that result's `corrected` resolves.

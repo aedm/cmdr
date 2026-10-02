@@ -740,6 +740,10 @@
         return loading
     }
 
+    export function isStalled(): boolean {
+        return stalled !== null
+    }
+
     /**
      * Returns a promise that resolves when the current load (if any) settles.
      * Used by `moveCursor` to avoid acting on a not-yet-cached `listingId`.

@@ -247,11 +247,19 @@ path; its `fromMenu` flag picks `setViewModeFromMenu` (skip `pushViewMenuState`)
   `ok: true` before the new volume had listed anything, and kept that `OK` when the listing died and an edge-flow
   fallback moved the pane home. After a switch (the volume ids differ, the same test `navigate()` routes on) the adapter
   waits for the pane to go QUIET — a listing other than the one it started with, then `quietMs` with no load in flight —
-  and classifies what it finds: `navigated`, `fell-back`, or `did-not-settle`. The reply carries that discriminant plus
-  the pane's resting `volumeId` and `path`; the Rust side words the tool result from the discriminant, ❌ never from the
-  message text. The in-place arm skips the wait, because there `settled` IS the listing. Either way the adapter flushes
-  the pane state (`syncPaneStateToMcp`) before replying: the pane's own push is debounced 300 ms, so without it a
-  `cmdr://state` read right after `OK` showed the previous folder's path and rows under the new tab title.
+  and classifies what it finds: `navigated`, `fell-back`, `did-not-settle`, or `stalled`. The reply carries that
+  discriminant plus the pane's resting `volumeId` and `path`; the Rust side words the tool result from the discriminant,
+  ❌ never from the message text. The in-place arm skips the quiet wait, because there `settled` IS the listing.
+
+  **A folder that stops answering is reported the moment the pane shows it** (`isPaneStalled`), on both arms. A stalled
+  listing stays in flight and retries until the server answers (`ListingStalledView`), so the pane never goes quiet and
+  the in-place `settled` never resolves: waiting on either held the tool for the backend's whole 30 s budget. The switch
+  arm's quiet wait returns `stalled` for its new listing; the in-place arm races `settled` against the stall
+  (`waitForListingOrStall`). Both count a stall only on a listing other than the one the pane started with, so the
+  folder it's leaving can't answer for the one it's going to. `mcp-volume-select.ts` gets the same through its quiet
+  wait. Either way the adapter flushes the pane state (`syncPaneStateToMcp`) before replying: the pane's own push is
+  debounced 300 ms, so without it a `cmdr://state` read right after `OK` showed the previous folder's path and rows
+  under the new tab title.
 
   **Every way this handler declines also logs.** The three of them — the path not resolving to a volume, `navigate()`
   refusing, and no explorer being mounted — used to `return` in silence, because the only channel out is a reply keyed

@@ -177,19 +177,27 @@ its reply is allowed to mean (`parse_mcp_response`, `parse_operation_start_respo
 - `select` (5 s, all modes): the FE applies the selection (names mode maps names → indices via the `findFileIndices`
   batch IPC first), then flushes the state push before replying, so a follow-up `copy` reads fresh selection state.
   Missing names come back as the round-trip error.
+- **A stalled folder answers early, wherever a tool waits on a LISTING.** `nav_to_path` and `select_volume` (above), and
+  `await`'s row conditions (`has_item`, `not_has_item`, `item_count_*`), which answer `folderStalled` the moment the
+  pane pushes `listing: stalled`: a stalled pane holds no rows, so "not there" would be a lie and "there" would wait out
+  the timeout. Its path conditions still read the path, which stays true. `nav_to_parent` / `nav_back` / `nav_forward`
+  ack on the first state push and `open_under_cursor` on its own 5 s round trip, neither on the listing, and both
+  budgets end before `StallPolicy::stall_after` (8 s) could report a stall, so they have nothing to answer early.
 - `refresh` (5 s): the FE forces a backend re-read via `refreshListing(listingId, true)`, which bypasses the
   watcher-backed short-circuit, so `OK` means the directory was actually re-read on every volume. In the network
   browser the same command re-scans hosts instead.
 - `nav_to_path` (30 s, `mcp_nav_round_trip`): the reply carries a typed `outcome` plus the pane's resting location, and
   `nav_result` (in `nav.rs`) words the tool result from that discriminant — `navigated` is the only `OK`; `fell-back`
-  and `did-not-settle` are errors naming both the request and where the pane actually is. The FE holds the response
+  and `did-not-settle` are errors naming both the request and where the pane actually is, and `stalled` (the folder's
+  server or drive stopped answering, reported the moment the pane shows it rather than after the budget) is an error
+  carrying `data: { reason: "folderStalled", path }` so an agent can branch on it. The FE holds the response
   until the pane comes to rest, which for a cross-volume switch is well past `settled` (that arm resolves it on the
   optimistic commit, before the new volume lists anything — the last false-positive `OK`), then flushes the state push,
   so `cmdr://state` read right after shows the landing. `go_to_latest_download`
   rides the same helper for its navigation leg, so it can't move a cursor in a directory the pane never reached.
 - `select_volume` (30 s, the same helper on `mcp-volume-select`): the FE holds its reply until the switch's
-  remembered-folder correction has landed and the pane has come to rest, and `select_volume_result` words the same
-  three outcomes, its `OK` naming the folder the pane opened. Resolve the completed volume rows by stable `volumeId`;
+  remembered-folder correction has landed and the pane has come to rest (or stalled), and `select_volume_result` words
+  the same four outcomes, its `OK` naming the folder the pane opened. Resolve the completed volume rows by stable `volumeId`;
   a legacy name is accepted only when unique. A `navigated` reply is followed by a short `volume_name` poll so
   `cmdr://state` agrees. The request id reaches the FE through the command bus (`volume.selectByName`'s
   `mcpRequestId`). The bus lets MCP through behind an open dialog, so the select runs there; only the tools that start

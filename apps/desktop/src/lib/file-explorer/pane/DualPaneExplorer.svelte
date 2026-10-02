@@ -993,6 +993,11 @@
         return getPaneRef(pane)?.isLoading() ?? false
     }
 
+    /** Whether the pane's folder stopped answering mid-read. `false` for a pane that isn't mounted. */
+    export function isPaneStalled(pane: 'left' | 'right'): boolean {
+        return getPaneRef(pane)?.isStalled() ?? false
+    }
+
     // noinspection JSUnusedGlobalSymbols -- consumed by quick-look-state
     export function routePanelKey(payload: {
         key: string

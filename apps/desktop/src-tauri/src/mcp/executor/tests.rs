@@ -457,6 +457,60 @@ fn nav_result_reports_the_landing_place_not_the_request() {
     assert!(unsettled.message.contains("didn't settle"));
 }
 
+// === A stalled folder answers at once, not after the 30 s budget ===
+//
+// A folder whose server stopped answering keeps its listing alive and retrying, so
+// the pane never came to rest and `nav_to_path` used to wait out its whole budget.
+// The FE now replies `stalled` the moment the pane shows the stall, and the result
+// says so in a shape an agent can branch on.
+
+#[test]
+fn parse_nav_response_reads_a_stalled_folder() {
+    let stalled = r#"{"requestId":"r-1","ok":false,"outcome":"stalled","path":"/Volumes/nas/photos"}"#;
+    assert_eq!(
+        parse_nav_response(stalled, "r-1"),
+        Some(Ok(NavAck::Stalled {
+            path: "/Volumes/nas/photos".to_string()
+        }))
+    );
+}
+
+#[test]
+fn nav_result_says_the_folder_is_stalled() {
+    let stalled = nav_result(
+        "left",
+        "/Volumes/nas/photos",
+        NavAck::Stalled {
+            path: "/Volumes/nas/photos".to_string(),
+        },
+    )
+    .expect_err("a stalled folder is not an OK");
+    assert!(stalled.message.contains("/Volumes/nas/photos"), "names the folder");
+    assert!(stalled.message.contains("isn't answering"), "says why");
+    assert_eq!(
+        stalled.data,
+        Some(json!({ "reason": "folderStalled", "path": "/Volumes/nas/photos" }))
+    );
+}
+
+#[test]
+fn select_volume_result_says_the_folder_is_stalled() {
+    let stalled = select_volume_result(
+        "right",
+        "naspi",
+        NavAck::Stalled {
+            path: "/Volumes/naspi/photos".to_string(),
+        },
+    )
+    .expect_err("a stalled folder is not an OK");
+    assert!(stalled.message.contains("naspi"), "names the request");
+    assert!(stalled.message.contains("isn't answering"), "says why");
+    assert_eq!(
+        stalled.data,
+        Some(json!({ "reason": "folderStalled", "path": "/Volumes/naspi/photos" }))
+    );
+}
+
 // === select_volume_result: the ack says where the switch left the pane ===
 //
 // A volume select reopens the folder last used on that volume, after a background check

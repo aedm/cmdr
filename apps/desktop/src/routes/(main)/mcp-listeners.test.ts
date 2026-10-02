@@ -439,6 +439,7 @@ describe('mcp-nav-to-path listener', () => {
       getPaneLocation: () => ({ volumeId: 'root', volumePath: '/', path: '/Library' }),
       getPaneListingId: () => 'listing-1',
       isPaneLoading: () => false,
+      isPaneStalled: () => false,
     }
     await setupMcpListeners({
       getExplorer: () =>
@@ -657,21 +658,25 @@ describe('mcp-nav-to-path landing outcomes (the volume-switch arm)', () => {
    * the switch arm's optimistic commit itself — destination in place, fresh listing
    * loading — because that ordering is what the adapter reads around.
    */
-  function fakePane(start: { volumeId: string; path: string; listingId: string | null }) {
-    const pane = { ...start, loading: false }
+  function fakePane(
+    start: { volumeId: string; path: string; listingId: string | null },
+    settled: Promise<void> = Promise.resolve(),
+  ) {
+    const pane = { ...start, loading: false, stalled: false }
     const explorer = {
       navigate: vi.fn((intent: { to: { goTo: { volumeId: string; path: string } } }): NavigateResult => {
         pane.volumeId = intent.to.goTo.volumeId
         pane.path = intent.to.goTo.path
         pane.listingId = 'L1'
         pane.loading = true
-        return { status: 'started', settled: Promise.resolve() }
+        return { status: 'started', settled }
       }),
       setFocusedPane: vi.fn(),
       syncPaneStateToMcp: vi.fn(() => Promise.resolve()),
       getPaneLocation: () => ({ volumeId: pane.volumeId, volumePath: '/', path: pane.path }),
       getPaneListingId: () => pane.listingId,
       isPaneLoading: () => pane.loading,
+      isPaneStalled: () => pane.stalled,
     }
     return { pane, explorer }
   }
@@ -748,6 +753,58 @@ describe('mcp-nav-to-path landing outcomes (the volume-switch arm)', () => {
       outcome: 'fell-back',
       volumeId: 'root',
       path: '/Users/david',
+    })
+  })
+
+  // A stalled listing stays in flight and retries until the server answers, so the
+  // pane never comes to rest: the reply goes out the moment the pane shows the stall,
+  // not after the backend's 30 s budget.
+  it('acks `stalled` as soon as a switched pane’s folder stops answering', async () => {
+    resolveLocationMock.mockResolvedValue({ ok: true, location: { volumeId: 'nas', path: '/Volumes/nas/photos' } })
+    const { pane, explorer } = fakePane({ volumeId: 'root', path: '/Users/david', listingId: 'L0' })
+    const handlers = await setup(explorer)
+
+    getHandler(
+      handlers,
+      'mcp-nav-to-path',
+    )({ payload: { pane: 'left', path: '/Volumes/nas/photos', requestId: 'req-stall' } })
+    await vi.advanceTimersByTimeAsync(300)
+    expect(emit).not.toHaveBeenCalled()
+
+    pane.stalled = true
+    await vi.advanceTimersByTimeAsync(200)
+
+    expect(emit).toHaveBeenCalledWith('mcp-response', {
+      requestId: 'req-stall',
+      ok: false,
+      outcome: 'stalled',
+      volumeId: 'nas',
+      path: '/Volumes/nas/photos',
+    })
+  })
+
+  it('acks `stalled` for a same-volume navigation whose listing never lands', async () => {
+    resolveLocationMock.mockResolvedValue({ ok: true, location: { volumeId: 'root', path: '/Users/david/nfs' } })
+    const neverLands = new Promise<void>(() => {})
+    const { pane, explorer } = fakePane({ volumeId: 'root', path: '/Users/david', listingId: 'L0' }, neverLands)
+    const handlers = await setup(explorer)
+
+    getHandler(
+      handlers,
+      'mcp-nav-to-path',
+    )({ payload: { pane: 'left', path: '/Users/david/nfs', requestId: 'req-in-place' } })
+    await vi.advanceTimersByTimeAsync(300)
+    expect(emit).not.toHaveBeenCalled()
+
+    pane.stalled = true
+    await vi.advanceTimersByTimeAsync(200)
+
+    expect(emit).toHaveBeenCalledWith('mcp-response', {
+      requestId: 'req-in-place',
+      ok: false,
+      outcome: 'stalled',
+      volumeId: 'root',
+      path: '/Users/david/nfs',
     })
   })
 

@@ -138,6 +138,8 @@ export interface FilePaneAPI {
 
   getListingId(): string
   isLoading(): boolean
+  /** Whether the folder stopped answering mid-read (`listing-stalled`); the load stays in flight. */
+  isStalled(): boolean
   /**
    * Resolves when the current load (if any) settles. Used by callers that need
    * a stable `listingId` for a backend call (for example, the MCP `move_cursor`
