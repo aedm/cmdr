@@ -127,7 +127,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS Finder PreferencesWindow 261.label (Advanced → Дополнения); macOS live Mail SMTPSettings, VPN, AddPrinter, Books (Advanced → Дополнения); AppKit NSAdvanced (дополнительно); Thunar (Дополнительно); MS (Advanced → Расширенный)"
+    "sources": "macOS Finder PreferencesWindow 261.label (Advanced → Дополнения); macOS live Mail SMTPSettings, VPN, AddPrinter, Books (Advanced → Дополнения); AppKit NSAdvanced (дополнительно); Thunar (Дополнительно); MS (Advanced → Расширенный)",
+    "decision": "Advanced:"
   },
   "ai-agent": {
     "chosen": "агент",
@@ -168,7 +169,8 @@
     ],
     "confidence": "high",
     "sources": "MS (provider → поставщик / поставщик услуг, 'a company that provides services'); macOS live Home (Provider → Поставщик, Available Providers → Доступные поставщики), Font Book (контролируемые поставщиком); parity with de Anbieter, hu szolgáltató, sv leverantör",
-    "note": "A cloud file-sync service is облачный сервис (cloud-provider), not поставщик."
+    "note": "A cloud file-sync service is облачный сервис (cloud-provider), not поставщик.",
+    "decision": "AI provider"
   },
   "ai-reply": {
     "chosen": "ответ",
@@ -315,7 +317,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS 27.0 live iPhone Mirroring (a Mac with Apple Silicon → Mac с чипом Apple), Rosetta strings (on Apple silicon → на компьютерах с чипом Apple), SymbolNamesLastResort (Apple silicon chip → Чип Apple)"
+    "sources": "macOS 27.0 live iPhone Mirroring (a Mac with Apple Silicon → Mac с чипом Apple), Rosetta strings (on Apple silicon → на компьютерах с чипом Apple), SymbolNamesLastResort (Apple silicon chip → Чип Apple)",
+    "decision": "Apple silicon"
   },
   "applications-folder": {
     "chosen": "Программы",
@@ -377,7 +380,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS live Mail MainMenu (Ask → Спрашивать), Podcasts (Always Ask → Спрашивать всегда); DC (Ask;Overwrite;Skip → Спрашивать;Перезаписывать;Пропускать); Dolphin (Always ask → Всегда спрашивать)"
+    "sources": "macOS live Mail MainMenu (Ask → Спрашивать), Podcasts (Always Ask → Спрашивать всегда); DC (Ask;Overwrite;Skip → Спрашивать;Перезаписывать;Пропускать); Dolphin (Always ask → Всегда спрашивать)",
+    "decision": "Option labels"
   },
   "ask-cmdr": {
     "chosen": "Ask Cmdr",
@@ -391,7 +395,8 @@
     ],
     "confidence": "high",
     "sources": "concepts.json sense (product name, verbatim in every language); de and hu termbases (Ask Cmdr)",
-    "note": "Names only the chat panel itself; a sentence about what the AI does says Cmdr or ИИ."
+    "note": "Names only the chat panel itself; a sentence about what the AI does says Cmdr or ИИ.",
+    "decision": "Ask Cmdr stays"
   },
   "ask-question": {
     "chosen": "спросить о",
@@ -524,7 +529,8 @@
     "accept": ["кратк"],
     "forms": "Brief view (menu) → Краткий режим; Switch to Brief view → Переключить на краткий режим; in Brief mode → в кратком режиме",
     "confidence": "high",
-    "sources": "TC 6132 (Ширина колонок в кратком режиме); DC (Brief view → Краткий)"
+    "sources": "TC 6132 (Ширина колонок в кратком режиме); DC (Brief view → Краткий)",
+    "decision": "Full and brief view"
   },
   "browse": {
     "chosen": "просматривать",
@@ -575,7 +581,8 @@
     "accept": ["занят"],
     "forms": "the greyed menu marker (busy) → (занято); Resource busy → Ресурс занят",
     "confidence": "high",
-    "sources": "MS (Busy → Занят); macOS live Localizable (Busy → Занят)"
+    "sources": "MS (Busy → Занят); macOS live Localizable (Busy → Занят)",
+    "decision": "Busy marker"
   },
   "button": {
     "chosen": "кнопка",
@@ -602,7 +609,8 @@
     "accept": ["байт"],
     "forms": "count forms байт / байта / байт; unit abbreviation Б",
     "confidence": "high",
-    "sources": "macOS Finder LocalizableMerged SP27 (byte → байт), SP28 (bytes → Б); MS (byte → байт); DC, Thunar"
+    "sources": "macOS Finder LocalizableMerged SP27 (byte → байт), SP28 (bytes → Б); MS (byte → байт); DC, Thunar",
+    "decision": "Counts without a plural param"
   },
   "cable": {
     "chosen": "кабель",
@@ -655,7 +663,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS Finder Localizable (Cancel → Отменить); macOS 27.0 live sweep (Cancel → Отменить 1,215×, Отмена 6×; Canceled → Отменено 32×)"
+    "sources": "macOS Finder Localizable (Cancel → Отменить); macOS 27.0 live sweep (Cancel → Отменить 1,215×, Отмена 6×; Canceled → Отменено 32×)",
+    "decision": "Undo and Cancel"
   },
   "case-sensitive": {
     "chosen": "с учетом регистра",
@@ -787,7 +796,8 @@
     "forms": "Click to retry → Нажмите для повторной попытки; click a button → нажмите кнопку; right-click → нажмите правой кнопкой (щелкните правой кнопкой is fine too)",
     "confidence": "high",
     "sources": "macOS AppKit FontManager (Click to choose the text color → Нажать для выбора цвета текста), Finder MR20 (Click “Cancel” → Нажмите «Отменить»); MS (click → нажать / щелкнуть)",
-    "note": "Pressing a key is also нажать; the object (кнопку, клавишу) disambiguates."
+    "note": "Pressing a key is also нажать; the object (кнопку, клавишу) disambiguates.",
+    "decision": "Click and double-click"
   },
   "client": {
     "chosen": "клиент",
@@ -1044,7 +1054,8 @@
     "sources": "macOS 27.0 live sweep (Custom → Настроить 52×, Пользовательский/-ая/-ое/-ие 21×, Собственный 2×); Nautilus (Custom icon → Пользовательский значок)",
     "exceptions": {
       "queryUi.size.customInputPlaceholder": "Placeholder inside the tiny free-form number input revealed by the «настроить…» cell; it names what to type («значение»), and «пользовательский» alone would be an orphan adjective."
-    }
+    },
+    "decision": "Custom:"
   },
   "cut": {
     "chosen": "Вырезать",
@@ -1125,7 +1136,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "Nautilus (Delete Permanently → Удалить безвозвратно); Dolphin (Безвозвратно удалить); macOS Finder A15 and DA6 (навсегда стереть, навсегда удалить), MenuBar 300770 (Delete Immediately… → Удалить немедленно…)"
+    "sources": "Nautilus (Delete Permanently → Удалить безвозвратно); Dolphin (Безвозвратно удалить); macOS Finder A15 and DA6 (навсегда стереть, навсегда удалить), MenuBar 300770 (Delete Immediately… → Удалить немедленно…)",
+    "decision": "Delete permanently"
   },
   "deny": {
     "chosen": "Отказать",
@@ -1152,7 +1164,8 @@
       }
     ],
     "confidence": "confirmed",
-    "sources": "product-owner decision (TC vocabulary); TC 19 (Снять выделение); DC (Unselect mask → Снять выделение по маске); Dolphin (Unselect All → Снять всё выделение); macOS Finder MenuBar 300488 (Deselect All → Отменить выбор)"
+    "sources": "product-owner decision (TC vocabulary); TC 19 (Снять выделение); DC (Unselect mask → Снять выделение по маске); Dolphin (Unselect All → Снять всё выделение); macOS Finder MenuBar 300488 (Deselect All → Отменить выбор)",
+    "decision": "Selection: выделение"
   },
   "desktop": {
     "chosen": "Рабочий стол",
@@ -1297,7 +1310,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS live (ControlCenter Dismiss → Закрыть; NotificationCenter Dismiss All → Закрыть все; TSAccessibility Dismiss %@ → Закрыть «%@»); MS (dismiss a notification → закрыть); KDE Dolphin (Dismiss This Reminder → Скрыть напоминание)"
+    "sources": "macOS live (ControlCenter Dismiss → Закрыть; NotificationCenter Dismiss All → Закрыть все; TSAccessibility Dismiss %@ → Закрыть «%@»); MS (dismiss a notification → закрыть); KDE Dolphin (Dismiss This Reminder → Скрыть напоминание)",
+    "decision": "Dismiss:"
   },
   "dock": {
     "chosen": "Dock",
@@ -1330,7 +1344,8 @@
     ],
     "note": "Follows the click ruling (нажать, per macOS); the object (кнопку vs клавишу) separates a click from a key press. The catalog’s щелк forms still pass.",
     "confidence": "tentative",
-    "sources": "macOS live (Double-click to update. → Для обновления нажмите дважды.; TrackpadIntents double-click → двойное нажатие; Dwell Control Double Click → Нажать дважды). MS (дважды щелкнуть), Double Commander, Nautilus, and KDE Dolphin say двойной щелчок"
+    "sources": "macOS live (Double-click to update. → Для обновления нажмите дважды.; TrackpadIntents double-click → двойное нажатие; Dwell Control Double Click → Нажать дважды). MS (дважды щелкнуть), Double Commander, Nautilus, and KDE Dolphin say двойной щелчок",
+    "decision": "Click and double-click"
   },
   "download": {
     "chosen": "загрузка",
@@ -1342,7 +1357,8 @@
     "forms": "Download model → Загрузить модель; Downloading… → Загрузка…; the Downloads folder → «Загрузки» (Finder’s name, quoted)",
     "note": "Russian macOS uses загрузка for both download and load; scope by the object (загрузка модели, загрузка обновления).",
     "confidence": "high",
-    "sources": "macOS Finder (Downloads → Загрузки; AXBADGE8 Downloading → Загрузка; PE126); AppKit (download → загрузить); MS (download → загрузка, скачать)"
+    "sources": "macOS Finder (Downloads → Загрузки; AXBADGE8 Downloading → Загрузка; PE126); AppKit (download → загрузить); MS (download → загрузка, скачать)",
+    "decision": "Download vs load"
   },
   "drag": {
     "chosen": "перетянуть",
@@ -1356,12 +1372,13 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS AppKit Toolbar (Drag your favorite items… → Перетяните нужные объекты…); AppKit Undo (Drag → перетягивание); Finder PreferencesWindow 993 (Перетяните любимые теги); live Trackpad (Dragging → Перетягивание). MS says перетащить"
+    "sources": "macOS AppKit Toolbar (Drag your favorite items… → Перетяните нужные объекты…); AppKit Undo (Drag → перетягивание); Finder PreferencesWindow 993 (Перетяните любимые теги); live Trackpad (Dragging → Перетягивание). MS says перетащить",
+    "decision": "Drag:"
   },
   "drive": {
     "chosen": "Диск",
     "accept": ["диск", "том"],
-    "forms": "a drive as hardware or storage → диск; the mounted thing named in errors → том (Finder’s word for a volume)",
+    "forms": "a drive as hardware or storage → диск; the mounted thing named in errors → том (Finder’s word for a volume); one string never switches between the two for the same drive (`driveLeaving`: «Диск {name} отключается… Если диск останется…»)",
     "avoid": [
       {
         "form": "накопитель",
@@ -1584,7 +1601,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS live (Extract Archive (Action Name) → Распаковать архив; Progress Decompressing → Распаковка); MS (decompress → распаковать); Total Commander (509 Распаковать файлы); Double Commander (Unpack files → Распаковать файлы)"
+    "sources": "macOS live (Extract Archive (Action Name) → Распаковать архив; Progress Decompressing → Распаковка); MS (decompress → распаковать); Total Commander (509 Распаковать файлы); Double Commander (Unpack files → Распаковать файлы)",
+    "decision": "Extract:"
   },
   "failed": {
     "chosen": "не удалось",
@@ -1605,7 +1623,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "style.md voice rule; macOS and MS show the label to avoid (Finder PW24 Failed → Сбой; MS failure → сбой); macOS live (Couldn’t … → Не удалось …)"
+    "sources": "style.md voice rule; macOS and MS show the label to avoid (Finder PW24 Failed → Сбой; MS failure → сбой); macOS live (Couldn’t … → Не удалось …)",
+    "decision": "No «ошибка»"
   },
   "favorites": {
     "chosen": "Избранное",
@@ -1847,7 +1866,8 @@
     "accept": ["доступ к диску", "доступа к диску", "доступом к диску", "доступу к диску"],
     "note": "On macOS 27.0 (26A428) the Privacy pane row itself (SecurityPrivacyExtension ALL_FILES) reads «Доступ к диску»; when telling the user where to click, quote that row.",
     "confidence": "confirmed",
-    "sources": "Product-owner decision; macOS live SecurityPrivacyExtension (ALL_FILES_QUIT_* … полный доступ к диску), PlaceholderSettingsSearchTerms (full disk access → полный доступ к диску); Double Commander (Полный доступ к диску)"
+    "sources": "Product-owner decision; macOS live SecurityPrivacyExtension (ALL_FILES_QUIT_* … полный доступ к диску), PlaceholderSettingsSearchTerms (full disk access → полный доступ к диску); Double Commander (Полный доступ к диску)",
+    "decision": "Full Disk Access"
   },
   "full-screen": {
     "chosen": "полноэкранный режим",
@@ -1866,7 +1886,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "Total Commander menu (302 Активная: Подробный режим, paired with 301 Краткий режим); Double Commander (Full → Подробный; Columns View → Подробный вид)"
+    "sources": "Total Commander menu (302 Активная: Подробный режим, paired with 301 Краткий режим); Double Commander (Full → Подробный; Columns View → Подробный вид)",
+    "decision": "Full and brief view"
   },
   "function-key-bar": {
     "chosen": "панель функциональных клавиш",
@@ -1905,7 +1926,8 @@
       }
     ],
     "confidence": "tentative",
-    "sources": "MS terminology (branch → ветвь, создать ветвь); macOS has no git sense. ветка is the Russian developer norm"
+    "sources": "MS terminology (branch → ветвь, создать ветвь); macOS has no git sense. ветка is the Russian developer norm",
+    "decision": "Git words"
   },
   "git-browser": {
     "chosen": "просмотр git",
@@ -1924,7 +1946,8 @@
       }
     ],
     "confidence": "tentative",
-    "sources": "MS terminology (commit → фиксация, зафиксировать); Double Commander (Commit → Фиксация). коммит is the Russian developer norm for the snapshot itself"
+    "sources": "MS terminology (commit → фиксация, зафиксировать); Double Commander (Commit → Фиксация). коммит is the Russian developer norm for the snapshot itself",
+    "decision": "Git words"
   },
   "git-dirty": {
     "chosen": "незафиксированные изменения",
@@ -1940,7 +1963,8 @@
       }
     ],
     "confidence": "tentative",
-    "sources": "MS terminology (uncommitted change → незафиксированное изменение; dirty → грязное)"
+    "sources": "MS terminology (uncommitted change → незафиксированное изменение; dirty → грязное)",
+    "decision": "Git words"
   },
   "github-issue": {
     "chosen": "issue",
@@ -1974,7 +1998,8 @@
     "accept": ["глобальн", "в любом приложении", "из любого приложения", "в приложении", "системн"],
     "forms": "global shortcut → глобальное сочетание клавиш; in-app → в приложении; works from any app → в любом приложении",
     "confidence": "high",
-    "sources": "macOS live (Global → Глобальное, Глобально); MS (global → глобальный)"
+    "sources": "macOS live (Global → Глобальное, Глобально); MS (global → глобальный)",
+    "decision": "Global shortcut marker"
   },
   "go-back": {
     "chosen": "Назад",
@@ -2056,7 +2081,8 @@
     "chosen": "Шестнадцатеричный",
     "accept": ["шестнадцатерич", "Hex"],
     "confidence": "high",
-    "sources": "macOS live (KeyboardSettings Hex → Шестнадцатеричный; Calculator Hexadecimal); Total Commander Lister (5933 &3 Шестнадцатеричный); MS"
+    "sources": "macOS live (KeyboardSettings Hex → Шестнадцатеричный; Calculator Hexadecimal); Total Commander Lister (5933 &3 Шестнадцатеричный); MS",
+    "decision": "Regex and Hex"
   },
   "hidden": {
     "chosen": "скрытый",
@@ -2102,7 +2128,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS Finder (TL_HELP_HOME Go to your Home folder → Перейти в папку пользователя; A4, A5; Home → Личное, MenuBar 253.title)"
+    "sources": "macOS Finder (TL_HELP_HOME Go to your Home folder → Перейти в папку пользователя; A4, A5; Home → Личное, MenuBar 253.title)",
+    "decision": "Home folder"
   },
   "host": {
     "chosen": "хост",
@@ -2114,7 +2141,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS live (DirectoryBinding Host → Хост; ssh prompt Невозможно установить подлинность хоста); MS says узел"
+    "sources": "macOS live (DirectoryBinding Host → Хост; ssh prompt Невозможно установить подлинность хоста); MS says узел",
+    "decision": "Host:"
   },
   "host-key": {
     "chosen": "ключ хоста",
@@ -2144,7 +2172,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS live (AirPort Utility Hostname → Имя хоста; Mail Host Name: → Имя хоста:); MS says имя узла"
+    "sources": "macOS live (AirPort Utility Hostname → Имя хоста; Mail Host Name: → Имя хоста:); MS says имя узла",
+    "decision": "Host:"
   },
   "hour": {
     "chosen": "час",
@@ -2241,7 +2270,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "MS terminology (Incoming, the incoming-call label → Входящий)"
+    "sources": "MS terminology (Incoming, the incoming-call label → Входящий)",
+    "decision": "Incoming item"
   },
   "index": {
     "chosen": "индекс",
@@ -2308,7 +2338,8 @@
       }
     ],
     "confidence": "confirmed",
-    "sources": "Product-owner decision (Total Commander selection vocabulary); Total Commander menu (525 Инвертировать выделение); Double Commander (&Invert Selection → &Инвертировать выделение); Nautilus"
+    "sources": "Product-owner decision (Total Commander selection vocabulary); Total Commander menu (525 Инвертировать выделение); Double Commander (&Invert Selection → &Инвертировать выделение); Nautilus",
+    "decision": "Selection: выделение"
   },
   "ip-address": {
     "chosen": "IP-адрес",
@@ -2432,17 +2463,22 @@
     "sources": "macOS Finder (NE115 Learn More → Подробнее; InfoWindowMoreInfoView More Info: → Подробнее:)"
   },
   "leave-alone": {
-    "chosen": "оставить без изменений",
-    "accept": ["без изменений", "не изменен", "остав"],
-    "forms": "Left {name} alone: … → Без изменений: {name}. …; left them in place → оставил их на месте",
+    "chosen": "оставлено как есть",
+    "accept": ["без изменений", "не изменен", "остав", "оставлен", "оставил"],
+    "forms": "Left {name} alone: … → Оставлено как есть: {name}. …; left them in place → оставил их на месте",
     "avoid": [
       {
         "form": "пропустить",
         "why": "held for skip"
+      },
+      {
+        "form": "Без изменений",
+        "why": "contradicts the reason that follows («…были изменения»)"
       }
     ],
     "confidence": "tentative",
-    "sources": "No source has the undo sense; catalog (fileOperations.leftovers.stagingFolderKept: оставил их)"
+    "sources": "No source has the undo sense; catalog (fileOperations.leftovers.stagingFolderKept: оставил их)",
+    "decision": "Left alone"
   },
   "level": {
     "chosen": "уровень",
@@ -2566,7 +2602,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS Finder InfoWindowGeneralView 1073.title Locked → «Защита»; LocalizableMerged AXNODE1 Locked → «Защищено»; AppKit Document.json Unlock → «Снять защиту»; AppKit AutosaveButton Locked → «Установлена защита»; MS lock → блокировать (Windows access-lock sense, not taken)"
+    "sources": "macOS Finder InfoWindowGeneralView 1073.title Locked → «Защита»; LocalizableMerged AXNODE1 Locked → «Защищено»; AppKit Document.json Unlock → «Снять защиту»; AppKit AutosaveButton Locked → «Установлена защита»; MS lock → блокировать (Windows access-lock sense, not taken)",
+    "decision": "Locked:"
   },
   "log": {
     "chosen": "журнал",
@@ -2584,7 +2621,8 @@
     ],
     "confidence": "high",
     "sources": "MS terminology log → журнал; macOS live HFLocalizable Logs → «Журналы», Localizable str_AF_Key_LoggingE Logging → «Журналирование», SEDocument log → «журнал»; Double Commander Log → «Протокол», Total Commander 6624 «&Протокол» (orthodox pair, outvoted)",
-    "note": "Distinct from operation-log, which is also «журнал» but always «журнал операций»."
+    "note": "Distinct from operation-log, which is also «журнал» but always «журнал операций».",
+    "decision": "Log:"
   },
   "look-inside": {
     "chosen": "заглянуть",
@@ -2724,7 +2762,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS Finder MenuBar 300666.title Minimise → «Убрать в Dock»; AppKit MenuCommands Minimize → «Убрать в Dock»; macOS live MainMenu Minimize → «Убрать в Dock»; MS minimize → «свернуть»"
+    "sources": "macOS Finder MenuBar 300666.title Minimise → «Убрать в Dock»; AppKit MenuCommands Minimize → «Убрать в Dock»; macOS live MainMenu Minimize → «Убрать в Dock»; MS minimize → «свернуть»",
+    "decision": "Minimize:"
   },
   "mission-control": {
     "chosen": "Mission Control",
@@ -2749,7 +2788,8 @@
       }
     ],
     "confidence": "tentative",
-    "sources": "MS library → «библиотека» (code-library sense); macOS live Library → «Библиотека» (Accessibility library.button) and «Медиатека» (media-app sense, not this); Total Commander uses «каталог» for directory throughout (e.g. 2037 «выбранный каталог %s»)"
+    "sources": "MS library → «библиотека» (code-library sense); macOS live Library → «Библиотека» (Accessibility library.button) and «Медиатека» (media-app sense, not this); Total Commander uses «каталог» for directory throughout (e.g. 2037 «выбранный каталог %s»)",
+    "decision": "Model library"
   },
   "modified": {
     "chosen": "Дата изменения",
@@ -2909,7 +2949,8 @@
     "confidence": "high",
     "sources": "macOS live Sharing.appex SHAREPOINT_TABLE_TITLE → «Общие папки», Dock SpecialFolderShared → «Общая папка»; MS share (noun) and file share → «общая папка»; KDE Dolphin «совместно используемых сетевых ресурсов» (outvoted)",
     "note": "macOS's Connect to Server sheet calls the shares on a server «тома» once mounted; keep «общая папка» for the share on the server and «том» for what appears in the volume list.",
-    "proseAccept": ["сетев"]
+    "proseAccept": ["сетев"],
+    "decision": "Network share"
   },
   "new-file": {
     "chosen": "Новый файл",
@@ -3042,7 +3083,8 @@
       }
     ],
     "confidence": "tentative",
-    "sources": "MS onboarding → «адаптация» (HR) and «подключение» (cloud-client) — both wrong senses; macOS live Setup Assistant → «Ассистент настройки системы» (Apple's first-run wizard, but its «настройка» root collides with Settings here); no file-manager source"
+    "sources": "MS onboarding → «адаптация» (HR) and «подключение» (cloud-client) — both wrong senses; macOS live Setup Assistant → «Ассистент настройки системы» (Apple's first-run wizard, but its «настройка» root collides with Settings here); no file-manager source",
+    "decision": "Onboarding:"
   },
   "online-only": {
     "chosen": "только онлайн",
@@ -3083,7 +3125,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS Finder LocalizableMerged N152 and MenuBar 300795/300804 Open With → «Открыть в приложении»; AppKit MenuCommands Open With → «Открыть в приложении»; GNOME Nautilus Open With Default App → «Открыть в приложении по умолчанию»; Double Commander and Thunar «Открыть с помощью»"
+    "sources": "macOS Finder LocalizableMerged N152 and MenuBar 300795/300804 Open With → «Открыть в приложении»; AppKit MenuCommands Open With → «Открыть в приложении»; GNOME Nautilus Open With Default App → «Открыть в приложении по умолчанию»; Double Commander and Thunar «Открыть с помощью»",
+    "decision": "Open with"
   },
   "operation": {
     "chosen": "операция",
@@ -3266,9 +3309,10 @@
   "percent": {
     "chosen": "процент",
     "accept": ["процент", "%"],
-    "forms": "screen-reader count → {percentText} процентов (plural agrees: 1 процент, 2 процента, 5 процентов)",
+    "forms": "a number arrives preformatted ({percentText}), so no plural agrees with it: write a no-break space and the sign ({percentText} %), or a counted colon frame («выполнено: {percentText} %»); never a fixed «процентов» after it",
     "confidence": "high",
-    "sources": "macOS live TSAccessibility Percent → «Процент», HFLocalizable percent → «проценты»"
+    "sources": "macOS live TSAccessibility Percent → «Процент», HFLocalizable percent → «проценты»",
+    "decision": "Counts without a plural param"
   },
   "permission": {
     "chosen": "права доступа",
@@ -3282,7 +3326,8 @@
     ],
     "confidence": "high",
     "sources": "macOS Finder InfoWindowPermissionsView 6.title Sharing & Permissions → «Общий доступ и права доступа», 142 → «Нет информации о правах доступа», LocalizableMerged N30 → «настройки прав доступа»; MS permission → «разрешение», «привилегия»; GNOME Nautilus Permissions → «Разрешения»",
-    "note": "Two Russian words for two macOS senses: file rights are «права доступа», an app's privacy permission is «разрешение»."
+    "note": "Two Russian words for two macOS senses: file rights are «права доступа», an app's privacy permission is «разрешение».",
+    "decision": "Permission:"
   },
   "personal-data": {
     "chosen": "личные данные",
@@ -3379,12 +3424,13 @@
   "preview": {
     "chosen": "Просмотр",
     "accept": ["просмотр", "Предпросмотр"],
-    "forms": "noun and command → «Просмотр»; Preparing preview… → Подготовка просмотра…; Apple's Preview app → «Просмотр» (its localized name)",
+    "forms": "noun → «Просмотр»; Preparing preview… → Подготовка просмотра…; Apple's Preview app → «Просмотр» (its localized name); the non-macOS Quick Look command (`commands.fileQuickLook.other.label`) → «Предпросмотр», because the F3 viewer command is already «Просмотр» in the same palette",
     "confidence": "high",
     "sources": "macOS Finder LocalizableMerged TL45 Preview → «Просмотр»; AppKit Printing and NSFontOptionsPanel Preview → «Просмотр»",
     "exceptions": {
       "settings.appearance.datePreviewLabel": "Labels a sample of the chosen date format, not a preview feature; «Пример:» keeps it apart from Просмотр (the Viewer and Preview.app)."
-    }
+    },
+    "decision": "One Просмотр"
   },
   "previous-next": {
     "chosen": "Далее",
@@ -3417,7 +3463,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS live CommonStrings Problem → «Проблема»; MS problem → «проблема»"
+    "sources": "macOS live CommonStrings Problem → «Проблема»; MS problem → «проблема»",
+    "decision": "No «ошибка»"
   },
   "process": {
     "chosen": "процесс",
@@ -3513,7 +3560,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "macOS live SecurityPrivacyExtension.appex QUIT_APP Quit & Reopen → «Перезапустить» (the button under ALL_FILES_QUIT_ALLOW_TITLE «У приложения «%@» не будет полного доступа к диску, пока оно не будет завершено»), macOS 27.0 26A428"
+    "sources": "macOS live SecurityPrivacyExtension.appex QUIT_APP Quit & Reopen → «Перезапустить» (the button under ALL_FILES_QUIT_ALLOW_TITLE «У приложения «%@» не будет полного доступа к диску, пока оно не будет завершено»), macOS 27.0 26A428",
+    "decision": "Quit & Reopen"
   },
   "quota": {
     "chosen": "квота",
@@ -3640,7 +3688,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "MS regex and regular expression → «регулярное выражение»"
+    "sources": "MS regex and regular expression → «регулярное выражение»",
+    "decision": "Regex and Hex"
   },
   "register-shortcut": {
     "chosen": "зарегистрировано",
@@ -3714,10 +3763,11 @@
   "remove": {
     "chosen": "удалить из",
     "accept": ["удал", "убра", "исключ"],
-    "forms": "always name the list it leaves: Remove from favorites → Удалить из избранного; Remove from list → Удалить из списка; toolbar-like removals may say «Убрать из …»; remove a folder from indexing → исключить из индексации",
+    "forms": "always name the list it leaves: Remove from list → Удалить из списка; a favorite (the folder itself stays) → «Убрать» / «убрать из избранного» in the menu, tooltip, and failure toast alike; a folder leaving the indexed or chosen folders → «Убрать» too (menu «Убрать из индексируемых папок», Settings button «Убрать», aria «Убрать папку {folder} из индексации»), never «Удалить», which reads as deleting the folder; bare English «Remove» is «Убрать» in both list-removal keys (`menu.volume.removeFavorite`, `settings.mediaIndex.chosenFolders.remove`)",
     "confidence": "high",
     "sources": "macOS Finder LocalizableMerged N169.2 Remove from Sidebar → «Удалить из бокового меню»; AppKit Ruler Remove From Favorites → «Удалить из Избранного»; AppKit Accessibility Remove from toolbar → «Убрать из панели инструментов»; macOS live Remove → «Удалить», «Убрать»",
-    "note": "Russian macOS uses «Удалить» for removing from a list too; Cmdr keeps it from reading as deleting files by always naming the list after «из»."
+    "note": "Russian macOS uses «Удалить» for removing from a list too; Cmdr keeps it from reading as deleting files by always naming the list after «из».",
+    "decision": "Remove from a list"
   },
   "rename": {
     "chosen": "Переименовать",
@@ -3884,9 +3934,10 @@
     "chosen": "откат",
     "accept": ["откат"],
     "proseAccept": ["отмен"],
-    "forms": "the action → «Откатить»; Rolling back… → Откат…; roll them back (prose) → отменить их результаты",
+    "forms": "the action → «Откатить»; Rolling back… → Откат…; roll them back, in prose too → «откатить их» («Посмотреть историю файловых операций и откатить их»), so the palette description matches the dialog button «Откатить»; «отменить» stays for Undo and Cancel",
     "confidence": "high",
-    "sources": "MS rollback → «откат», roll back → «откатить»"
+    "sources": "MS rollback → «откат», roll back → «откатить»",
+    "decision": "Roll back"
   },
   "root-folder": {
     "chosen": "корневая папка",
@@ -3942,7 +3993,8 @@
     ],
     "confidence": "high",
     "sources": "DC: Running → Выполняется; Finder LocalizableMerged: operations are still in progress → операции еще выполняются; MS: in progress → выполняется; Finder: while the Finder is running → во время работы Finder",
-    "note": "An operation «выполняется»; a server or app process «работает» (macOS speaks of «работа Finder»). Keep the split."
+    "note": "An operation «выполняется»; a server or app process «работает» (macOS speaks of «работа Finder»). Keep the split.",
+    "decision": "Running:"
   },
   "runtime": {
     "chosen": "среда выполнения",
@@ -4087,7 +4139,8 @@
     ],
     "confidence": "high",
     "sources": "DC: Scanning → Сканирование; MS: scan (systematic examination of files) → сканирование",
-    "note": "Same word as scan, as de and hu do. In the viewer the walk through a file is a search to the user, so prose may say «поиск»."
+    "note": "Same word as scan, as de and hu do. In the viewer the walk through a file is a search to the user, so prose may say «поиск».",
+    "decision": "Folder walk"
   },
   "see": {
     "chosen": "Просмотр",
@@ -4105,7 +4158,8 @@
       "menu.bar.view": "The macOS menu bar's View menu is Apple's localized title «Вид».",
       "askCmdr.wakeToast.openThread": "«Узнать почему» is the natural button for See why; «Посмотреть почему» isn't Russian."
     },
-    "proseAccept": ["узна"]
+    "proseAccept": ["узна"],
+    "decision": "One Просмотр"
   },
   "select": {
     "chosen": "выделение",
@@ -4127,12 +4181,12 @@
     ],
     "confidence": "high",
     "sources": "TC menu: Mark → Выделение, Markierung umkehren → Инвертировать выделение, Auswahl reduzieren → Снять выделение, Auswahl temporär merken → Временно сохранить выделение; DC: Select All → Выделить всё, Selection → Выделение, Unselect mask → Снять выделение по маске; Nautilus: Select All → Выделить все, Invert Selection → Инвертировать выделение, %d item selected → Выделено %d объектов; Dolphin: Unselect All → Снять всё выделение; MS: select (mark items) → выделить, selection → выделение. Finder alone has AppKit FindPanel Select All → Выбрать все",
-    "note": "Product-owner decision: Total Commander's vocabulary for marking files and queue rows. Picking a server, volume, or dropdown option is choose («выбрать»), listed under exceptions.",
+    "note": "Product-owner decision: Total Commander's vocabulary for marking files. Ticking operation-queue rows and picking a server, volume, or dropdown option is choose («выбрать»), listed under exceptions.",
     "exceptions": {
-      "ui.select.placeholder": "Dropdown placeholder: picking an option is «Выбрать…».",
+      "ui.select.placeholder": "Dropdown placeholder: picking an option is «Выберите…».",
       "commands.volumeSelect.label": "Picking a volume for the pane is choose: «Выбрать том».",
       "commands.volumeSelectByName.label": "Picking a volume by name is choose: «Выбрать том панели по имени».",
-      "commands.networkSelectHost.label": "Opening a network host is choose: «Выбрать сетевой узел».",
+      "commands.networkSelectHost.label": "Opening a network host is choose: «Выбрать сетевой хост».",
       "servers.hub.editPickHint": "Picking one server in the list to edit is choose.",
       "servers.hub.editShareHint": "Picking the server's row to edit it is choose.",
       "commands.navDown.label": "Moves the cursor, marks nothing; say «Следующий файл».",
@@ -4140,7 +4194,8 @@
       "queue.row.selectAria": "Checkbox picking operation rows to cancel together: choosing items in a list, not marking files in a pane, so «выбрать» stays.",
       "queue.toolbar.cancelSelected": "Cancels the operation rows ticked by checkbox; list-item choosing, so «выбранные».",
       "queue.toolbar.selectedCount": "Count of ticked operation rows; list-item choosing, so «Выбрано: #»."
-    }
+    },
+    "decision": "Selection: выделение"
   },
   "send": {
     "chosen": "Отправить",
@@ -4191,7 +4246,8 @@
     ],
     "confidence": "high",
     "sources": "Finder Localizable: Choose a cloud service → Выбрать облачный сервис; AppKit Services: Services → Службы; MS: service (web-hosted product) → сервис, service (site a customer connects to) → служба",
-    "note": "Online services take «сервис» (Finder's cloud-service wording); the app-menu Services submenu and Bonjour network services are «службы»."
+    "note": "Online services take «сервис» (Finder's cloud-service wording); the app-menu Services submenu and Bonjour network services are «службы».",
+    "decision": "Service:"
   },
   "settings": {
     "chosen": "Настройки",
@@ -4232,7 +4288,8 @@
     "sources": "Finder LocalizableMerged: Share → Поделиться, Share… → Поделиться…; AppKit AccessibilityImageDescriptions: share → поделиться; DC: Share → Поделиться",
     "exceptions": {
       "fileExplorer.networkMount.shareFallback": "The whole-value «share» here is an SMB network share (`network-share`), «общий ресурс»."
-    }
+    },
+    "decision": "Share menu"
   },
   "sharing-and-permissions": {
     "chosen": "Общий доступ и права доступа",
@@ -4314,7 +4371,8 @@
     ],
     "confidence": "high",
     "sources": "Thunar: Side Pane → Боковая панель; Nautilus: Sidebar → Боковая панель; MS: side pane → боковая панель навигации",
-    "note": "«боковая» keeps it apart from a file pane («панель»); Finder's sidebar is «боковое меню», so the two never collide."
+    "note": "«боковая» keeps it apart from a file pane («панель»); Finder's sidebar is «боковое меню», so the two never collide.",
+    "decision": "Sidebar vs side panel"
   },
   "sidebar": {
     "chosen": "боковое меню",
@@ -4327,7 +4385,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "Finder LocalizableMerged: Show Sidebar → Показать боковое меню, Remove from Sidebar → Удалить из бокового меню; AppKit Toolbar: Sidebar → Боковое меню; Nautilus: Sidebar → Боковая панель"
+    "sources": "Finder LocalizableMerged: Show Sidebar → Показать боковое меню, Remove from Sidebar → Удалить из бокового меню; AppKit Toolbar: Sidebar → Боковое меню; Nautilus: Sidebar → Боковая панель",
+    "decision": "Sidebar vs side panel"
   },
   "sign-in": {
     "chosen": "Войти",
@@ -4545,7 +4604,8 @@
     ],
     "confidence": "tentative",
     "sources": "No source names a stalled transfer; live macOS: Not Responding → Не отвечает, Hang Report → Отчет о зависании (the hang sense to stay clear of)",
-    "note": "Pick a word that says alive-but-not-moving; «остановилась» is the stop concept."
+    "note": "Pick a word that says alive-but-not-moving; «остановилась» is the stop concept.",
+    "decision": "Stalled transfer"
   },
   "start-up": {
     "chosen": "запуск",
@@ -4564,7 +4624,7 @@
   "status": {
     "chosen": "состояние",
     "accept": ["состояни", "статус"],
-    "forms": "column and label «Состояние»; «состояние git», «страница состояния»",
+    "forms": "column and label «Состояние»; «состояние git» (the Git column title and its Settings toggle alike), «страница состояния»; status aria labels «Состояние поиска изображений…»; the yellow drive-status dot in prose → «желтый индикатор»",
     "avoid": [
       {
         "form": "статус (as a label)",
@@ -4577,7 +4637,8 @@
     "proseAccept": ["индикатор"],
     "exceptions": {
       "errors.listing.networkDown.suggestion": "Check Wi-Fi status → «Проверьте Wi-Fi или Ethernet»; the status is implicit."
-    }
+    },
+    "decision": "Status:"
   },
   "status-bar": {
     "chosen": "строка состояния",
@@ -4881,7 +4942,8 @@
     ],
     "confidence": "high",
     "sources": "AppKit Common: Show Details → Подробнее; Nautilus: Show Details → Показать подробности; MS: Details → Подробности (expand-a-card sense) / Сведения (a view)",
-    "note": "Suggestion text reuses the disclosure label (`fileExplorer.errorPane.technicalDetails`, `fileOperations.errorDialog.technicalDetails`), so both must say «подробности»."
+    "note": "Suggestion text reuses the disclosure label (`fileExplorer.errorPane.technicalDetails`, `fileOperations.errorDialog.technicalDetails`), so both must say «подробности».",
+    "decision": "Technical details"
   },
   "temporary": {
     "chosen": "временный",
@@ -4902,7 +4964,8 @@
     ],
     "confidence": "high",
     "sources": "Live macOS 27.0 (26A428) Terminal.app Localizable.loctable: Terminal → Терминал; MS: terminal → терминал, Terminal (Windows) → Терминал; DC, Dolphin: Terminal → Терминал",
-    "note": "Product-owner decision. Commands to type stay in code spans, English: «В Терминале выполните `df -h`»."
+    "note": "Product-owner decision. Commands to type stay in code spans, English: «В Терминале выполните `df -h`».",
+    "decision": "Terminal: Терминал"
   },
   "text-editor": {
     "chosen": "текстовый редактор",
@@ -5101,7 +5164,8 @@
     ],
     "confidence": "high",
     "sources": "AppKit Toolbar: Toggle Inspector → Включить или выключить инспектор; AppKit FontManager: Toggle blockquote → Включить или выключить блок цитаты; live AppIntents: Toggle → Переключить; DC: Toggle Horizontal Split Mode → Переключить режим…; MS: toggle flag → переключить флажок",
-    "proseAccept": ["параметр", "переключател"]
+    "proseAccept": ["параметр", "переключател"],
+    "decision": "Toggle:"
   },
   "token": {
     "chosen": "токен",
@@ -5212,7 +5276,8 @@
     ],
     "confidence": "high",
     "sources": "Finder LocalizableMerged: Undo → Отменить; live Game Center MainMenu: Undo → Отменить; DC, Nautilus: Undo → Отменить; Thunar: cannot be undone → нельзя откатить; MS: undo → отменить, undo (database) → откат",
-    "note": "Russian macOS uses «Отменить» for both Undo and Cancel; follow it, and let context separate them."
+    "note": "Russian macOS uses «Отменить» for both Undo and Cancel; follow it, and let context separate them.",
+    "decision": "Undo and Cancel"
   },
   "unexpected": {
     "chosen": "неожиданный",
@@ -5229,7 +5294,8 @@
       }
     ],
     "confidence": "high",
-    "sources": "Live macOS: Unexpected type. → Неожиданный тип., Unexpected Result → Неожиданный результат; Nautilus: Oops! Something went wrong. → Ой! Что-то пошло не так."
+    "sources": "Live macOS: Unexpected type. → Неожиданный тип., Unexpected Result → Неожиданный результат; Nautilus: Oops! Something went wrong. → Ой! Что-то пошло не так.",
+    "decision": "No «ошибка»"
   },
   "unknown": {
     "chosen": "Неизвестно",
@@ -5468,7 +5534,8 @@
     ],
     "confidence": "high",
     "sources": "TC: Dateibetrachter (Viewer) für F3 → Просмотр по F3, Links anzeigen → Внутренний просмотр слева; DC: Viewer → Просмотр / Программа просмотра; live macOS DVD Player: Viewer → Окно просмотра; MS: viewer → средство просмотра",
-    "note": "Russian merges viewer, `see`, and `preview` into «просмотр» (Apple's Preview app is «Просмотр» too); context and «окно просмотра» separate them when needed."
+    "note": "Russian merges viewer, `see`, and `preview` into «просмотр» (Apple's Preview app is «Просмотр» too); context and «окно просмотра» separate them when needed.",
+    "decision": "One Просмотр"
   },
   "volume": {
     "chosen": "том",
@@ -5621,7 +5688,8 @@
     ],
     "confidence": "tentative",
     "sources": "MS: working copy → рабочая копия, working directory → рабочая папка; Thunar: Working Directory → Рабочая папка. No source names git's working tree",
-    "note": "A literal calque, as de (Arbeitsbaum) and hu (munkafa) chose; «рабочая копия» is the familiar alternative a native reviewer may prefer."
+    "note": "A literal calque, as de (Arbeitsbaum) and hu (munkafa) chose; «рабочая копия» is the familiar alternative a native reviewer may prefer.",
+    "decision": "Git words"
   },
   "worktree": {
     "chosen": "worktree",
@@ -5635,7 +5703,8 @@
     ],
     "confidence": "tentative",
     "sources": "Git's own command name (git worktree), kept verbatim by the @key descriptions and by de (Worktree) and hu (worktree); no pile source",
-    "note": "Russian can't inflect a Latin word, so build sentences where «worktree» sits in a neutral slot."
+    "note": "Russian can't inflect a Latin word, so build sentences where «worktree» sits in a neutral slot.",
+    "decision": "Git words"
   },
   "write": {
     "chosen": "запись",

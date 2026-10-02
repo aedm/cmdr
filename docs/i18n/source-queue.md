@@ -58,7 +58,7 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
 - `settings.adb.install.intro`, `settings.fileOperations.adbEnabled.description`: the descriptions say to use Google's
   localized name for the platform tools and never keep the English, but Google doesn't localize "SDK Platform Tools" in
   most locales (sv, nl, fr, de checked). Say: keep the English where Google does. Also say whether "choose Re-check"
-  means clicking (sv, nl, and es wanted `klicka på` / `klik op` / `haz clic en`). (sv, nl, fr, de)
+  means clicking (sv, nl, and es wanted `klicka på` / `klik op` / `haz clic en`). (sv, nl, fr, de, ru)
 - Go to folder: Finder pt-BR splits its menu and dialog wording, which `i18n-term-consistency` forbids; the `goToPath.*`
   `@key` notes should say the menu item wins. (pt)
 - `errors.eject.unmountRefusedByProcesses`: zh-Hant's list join can run Latin into Han with no space
@@ -80,3 +80,41 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   macOS permission label, as other FDA keys do.
 - Plural instruction proposal: CLDR `one` does not mean exactly one. Audit counts such as 21/101; use `=1` for one-only
   wording and keep the displayed count in the ordinary `one` branch.
+- `fileExplorer.tabBar.paneTabsAriaLabel`: `{paneId}` arrives as raw `left`/`right`, so screen readers say "панели
+  left". Use a `select` in the English, like `fileExplorer.pane.filePaneAriaLabel`. (ru)
+- `askCmdr.event.chatMemoryChanged`: `{tokens, number}` plus a fixed "tokens" can't agree in count-agreement languages
+  (`16 384 токенов`). Make it a `{tokens, plural, …}` in the source. (ru)
+- `queue.chip.ariaLabel`: the description wants "percent" as a word, which can't agree with a preformatted
+  `{percentText}`. Allow `%`, or pass a numeric `percent` for an ICU plural. (ru)
+- `queryUi.age.*`: `count` is passed as a string (`recent-items-utils.ts`), so count-dependent abbreviations (ru `г.` /
+  `л.`) can't pluralize. Pass the number too. (ru)
+- `queryUi.date.preset.thisMonth`, `.lastMonth`: `{month}` arrives nominative, so Slavic locales can't say "from the 1st
+  of October" (`с 1 октября`). Pass a preformatted day-and-month. (ru)
+- `errors.eject.*`: the host "Couldn't eject {volumeName}: …" puts a capitalized standalone sentence after a colon;
+  Russian wants lowercase there. Say whether the fragment may start lowercase. (ru)
+- `errors.eject.busy`: the English says "moving files there", but the description says copy, move, or delete; widen the
+  English ("still working with files there"). (ru)
+- `errors.write.readOnlyDevice.source.fallbackName`, `.destination.fallbackName`: the descriptions say "the subject of
+  'is read-only'", which pushes gendered frames; say the value can be an archive or a `.git` history. (ru)
+- `errors.listing.notSupportedErrno.suggestion` and other literal sizes: descriptions say keep `4 GB` Latin, while
+  Russian macOS writes `4 ГБ`. Decide whether unit symbols localize, in the formatter and prose together. (ru)
+- `settings.behavior.openTerminalHereApp.label`: "a label continued by the dropdown value" breaks in case languages
+  (`… в Как в системе (…)`). Say a noun label is fine, as `settings.behavior.textEditorApp.label` does. (ru)
+- `indexing.step.findFilesPhased`: the description says no trailing period on the second sentence, but the English has
+  one. Align them. (ru)
+- `fileOperations.transferDialog.rootEchoWarning`: "This place already starts in {rootFolder}" is hard to parse. Say
+  "This location's path already starts with {rootFolder}…". (ru)
+- `fileOperations.cancelRollback.reason.unverifiable.named`, `askCmdr.renameUndo.skipReason.unverifiable.named`:
+  byte-identical English, but one is about items and the other about files; split the wording or say so. (ru)
+- `menu.bar.select`: the description asks for an imperative verb, while `menu.context.selection` asks for its noun.
+  Two-pane managers title this menu with a noun (TC "Mark", ru `Выделение`); allow either. (ru)
+- `servers.paneState.cancelCycleTooltip`: "Switch back to retry" doesn't say switch back to what. (ru)
+- `menu.volume.editFavoriteShortcut`: "Set shortcut…" captures one A–Z key, so locales write "key combination". Consider
+  "Set key…". (ru)
+- `servers.paneState.retryKeepsTrying`: say `{duration}` is the whole cycle, not the remaining time, so nobody writes
+  "another N minutes". (ru)
+- `crashReporter.sentToast.changeSettings`: "Settings > Updates" names a section that's now "Updates & privacy"
+  (`settings.section.updatesAndPrivacy`). (ru)
+- `common.attachEmailPlaceholder`, `settings.updates.emailPlaceholder`, `onboarding.stepBeta.emailPlaceholder`:
+  "localize the local part to your word for you" fails in Cyrillic scripts (`вы@example.com` isn't typeable). Allow a
+  generic Latin `name@`. (ru)
