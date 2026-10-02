@@ -12,7 +12,7 @@
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use cmdr_fs::volume::host::VolumeHost;
 use cmdr_fs::volume::host::credentials::InMemoryCredentials;
@@ -33,6 +33,19 @@ use crate::request::Body;
 use crate::sigv4::Credentials;
 use crate::transport::{QUERY_BUDGET, S3Client};
 use crate::volume::connect_s3_volume;
+
+/// `error` and every source under it, for a panic that has to say why a
+/// request didn't go out (reqwest's own message stops at "error sending
+/// request").
+fn chain(error: &dyn std::error::Error) -> String {
+    let mut text = error.to_string();
+    let mut source = error.source();
+    while let Some(cause) = source {
+        text.push_str(&format!(": {cause}"));
+        source = cause.source();
+    }
+    text
+}
 
 /// A Docker fixture or a real account.
 #[derive(Clone)]
@@ -154,8 +167,9 @@ impl S3Target {
         S3Client::new(profile, credentials).expect("a target's client builds")
     }
 
-    /// Puts objects in `bucket`, up to 32 at a time, panicking on the first
-    /// that doesn't land.
+    /// Puts objects in `bucket`, panicking on the first that doesn't land: up
+    /// to 32 at a time on a fixture, eight on a live account (Hetzner answers
+    /// 32 with `SlowDown`), where a throttled PUT goes again after a pause.
     pub async fn seed(&self, bucket: &str, seeds: &[Seed<'_>]) {
         self.seed_with(bucket, seeds, &[]).await;
     }
@@ -164,7 +178,8 @@ impl S3Target {
     /// `x-amz-storage-class`.
     pub async fn seed_with(&self, bucket: &str, seeds: &[Seed<'_>], extra: &[(&str, &str)]) {
         let client = Arc::new(self.client());
-        for batch in seeds.chunks(32) {
+        let width = if self.is_live() { 8 } else { 32 };
+        for batch in seeds.chunks(width) {
             let mut puts = Vec::with_capacity(batch.len());
             for seed in batch {
                 let metadata = ObjectMetadata {
@@ -192,10 +207,18 @@ impl S3Target {
                 let client = Arc::clone(&client);
                 let key = seed.key.to_string();
                 puts.push(tokio::spawn(async move {
-                    let answer = client
-                        .exchange(request, QUERY_BUDGET)
-                        .await
-                        .unwrap_or_else(|e| panic!("seeding {key:?}: {e}"));
+                    let mut pause = Duration::from_millis(500);
+                    let answer = loop {
+                        let answer = client
+                            .exchange(request.clone(), QUERY_BUDGET)
+                            .await
+                            .unwrap_or_else(|e| panic!("seeding {key:?}: {}", chain(&e)));
+                        if answer.status != http::StatusCode::SERVICE_UNAVAILABLE || pause > Duration::from_secs(8) {
+                            break answer;
+                        }
+                        tokio::time::sleep(pause).await;
+                        pause *= 2;
+                    };
                     assert!(
                         answer.status.is_success(),
                         "seeding {key:?} answered {}: {}",
@@ -218,7 +241,7 @@ impl S3Target {
         let answer = client
             .exchange(request, QUERY_BUDGET)
             .await
-            .unwrap_or_else(|e| panic!("probing {key:?}: {e}"));
+            .unwrap_or_else(|e| panic!("probing {key:?}: {}", chain(&e)));
         answer
             .status
             .is_success()
@@ -261,7 +284,7 @@ impl S3Target {
             let answer = client
                 .exchange(request, QUERY_BUDGET)
                 .await
-                .unwrap_or_else(|e| panic!("listing uploads under {prefix:?}: {e}"));
+                .unwrap_or_else(|e| panic!("listing uploads under {prefix:?}: {}", chain(&e)));
             assert!(answer.status.is_success(), "listing uploads answered {}", answer.status);
             let page = crate::xml::parse_list_multipart_uploads(&answer.text()).expect("a ListMultipartUploadsResult");
             found.extend(page.uploads.into_iter().map(|upload| (upload.key, upload.upload_id)));
@@ -282,7 +305,7 @@ impl S3Target {
         let answer = client
             .exchange(request, QUERY_BUDGET)
             .await
-            .unwrap_or_else(|e| panic!("starting an upload of {key:?}: {e}"));
+            .unwrap_or_else(|e| panic!("starting an upload of {key:?}: {}", chain(&e)));
         assert!(
             answer.status.is_success(),
             "starting an upload answered {}",
@@ -316,7 +339,7 @@ impl S3Target {
             let answer = client
                 .exchange(request, QUERY_BUDGET)
                 .await
-                .unwrap_or_else(|e| panic!("listing {prefix:?}: {e}"));
+                .unwrap_or_else(|e| panic!("listing {prefix:?}: {}", chain(&e)));
             assert!(
                 answer.status.is_success(),
                 "listing {prefix:?} answered {}",

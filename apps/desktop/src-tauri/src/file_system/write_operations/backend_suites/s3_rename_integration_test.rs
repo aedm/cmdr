@@ -22,7 +22,7 @@ use cmdr_fs::volume::{Volume, VolumeError};
 use cmdr_s3::S3Volume;
 use cmdr_s3::volume::testing::{GARAGE, S3Target, Seed, VERSITYGW, distant_mtime, object, self_describing_bytes};
 
-use super::network_transfer_test_support::{read_all, run_copy, sha256};
+use super::network_transfer_test_support::{budget, read_all, run_copy, sha256};
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::file_system::write_operations::event_sinks::CollectorEventSink;
 use crate::file_system::write_operations::start_rename_by_move;
@@ -78,8 +78,10 @@ async fn start(volume_id: &str, from: PathBuf, new_name: &str) -> (Arc<Collector
 }
 
 async fn settle(events: &CollectorEventSink, what: &str) {
-    crate::test_support::wait_until_async(SETTLE_BUDGET, what, || !events.settled.lock_ignore_poison().is_empty())
-        .await;
+    crate::test_support::wait_until_async(budget(SETTLE_BUDGET), what, || {
+        !events.settled.lock_ignore_poison().is_empty()
+    })
+    .await;
     let errors = events.errors.lock_ignore_poison();
     assert!(
         errors.is_empty(),
@@ -170,7 +172,7 @@ pub(super) async fn a_paused_then_cancelled_rename_keeps_the_source_whole(target
     let (events, operation_id) = start(&volume_id, at(&volume, &from_key), "gone.bin").await;
     assert!(pause_write_operation(&operation_id) || !events.settled.lock_ignore_poison().is_empty());
     cancel_write_operation(&operation_id, false);
-    crate::test_support::wait_until_async(SETTLE_BUDGET, "the cancelled rename to settle", || {
+    crate::test_support::wait_until_async(budget(SETTLE_BUDGET), "the cancelled rename to settle", || {
         !events.settled.lock_ignore_poison().is_empty()
     })
     .await;

@@ -107,7 +107,11 @@ struct Matrix {
 }
 
 impl Matrix {
+    /// Also routes the app's and the backend's `log` lines to stderr under
+    /// `RUST_LOG` (`RUST_LOG=copy=debug,volume=debug ./live-engine.sh …`), the
+    /// way a live failure gets explained.
     fn new() -> Self {
+        let _ = env_logger::builder().is_test(true).try_init();
         Self { failures: Vec::new() }
     }
 
@@ -123,8 +127,15 @@ impl Matrix {
         }
         let started = Instant::now();
         let outcome = AssertUnwindSafe(flow(target.clone())).catch_unwind().await;
-        target.clean_run().await;
         let took = format!("{:.1} s", started.elapsed().as_secs_f64());
+        // A cleanup that can't reach the account is a finding too, never the
+        // end of the other pairs.
+        if let Err(payload) = AssertUnwindSafe(target.clean_run()).catch_unwind().await {
+            let message = panic_message(payload.as_ref());
+            report(target.name(), name, format!("cleanup FAILED: {message}"));
+            self.failures
+                .push(format!("[{}] {name} cleanup: {message}", target.name()));
+        }
         match outcome {
             Ok(()) => report(target.name(), name, format!("ok in {took}")),
             Err(payload) => {
