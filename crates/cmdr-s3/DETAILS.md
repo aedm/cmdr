@@ -222,9 +222,11 @@ they can't be reached over HTTP through this stack.
 - **Hetzner**: `<location>.your-objectstorage.com`, region = location, path style. Put takes `If-None-Match`; Complete
   and Copy check then write.
 - **GCS**: `storage.googleapis.com` for every bucket, region `auto`, path style (a GCS bucket name may hold dots and
-  underscores). Check-then-write on all three: GCS ignores `If-None-Match`, and its own `x-goog-if-generation-match`
-  can't ride a request signed with `x-amz-*` headers (400 `ExcessHeaderValues`). No `UploadPartCopy` (`copies_in_parts`
-  is false; § "Server-side copy").
+  underscores). GCS ignores `If-None-Match`; Put and Copy refuse an occupied key with its own create-only
+  `x-goog-if-generation-match: 0` (`NoOverwrite::GoogGenerationMatch`), which GCS refuses beside any `x-amz-*` header
+  (400 `ExcessHeaderValues`), so such a request goes out in GCS's own dialect (§ "Signing"). Complete checks then
+  writes: GCS's completion ignores the precondition and its initiate refuses it (`400 NotImplemented`). No
+  `UploadPartCopy` (`copies_in_parts` is false; § "Server-side copy").
 - **Spaces**: `<region>.digitaloceanspaces.com`, region = region, path style. Put takes `If-None-Match`; Complete and
   Copy check then write. `cross_bucket_copy()` is false: Spaces documents no cross-cluster copy, and two buckets of one
   region may sit on two clusters, so the builders refuse a cross-bucket copy with `BuildError::CrossBucketCopy` before
@@ -288,11 +290,15 @@ multipart upload (§ "Overwrites in parts").
 **Conditional writes are an allowlist, ❌ never a probe.** A server can ignore `If-None-Match: *` and answer 200 while
 overwriting: Garage does on Put, Complete, and Copy, VersityGW on Copy (`apps/desktop/test/s3-servers/README.md`,
 observed 2026-10-01), and so do Wasabi and GCS live. A success proves nothing, so only an operation seen enforcing
-carries a header (AWS's three; R2's Put, Complete, and its Copy header; Hetzner's and Spaces' Put); every other cell is
-`CheckThenWrite`. Every entry is verified live (§ "Verified providers"). A `501 NotImplemented`
-(`S3Error::is_not_implemented`) on an allowlisted operation means the caller should call
-`ProviderProfile::downgrade(op)`: that one operation becomes check-then-write for the session, and the first call logs.
-The cells are atomics because one profile serves every concurrent operation.
+carries a header (AWS's three; R2's Put, Complete, and its Copy header; Hetzner's and Spaces' Put; GCS's Put and Copy,
+by its generation precondition); every other cell is `CheckThenWrite`. Every entry is verified live (§ "Verified
+providers"). ❗ **Check-then-write has a blind window**: two `CreateNew`s racing on one key can both pass their HEAD,
+and the later write replaces the earlier (seen live on GCS before its precondition, B2, and Wasabi, about one round in
+three, `live_hostile_races`). An accepted risk where the provider offers no enforced precondition (B2, Wasabi, every
+provider's multipart completion but AWS's and R2's). A `501 NotImplemented` (`S3Error::is_not_implemented`) on an
+allowlisted operation means the caller should call `ProviderProfile::downgrade(op)`: that one operation becomes
+check-then-write for the session, and the first call logs. The cells are atomics because one profile serves every
+concurrent operation.
 
 ## Verified providers
 
@@ -571,6 +577,11 @@ and so is a cross-bucket copy where the provider copies within one bucket only (
 - **The date survives**: a source with its own `x-amz-meta-mtime` is copied with `COPY` (every header kept); one without
   is restated (`REPLACE`) with its `Last-Modified` as the mtime, its content headers, and its other user metadata (both
   fixtures honour `REPLACE`, `copy_test.rs`). A multipart copy names the same metadata at its creation.
+- ❗ **A multipart copy carries its own write token** (`x-amz-meta-cmdr-write`, never the source's), so a
+  `CompleteMultipartUpload` whose answer is lost asks `landed_whole` (one HEAD, never a delete): our token at the
+  source's size means the server completed, and the copy reports it. Size and ETag shape alone can't prove that (an
+  earlier identical copy matches both). No token, any other size, or no object: the copy fails and aborts its upload,
+  which is safe because a move keeps its source (`late_cancel_test.rs`). A one-request `CopyObject` needs none of this.
 
 ## Responses
 

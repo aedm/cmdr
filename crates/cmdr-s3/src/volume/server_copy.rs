@@ -375,7 +375,13 @@ impl S3Volume {
                 raw_os_error: None,
             }
         })?;
-        let metadata = from.object.restated();
+        // This copy's own token rides in the creation metadata, so a completion
+        // whose answer is lost can still prove the destination is ours and whole
+        // (`landed_whole`). The source's token is never carried (`from_head`).
+        let metadata = ObjectMetadata {
+            write_token: Some(crate::metadata::write_token()),
+            ..from.object.restated()
+        };
         let target = WriteTarget {
             bucket: to_bucket,
             key: to_key,
@@ -502,7 +508,26 @@ impl S3Volume {
             Err(e) => Err(e),
         };
         let outcome = match copied {
-            Ok(parts) => self.complete(client, target, &upload_id, &parts, &gone).await,
+            Ok(parts) => match self.complete(client, target, &upload_id, &parts, &gone).await {
+                Ok(etag) => Ok(etag),
+                // ❗ The link can die after the server completed: our whole copy
+                // is at the key and the upload is gone, so the copy landed.
+                Err(e) => match self.landed_whole(client, target, plan.total).await {
+                    Some(head) => {
+                        self.inner.ledger.finished(&guard.upload);
+                        guard.settled = true;
+                        let _ = progress.advanced(plan.total, plan.total);
+                        warn!(
+                            target: "volume",
+                            "s3: the answer to a copy into {} never came, but the server completed it",
+                            target.remote
+                        );
+                        self.remember_written(target, &head);
+                        return Ok(plan.total);
+                    }
+                    None => Err(e),
+                },
+            },
             Err(e) => Err(e),
         };
         match outcome {

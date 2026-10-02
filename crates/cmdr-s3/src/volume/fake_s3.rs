@@ -62,6 +62,7 @@ struct World {
     /// Every listing prefix asked for, decoded.
     listed: Vec<String>,
     hang_up_after_commit: bool,
+    hang_up_before_completing: bool,
     keep_cut_off_bodies: bool,
     /// The decoded key of every object request, in order.
     keys_seen: Vec<String>,
@@ -100,6 +101,12 @@ impl FakeS3 {
     /// unanswered: the connection drops after the server published.
     pub(super) fn hang_up_after_commit(&self) {
         self.world.lock_ignore_poison().hang_up_after_commit = true;
+    }
+
+    /// From now on, a `CompleteMultipartUpload` is dropped unanswered BEFORE it
+    /// completes: the upload stays open and nothing is published.
+    pub(super) fn hang_up_before_completing(&self) {
+        self.world.lock_ignore_poison().hang_up_before_completing = true;
     }
 
     /// From now on, a PUT cut off mid-body stores what arrived.
@@ -191,6 +198,14 @@ fn param(query: &str, name: &str) -> Option<String> {
     })
 }
 
+/// A request header's value, by case-insensitive name.
+fn header<'a>(head: &'a str, name: &str) -> Option<&'a str> {
+    head.lines().skip(1).find_map(|line| {
+        let (key, value) = line.split_once(':')?;
+        key.trim().eq_ignore_ascii_case(name).then(|| value.trim())
+    })
+}
+
 fn meta_lines(head: &str) -> Vec<String> {
     head.lines()
         .filter(|l| l.to_ascii_lowercase().starts_with("x-amz-meta-"))
@@ -221,10 +236,23 @@ async fn answer(
         ("PUT", Some(_), Some(id)) if body_len == length => {
             let mut world = world.lock_ignore_poison();
             let number: u32 = param(query, "partNumber").and_then(|n| n.parse().ok()).unwrap_or(0);
+            // `UploadPartCopy`: the part is the source range, not a body.
+            let copied = header(head, "x-amz-copy-source").map(|_| {
+                header(head, "x-amz-copy-source-range")
+                    .and_then(|range| range.strip_prefix("bytes="))
+                    .and_then(|range| range.split_once('-'))
+                    .and_then(|(first, last)| Some(last.parse::<usize>().ok()? - first.parse::<usize>().ok()? + 1))
+                    .unwrap_or(0)
+            });
             match world.uploads.get_mut(&id) {
                 Some(upload) => {
-                    upload.parts.insert(number, body_len);
-                    format!("HTTP/1.1 200 OK\r\netag: \"p{number}\"\r\ncontent-length: 0\r\nconnection: close\r\n\r\n")
+                    upload.parts.insert(number, copied.unwrap_or(body_len));
+                    match copied {
+                        Some(_) => ok_xml(&format!("<CopyPartResult><ETag>\"p{number}\"</ETag></CopyPartResult>")),
+                        None => format!(
+                            "HTTP/1.1 200 OK\r\netag: \"p{number}\"\r\ncontent-length: 0\r\nconnection: close\r\n\r\n"
+                        ),
+                    }
                 }
                 None => error("404 Not Found", "NoSuchUpload"),
             }
@@ -286,6 +314,9 @@ async fn answer(
         }
         ("POST", Some(key), Some(id)) => {
             let mut world = world.lock_ignore_poison();
+            if world.hang_up_before_completing {
+                return None;
+            }
             let Some(upload) = world.uploads.remove(&id) else {
                 return Some(error("404 Not Found", "NoSuchUpload"));
             };

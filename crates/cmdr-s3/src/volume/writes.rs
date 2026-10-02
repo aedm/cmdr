@@ -613,7 +613,7 @@ impl S3Volume {
 
     /// Keeps the verified object's entry for the pane patch the engine asks
     /// for next (`notify_mutation`), so that patch costs no second HEAD.
-    fn remember_written(&self, target: &WriteTarget<'_>, head: &Answer) {
+    pub(super) fn remember_written(&self, target: &WriteTarget<'_>, head: &Answer) {
         let name = target.key.rsplit('/').next().unwrap_or(target.key);
         if let Some(entry) = self.object_entry(name, target.remote, head) {
             let mut written = self.inner.written.lock_ignore_poison();
