@@ -263,7 +263,7 @@
   "@viewer.statusBar.badge.wrapTooltip": {
     "sourceHash": "af2ca76"
   },
-  "viewer.statusBar.hint.image": "Нажатие: 100% / вписать · Прокрутка: масштаб · Перетаскивание: сдвиг",
+  "viewer.statusBar.hint.image": "Нажатие: 100 % / вписать · Прокрутка: масштаб · Перетаскивание: сдвиг",
   "@viewer.statusBar.hint.image": {
     "sourceHash": "bca0205"
   },

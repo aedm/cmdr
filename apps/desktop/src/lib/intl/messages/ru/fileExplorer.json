@@ -55,7 +55,7 @@
   "@fileExplorer.restrictedFolder.label": {
     "sourceHash": "bbcf72f"
   },
-  "fileExplorer.diskSpace.free": "Свободно {freeText} из {totalText} ({percentText}%)",
+  "fileExplorer.diskSpace.free": "Свободно {freeText} из {totalText} ({percentText} %)",
   "@fileExplorer.diskSpace.free": {
     "sourceHash": "97781f4"
   },
@@ -325,7 +325,7 @@
   "@fileExplorer.network.signIn": {
     "sourceHash": "bfd402b"
   },
-  "fileExplorer.network.osMountFallback.message": "Не удалось подключиться напрямую к <shareName>{share}</shareName>. Подключение установлено через системное SMB-подключение macOS. Обычно оно в 4 раза медленнее прямого подключения Cmdr, а иногда — в 100 раз. Нажмите кнопку ниже, чтобы попробовать еще раз.",
+  "fileExplorer.network.osMountFallback.message": "Не удалось подключиться напрямую к <shareName>{share}</shareName>. Подключение установлено через системное SMB-подключение macOS. Обычно оно в 4 раза медленнее прямого подключения Cmdr, а иногда — в 100 раз. Нажмите кнопку ниже, чтобы попробовать еще раз.",
   "@fileExplorer.network.osMountFallback.message": {
     "sourceHash": "cb53372"
   },
@@ -685,7 +685,7 @@
   "@fileExplorer.edit.appMissingUnnamed": {
     "sourceHash": "c61458b"
   },
-  "fileExplorer.edit.launchRefused": "Cmdr не смог запустить текстовый редактор. Откройте его один раз вручную, затем вернитесь сюда.",
+  "fileExplorer.edit.launchRefused": "Cmdr не удалось запустить текстовый редактор. Откройте его один раз вручную, затем вернитесь сюда.",
   "@fileExplorer.edit.launchRefused": {
     "sourceHash": "8a18c5c"
   },
@@ -769,15 +769,15 @@
   "@fileExplorer.readOnly.gitPortalTitle": {
     "sourceHash": "d4bd9c1"
   },
-  "fileExplorer.readOnly.gitPortalMessage": "Ветки, теги и коммиты — снимки истории git. Их можно просматривать и копировать, но нельзя изменять.",
+  "fileExplorer.readOnly.gitPortalMessage": "Ветки, теги и коммиты — снимки истории git. Их можно просматривать и копировать, но нельзя изменять.",
   "@fileExplorer.readOnly.gitPortalMessage": {
     "sourceHash": "87bc79d"
   },
-  "fileExplorer.archive.useTransferToCopyOut": "Для копирования файлов из архива используйте F5, для перемещения — F6.",
+  "fileExplorer.archive.useTransferToCopyOut": "Для копирования файлов из архива используйте F5, для перемещения — F6.",
   "@fileExplorer.archive.useTransferToCopyOut": {
     "sourceHash": "3edbc36"
   },
-  "fileExplorer.git.useTransferToCopyOut": "Для копирования файлов из снимка git используйте F5, для перемещения — F6.",
+  "fileExplorer.git.useTransferToCopyOut": "Для копирования файлов из снимка git используйте F5, для перемещения — F6.",
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
@@ -854,7 +854,7 @@
     "sourceHash": "b949c92",
     "sameAsSourceJustification": "Стандартное техническое имя Git; сохраняется по правилам имен продуктов и форматов."
   },
-  "fileExplorer.columns.gitTitle": "Статус Git каждого файла",
+  "fileExplorer.columns.gitTitle": "Состояние Git каждого файла",
   "@fileExplorer.columns.gitTitle": {
     "sourceHash": "c4cc002"
   },
@@ -1075,7 +1075,7 @@
   "@fileExplorer.imageIndex.folder.someIndexed": {
     "sourceHash": "c7fd5ca"
   },
-  "fileExplorer.imageIndex.drive.ariaLabel": "Статус поиска изображений на этом диске",
+  "fileExplorer.imageIndex.drive.ariaLabel": "Состояние поиска изображений на этом диске",
   "@fileExplorer.imageIndex.drive.ariaLabel": {
     "sourceHash": "bea5d87"
   },
@@ -1163,7 +1163,7 @@
   "@fileExplorer.summary.of": {
     "sourceHash": "28391d3"
   },
-  "fileExplorer.summary.percentSelectedIn": "({percent}%) выделено —",
+  "fileExplorer.summary.percentSelectedIn": "({percent} %) выделено —",
   "@fileExplorer.summary.percentSelectedIn": {
     "sourceHash": "7e01a02"
   },
@@ -1315,7 +1315,7 @@
   "@fileExplorer.navigation.seeFavorites": {
     "sourceHash": "7a7e169"
   },
-  "fileExplorer.navigation.favoriteTooltip": "{path}\nПеретащите, чтобы изменить порядок, или используйте {reorder}. Нажмите правой кнопкой, чтобы переименовать или удалить.",
+  "fileExplorer.navigation.favoriteTooltip": "{path}\nПеретащите, чтобы изменить порядок, или используйте {reorder}. Нажмите правой кнопкой, чтобы переименовать или убрать.",
   "@fileExplorer.navigation.favoriteTooltip": {
     "sourceHash": "88d54d3"
   },
@@ -1335,7 +1335,7 @@
   "@fileExplorer.navigation.favoriteShortcutSaveFailed": {
     "sourceHash": "38e7225"
   },
-  "fileExplorer.navigation.removeFavoriteFailed": "Не удалось удалить пункт избранного. Попробуйте еще раз.",
+  "fileExplorer.navigation.removeFavoriteFailed": "Не удалось убрать пункт из избранного. Попробуйте еще раз.",
   "@fileExplorer.navigation.removeFavoriteFailed": {
     "sourceHash": "a3c8665"
   },
@@ -1439,11 +1439,11 @@
   "@fileExplorer.navigation.serverUnpinnedToast": {
     "sourceHash": "7fa97b2"
   },
-  "fileExplorer.navigation.pinRefusedToast": "Cmdr не смог изменить, где показывается сервер {name}.",
+  "fileExplorer.navigation.pinRefusedToast": "Cmdr не удалось изменить, где показывается сервер {name}.",
   "@fileExplorer.navigation.pinRefusedToast": {
     "sourceHash": "59f1f8b"
   },
-  "fileExplorer.navigation.disconnectRefusedToast": "Cmdr не смог отключиться от сервера {name}.",
+  "fileExplorer.navigation.disconnectRefusedToast": "Cmdr не удалось отключиться от сервера {name}.",
   "@fileExplorer.navigation.disconnectRefusedToast": {
     "sourceHash": "375b424"
   },
@@ -1463,7 +1463,7 @@
   "@fileExplorer.navigation.forgetPasswordToo": {
     "sourceHash": "6d79654"
   },
-  "fileExplorer.navigation.forgetServerRefusedToast": "Cmdr не смог забыть сервер {name}.",
+  "fileExplorer.navigation.forgetServerRefusedToast": "Cmdr не удалось забыть сервер {name}.",
   "@fileExplorer.navigation.forgetServerRefusedToast": {
     "sourceHash": "f7c6c64"
   },
@@ -1475,7 +1475,7 @@
   "@fileExplorer.navigation.forgetSecretConfirm": {
     "sourceHash": "300d043"
   },
-  "fileExplorer.navigation.forgetSecretRefusedToast": "Cmdr не смог забыть сохраненный пароль для сервера {name}.",
+  "fileExplorer.navigation.forgetSecretRefusedToast": "Cmdr не удалось забыть сохраненный пароль для сервера {name}.",
   "@fileExplorer.navigation.forgetSecretRefusedToast": {
     "sourceHash": "b7a15b2"
   },
@@ -1583,11 +1583,11 @@
   "@fileExplorer.navigation.driveIndex.tooltipCoalescedNoNextCheck": {
     "sourceHash": "68420b0"
   },
-  "fileExplorer.navigation.driveIndex.tooltipUnreadable": "Cmdr не смог прочитать {count, plural, =1 {одно расположение} one {{countText} расположение} few {{countText} расположения} many {{countText} расположений} other {{countText} расположения}} на этом диске, поэтому поиск здесь может найти не все.",
+  "fileExplorer.navigation.driveIndex.tooltipUnreadable": "Cmdr не удалось прочитать {count, plural, =1 {одно расположение} one {{countText} расположение} few {{countText} расположения} many {{countText} расположений} other {{countText} расположения}} на этом диске, поэтому поиск здесь может найти не все.",
   "@fileExplorer.navigation.driveIndex.tooltipUnreadable": {
     "sourceHash": "6523d04"
   },
-  "fileExplorer.navigation.driveIndex.tooltipUnreadableRetried": "Cmdr не смог прочитать {count, plural, =1 {одно расположение} one {{countText} расположение} few {{countText} расположения} many {{countText} расположений} other {{countText} расположения}} на этом диске, поэтому поиск здесь может найти не все. Cmdr сам вернется к ним позже.",
+  "fileExplorer.navigation.driveIndex.tooltipUnreadableRetried": "Cmdr не удалось прочитать {count, plural, =1 {одно расположение} one {{countText} расположение} few {{countText} расположения} many {{countText} расположений} other {{countText} расположения}} на этом диске, поэтому поиск здесь может найти не все. Cmdr сам вернется к ним позже.",
   "@fileExplorer.navigation.driveIndex.tooltipUnreadableRetried": {
     "sourceHash": "f1ea5cb"
   },
@@ -1623,7 +1623,7 @@
   "@fileExplorer.navigation.driveIndex.durationSec": {
     "sourceHash": "fde82d3"
   },
-  "fileExplorer.navigation.driveIndex.refusedUpgradeFailed": "Cmdr не смог подключиться напрямую к {name}, а без этого общую папку не проиндексировать. Проверьте, доступна ли папка, и попробуйте еще раз.",
+  "fileExplorer.navigation.driveIndex.refusedUpgradeFailed": "Cmdr не удалось подключиться напрямую к {name}, а без этого общую папку не проиндексировать. Проверьте, доступна ли папка, и попробуйте еще раз.",
   "@fileExplorer.navigation.driveIndex.refusedUpgradeFailed": {
     "sourceHash": "79a31a4"
   },
@@ -1655,7 +1655,7 @@
   "@fileExplorer.navigation.driveIndex.refusedIndexingOff": {
     "sourceHash": "ce0d45c"
   },
-  "fileExplorer.navigation.driveIndex.driveLeaving": "Том {name} отключается, поэтому Cmdr оставил его индекс без изменений. Если диск останется подключенным, попробуйте еще раз чуть позже.",
+  "fileExplorer.navigation.driveIndex.driveLeaving": "Диск {name} отключается, поэтому Cmdr оставил его индекс без изменений. Если диск останется подключенным, попробуйте еще раз чуть позже.",
   "@fileExplorer.navigation.driveIndex.driveLeaving": {
     "sourceHash": "99f19f9"
   },

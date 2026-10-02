@@ -312,22 +312,22 @@
   "@menu.sort.descending": {
     "sourceHash": "79479a6"
   },
-  "menu.zoom.percent75": "75%",
+  "menu.zoom.percent75": "75 %",
   "@menu.zoom.percent75": {
     "sourceHash": "10963ac",
     "sameAsSourceJustification": "Числовой уровень масштаба с универсальным знаком процента; как в меню macOS."
   },
-  "menu.zoom.percent100": "100%",
+  "menu.zoom.percent100": "100 %",
   "@menu.zoom.percent100": {
     "sourceHash": "32e4899",
     "sameAsSourceJustification": "Числовой уровень масштаба с универсальным знаком процента; как в меню macOS."
   },
-  "menu.zoom.percent125": "125%",
+  "menu.zoom.percent125": "125 %",
   "@menu.zoom.percent125": {
     "sourceHash": "38cb31c",
     "sameAsSourceJustification": "Числовой уровень масштаба с универсальным знаком процента; как в меню macOS."
   },
-  "menu.zoom.percent150": "150%",
+  "menu.zoom.percent150": "150 %",
   "@menu.zoom.percent150": {
     "sourceHash": "00a4e80",
     "sameAsSourceJustification": "Числовой уровень масштаба с универсальным знаком процента; как в меню macOS."
@@ -564,7 +564,7 @@
   "@menu.mediaIndex.coveredByParent": {
     "sourceHash": "9dffdcd"
   },
-  "menu.mediaIndex.removeFolder": "Удалить из индексируемых папок",
+  "menu.mediaIndex.removeFolder": "Убрать из индексируемых папок",
   "@menu.mediaIndex.removeFolder": {
     "sourceHash": "7079859"
   },

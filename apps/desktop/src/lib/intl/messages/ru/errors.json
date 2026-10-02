@@ -111,7 +111,7 @@
   "@errors.listing.hostDown.title": {
     "sourceHash": "a99606a"
   },
-  "errors.listing.hostDown.explanation": "Удаленный хост — компьютер или сервер, на котором находится том, — не отвечает. Возможно, хост выключен, находится в режиме сна или временно недоступен.",
+  "errors.listing.hostDown.explanation": "Удаленный хост — компьютер или сервер, на котором находится том, — не отвечает. Возможно, хост выключен, находится в режиме сна или временно недоступен.",
   "@errors.listing.hostDown.explanation": {
     "sourceHash": "e175712"
   },
@@ -135,7 +135,7 @@
   "@errors.listing.lockUnavailable.title": {
     "sourceHash": "3123ad5"
   },
-  "errors.listing.lockUnavailable.explanation": "В системе закончились файловые блокировки. Они помогают приложениям согласовывать доступ к общим файлам, не позволяя двум приложениям одновременно записывать один файл. Обычно причина — слишком много приложений, одновременно обращающихся к файлам.",
+  "errors.listing.lockUnavailable.explanation": "В системе закончились файловые блокировки. Они помогают приложениям согласовывать доступ к общим файлам, не позволяя двум приложениям одновременно записывать один файл. Обычно причина — слишком много приложений, одновременно обращающихся к файлам.",
   "@errors.listing.lockUnavailable.explanation": {
     "sourceHash": "154df3c"
   },
@@ -303,7 +303,7 @@
   "@errors.listing.symlinkLoopErrno.title": {
     "sourceHash": "3d41981"
   },
-  "errors.listing.symlinkLoopErrno.explanation": "Cmdr обнаружил замкнутую цепочку символических ссылок — ссылок на другие ссылки — по пути `{path}`. Переход по ним идет по кругу, поэтому получить доступ к файлу или папке невозможно.",
+  "errors.listing.symlinkLoopErrno.explanation": "Cmdr обнаружил замкнутую цепочку символических ссылок — ссылок на другие ссылки — по пути `{path}`. Переход по ним идет по кругу, поэтому получить доступ к файлу или папке невозможно.",
   "@errors.listing.symlinkLoopErrno.explanation": {
     "sourceHash": "4157be6"
   },
@@ -315,7 +315,7 @@
   "@errors.listing.nameTooLongErrno.title": {
     "sourceHash": "de4bc1d"
   },
-  "errors.listing.nameTooLongErrno.explanation": "Имя файла или папки превышает системный предел — 255 символов на большинстве томов Mac. Также причиной может быть слишком длинный полный путь, включая все папки.",
+  "errors.listing.nameTooLongErrno.explanation": "Имя файла или папки превышает системный предел — 255 символов на большинстве томов Mac. Также причиной может быть слишком длинный полный путь, включая все папки.",
   "@errors.listing.nameTooLongErrno.explanation": {
     "sourceHash": "8b9a6ff"
   },
@@ -351,7 +351,7 @@
   "@errors.listing.quotaExceeded.title": {
     "sourceHash": "a940827"
   },
-  "errors.listing.quotaExceeded.explanation": "Достигнута дисковая квота — максимальный объем места, выделенный вашей учетной записи на этом томе. Это часто бывает на общих серверах и сетевых дисках с ограничениями для пользователей.",
+  "errors.listing.quotaExceeded.explanation": "Достигнута дисковая квота — максимальный объем места, выделенный вашей учетной записи на этом томе. Это часто бывает на общих серверах и сетевых дисках с ограничениями для пользователей.",
   "@errors.listing.quotaExceeded.explanation": {
     "sourceHash": "b9b0b0e"
   },
@@ -1449,7 +1449,7 @@
   "@errors.write.trashRefused.suggestion.other": {
     "sourceHash": "b61b3c1"
   },
-  "errors.write.trashRefused.suggestion.noFullDiskAccess": "У Cmdr также нет полного доступа к диску на этом Mac — это частая причина. Значок «Нет полного доступа к диску» в заголовке окна открывает нужную настройку.",
+  "errors.write.trashRefused.suggestion.noFullDiskAccess": "У Cmdr также нет полного доступа к диску на этом Mac — это частая причина. Значок «Нет полного доступа к диску» в заголовке окна открывает нужную настройку.",
   "@errors.write.trashRefused.suggestion.noFullDiskAccess": {
     "sourceHash": "ee5e9f7"
   },
@@ -1585,7 +1585,7 @@
   "@errors.write.filesTooLargeForFilesystem.title.many": {
     "sourceHash": "6b148d5"
   },
-  "errors.write.filesTooLargeForFilesystem.message.one": "Размер файла {name} — {size}, но этот диск отформатирован в FAT32, а эта файловая система не хранит файлы больше {maxSize}.",
+  "errors.write.filesTooLargeForFilesystem.message.one": "Размер файла {name} — {size}, но этот диск отформатирован в FAT32, а эта файловая система не хранит файлы больше {maxSize}.",
   "@errors.write.filesTooLargeForFilesystem.message.one": {
     "sourceHash": "f5c262a"
   },
@@ -1685,7 +1685,7 @@
   "@errors.write.newDataKeptAt.message": {
     "sourceHash": "93d07be"
   },
-  "errors.write.newDataKeptAt.suggestion": "Откройте {keptAt}, проверьте файл и переименуйте его. Если место назначения — общая папка в сети или телефон, сначала подключите его снова, и переименование пройдет.",
+  "errors.write.newDataKeptAt.suggestion": "Откройте {keptAt}, проверьте файл и переименуйте его. Если место назначения — общая папка в сети или телефон, сначала подключите его снова, и переименование пройдет.",
   "@errors.write.newDataKeptAt.suggestion": {
     "sourceHash": "54c279d"
   },
@@ -1857,7 +1857,7 @@
   "@errors.volume.cancelled": {
     "sourceHash": "a88c4fc"
   },
-  "errors.volume.isADirectory": "«{path}» — папка, а не файл.",
+  "errors.volume.isADirectory": "«{path}» — папка, а не файл.",
   "@errors.volume.isADirectory": {
     "sourceHash": "224ae5e"
   },

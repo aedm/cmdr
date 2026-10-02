@@ -624,11 +624,11 @@
   "@askCmdr.renameUndo.skipReason.nameTaken.counted": {
     "sourceHash": "2fd2e7a"
   },
-  "askCmdr.renameUndo.skipReason.unverifiable.named": "Оставлено как есть: {name}. Cmdr не смог проверить, были ли изменения.",
+  "askCmdr.renameUndo.skipReason.unverifiable.named": "Оставлено как есть: {name}. Cmdr не удалось проверить, были ли изменения.",
   "@askCmdr.renameUndo.skipReason.unverifiable.named": {
     "sourceHash": "3e553b2"
   },
-  "askCmdr.renameUndo.skipReason.unverifiable.counted": "Оставлено как есть: {countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}. Cmdr не смог проверить, были ли изменения.",
+  "askCmdr.renameUndo.skipReason.unverifiable.counted": "Оставлено как есть: {countText} {count, plural, one {файл} few {файла} many {файлов} other {файла}}. Cmdr не удалось проверить, были ли изменения.",
   "@askCmdr.renameUndo.skipReason.unverifiable.counted": {
     "sourceHash": "5964166"
   },

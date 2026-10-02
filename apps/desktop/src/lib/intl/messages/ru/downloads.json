@@ -99,7 +99,7 @@
   "@downloads.shortcutRow.scopeTitle": {
     "sourceHash": "a258b30"
   },
-  "downloads.shortcutRow.commandName": "Перейти к последней загрузке <marker>(глобально)</marker>",
+  "downloads.shortcutRow.commandName": "Перейти к последней загрузке <marker>(глобальное)</marker>",
   "@downloads.shortcutRow.commandName": {
     "sourceHash": "83f6d4b"
   },

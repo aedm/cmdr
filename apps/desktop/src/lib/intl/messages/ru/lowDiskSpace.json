@@ -1,5 +1,5 @@
 {
-  "lowDiskSpace.toast.message": "На загрузочном диске мало места: свободно {freeText} ({percentText}%).",
+  "lowDiskSpace.toast.message": "На загрузочном диске мало места: свободно {freeText} ({percentText} %).",
   "@lowDiskSpace.toast.message": {
     "sourceHash": "44b701f"
   },
@@ -15,7 +15,7 @@
   "@lowDiskSpace.notification.title": {
     "sourceHash": "5b1f5bf"
   },
-  "lowDiskSpace.notification.body": "На загрузочном диске свободно {freeText} ({percentText}%).",
+  "lowDiskSpace.notification.body": "На загрузочном диске свободно {freeText} ({percentText} %).",
   "@lowDiskSpace.notification.body": {
     "sourceHash": "b17ee43"
   }

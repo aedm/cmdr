@@ -95,7 +95,7 @@
   "@onboarding.stepFda.firstAsk.lede": {
     "sourceHash": "4f2f392"
   },
-  "onboarding.stepFda.firstAsk.explain": "Дело в том, что Cmdr — файловый менеджер, и ему нужен доступ к диску, чтобы видеть все ваши файлы. macOS не дает такое разрешение автоматически.",
+  "onboarding.stepFda.firstAsk.explain": "Дело в том, что Cmdr — файловый менеджер, и ему нужен доступ к диску, чтобы видеть все ваши файлы. macOS не дает такое разрешение автоматически.",
   "@onboarding.stepFda.firstAsk.explain": {
     "sourceHash": "4196968"
   },
@@ -119,7 +119,7 @@
   "@onboarding.stepFda.con.label": {
     "sourceHash": "ebfc77d"
   },
-  "onboarding.stepFda.con.body": "Полный доступ к диску — серьезное разрешение: приложение сможет прочитать любой файл на Mac. Предоставляйте его, только если доверяете Cmdr. Cmdr пользуется этим правом бережно, а если сомневаетесь, <sourceLink>исходный код Cmdr открыт для просмотра</sourceLink>.",
+  "onboarding.stepFda.con.body": "Полный доступ к диску — серьезное разрешение: приложение сможет прочитать любой файл на Mac. Предоставляйте его, только если доверяете Cmdr. Cmdr пользуется этим правом бережно, а если сомневаетесь, <sourceLink>исходный код Cmdr открыт для просмотра</sourceLink>.",
   "@onboarding.stepFda.con.body": {
     "sourceHash": "af7f0de"
   },
@@ -203,7 +203,7 @@
   "@onboarding.stepAi.title": {
     "sourceHash": "7fb7b12"
   },
-  "onboarding.stepAi.intro": "В Cmdr есть немало функций ИИ, которые <em>могут</em> вам пригодиться, а могут и нет. Сейчас ИИ — тема спорная.",
+  "onboarding.stepAi.intro": "В Cmdr есть немало функций ИИ, которые <em>могут</em> вам пригодиться, а могут и нет. Сейчас ИИ — тема спорная.",
   "@onboarding.stepAi.intro": {
     "sourceHash": "3b6b6c6"
   },
@@ -331,7 +331,7 @@
   "@onboarding.stepBeta.title": {
     "sourceHash": "6e8be73"
   },
-  "onboarding.stepBeta.greeting": "Привет, я <david>David</david>! Я создаю Cmdr, а вы — среди первых пользователей. Спасибо за доверие! ❤️",
+  "onboarding.stepBeta.greeting": "Привет, я <david>David</david>! Я создаю Cmdr, а вы — среди первых пользователей. Спасибо за доверие! ❤️",
   "@onboarding.stepBeta.greeting": {
     "sourceHash": "2736b42"
   },

@@ -168,7 +168,7 @@
   "@settings.appearance.textSize.label": {
     "sourceHash": "d68761c"
   },
-  "settings.appearance.textSize.description": "Масштаб текста и интерфейса во всем приложении. Применяется дополнительно к размеру текста универсального доступа macOS: 100% означает «точно как в системе».",
+  "settings.appearance.textSize.description": "Масштаб текста и интерфейса во всем приложении. Применяется дополнительно к размеру текста универсального доступа macOS: 100 % означает «точно как в системе».",
   "@settings.appearance.textSize.description": {
     "sourceHash": "49a0a6b"
   },
@@ -263,7 +263,7 @@
   "@settings.listing.sizeMismatchWarning.label": {
     "sourceHash": "791c344"
   },
-  "settings.listing.sizeMismatchWarning.description": "Показывать значок предупреждения для папок, у которых размеры содержимого и на диске различаются более чем на 50% и 200 MB.",
+  "settings.listing.sizeMismatchWarning.description": "Показывать значок предупреждения для папок, у которых размеры содержимого и на диске различаются более чем на 50 % и 200 MB.",
   "@settings.listing.sizeMismatchWarning.description": {
     "sourceHash": "1b232eb"
   },
@@ -475,7 +475,7 @@
   "@settings.mediaIndex.clip.description": {
     "sourceHash": "9a569ba"
   },
-  "settings.mediaIndex.clip.ready": "Готово — ищите фотографии по описанию.",
+  "settings.mediaIndex.clip.ready": "Готово — ищите фотографии по описанию.",
   "@settings.mediaIndex.clip.ready": {
     "sourceHash": "c17e03d"
   },
@@ -767,7 +767,7 @@
   "@settings.indexing.staleNotify.label": {
     "sourceHash": "690692a"
   },
-  "settings.indexing.staleNotify.description": "Если выключить, желтый статус по-прежнему будет виден.",
+  "settings.indexing.staleNotify.description": "Если выключить, желтый индикатор по-прежнему будет виден.",
   "@settings.indexing.staleNotify.description": {
     "sourceHash": "03af10e"
   },
@@ -1803,7 +1803,7 @@
   "@settings.askCmdr.wakeDelay.description": {
     "sourceHash": "08790da"
   },
-  "settings.askCmdr.wakeDelay.summary": "Папки, где много изменений, Cmdr проверяет в течение {hot}, более спокойные — в течение {warm}.",
+  "settings.askCmdr.wakeDelay.summary": "Папки, где много изменений, Cmdr проверяет в течение {hot}, более спокойные — в течение {warm}.",
   "@settings.askCmdr.wakeDelay.summary": {
     "sourceHash": "ad03c00"
   },

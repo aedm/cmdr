@@ -338,7 +338,7 @@
   "@queryUi.recent.listboxAria": {
     "sourceHash": "228c84b"
   },
-  "queryUi.recent.popoverHint": "<moveKey>↑↓</moveKey> — перемещение · <selectKey>Enter</selectKey> — подстановка в поле · нажатие правой кнопкой — удаление",
+  "queryUi.recent.popoverHint": "<moveKey>↑↓</moveKey> — перемещение · <selectKey>Enter</selectKey> — подстановка в поле · нажатие правой кнопкой — удаление",
   "@queryUi.recent.popoverHint": {
     "sourceHash": "a7ccaef"
   },

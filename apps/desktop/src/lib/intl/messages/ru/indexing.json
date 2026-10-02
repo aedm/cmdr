@@ -129,7 +129,7 @@
   "@indexing.replay.detail": {
     "sourceHash": "1c2a534"
   },
-  "indexing.progress.percentEta": "{percent}%, {eta}",
+  "indexing.progress.percentEta": "{percent} %, {eta}",
   "@indexing.progress.percentEta": {
     "sourceHash": "26b29da",
     "sameAsSourceJustification": "Название бренда, стандартное обозначение или строка из подстановок; сохраняется без перевода."

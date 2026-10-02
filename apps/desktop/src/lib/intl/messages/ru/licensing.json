@@ -340,7 +340,7 @@
   "@licensing.error.badFormat": {
     "sourceHash": "6012f8b"
   },
-  "licensing.error.badFormatHint": "Лицензионный ключ — это короткий код (CMDR-XXXX-XXXX-XXXX) или длинный криптографический ключ из письма о покупке.",
+  "licensing.error.badFormatHint": "Лицензионный ключ — это короткий код (CMDR-XXXX-XXXX-XXXX) или длинный криптографический ключ из письма о покупке.",
   "@licensing.error.badFormatHint": {
     "sourceHash": "a62b901"
   },

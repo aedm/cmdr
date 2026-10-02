@@ -116,7 +116,7 @@
   "@fileOperations.delete.foldersPart": {
     "sourceHash": "9bd56b2"
   },
-  "fileOperations.delete.symlinkNoticeSingle": "Этот объект — символическая ссылка. Будет удалена только ссылка, а не то, на что она указывает.",
+  "fileOperations.delete.symlinkNoticeSingle": "Этот объект — символическая ссылка. Будет удалена только ссылка, а не то, на что она указывает.",
   "@fileOperations.delete.symlinkNoticeSingle": {
     "sourceHash": "c5a4259"
   },
@@ -844,11 +844,11 @@
   "@fileOperations.cancelRollback.reason.drift.counted": {
     "sourceHash": "233b2f5"
   },
-  "fileOperations.cancelRollback.reason.unverifiable.named": "Оставлено как есть: {name}. Cmdr не смог проверить, были ли изменения.",
+  "fileOperations.cancelRollback.reason.unverifiable.named": "Оставлено как есть: {name}. Cmdr не удалось проверить, были ли изменения.",
   "@fileOperations.cancelRollback.reason.unverifiable.named": {
     "sourceHash": "3e553b2"
   },
-  "fileOperations.cancelRollback.reason.unverifiable.counted": "Оставлено как есть: {countText} {count, plural, one {объект} few {объекта} many {объектов} other {объекта}}. Cmdr не смог проверить, были ли изменения.",
+  "fileOperations.cancelRollback.reason.unverifiable.counted": "Оставлено как есть: {countText} {count, plural, one {объект} few {объекта} many {объектов} other {объекта}}. Cmdr не удалось проверить, были ли изменения.",
   "@fileOperations.cancelRollback.reason.unverifiable.counted": {
     "sourceHash": "25fe620"
   },

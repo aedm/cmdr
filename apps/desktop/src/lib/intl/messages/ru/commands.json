@@ -91,7 +91,7 @@
   "@commands.logOperationLog.label": {
     "sourceHash": "2c97965"
   },
-  "commands.logOperationLog.description": "Посмотреть историю файловых операций и отменить их результаты",
+  "commands.logOperationLog.description": "Посмотреть историю файловых операций и откатить их",
   "@commands.logOperationLog.description": {
     "sourceHash": "ea2d082"
   },
@@ -168,19 +168,19 @@
   "@commands.viewSetMode.label": {
     "sourceHash": "1e050a6"
   },
-  "commands.viewZoomSet75.label": "Масштаб 75%",
+  "commands.viewZoomSet75.label": "Масштаб 75 %",
   "@commands.viewZoomSet75.label": {
     "sourceHash": "70ac915"
   },
-  "commands.viewZoomSet100.label": "Масштаб 100%",
+  "commands.viewZoomSet100.label": "Масштаб 100 %",
   "@commands.viewZoomSet100.label": {
     "sourceHash": "c23bdb4"
   },
-  "commands.viewZoomSet125.label": "Масштаб 125%",
+  "commands.viewZoomSet125.label": "Масштаб 125 %",
   "@commands.viewZoomSet125.label": {
     "sourceHash": "9191980"
   },
-  "commands.viewZoomSet150.label": "Масштаб 150%",
+  "commands.viewZoomSet150.label": "Масштаб 150 %",
   "@commands.viewZoomSet150.label": {
     "sourceHash": "2e247da"
   },
@@ -504,7 +504,7 @@
   "@commands.fileQuickLook.mac.label": {
     "sourceHash": "f5616ce"
   },
-  "commands.fileQuickLook.other.label": "Просмотр",
+  "commands.fileQuickLook.other.label": "Предпросмотр",
   "@commands.fileQuickLook.other.label": {
     "sourceHash": "324b134"
   },
@@ -836,23 +836,23 @@
   "@commands.handler.openTerminalHere.timedOut": {
     "sourceHash": "ed36313"
   },
-  "commands.handler.zoomResetHintShortcut": "Вернуть масштаб 100% можно сочетанием {shortcut}.",
+  "commands.handler.zoomResetHintShortcut": "Вернуть масштаб 100 % можно сочетанием {shortcut}.",
   "@commands.handler.zoomResetHintShortcut": {
     "sourceHash": "efdd715"
   },
-  "commands.handler.zoomResetHintMenu": "Вернуть масштаб 100% можно в меню «Вид» > «Масштаб» > «100%».",
+  "commands.handler.zoomResetHintMenu": "Вернуть масштаб 100 % можно в меню «Вид» > «Масштаб» > «100 %».",
   "@commands.handler.zoomResetHintMenu": {
     "sourceHash": "f10315d"
   },
-  "commands.handler.zoomReset": "Масштаб возвращен к 100%.",
+  "commands.handler.zoomReset": "Масштаб возвращен к 100 %.",
   "@commands.handler.zoomReset": {
     "sourceHash": "8c6bf82"
   },
-  "commands.handler.zoomIncreased": "Масштаб увеличен до {size}%. {hint}",
+  "commands.handler.zoomIncreased": "Масштаб увеличен до {size} %. {hint}",
   "@commands.handler.zoomIncreased": {
     "sourceHash": "39fea10"
   },
-  "commands.handler.zoomDecreased": "Масштаб уменьшен до {size}%. {hint}",
+  "commands.handler.zoomDecreased": "Масштаб уменьшен до {size} %. {hint}",
   "@commands.handler.zoomDecreased": {
     "sourceHash": "71404cb"
   },

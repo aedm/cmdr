@@ -167,7 +167,7 @@
   "@ai.translateError.authFailed.title": {
     "sourceHash": "93e6261"
   },
-  "ai.translateError.authFailed.body": "Проверьте ключ в разделе «Настройки > ИИ» — возможно, он неверен или отозван.",
+  "ai.translateError.authFailed.body": "Проверьте ключ в разделе «Настройки > ИИ» — возможно, он неверен или отозван.",
   "@ai.translateError.authFailed.body": {
     "sourceHash": "2159d5e"
   },

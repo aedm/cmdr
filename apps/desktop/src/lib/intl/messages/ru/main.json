@@ -79,7 +79,7 @@
   "@main.revealNudge.heldByOtherApp": {
     "sourceHash": "0893821"
   },
-  "main.revealNudge.notTurnedOn": "На этот раз Cmdr не смог перехватить «Показать в Finder». Если захотите попробовать еще раз, переключатель есть в настройках.",
+  "main.revealNudge.notTurnedOn": "На этот раз Cmdr не удалось перехватить «Показать в Finder». Если захотите попробовать еще раз, переключатель есть в настройках.",
   "@main.revealNudge.notTurnedOn": {
     "sourceHash": "0f572c0"
   },
