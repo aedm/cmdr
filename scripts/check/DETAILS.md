@@ -534,6 +534,11 @@ touched.
 - The fingerprint of a passing run is stored per check in `node_modules/.cache/cmdr-check-cache.json` (shares
   node_modules' fate, like the pnpm-install marker; atomic temp+rename write). A later run with the same fingerprint is
   a cache hit: reported as `OK (cached)` at ~0s, the pass's own message replayed for context.
+- `recordRun` re-fingerprints at the end of the run (one more git pass, only when something passed) and records a pass
+  only if its inputs are unchanged since planning. Otherwise a file edited mid-run would store its pass under the OLD
+  content's key, and an A→B→A edit would later hit the cache on content that never ran.
+- `recordRun` reloads the cache file just before saving and merges this run's verdicts per check ID, so two concurrent
+  unnamed runs in one worktree neither clobber each other's passes nor resurrect an entry the other dropped.
 
 **Invalidation:** any content change, add, or removal within a check's input set changes its fingerprint (the sorted
 path list is hashed too, so adds/removes shift it). A formatter's auto-fix changes file contents, which changes OTHER
