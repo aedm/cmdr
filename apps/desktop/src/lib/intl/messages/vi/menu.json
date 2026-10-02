@@ -477,19 +477,19 @@
   "@menu.context.copyGoogleDriveLink": {
     "sourceHash": "070b383"
   },
-  "menu.context.copyShareLink": "Copy share link",
+  "menu.context.copyShareLink": "Sao chép liên kết chia sẻ",
   "@menu.context.copyShareLink": {
     "sourceHash": "d31483e"
   },
-  "menu.context.shareLinkSevenDays": "Expires in seven days",
+  "menu.context.shareLinkSevenDays": "Hết hạn sau bảy ngày",
   "@menu.context.shareLinkSevenDays": {
     "sourceHash": "06949d8"
   },
-  "menu.context.shareLinkOneDay": "Expires in one day",
+  "menu.context.shareLinkOneDay": "Hết hạn sau một ngày",
   "@menu.context.shareLinkOneDay": {
     "sourceHash": "5ff3dbc"
   },
-  "menu.context.shareLinkOneHour": "Expires in one hour",
+  "menu.context.shareLinkOneHour": "Hết hạn sau một giờ",
   "@menu.context.shareLinkOneHour": {
     "sourceHash": "faf9c50"
   },

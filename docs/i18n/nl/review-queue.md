@@ -51,6 +51,11 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
 - **`Gebruik gasttoegang`** (`fileExplorer.network.share.useGuest`): vs `Ga verder als gast` or `Bekijk als gast`.
 - **`Maak los uit volumekiezer`** (`menu.network.unpin`): mirrors `Maak vast in volumekiezer`; confirm it fits the
   narrow dropdown and doesn't sound like removing.
+- **S3 coinages** (`commands.fileCopyShareLink*`, `servers.sheet.s3PathStyle`, `*.coldStorage*`): `deellink` (fallback
+  `link om te delen`), `Adressering in padstijl (path-style)`, and restore → `herstellen`, which can also read as
+  "repair". Fallback `terughalen uit koude opslag`.
+- **`Interoperabiliteit`** (`servers.sheet.s3GcsKeyHelp`): assumed to be the Dutch Google Cloud console's tab name;
+  unverified.
 
 ## Phrasing and tone
 

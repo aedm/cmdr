@@ -83,19 +83,19 @@
   "@servers.hub.editNearbyHint": {
     "sourceHash": "64653de"
   },
-  "servers.hub.editAccountHint": "{name} keeps its settings on its buckets. Select one of the rows under it to edit it.",
+  "servers.hub.editAccountHint": "{name} lưu cài đặt ở từng bộ chứa. Hãy chọn một trong các hàng bên dưới tài khoản này để sửa.",
   "@servers.hub.editAccountHint": {
     "sourceHash": "29961f3"
   },
-  "servers.hub.openAccountHint": "{name} isn’t a place to open. Open one of the buckets under it.",
+  "servers.hub.openAccountHint": "{name} không phải là nơi để mở. Hãy mở một trong các bộ chứa bên dưới tài khoản này.",
   "@servers.hub.openAccountHint": {
     "sourceHash": "c52ee6f"
   },
-  "servers.hub.forgetAccountConfirm": "Forget {name} and every bucket saved under it? Cmdr drops their connections and stops listing them. Your files stay in the buckets.",
+  "servers.hub.forgetAccountConfirm": "Quên {name} và mọi bộ chứa đã lưu bên dưới tài khoản này? Cmdr sẽ ngắt các kết nối và không hiển thị tài khoản cùng các bộ chứa này nữa. Các tệp của bạn vẫn ở trong các bộ chứa.",
   "@servers.hub.forgetAccountConfirm": {
     "sourceHash": "e1c636e"
   },
-  "servers.hub.forgetSecretKeyToo": "Also forget the account’s secret access key",
+  "servers.hub.forgetSecretKeyToo": "Quên cả khóa truy cập bí mật của tài khoản",
   "@servers.hub.forgetSecretKeyToo": {
     "sourceHash": "4f3ac6d"
   },
@@ -231,59 +231,59 @@
   "@servers.refusal.savedSecretNotUpdated": {
     "sourceHash": "2ae1e2b"
   },
-  "servers.refusal.s3AuthenticationRejected": "That secret access key didn’t work.",
+  "servers.refusal.s3AuthenticationRejected": "Khóa truy cập bí mật đó không dùng được.",
   "@servers.refusal.s3AuthenticationRejected": {
     "sourceHash": "14f90c8"
   },
-  "servers.refusal.s3NeedsCredentials": "This account asks for a secret access key.",
+  "servers.refusal.s3NeedsCredentials": "Tài khoản này yêu cầu khóa truy cập bí mật.",
   "@servers.refusal.s3NeedsCredentials": {
     "sourceHash": "23695df"
   },
-  "servers.refusal.s3SecretMissing": "Enter the secret access key.",
+  "servers.refusal.s3SecretMissing": "Hãy nhập khóa truy cập bí mật.",
   "@servers.refusal.s3SecretMissing": {
     "sourceHash": "f1f32f2"
   },
-  "servers.refusal.s3SecretNotStored": "Cmdr couldn’t store this secret access key in your Keychain. Try again, or turn off “Remember in Keychain” to sign in without storing it.",
+  "servers.refusal.s3SecretNotStored": "Cmdr không thể lưu khóa truy cập bí mật này vào chuỗi khóa. Hãy thử lại, hoặc tắt “Ghi nhớ trong chuỗi khóa” để đăng nhập mà không lưu khóa.",
   "@servers.refusal.s3SecretNotStored": {
     "sourceHash": "f7a9fb0"
   },
-  "servers.refusal.s3SavedSecretNotUpdated": "Cmdr saved your changes but couldn’t update the secret access key in your Keychain. Save again to try once more.",
+  "servers.refusal.s3SavedSecretNotUpdated": "Cmdr đã lưu các thay đổi của bạn nhưng không thể cập nhật khóa truy cập bí mật trong chuỗi khóa. Hãy nhấn Lưu lần nữa để thử lại.",
   "@servers.refusal.s3SavedSecretNotUpdated": {
     "sourceHash": "1d2889d"
   },
-  "servers.refusal.accessDenied": "This key can’t reach this bucket. Check the bucket name and the secret access key, and that the key may read the bucket.",
+  "servers.refusal.accessDenied": "Khóa này không thể truy cập bộ chứa này. Hãy kiểm tra tên bộ chứa và khóa truy cập bí mật, cũng như xem khóa có quyền đọc bộ chứa không.",
   "@servers.refusal.accessDenied": {
     "sourceHash": "8372e73"
   },
-  "servers.refusal.bucketListRefused": "This key can’t list the buckets on this account. Type a bucket name to open that bucket, or check the secret access key.",
+  "servers.refusal.bucketListRefused": "Khóa này không thể liệt kê các bộ chứa trong tài khoản này. Hãy nhập tên một bộ chứa để mở bộ chứa đó, hoặc kiểm tra khóa truy cập bí mật.",
   "@servers.refusal.bucketListRefused": {
     "sourceHash": "1b9ebf5"
   },
-  "servers.refusal.bucketNotFound": "There’s no bucket by that name at {host}.",
+  "servers.refusal.bucketNotFound": "Không có bộ chứa nào tên như vậy tại {host}.",
   "@servers.refusal.bucketNotFound": {
     "sourceHash": "0f5a04d"
   },
-  "servers.refusal.regionMismatch": "This bucket is in a different region. Pick its region and try again.",
+  "servers.refusal.regionMismatch": "Bộ chứa này ở một khu vực khác. Hãy chọn đúng khu vực của bộ chứa rồi thử lại.",
   "@servers.refusal.regionMismatch": {
     "sourceHash": "27a37f8"
   },
-  "servers.refusal.regionMismatchNamed": "This bucket is in {region}. Pick that region and try again.",
+  "servers.refusal.regionMismatchNamed": "Bộ chứa này ở {region}. Hãy chọn khu vực đó rồi thử lại.",
   "@servers.refusal.regionMismatchNamed": {
     "sourceHash": "30abb0d"
   },
-  "servers.refusal.clockSkewed": "This Mac’s clock is off by more than 15 minutes, so the server won’t accept Cmdr’s requests. Set the date and time automatically in System Settings, then try again.",
+  "servers.refusal.clockSkewed": "Đồng hồ của máy Mac này lệch hơn 15 phút, nên máy chủ không chấp nhận các yêu cầu của Cmdr. Hãy đặt ngày và giờ tự động trong Cài đặt hệ thống, rồi thử lại.",
   "@servers.refusal.clockSkewed": {
     "sourceHash": "cdee0ef"
   },
-  "servers.refusal.notAnS3Endpoint": "Nothing at this address answers as S3 storage.",
+  "servers.refusal.notAnS3Endpoint": "Không có gì ở địa chỉ này phản hồi như một kho lưu trữ S3.",
   "@servers.refusal.notAnS3Endpoint": {
     "sourceHash": "78557ec"
   },
-  "servers.refusal.s3FieldMalformed": "Use only lowercase letters, digits, and dashes here.",
+  "servers.refusal.s3FieldMalformed": "Ở đây chỉ dùng chữ thường, chữ số và dấu gạch ngang.",
   "@servers.refusal.s3FieldMalformed": {
     "sourceHash": "ac8fbea"
   },
-  "servers.refusal.endpointMalformed": "Enter the endpoint as http:// or https:// plus a host name, like https://s3.example.com.",
+  "servers.refusal.endpointMalformed": "Hãy nhập điểm cuối dưới dạng http:// hoặc https:// cùng với tên máy chủ, ví dụ https://s3.example.com.",
   "@servers.refusal.endpointMalformed": {
     "sourceHash": "beb63dd"
   },
@@ -441,109 +441,117 @@
   },
   "servers.sheet.protocolS3": "S3",
   "@servers.sheet.protocolS3": {
-    "sourceHash": "44d6a8a"
+    "sourceHash": "44d6a8a",
+    "sameAsSourceJustification": "Protocol name S3; an acronym with no Vietnamese form, kept verbatim like its siblings SMB, SFTP, and WebDAV (the `@key` asks to keep it as-is)."
   },
-  "servers.sheet.s3Provider": "Provider",
+  "servers.sheet.s3Provider": "Nhà cung cấp",
   "@servers.sheet.s3Provider": {
     "sourceHash": "472590a"
   },
   "servers.sheet.s3ProviderAws": "Amazon S3",
   "@servers.sheet.s3ProviderAws": {
-    "sourceHash": "a4f6352"
+    "sourceHash": "a4f6352",
+    "sameAsSourceJustification": "Product name Amazon S3; vendors ship it untranslated in Vietnamese too, and the `@key` asks to keep it as-is."
   },
   "servers.sheet.s3ProviderR2": "Cloudflare R2",
   "@servers.sheet.s3ProviderR2": {
-    "sourceHash": "9f2f1ed"
+    "sourceHash": "9f2f1ed",
+    "sameAsSourceJustification": "Product name Cloudflare R2; vendors ship it untranslated in Vietnamese too, and the `@key` asks to keep it as-is."
   },
   "servers.sheet.s3ProviderB2": "Backblaze B2",
   "@servers.sheet.s3ProviderB2": {
-    "sourceHash": "ed40187"
+    "sourceHash": "ed40187",
+    "sameAsSourceJustification": "Product name Backblaze B2; vendors ship it untranslated in Vietnamese too, and the `@key` asks to keep it as-is."
   },
   "servers.sheet.s3ProviderWasabi": "Wasabi",
   "@servers.sheet.s3ProviderWasabi": {
-    "sourceHash": "493861e"
+    "sourceHash": "493861e",
+    "sameAsSourceJustification": "Product name Wasabi; vendors ship it untranslated in Vietnamese too, and the `@key` asks to keep it as-is."
   },
   "servers.sheet.s3ProviderHetzner": "Hetzner Object Storage",
   "@servers.sheet.s3ProviderHetzner": {
-    "sourceHash": "a339b4f"
+    "sourceHash": "a339b4f",
+    "sameAsSourceJustification": "Product name Hetzner Object Storage; vendors ship it untranslated in Vietnamese too, and the `@key` asks to keep it as-is."
   },
   "servers.sheet.s3ProviderGcs": "Google Cloud Storage",
   "@servers.sheet.s3ProviderGcs": {
-    "sourceHash": "53fa0ba"
+    "sourceHash": "53fa0ba",
+    "sameAsSourceJustification": "Product name Google Cloud Storage; vendors ship it untranslated in Vietnamese too, and the `@key` asks to keep it as-is."
   },
   "servers.sheet.s3ProviderDigitalOcean": "DigitalOcean Spaces",
   "@servers.sheet.s3ProviderDigitalOcean": {
-    "sourceHash": "c3f48e3"
+    "sourceHash": "c3f48e3",
+    "sameAsSourceJustification": "Product name DigitalOcean Spaces; vendors ship it untranslated in Vietnamese too, and the `@key` asks to keep it as-is."
   },
-  "servers.sheet.s3GcsKeyHelp": "Sign in with an HMAC key from the Interoperability tab of your Cloud Storage settings.",
+  "servers.sheet.s3GcsKeyHelp": "Đăng nhập bằng khóa HMAC lấy từ tab Interoperability trong phần cài đặt Cloud Storage của bạn.",
   "@servers.sheet.s3GcsKeyHelp": {
     "sourceHash": "acb72a4"
   },
-  "servers.sheet.s3ProviderOther": "Other S3-compatible",
+  "servers.sheet.s3ProviderOther": "Dịch vụ tương thích S3 khác",
   "@servers.sheet.s3ProviderOther": {
     "sourceHash": "13d2bdc"
   },
-  "servers.sheet.s3Region": "Region",
+  "servers.sheet.s3Region": "Khu vực",
   "@servers.sheet.s3Region": {
     "sourceHash": "d3a008e"
   },
-  "servers.sheet.s3RegionOptionalPlaceholder": "Optional. Leave empty to use us-east-1",
+  "servers.sheet.s3RegionOptionalPlaceholder": "Không bắt buộc. Để trống để dùng us-east-1",
   "@servers.sheet.s3RegionOptionalPlaceholder": {
     "sourceHash": "12dd731"
   },
-  "servers.sheet.s3AccountId": "Account ID",
+  "servers.sheet.s3AccountId": "ID tài khoản",
   "@servers.sheet.s3AccountId": {
     "sourceHash": "919bb4c"
   },
-  "servers.sheet.s3AccountIdHelp": "The account ID on your Cloudflare R2 overview page.",
+  "servers.sheet.s3AccountIdHelp": "ID tài khoản trên trang tổng quan Cloudflare R2 của bạn.",
   "@servers.sheet.s3AccountIdHelp": {
     "sourceHash": "963d1f5"
   },
-  "servers.sheet.s3Location": "Location",
+  "servers.sheet.s3Location": "Vị trí",
   "@servers.sheet.s3Location": {
     "sourceHash": "15b6197"
   },
-  "servers.sheet.s3Endpoint": "Endpoint",
+  "servers.sheet.s3Endpoint": "Điểm cuối",
   "@servers.sheet.s3Endpoint": {
     "sourceHash": "3df9726"
   },
-  "servers.sheet.s3PathStyle": "Use path-style addressing",
+  "servers.sheet.s3PathStyle": "Dùng địa chỉ kiểu đường dẫn (path-style)",
   "@servers.sheet.s3PathStyle": {
     "sourceHash": "627c522"
   },
-  "servers.sheet.s3PathStyleHelp": "Most self-hosted servers, like MinIO and Garage, need this.",
+  "servers.sheet.s3PathStyleHelp": "Hầu hết máy chủ tự triển khai, như MinIO và Garage, cần tùy chọn này.",
   "@servers.sheet.s3PathStyleHelp": {
     "sourceHash": "bc6e240"
   },
-  "servers.sheet.s3Bucket": "Bucket",
+  "servers.sheet.s3Bucket": "Bộ chứa",
   "@servers.sheet.s3Bucket": {
     "sourceHash": "c83b657"
   },
-  "servers.sheet.s3BucketPlaceholder": "Optional",
+  "servers.sheet.s3BucketPlaceholder": "Không bắt buộc",
   "@servers.sheet.s3BucketPlaceholder": {
     "sourceHash": "59be713"
   },
-  "servers.sheet.s3BucketHelp": "Leave it empty to see every bucket this key can list.",
+  "servers.sheet.s3BucketHelp": "Để trống để xem mọi bộ chứa mà khóa này có thể liệt kê.",
   "@servers.sheet.s3BucketHelp": {
     "sourceHash": "10751d7"
   },
-  "servers.sheet.s3UseRegion": "Use {region}",
+  "servers.sheet.s3UseRegion": "Dùng {region}",
   "@servers.sheet.s3UseRegion": {
     "sourceHash": "5734184"
   },
-  "servers.sheet.accessKeyId": "Access key ID",
+  "servers.sheet.accessKeyId": "ID khóa truy cập",
   "@servers.sheet.accessKeyId": {
     "sourceHash": "14eb0f9"
   },
-  "servers.sheet.secretAccessKey": "Secret access key",
+  "servers.sheet.secretAccessKey": "Khóa truy cập bí mật",
   "@servers.sheet.secretAccessKey": {
     "sourceHash": "3de6b75"
   },
-  "servers.sheet.examplePlaceholder": "Example: {example}",
+  "servers.sheet.examplePlaceholder": "Ví dụ: {example}",
   "@servers.sheet.examplePlaceholder": {
     "sourceHash": "9c7df45"
   },
-  "servers.sheet.identityLockedS3": "The provider, the access key ID, and the bucket are what name this place. Forget it and add it again to change them.",
+  "servers.sheet.identityLockedS3": "Nhà cung cấp, ID khóa truy cập và bộ chứa là những gì xác định vị trí này. Để thay đổi chúng, hãy quên vị trí này rồi thêm lại.",
   "@servers.sheet.identityLockedS3": {
     "sourceHash": "fe4d469"
   },

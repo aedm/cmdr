@@ -417,6 +417,10 @@
   "cloud-provider": {
     "chosen": "đám mây",
     "confidence": "high",
+    "exceptions": {
+      "servers.sheet.s3GcsKeyHelp": "English-sense: `Cloud Storage` is Google's product name, kept verbatim.",
+      "servers.sheet.s3ProviderGcs": "English-sense: `Google Cloud Storage` is a product name, kept verbatim."
+    },
     "forms": "cloud folders → thư mục đám mây; cloud service → dịch vụ đám mây; sync app → ứng dụng đồng bộ; cloud mount → mục gắn kết đám mây",
     "sources": "MS terminology, catalog (Đám mây group)"
   },
@@ -649,6 +653,12 @@
     "confidence": "high",
     "sources": "GNOME (thiết bị này), Xfce Thunar (Ngắt kết nối thiết bị)"
   },
+  "dialog": {
+    "chosen": "hộp thoại",
+    "confidence": "high",
+    "forms": "a named Cmdr dialog → hộp thoại <Tên> (hộp thoại Di chuyển, the title from `fileOperations.transferDialog.titleVerbOnly`)",
+    "sources": "macOS AppKit (hộp thoại); catalog (13 keys)"
+  },
   "disable": {
     "chosen": "tắt",
     "confidence": "high",
@@ -726,7 +736,7 @@
     "sources": "catalog; macOS Finder/AppKit click verb bấm"
   },
   "download": {
-    "accept": ["tải lại", "tải-về"],
+    "accept": ["tải lại", "tải-về", "tải tệp về"],
     "avoid": [
       {
         "form": "tải xuống",
@@ -850,6 +860,13 @@
     "chosen": "ước tính",
     "confidence": "tentative",
     "sources": "natural rendering; no pile string for this UI sense"
+  },
+  "example": {
+    "accept": ["ví dụ"],
+    "chosen": "Ví dụ:",
+    "confidence": "high",
+    "forms": "placeholder prefix Ví dụ: {example}; inline \"like https://…\" → ví dụ https://…",
+    "sources": "catalog (servers.sheet.usernamePlaceholder, onboarding.cloudSetup.step.endpointPlaceholder, four keys)"
   },
   "expired": {
     "chosen": "hết hạn",
@@ -1379,6 +1396,10 @@
     "accept": ["liệt kê"],
     "chosen": "danh sách",
     "confidence": "high",
+    "exceptions": {
+      "fileOperations.s3Cost.infoText": "English-sense: \"list prices\" is a provider's published price list, `giá niêm yết`, not a UI list.",
+      "fileOperations.s3Cost.line": "English-sense: \"list prices\" is a provider's published price list, `giá niêm yết`, not a UI list."
+    },
     "forms": "the noun → danh sách (the Servers list → danh sách Máy chủ); the verb (Cmdr lists X) → liệt kê",
     "sources": "macOS Finder and AppKit (List → Danh sách, 29 hits); MS terminology (list → danh sách)"
   },
@@ -1519,6 +1540,9 @@
     "accept": ["chuyển"],
     "chosen": "di chuyển",
     "confidence": "high",
+    "exceptions": {
+      "commands.handler.shareLinkUnavailable": "English-sense: \"Move the cursor\" is cursor movement (`đưa con trỏ tới`), not the Move operation."
+    },
     "forms": "di chuyển is the Move operation only; a loose \"moving files\" covering copy/move/delete → chuyển tệp",
     "sources": "macOS AppKit (Di chuyển)"
   },
@@ -1531,6 +1555,9 @@
   "name": {
     "chosen": "tên",
     "confidence": "high",
+    "exceptions": {
+      "servers.sheet.identityLockedS3": "English-sense: \"what name this place\" is the verb (identify), `xác định`, exactly like its twin `servers.sheet.identityLocked`."
+    },
     "sources": "macOS Finder N220 (Name → Tên)"
   },
   "nas": {
@@ -1579,7 +1606,7 @@
     "sources": "composed from ổ đĩa + mạng"
   },
   "network-share": {
-    "accept": ["thư mục chia sẻ"],
+    "accept": ["thư mục chia sẻ", "liên kết chia sẻ"],
     "avoid": [
       {
         "form": "bản chia sẻ",
@@ -1593,7 +1620,7 @@
     "chosen": "mục chia sẻ",
     "confidence": "high",
     "decision": "Tên tiện ích macOS, mục chia sẻ, liên kết mềm, beta công khai",
-    "forms": "a share → mục chia sẻ (also inside Settings); shared folder → thư mục chia sẻ",
+    "forms": "a share → mục chia sẻ (also inside Settings); shared folder → thư mục chia sẻ; an S3 share link (a web address, another English sense) → liên kết chia sẻ",
     "sources": "macOS Finder (Thư mục được chia sẻ, chia sẻ); catalog (37 keys)"
   },
   "new-file": {
@@ -2122,6 +2149,12 @@
     "forms": "the OS's restart gets an explicit máy (khởi động lại máy)",
     "sources": "macOS (Khởi động lại)"
   },
+  "restore": {
+    "chosen": "khôi phục",
+    "confidence": "high",
+    "forms": "restore a cold-storage file → khôi phục tệp; a restore (noun) → việc khôi phục",
+    "sources": "MS terminology (restore → khôi phục, two entries)"
+  },
   "resume": {
     "avoid": [
       {
@@ -2405,6 +2438,26 @@
     "forms": "Stopped after … → Đã dừng sau khi …; the rollback tooltip button → Dừng lại; stopped doing X → đã dừng + verb; something that quit on its own → ngừng",
     "sources": "macOS Finder (Dừng xóa, Dừng nén), Keychain First Aid"
   },
+  "storage": {
+    "accept": ["dung lượng", "bộ nhớ"],
+    "chosen": "lưu trữ",
+    "confidence": "high",
+    "exceptions": {
+      "servers.sheet.s3GcsKeyHelp": "English-sense: `Cloud Storage` is Google's product name, kept verbatim.",
+      "servers.sheet.s3ProviderGcs": "English-sense: `Google Cloud Storage` is a product name, kept verbatim.",
+      "servers.sheet.s3ProviderHetzner": "English-sense: `Hetzner Object Storage` is a product name, kept verbatim."
+    },
+    "forms": "S3 storage → kho lưu trữ S3; cold storage → kho lưu trữ lạnh; storage provider → nhà cung cấp dịch vụ lưu trữ; free space on a drive or iCloud → dung lượng; a phone's storage → bộ nhớ",
+    "note": "The cold-storage \"Archived\" (S3 Glacier, `*coldStorage*`, `fileExplorer.archivedFile.*`) is `kho lưu trữ lạnh`, label `Lưu trữ lạnh`, over the chat's `Đã lưu trữ` (`archive-chat`): every file is stored, so the bare word says nothing.",
+    "sources": "MS terminology (Storage → Lưu trữ, cloud storage → kho lưu trữ đám mây); catalog (dung lượng, bộ nhớ)"
+  },
+  "store": {
+    "accept": ["chứa", "nằm"],
+    "chosen": "lưu",
+    "confidence": "high",
+    "forms": "store a secret in the keychain → lưu … vào chuỗi khóa; a drive that can't store a file → không thể chứa; a disk image stored there → nằm ở đó",
+    "sources": "catalog (servers.refusal.secretNotStored, errors.write.filesTooLargeForFilesystem.*)"
+  },
   "streaming": {
     "chosen": "phát trực tiếp",
     "confidence": "tentative",
@@ -2568,6 +2621,13 @@
     "confidence": "high",
     "forms": "còn {duration}; countdown aria → Thời gian còn lại …",
     "sources": "catalog"
+  },
+  "tint": {
+    "accept": ["màu nền"],
+    "chosen": "phủ",
+    "confidence": "high",
+    "forms": "Tint X panes → Phủ màu cho khung X; background tint → màu nền phủ lên",
+    "sources": "catalog (settings.appearance.tint*, six keys); MS terminology (tint → sắc) names the color property, not the overlay"
   },
   "timeout": {
     "accept": ["kịp thời"],

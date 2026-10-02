@@ -248,7 +248,7 @@
   "@fileOperations.transferDialog.targetWillBeCreatedCopy": {
     "sourceHash": "4e8d166"
   },
-  "fileOperations.transferDialog.renameByMoveHint": "Renaming this copies everything inside it on the server, so it runs as a move you can pause or cancel.",
+  "fileOperations.transferDialog.renameByMoveHint": "Đổi tên mục này sẽ sao chép mọi thứ bên trong trên máy chủ, nên việc này chạy như một thao tác di chuyển mà bạn có thể tạm dừng hoặc hủy.",
   "@fileOperations.transferDialog.renameByMoveHint": {
     "sourceHash": "31987cc"
   },
@@ -304,15 +304,15 @@
   "@fileOperations.transferDialog.estimatedSizeTooltip": {
     "sourceHash": "2e8ba70"
   },
-  "fileOperations.s3Cost.line": "About {amount} at {provider} list prices",
+  "fileOperations.s3Cost.line": "Khoảng {amount} theo giá niêm yết của {provider}",
   "@fileOperations.s3Cost.line": {
     "sourceHash": "e8db02b"
   },
-  "fileOperations.s3Cost.infoLabel": "About this estimate",
+  "fileOperations.s3Cost.infoLabel": "Về ước tính này",
   "@fileOperations.s3Cost.infoLabel": {
     "sourceHash": "19637c5"
   },
-  "fileOperations.s3Cost.infoText": "This uses the provider’s public list prices. Free tiers, discounts, included allowances, and minimum charges can make your bill lower or higher.",
+  "fileOperations.s3Cost.infoText": "Ước tính này dùng bảng giá niêm yết công khai của nhà cung cấp. Gói miễn phí, chiết khấu, hạn mức đi kèm và phí tối thiểu có thể khiến hóa đơn của bạn thấp hơn hoặc cao hơn.",
   "@fileOperations.s3Cost.infoText": {
     "sourceHash": "379665c"
   },

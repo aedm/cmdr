@@ -333,7 +333,7 @@
     "sources": "macOS (Cancel → Annuleer, AppKit + Finder)"
   },
   "case-sensitive": {
-    "accept": ["hoofdletters"],
+    "accept": ["hoofdletters", "kleine letters"],
     "chosen": "hoofdlettergevoelig",
     "confidence": "high",
     "forms": "upper and lower case → hoofdletters en kleine letters",
@@ -460,7 +460,11 @@
     "chosen": "cloudprovider",
     "confidence": "high",
     "forms": "your cloud provider → je cloudprovider; cloud folders → cloudmappen; cloud mount → Cloudkoppeling; provider app names (Dropbox, Google Drive, OneDrive, iCloud Drive, macFUSE) stay verbatim",
-    "sources": "compositional; brands do-not-translate"
+    "sources": "compositional; brands do-not-translate",
+    "exceptions": {
+      "servers.sheet.s3ProviderGcs": "Google Cloud Storage is a product name, kept verbatim.",
+      "servers.sheet.s3GcsKeyHelp": "Cloud Storage here is Google's product name (Cloud Storage-instellingen), not the generic cloud-storage sense."
+    }
   },
   "column": {
     "accept": ["kolommen"],
@@ -621,6 +625,12 @@
     "forms": "no article in a short label (Kopieer pad van huidige map), article in a full sentence",
     "sources": "catalog; macOS (Ga naar map in huidige locatie)"
   },
+  "cursor": {
+    "chosen": "cursor",
+    "confidence": "high",
+    "forms": "put the cursor on X → Zet de cursor op X; Open onderdeel onder cursor",
+    "sources": "Microsoft Terminology (cursor → cursor); catalog (16 values)"
+  },
   "custom": {
     "accept": ["aangepaste"],
     "chosen": "Aangepast",
@@ -721,6 +731,17 @@
     "confidence": "high",
     "forms": "an idle device → niet meer bezig (counterpart of Het apparaat is bezig)",
     "sources": "macOS Dutch"
+  },
+  "dialog": {
+    "accept": ["venster", "dialoogvenster", "dialoog", "dialoogacties"],
+    "chosen": "venster",
+    "confidence": "high",
+    "forms": "a named Cmdr dialog → het venster ‘<titel>’ (het venster ‘Verplaats’, het venster ‘Selecteer bestanden’); a generic dialog → dialoogvenster",
+    "sources": "Microsoft Terminology (dialog box → dialoogvenster); catalog (commands.selectionSelectFiles.description)",
+    "exceptions": {
+      "fileOperations.delete.cloudOnlineOnlyAllWarning": "The sentence names Cmdr as the actor (In dit geval biedt Cmdr …) and leaves the dialog implied.",
+      "fileOperations.delete.cloudOnlineOnlyMixedWarning": "The sentence names Cmdr as the actor (In dit geval biedt Cmdr …) and leaves the dialog implied."
+    }
   },
   "disable": {
     "accept": ["uitgeschakeld", "schakel", "uit"],
@@ -923,11 +944,19 @@
     "confidence": "high",
     "sources": "standard NL"
   },
+  "example": {
+    "chosen": "Voorbeeld:",
+    "confidence": "high",
+    "forms": "placeholder prefix → Voorbeeld: {value}; inline \"for example\" / \"e.g.\" → bijvoorbeeld / bijv.",
+    "sources": "catalog (13 values, servers.sheet.usernamePlaceholder Voorbeeld: bram)",
+    "accept": ["bijvoorbeeld", "bijv."]
+  },
   "expired": {
     "chosen": "verlopen",
     "confidence": "high",
-    "forms": "expired on → Verlopen op",
-    "sources": "standard NL"
+    "forms": "expired on → Verlopen op; expires in → Verloopt over (menu.context.shareLink*)",
+    "sources": "standard NL",
+    "accept": ["verloopt"]
   },
   "extension": {
     "accept": ["extensies"],
@@ -1500,11 +1529,15 @@
   },
   "list": {
     "accept": ["lijst", "lijsten"],
-    "proseAccept": ["toont", "noemen", "op te sommen"],
+    "proseAccept": ["toont", "noemen", "op te sommen", "opsommen"],
     "chosen": "lijst",
     "confidence": "high",
     "forms": "the Servers list → de lijst Servers (the hub's name after the noun); server list → serverlijst; stops listing it → haalt … uit de lijst; the verb list (apps, shares, names) → tonen, opsommen, noemen in prose",
-    "sources": "catalog (servers.pinHint.body, settings.servers intro: in de lijst Servers), Microsoft Terminology (list → lijst)"
+    "sources": "catalog (servers.pinHint.body, settings.servers intro: in de lijst Servers), Microsoft Terminology (list → lijst)",
+    "exceptions": {
+      "fileOperations.s3Cost.line": "List prices are a price list (MS list price → catalogusprijs), not a UI list.",
+      "fileOperations.s3Cost.infoText": "List prices are a price list (MS list price → catalogusprijs), not a UI list."
+    }
   },
   "local": {
     "accept": ["lokale"],
@@ -1654,7 +1687,8 @@
     "decision": "Files a drive brings back from a move that never finished",
     "exceptions": {
       "fileOperations.cancelRollback.stoppedMovingBack": "Moving back is the put-back concept: terugzetten.",
-      "fileOperations.transferProgress.rollbackAlreadyLandedTooltip": "Undoing the move is the rollback concept: terugdraaien."
+      "fileOperations.transferProgress.rollbackAlreadyLandedTooltip": "Undoing the move is the rollback concept: terugdraaien.",
+      "commands.handler.shareLinkUnavailable": "Moving the cursor is cursor placement, not a file move: Zet de cursor op …."
     },
     "forms": "button Verplaats; the move as a noun → het verplaatsen (voordat Cmdr het verplaatsen kon voltooien)",
     "sources": "macOS Finder (move → verplaatsen; NE111 het kopiëren)"
@@ -1671,7 +1705,10 @@
     "chosen": "naam",
     "confidence": "high",
     "forms": "column Naam; a pronoun never refers back to an uncontrolled {name}",
-    "sources": "macOS Finder (Name → Naam)"
+    "sources": "macOS Finder (Name → Naam)",
+    "exceptions": {
+      "servers.sheet.identityLockedS3": "The verb \"name\" (what identifies this place), the S3 twin of servers.sheet.identityLocked: bepalen welke plek dit is."
+    }
   },
   "nas": {
     "chosen": "NAS",
@@ -1714,7 +1751,18 @@
     "confidence": "high",
     "decision": "Waarom een gedeelde map niet aankoppelt of de lijst niet laadt",
     "forms": "in the pane, share lists, and mount messages → gedeelde map; \"not a network share\" and the error family → netwerkshare; compounds keep share (SMB-share, SMB-/netwerkshares)",
-    "sources": "macOS Finder (Shared folder → Gedeelde map), MS (network share → netwerkshare)"
+    "sources": "macOS Finder (Shared folder → Gedeelde map), MS (network share → netwerkshare)",
+    "exceptions": {
+      "commands.fileCopyShareLink.label": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
+      "commands.fileCopyShareLinkOneDay.label": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
+      "commands.fileCopyShareLinkOneHour.label": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
+      "commands.handler.shareLinkCopied.sevenDays": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
+      "commands.handler.shareLinkCopied.oneDay": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
+      "commands.handler.shareLinkCopied.oneHour": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
+      "commands.handler.shareLinkUnavailable": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
+      "commands.handler.shareLinkFailed": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link.",
+      "menu.context.copyShareLink": "A share link (a presigned web address to one file in an S3 bucket) is not a network share: deellink, after macOS Kopieer link."
+    }
   },
   "new-file": {
     "accept": ["Bestand aanmaken", "Maak nieuw bestand", "Maak bestand"],
@@ -2269,6 +2317,19 @@
     "forms": "button Herstart; Restart to update → Herstart om bij te werken; a restart (of the Mac) → herstarten",
     "sources": "macOS (Restart → Herstart)"
   },
+  "restore": {
+    "accept": ["herstel", "hersteld", "Herstellen"],
+    "avoid": [
+      {
+        "form": "terugzetten",
+        "why": "the catalog's put-back and rename-undo word (Zet terug, teruggezet)"
+      }
+    ],
+    "chosen": "herstellen",
+    "confidence": "tentative",
+    "forms": "getting a file back from cloud cold storage → herstellen (Herstel het bestand in de console …; Herstellen kan … duren); the Edit-menu Herstel is undo, a different concept",
+    "sources": "Microsoft Terminology (restore → herstellen in four of five senses; terugzetten only for a backup copy)"
+  },
   "resume": {
     "accept": ["hervatten", "hervat", "gaat verder"],
     "chosen": "Hervat",
@@ -2602,6 +2663,18 @@
     "forms": "button Stop everywhere (Stop met zoeken, Stop en verwijder …); a button that stops running work is the imperative even when only a screen reader hears it",
     "sources": "macOS Finder (BN62, PE107, SD23)"
   },
+  "storage": {
+    "accept": ["opslag", "opslagaanbieder", "koude opslag", "S3-opslag"],
+    "chosen": "opslag",
+    "confidence": "high",
+    "forms": "storage provider → opslagaanbieder (aanbieder per ai-provider); cold storage → koude opslag; S3 storage → S3-opslag",
+    "sources": "Microsoft Terminology (storage → opslag; cold storage → koude opslag); macOS (Cloudopslag, Beheer opslag…)",
+    "exceptions": {
+      "servers.sheet.s3ProviderGcs": "Google Cloud Storage is a product name, kept verbatim.",
+      "servers.sheet.s3ProviderHetzner": "Hetzner Object Storage is a product name, kept verbatim.",
+      "servers.sheet.s3GcsKeyHelp": "Cloud Storage here is Google's product name (Cloud Storage-instellingen)."
+    }
+  },
   "streaming": {
     "accept": ["streammodus", "stream"],
     "chosen": "streamen",
@@ -2735,6 +2808,13 @@
     "confidence": "tentative",
     "forms": "in a sentence prefer the settled reageerde niet op tijd",
     "sources": "standard NL spelling"
+  },
+  "tint": {
+    "accept": ["tinten", "achtergrondtint"],
+    "chosen": "tint",
+    "confidence": "high",
+    "forms": "Settings label → <X>-panelen tinten; description → Achtergrondtint voor panelen die …",
+    "sources": "Microsoft Terminology (tint → tint); catalog (settings.appearance.tint*)"
   },
   "title-bar": {
     "chosen": "titelbalk",

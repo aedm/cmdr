@@ -623,15 +623,15 @@
   "@errors.listing.deletePending.suggestion": {
     "sourceHash": "0531cd8"
   },
-  "errors.listing.coldStorage.title": "This file is archived",
+  "errors.listing.coldStorage.title": "Tệp này đang ở kho lưu trữ lạnh",
   "@errors.listing.coldStorage.title": {
     "sourceHash": "73da082"
   },
-  "errors.listing.coldStorage.explanation": "`{path}` is archived, so its contents can’t be read until it’s restored.",
+  "errors.listing.coldStorage.explanation": "`{path}` đang ở kho lưu trữ lạnh, nên chưa đọc được nội dung cho đến khi tệp được khôi phục.",
   "@errors.listing.coldStorage.explanation": {
     "sourceHash": "78f52d7"
   },
-  "errors.listing.coldStorage.suggestion": "Here’s what to try:\n- Restore it in your storage provider’s console, then open it again\n- A restore can take anywhere from minutes to two days",
+  "errors.listing.coldStorage.suggestion": "Bạn có thể thử:\n- Khôi phục tệp trong bảng điều khiển của nhà cung cấp dịch vụ lưu trữ, rồi mở lại\n- Việc khôi phục có thể mất từ vài phút đến hai ngày",
   "@errors.listing.coldStorage.suggestion": {
     "sourceHash": "0becf43"
   },
@@ -1689,27 +1689,27 @@
   "@errors.write.deletePending.suggestion": {
     "sourceHash": "39e64a9"
   },
-  "errors.write.sourceInColdStorage.title": "This file is archived",
+  "errors.write.sourceInColdStorage.title": "Tệp này đang ở kho lưu trữ lạnh",
   "@errors.write.sourceInColdStorage.title": {
     "sourceHash": "73da082"
   },
-  "errors.write.sourceInColdStorage.message": "The file at {path} is archived, so it can’t be read until it’s restored.",
+  "errors.write.sourceInColdStorage.message": "Tệp tại {path} đang ở kho lưu trữ lạnh, nên chưa đọc được cho đến khi tệp được khôi phục.",
   "@errors.write.sourceInColdStorage.message": {
     "sourceHash": "1015fe5"
   },
-  "errors.write.sourceInColdStorage.suggestion": "Restore it in your storage provider’s console, then try again. A restore can take anywhere from minutes to two days.",
+  "errors.write.sourceInColdStorage.suggestion": "Hãy khôi phục tệp trong bảng điều khiển của nhà cung cấp dịch vụ lưu trữ, rồi thử lại. Việc khôi phục có thể mất từ vài phút đến hai ngày.",
   "@errors.write.sourceInColdStorage.suggestion": {
     "sourceHash": "f279603"
   },
-  "errors.write.sourceChanged.title": "This file changed during the copy",
+  "errors.write.sourceChanged.title": "Tệp này đã thay đổi trong lúc sao chép",
   "@errors.write.sourceChanged.title": {
     "sourceHash": "1c63c8b"
   },
-  "errors.write.sourceChanged.message": "The file at {path} changed while Cmdr was copying it, so Cmdr saved nothing. The file stays where it was.",
+  "errors.write.sourceChanged.message": "Tệp tại {path} đã thay đổi trong lúc Cmdr đang sao chép, nên Cmdr không lưu gì cả. Tệp vẫn ở nguyên chỗ cũ.",
   "@errors.write.sourceChanged.message": {
     "sourceHash": "4c404e0"
   },
-  "errors.write.sourceChanged.suggestion": "Try again to copy the version that’s there now.",
+  "errors.write.sourceChanged.suggestion": "Hãy thử lại để sao chép phiên bản đang có ở đó.",
   "@errors.write.sourceChanged.suggestion": {
     "sourceHash": "97fc945"
   },
@@ -1909,11 +1909,11 @@
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
   },
-  "errors.volume.coldStorage": "“{path}” is archived. Restore it in your storage provider’s console first.",
+  "errors.volume.coldStorage": "“{path}” đang ở kho lưu trữ lạnh. Hãy khôi phục tệp trong bảng điều khiển của nhà cung cấp dịch vụ lưu trữ trước.",
   "@errors.volume.coldStorage": {
     "sourceHash": "c742f7c"
   },
-  "errors.volume.sourceChanged": "“{path}” changed while Cmdr was copying it, so Cmdr saved nothing. Try again to copy the new version.",
+  "errors.volume.sourceChanged": "“{path}” đã thay đổi trong lúc Cmdr đang sao chép, nên Cmdr không lưu gì cả. Hãy thử lại để sao chép phiên bản mới.",
   "@errors.volume.sourceChanged": {
     "sourceHash": "18062cb"
   },

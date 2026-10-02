@@ -50,6 +50,10 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
   `Không bắt buộc` for the Optional placeholder against the catalog's parenthesized `(tùy chọn)`.
 - **Spaces** (`shortcuts.system.spaces`): kept English, unverified whether macOS vi localizes it.
 - **List commas**: newer keys drop the comma before `và` / `hoặc`, older ones keep it. Decide a convention and sweep.
+- **S3 wording** (`servers.sheet.s3*`, `*coldStorage*`): `bộ chứa` (bucket, MS + Google vi) against the English `bucket`
+  many Vietnamese devs say; `Lưu trữ lạnh` / `kho lưu trữ lạnh` for "Archived"; `tự triển khai` for self-hosted.
+  `servers.sheet.s3GcsKeyHelp` keeps Google's `Interoperability` tab name English: the vi Google Cloud console's own
+  label is unverified.
 
 ## Layout
 

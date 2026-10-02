@@ -556,27 +556,27 @@
   "@commands.cloudAskGemini.description": {
     "sourceHash": "37d4e7c"
   },
-  "commands.fileCopyShareLink.label": "Copy share link (seven days)",
+  "commands.fileCopyShareLink.label": "Sao chép liên kết chia sẻ (bảy ngày)",
   "@commands.fileCopyShareLink.label": {
     "sourceHash": "314bee8"
   },
-  "commands.fileCopyShareLink.description": "Copies a link anyone can open to download the file for the next seven days",
+  "commands.fileCopyShareLink.description": "Sao chép một liên kết mà ai cũng mở được để tải tệp về trong bảy ngày tới",
   "@commands.fileCopyShareLink.description": {
     "sourceHash": "eb35b64"
   },
-  "commands.fileCopyShareLinkOneDay.label": "Copy share link (one day)",
+  "commands.fileCopyShareLinkOneDay.label": "Sao chép liên kết chia sẻ (một ngày)",
   "@commands.fileCopyShareLinkOneDay.label": {
     "sourceHash": "468010c"
   },
-  "commands.fileCopyShareLinkOneDay.description": "Copies a link anyone can open to download the file for the next day",
+  "commands.fileCopyShareLinkOneDay.description": "Sao chép một liên kết mà ai cũng mở được để tải tệp về trong một ngày tới",
   "@commands.fileCopyShareLinkOneDay.description": {
     "sourceHash": "70461ac"
   },
-  "commands.fileCopyShareLinkOneHour.label": "Copy share link (one hour)",
+  "commands.fileCopyShareLinkOneHour.label": "Sao chép liên kết chia sẻ (một giờ)",
   "@commands.fileCopyShareLinkOneHour.label": {
     "sourceHash": "ffea990"
   },
-  "commands.fileCopyShareLinkOneHour.description": "Copies a link anyone can open to download the file for the next hour",
+  "commands.fileCopyShareLinkOneHour.description": "Sao chép một liên kết mà ai cũng mở được để tải tệp về trong một giờ tới",
   "@commands.fileCopyShareLinkOneHour.description": {
     "sourceHash": "45091c5"
   },
@@ -828,23 +828,23 @@
   "@commands.handler.googleDriveCopyFailed": {
     "sourceHash": "0af1fd3"
   },
-  "commands.handler.shareLinkCopied.sevenDays": "Copied a share link. It works for seven days.",
+  "commands.handler.shareLinkCopied.sevenDays": "Đã sao chép liên kết chia sẻ. Liên kết dùng được trong bảy ngày.",
   "@commands.handler.shareLinkCopied.sevenDays": {
     "sourceHash": "6f4055b"
   },
-  "commands.handler.shareLinkCopied.oneDay": "Copied a share link. It works for one day.",
+  "commands.handler.shareLinkCopied.oneDay": "Đã sao chép liên kết chia sẻ. Liên kết dùng được trong một ngày.",
   "@commands.handler.shareLinkCopied.oneDay": {
     "sourceHash": "ca08c52"
   },
-  "commands.handler.shareLinkCopied.oneHour": "Copied a share link. It works for one hour.",
+  "commands.handler.shareLinkCopied.oneHour": "Đã sao chép liên kết chia sẻ. Liên kết dùng được trong một giờ.",
   "@commands.handler.shareLinkCopied.oneHour": {
     "sourceHash": "8b9f0cc"
   },
-  "commands.handler.shareLinkUnavailable": "Move the cursor to a file in an S3 bucket to copy a share link.",
+  "commands.handler.shareLinkUnavailable": "Hãy đưa con trỏ tới một tệp trong bộ chứa S3 để sao chép liên kết chia sẻ.",
   "@commands.handler.shareLinkUnavailable": {
     "sourceHash": "c4ea112"
   },
-  "commands.handler.shareLinkFailed": "Couldn’t make a share link. {detail}",
+  "commands.handler.shareLinkFailed": "Không thể tạo liên kết chia sẻ. {detail}",
   "@commands.handler.shareLinkFailed": {
     "sourceHash": "5ff44b7"
   },

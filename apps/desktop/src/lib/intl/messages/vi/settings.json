@@ -148,13 +148,13 @@
   "@settings.appearance.tintLocal.description": {
     "sourceHash": "3c86b48"
   },
-  "settings.appearance.tintSmb.label": "Phủ màu cho khung máy chủ (SMB, SFTP, WebDAV)",
+  "settings.appearance.tintSmb.label": "Phủ màu cho khung máy chủ (SMB, SFTP, WebDAV, S3)",
   "@settings.appearance.tintSmb.label": {
-    "sourceHash": "d801804"
+    "sourceHash": "d912bcf"
   },
-  "settings.appearance.tintSmb.description": "Màu nền phủ lên các khung hiển thị mục chia sẻ SMB, máy chủ SFTP, hoặc máy chủ WebDAV.",
+  "settings.appearance.tintSmb.description": "Màu nền phủ lên các khung hiển thị mục chia sẻ SMB, máy chủ SFTP, máy chủ WebDAV, hoặc kho lưu trữ S3.",
   "@settings.appearance.tintSmb.description": {
-    "sourceHash": "2e071d3"
+    "sourceHash": "bddee40"
   },
   "settings.appearance.tintMtp.label": "Phủ màu cho khung MTP",
   "@settings.appearance.tintMtp.label": {

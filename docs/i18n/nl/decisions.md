@@ -287,12 +287,8 @@ The description covers crashes and background problems (`een rapport`, no "crash
 
 ## Eén ding, één naam: de interne driftronde (`queue.row.dismiss`, `menu.edit.undo`, `fileOperations.trash.undoAction`, `askCmdr.renameUndo.*`, `shortcuts.section.filterModified`, `commands.navBack.label`)
 
-The boundaries that look like drift and aren't:
+The boundaries that look like drift and aren't (register by UI slot and menu-bar titles: `style.md` digest):
 
-- Button or menu item: bare imperative (`Verstuur foutrapport`); window title: `Foutrapport versturen`; Settings label:
-  infinitive last (`Verborgen bestanden tonen`).
-- Menu-bar titles are Apple's words (`Archief`, `Wijzig`, `Weergave`, `Vergroot/verklein`); the everyday word
-  (`Bestand`, `Bewerk`, `Toon`, `Zoom`) names the thing elsewhere. ❌ Never swap a menu-bar title for it.
 - Undo: `Herstel` (⌘Z, Edit menu), `Zet terug` (trash put-back), `Ongedaan maken` (Ask Cmdr rename run).
 - `Vorige` pairs with `Volgende`; `Terug` is a lone back button; `commands.navBack.label` takes Finder's `Ga terug`.
 - Column headers `Aanmaakdatum` / `Bewerkingsdatum`; the date tooltip uses participles (`Laatst gewijzigd`).
@@ -377,7 +373,6 @@ split EN makes; the frame is that of `settings.archives.zip.description`.
 - `disconnectBusyTooltip` mirrors `ejectBusyTooltip` word for word.
 - `disconnectPlaceAriaLabel` → `Verbreek de verbinding met {name}`: it starts with the visible `Verbreek`, and Dutch
   breaks a connection, never a server.
-- Compromised → `gecompromitteerd` (tentative; Apple has no word for a revoked `known_hosts` key).
 
 ## De serverhub (`servers.hub.*`, `commands.servers*`, `fileExplorer.navigation.server*Toast`, `shortcuts.scope.servers`/`.places`)
 
@@ -631,3 +626,9 @@ points at `deze gedeelde map`, since `hij` floats between two de-words.
 ## Het origineel bleef staan (`errors.write.sourceNotRemoved.*`, `errors.write.permissionDenied.*.source*`, `errors.write.deletePending.message`)
 
 - `het origineel staat er nog` and `op beide plekken`, like `moveAlreadyLanded`.
+
+## S3 (`servers.sheet.s3*`, `servers.refusal.s3*`, `*ShareLink*`, `*.coldStorage*`, `fileOperations.s3Cost.*`)
+
+- MS: `bucket`, `regio`, `toegangssleutel-ID`, `geheime toegangssleutel`, `catalogusprijs`.
+- Share link → `deellink`, never `gedeelde map`.
+- Cold storage: `gearchiveerd`, `koude opslag`; restore → `herstellen` (`terugzetten` is put-back).
