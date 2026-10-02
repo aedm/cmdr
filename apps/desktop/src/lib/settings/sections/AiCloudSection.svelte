@@ -56,7 +56,7 @@
                 id: secretErrorToastId,
             })
         },
-        onKeyPersisted: () => void pushConfigToBackend(),
+        onKeyChanged: () => void pushConfigToBackend(),
     })
 
     const unlistenFns: Array<() => void> = []

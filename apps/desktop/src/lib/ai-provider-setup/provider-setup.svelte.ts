@@ -13,7 +13,7 @@
 
 import { getCloudProvider, getProviderConfigs, setProviderConfig, getSetting, setSetting } from '$lib/settings'
 import type { CloudProviderPreset } from '$lib/settings/cloud-providers'
-import { checkAiConnection, getAiApiKeyStatus, saveAiApiKey } from '$lib/tauri-commands'
+import { checkAiConnection, deleteAiApiKey, getAiApiKeyStatus, saveAiApiKey } from '$lib/tauri-commands'
 import { computeModelCacheKey, getCachedModels, setCachedModels } from '$lib/settings/ai-model-cache'
 import { describeSecretError, type SecretErrorMessage } from '$lib/settings/sections/ai-secret-error'
 import { isE2eRun } from '$lib/app-mode'
@@ -40,10 +40,11 @@ export interface ProviderSetupOptions {
    */
   onSecretErrorChange?: (error: SecretErrorMessage | null) => void
   /**
-   * Fires after a key lands in the secret store for the CURRENT provider. Settings uses it
-   * to re-push the AI config; the wizard pushes once, from its own "Next" handler.
+   * Fires after a key lands in, or leaves, the secret store for the CURRENT provider.
+   * Settings uses it to re-push the AI config; the wizard pushes once, from its own "Next"
+   * handler.
    */
-  onKeyPersisted?: () => void
+  onKeyChanged?: () => void
 }
 
 /**
@@ -199,6 +200,35 @@ export class ProviderSetupController {
     }, API_KEY_SAVE_DEBOUNCE_MS)
   }
 
+  /**
+   * Takes this provider's key out of the secret store. A key still in the save debounce
+   * goes with it: saving it after the removal would bring back what the user just removed.
+   * A refusal leaves the key in place and surfaces as `secretError`.
+   */
+  async removeApiKey(): Promise<void> {
+    const id = this.#providerId
+    if (this.#apiKeySaveTimer) {
+      clearTimeout(this.#apiKeySaveTimer)
+      this.#apiKeySaveTimer = null
+    }
+    this.#pendingApiKeySave = null
+    this.#apiKey = ''
+    this.#setSecretError(null)
+    try {
+      await deleteAiApiKey(id)
+    } catch (e) {
+      this.#setSecretError(describeSecretError(e, 'remove'))
+      this.#log.warn("Couldn't remove the AI API key for provider {provider}: {error}", { provider: id, error: e })
+      return
+    }
+    if (id !== this.#providerId) return
+    this.#keyIsSet = false
+    this.#keyFingerprint = ''
+    // The models and the "connected" tick came from the key that's gone.
+    this.#resetConnectionState()
+    this.#options.onKeyChanged?.()
+  }
+
   saveModel(value: string): void {
     this.#model = value
     this.#writeProviderConfig({ model: value })
@@ -293,7 +323,7 @@ export class ProviderSetupController {
     // previous key's models.
     await this.#loadKeyStatus(id)
     if (id !== this.#providerId) return
-    this.#options.onKeyPersisted?.()
+    this.#options.onKeyChanged?.()
     this.#scheduleConnectionCheck()
   }
 

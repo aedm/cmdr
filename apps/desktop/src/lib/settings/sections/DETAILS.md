@@ -395,7 +395,7 @@ the model picker's cache and the "never zero `availableModels` mid-refetch" rule
 
 Two things this section still has to get right:
 
-- **Pass `onSecretErrorChange` and `onKeyPersisted`.** They're what make the persistent toast and the
+- **Pass `onSecretErrorChange` and `onKeyChanged`.** They're what make the persistent toast and the
   `pushConfigToBackend()` re-push happen; the wizard deliberately passes neither.
 - **Drive the controller from `onSpecificSettingChange('ai.cloudProvider', …)`**, not from the `Select`'s `onChange`.
   The `Select` only writes the setting, so a provider switch made anywhere (MCP, another window) reloads the section the

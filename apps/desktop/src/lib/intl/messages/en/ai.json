@@ -732,5 +732,17 @@
     "description": "Guidance shown below the fall-back save/read error, suggesting the user verify their OS credential store (keyring) is available and restart the app if the problem continues. \"keyring\" is the generic term for the system credential store; use whatever your platform calls it.",
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.secretError.removeTitle": "Couldn’t remove your saved API key.",
+  "@ai.secretError.removeTitle": {
+    "description": "Title of an error shown in the cloud-AI provider settings (Settings > AI cloud, and the onboarding cloud-provider step) when the user clicked \"Remove key\" and the OS credential store (macOS Keychain, or the system keyring elsewhere) refused to delete the stored API key. The key is still saved.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.secretError.removeKeychainBody": "Open Keychain Access, find the “Cmdr” entry, and delete it there.",
+  "@ai.secretError.removeKeychainBody": {
+    "description": "Guidance shown below the remove-key error on macOS when the Keychain denied access, telling the user to delete the stored key by hand in Apple’s Keychain Access app. \"Keychain Access\" is the proper name of the macOS app (Apple ships it localized; use that localized name). “Cmdr” is the app name (a Keychain entry label) and must NOT be translated.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   }
 }

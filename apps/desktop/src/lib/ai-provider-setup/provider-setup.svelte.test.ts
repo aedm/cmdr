@@ -22,11 +22,13 @@ interface CheckResult {
 const checkAiConnection = vi.fn<(payload: { baseUrl: string; providerId: string }) => Promise<CheckResult>>()
 const saveAiApiKey = vi.fn<(payload: { providerId: string; apiKey: string }) => Promise<null>>()
 const getAiApiKeyStatus = vi.fn<(id: string) => Promise<{ isSet: boolean; fingerprint: string }>>()
+const deleteAiApiKey = vi.fn<(id: string) => Promise<void>>()
 
 vi.mock('$lib/tauri-commands', () => ({
   checkAiConnection: (baseUrl: string, providerId: string) => checkAiConnection({ baseUrl, providerId }),
   saveAiApiKey: (providerId: string, apiKey: string) => saveAiApiKey({ providerId, apiKey }),
   getAiApiKeyStatus: (id: string) => getAiApiKeyStatus(id),
+  deleteAiApiKey: (id: string) => deleteAiApiKey(id),
 }))
 
 const settingsMap: Record<string, unknown> = {}
@@ -81,6 +83,8 @@ describe('ProviderSetupController', () => {
     saveAiApiKey.mockResolvedValue(null)
     getAiApiKeyStatus.mockReset()
     getAiApiKeyStatus.mockResolvedValue({ isSet: false, fingerprint: '' })
+    deleteAiApiKey.mockReset()
+    deleteAiApiKey.mockResolvedValue(undefined)
     controller = new ProviderSetupController({ logScope: 'test' })
   })
 
@@ -237,5 +241,51 @@ describe('ProviderSetupController', () => {
     controller.setProvider('ollama')
     await settle()
     expect(controller.hasCheckableConfig).toBe(true)
+  })
+
+  describe('removing a saved key', () => {
+    it('takes the key out of the store and forgets everything it unlocked', async () => {
+      const changes: string[] = []
+      controller = new ProviderSetupController({ logScope: 'test', onKeyChanged: () => changes.push('changed') })
+      getAiApiKeyStatus.mockResolvedValue({ isSet: true, fingerprint: 'fp' })
+      controller.setProvider('openai')
+      await settle()
+      expect(controller.isConnected).toBe(true)
+
+      await controller.removeApiKey()
+
+      expect(deleteAiApiKey).toHaveBeenCalledWith('openai')
+      expect(controller.keyIsSet).toBe(false)
+      expect(controller.status).toBe('idle')
+      expect(controller.models).toEqual([])
+      expect(controller.hasCheckableConfig).toBe(false)
+      // So Settings re-pushes the AI config and the backend stops using the old key.
+      expect(changes).toEqual(['changed'])
+    })
+
+    it('drops a key still in the save debounce instead of saving it after the removal', async () => {
+      getAiApiKeyStatus.mockResolvedValue({ isSet: true, fingerprint: 'fp' })
+      controller.setProvider('openai')
+      await settle()
+      controller.handleApiKeyChange('sk-half-typed')
+
+      await controller.removeApiKey()
+      await new Promise((resolve) => setTimeout(resolve, 400))
+
+      expect(saveAiApiKey).not.toHaveBeenCalled()
+      expect(controller.apiKey).toBe('')
+    })
+
+    it('keeps the key on screen and says why when the store refuses', async () => {
+      getAiApiKeyStatus.mockResolvedValue({ isSet: true, fingerprint: 'fp' })
+      deleteAiApiKey.mockRejectedValue(new Error('keyring locked'))
+      controller.setProvider('openai')
+      await settle()
+
+      await controller.removeApiKey()
+
+      expect(controller.keyIsSet).toBe(true)
+      expect(controller.secretError?.title).toContain('remove your saved API key')
+    })
   })
 })

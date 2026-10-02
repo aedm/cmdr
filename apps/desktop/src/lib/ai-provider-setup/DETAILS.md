@@ -59,8 +59,13 @@ The merge had to preserve behaviour that existed in only one of the two. Where e
 - **`isE2eRun()` suppression of the auto-check on open**: in the controller, so it now covers the wizard as well. An
   automated run has no real provider to answer, and a cache hit still serves everywhere. Unit tests mock `$lib/app-mode`
   to pin the answer either way, since the real `isE2eRun()` reads a mode resolved over IPC.
-- **`pushConfigToBackend()` after a key persist**: an `onKeyPersisted` option. Settings passes it; the wizard pushes
-  once from `StepAi.persist()` instead, so it doesn't push a provider the user hasn't confirmed yet.
+- **"Remove key" (`removeApiKey`)** shows under the field only while a key is saved. It drops a key still in the save
+  debounce first (saving it afterwards would undo the removal), then clears the connection state, since the models and
+  the tick came from the key that's gone. A refusal keeps the key and words itself through
+  `describeSecretError(…, 'remove')`, which has its own keys: removing needs "delete the entry by hand", not just
+  another verb.
+- **`pushConfigToBackend()` after a key persist or removal**: an `onKeyChanged` option. Settings passes it; the wizard
+  pushes once from `StepAi.persist()` instead, so it doesn't push a provider the user hasn't confirmed yet.
 - **The `ai.cloud.askCmdrOverrideHint` note** and the settings-search `shouldShow` gating: stayed in
   `AiCloudSection.svelte`.
 - **The immediate (no-debounce) check when a stored key is found on open**: in the controller, for both. Settings used
