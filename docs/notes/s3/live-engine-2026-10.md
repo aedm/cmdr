@@ -148,8 +148,11 @@ whose "Other" profile is check-then-write everywhere, then rerun live on the six
    - a single-part source's copy keeps its ETag on all six; a multipart source's keeps it on Hetzner and Spaces and gets
      a fresh one on AWS, R2, and Wasabi, so an ETag proof of a lost answer would fail there (the token proof doesn't);
    - a wrong `x-amz-copy-source-if-match` on `CopyObject` is `412` on AWS, R2, GCS, and Hetzner, ignored on Spaces and
-     Wasabi; ❗ GCS answers `400 InvalidArgument` to a pin naming a multipart ETag, so pinning a single copy would need
-     a GCS exception.
+     Wasabi; ❗ GCS answers `400 InvalidArgument` to a pin naming a multipart ETag, and a single copy now pins its
+     HEAD's ETag (`ef2fbee05`, `412` → `SourceChanged`) with GCS's multipart-ETag sources unpinned
+     (`refuses_multipart_copy_pin`). A create-only GCS copy carries the pin as `x-goog-copy-source-if-match`: right 200,
+     wrong 412, multipart 200 (`live_create_only_copy_with_a_source_pin`). Hetzner and Spaces weren't run: their test
+     buckets were gone.
 6. **The walker's second listing**: not a contained refactor (the scan keeps no names; handing listings down crosses
    `cmdr-fs`'s walk, the scan cache, and the merge walker, and the walker's own listing is what sees a file added after
    the scan). Filed as issue #356 with the options.
