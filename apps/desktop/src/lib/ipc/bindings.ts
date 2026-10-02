@@ -1078,6 +1078,8 @@ export const commands = {
        *  1..=9 (an out-of-range level hard-errors the edit, not clamps).
        */
       compressionLevel?: number | null
+      // What a copy does when the destination looks too small. See [`SpaceShortfall`].
+      spaceShortfall?: SpaceShortfall
     } | null,
     initiator: 'user' | 'aiClient' | 'agent' | 'agentEdited' | null,
   ) =>
@@ -14826,7 +14828,7 @@ export type StagedLeftovers = {
 
 // What a stalled listing's folder lives on, as far as the mount proves it.
 export type StalledOn =
-  // A network share or a direct server connection (SMB, NFS, AFP, WebDAV, SFTP, ...).
+  // A network share or a direct server connection (SMB, NFS, AFP, WebDAV, SFTP, S3, ...).
   | 'server'
   // A known local disk: a block device, or a local filesystem type.
   | 'drive'
