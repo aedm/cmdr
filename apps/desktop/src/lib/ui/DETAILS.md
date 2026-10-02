@@ -1171,6 +1171,8 @@ every toast body keeps this contract:
   first row plain text with any glyph inline, so its lines wrap around the corner.
 - **Decision: CSS floats do the wrapping.** `@chenglou/pretext` lays out plain text lines in JS, and a toast body is
   rich markup (chips, links, `<Trans>` sentences, buttons) that it can't lay out, while a float costs no JS at all.
+- **A long unbroken run breaks inside the box.** `.toast-content` sets `overflow-wrap: anywhere`, inherited by every
+  body: a toast naming an S3 account by its `<access key id>@<account id>` label once ran far past the right edge.
 
 Age label: once a toast has been up a minute, "2m ago" / "1h ago" sits on the content's first line. Decisions:
 

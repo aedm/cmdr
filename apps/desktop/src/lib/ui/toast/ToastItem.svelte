@@ -304,6 +304,13 @@
         justify-content: center;
     }
 
+    /* A long unbroken run (an S3 access key ID, a path, a URL) breaks inside the toast rather
+       than running out past its edge. Inherited, so component bodies get it too. Words still
+       break at spaces first. */
+    .toast-content {
+        overflow-wrap: anywhere;
+    }
+
     /* The close button is pinned over the content box's top-right corner, reaching 19px into it
        both down and in. The float claims that corner (plus a gap, plus the age label when there is
        one), so text flows around it instead of under it. */
