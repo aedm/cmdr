@@ -274,6 +274,9 @@ pub const HELP_SEND_FEEDBACK_ID: &str = "help_send_feedback";
 /// Menu item ID for "Keyboard shortcuts" (opens the read-only shortcuts help window, under the Help menu).
 pub const HELP_SHORTCUTS_ID: &str = "help_shortcuts";
 
+/// Opens the current debug log in the internal viewer, under the Help menu.
+pub const HELP_DEBUG_LOG_ID: &str = "help_debug_log";
+
 /// Menu item ID for "Operation queue" (opens the operation-queue window, under the View menu).
 pub const QUEUE_SHOW_ID: &str = "queue_show";
 
@@ -321,6 +324,7 @@ pub fn menu_id_to_command(menu_id: &str) -> Option<(&'static str, CommandScope)>
         COMMAND_PALETTE_ID => Some(("app.commandPalette", CommandScope::FileScoped)),
         SEARCH_FILES_ID => Some(("search.open", CommandScope::FileScoped)),
         HELP_SHORTCUTS_ID => Some(("help.openShortcuts", CommandScope::App)),
+        HELP_DEBUG_LOG_ID => Some(("help.viewDebugLog", CommandScope::App)),
         QUEUE_SHOW_ID => Some(("queue.show", CommandScope::App)),
         HELP_WHATS_NEW_ID => Some(("help.whatsNew", CommandScope::App)),
         // Second entry point (Cmdr menu) to the same "What's new" popup. Deliberately maps
@@ -444,6 +448,7 @@ pub fn command_id_to_menu_id(command_id: &str) -> Option<&'static str> {
         "app.commandPalette" => Some(COMMAND_PALETTE_ID),
         "search.open" => Some(SEARCH_FILES_ID),
         "help.openShortcuts" => Some(HELP_SHORTCUTS_ID),
+        "help.viewDebugLog" => Some(HELP_DEBUG_LOG_ID),
         "queue.show" => Some(QUEUE_SHOW_ID),
         "help.whatsNew" => Some(HELP_WHATS_NEW_ID),
         "log.operationLog" => Some(OPERATION_LOG_ID),
@@ -687,6 +692,7 @@ mod tests {
             "selection.selectFiles",
             "selection.deselectFiles",
             "help.openShortcuts",
+            "help.viewDebugLog",
             "queue.show",
             "help.whatsNew",
             "log.operationLog",

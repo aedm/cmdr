@@ -863,5 +863,21 @@
   "commands.suggestedOpsShow.description": "Tekintsd át az AI által javasolt fájlműveleteket, és döntsd el, mi fusson",
   "@commands.suggestedOpsShow.description": {
     "sourceHash": "7efe8c9"
+  },
+  "commands.helpViewDebugLog.label": "Hibakeresési napló megtekintése",
+  "@commands.helpViewDebugLog.label": {
+    "sourceHash": "007c98d"
+  },
+  "commands.helpViewDebugLog.description": "Megnyitja a Cmdr aktuális hibakeresési naplóját a belső fájlmegjelenítővel",
+  "@commands.helpViewDebugLog.description": {
+    "sourceHash": "6d97731"
+  },
+  "commands.handler.viewDebugLog.disabled": "A naplótárolás ki van kapcsolva. Kapcsold be itt: Beállítások > Speciális, majd indítsd újra a Cmdrt a hibakeresési napló megtekintéséhez.",
+  "@commands.handler.viewDebugLog.disabled": {
+    "sourceHash": "a781813"
+  },
+  "commands.handler.viewDebugLog.unavailable": "Nem sikerült megnyitni a hibakeresési naplót. Próbáld újra.",
+  "@commands.handler.viewDebugLog.unavailable": {
+    "sourceHash": "794a5b3"
   }
 }

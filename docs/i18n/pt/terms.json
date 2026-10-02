@@ -35,6 +35,12 @@
     "confidence": "high",
     "sources": "KDE Dolphin, Total Commander, Double Commander pt-BR (Adicionar ao/à …)"
   },
+  "advanced": {
+    "chosen": "Avançado",
+    "confidence": "high",
+    "forms": "Cmdr Settings section → Avançado; quote settings.section.advanced exactly in navigation paths",
+    "sources": "Network.appex Localizable (ADVANCED); catalog settings.section.advanced (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
+  },
   "ai-feature": {
     "chosen": "recursos de IA",
     "accept": ["a IA", "de IA", "por IA"],
@@ -592,6 +598,13 @@
     "chosen": "painel",
     "confidence": "tentative",
     "sources": "shipped pt catalog"
+  },
+  "debugging": {
+    "chosen": "depuração",
+    "accept": ["depurar", "debug"],
+    "confidence": "high",
+    "forms": "debug log → registro de depuração; the technical level stays debug",
+    "sources": "ConsoleKit.framework Localizable (Debug Type, value_debug); catalog settings.developer.verboseLogging.description (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
   },
   "default": {
     "chosen": "padrão",
@@ -2363,6 +2376,12 @@
     ],
     "confidence": "high",
     "sources": "shipped pt catalog (queryUi Parar a busca)"
+  },
+  "storage": {
+    "chosen": "armazenamento",
+    "confidence": "high",
+    "forms": "storing logs → armazenamento de registros",
+    "sources": "Storage.appex InfoPlist (CFBundleDisplayName, en_GB paired with target); catalog settings.advanced.maxLogStorageMb.description (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
   },
   "store": {
     "chosen": "armazenar",

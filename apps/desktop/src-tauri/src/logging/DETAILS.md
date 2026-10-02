@@ -43,6 +43,10 @@ two agree today; a bundle-id change has to touch both.
 
 - **`set_log_dir(path)` / `log_dir()`**: cache the resolved dir at logger-init; the error-report bundle builder reads it
   back.
+- **`debug_log_path()`**: the resolved directory’s `cmdr.log`, or `None` when the live keep-count is zero or
+  startup has not resolved a directory. This is an in-memory query; the viewer owns file opening and missing-file
+  handling. `commands/logging.rs::get_debug_log_path` exposes it over typed IPC, so Help and the palette honor the
+  same `CMDR_LOG_DIR` / `CMDR_DATA_DIR` overrides as the writer.
 - **`set_keep_count(n)` / `keep_count()`**: live view of the keep-N the file chain was built with.
 - **`list_recent_log_files(dir)`**: active log files newest-first by mtime. The active-file pattern is
   `^cmdr\.log(\.\d+)?$` (case-insensitive); anything else, legacy `Cmdr_<timestamp>.log` included, is rejected.

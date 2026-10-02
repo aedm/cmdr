@@ -148,7 +148,8 @@ menu menu.bar.help id=menu_help
   1 separator
   2 item help_whats_new menu.help.whatsNew tracked
   3 item help_send_feedback menu.help.sendFeedback tracked
-  4 item help_send_error_report menu.help.sendErrorReport tracked
+  4 item help_debug_log menu.help.viewDebugLog tracked
+  5 item help_send_error_report menu.help.sendErrorReport tracked
 ";
 
 const LINUX_MENU_BAR: &str = "\
@@ -261,7 +262,8 @@ menu menu.bar.help
   3 item help_shortcuts menu.help.keyboardShortcuts tracked
   4 item help_whats_new menu.help.whatsNew tracked
   5 item help_send_feedback menu.help.sendFeedback tracked
-  6 item help_send_error_report menu.help.sendErrorReport tracked
+  6 item help_debug_log menu.help.viewDebugLog tracked
+  7 item help_send_error_report menu.help.sendErrorReport tracked
 ";
 
 #[test]

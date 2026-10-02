@@ -243,6 +243,14 @@
     "confidence": "high",
     "sources": "MS terminology; standard German"
   },
+  "debugging": {
+    "chosen": "Debug",
+    "accept": ["Debugging"],
+    "confidence": "high",
+    "forms": "debug level → Debug-Stufe; debug log → Debug-Protokoll; saving diagnostic logs for debugging in prose → zur Fehlerbehebung",
+    "sources": "ConsoleKit.framework Localizable (Debug Type, value_debug); catalog settings.developer.verboseLogging.description (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02); Apple Podcasts support, Informationen zur Fehlerbehebung sammeln (https://podcasters.apple.com/de-de/support/5438-reporting-issues-in-apple-podcast-connect, checked 2026-10-02)",
+    "proseAccept": ["Fehlerbehebung"]
+  },
   "deployment": {
     "accept": ["Ressource"],
     "chosen": "Bereitstellung",
@@ -1188,6 +1196,13 @@
     "confidence": "high",
     "forms": "Step 1 of 2: X → Schritt 1 von 2: X (the X keeps its standalone form)",
     "sources": "MS terminology (step → Schritt); shipped catalog (onboarding.wizard.stepProgress, ai.local.installStepExtracting)"
+  },
+  "storage": {
+    "chosen": "Speicher",
+    "confidence": "high",
+    "forms": "storing logs → Protokollspeicherung; capacity → Speicherplatz",
+    "sources": "Storage.appex InfoPlist (CFBundleDisplayName, en_GB paired with target); catalog settings.advanced.maxLogStorageMb.description (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)",
+    "accept": ["Speicherung"]
   },
   "working-tree": {
     "chosen": "Arbeitsbaum",

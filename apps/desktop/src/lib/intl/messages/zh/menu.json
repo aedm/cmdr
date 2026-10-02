@@ -667,5 +667,9 @@
   "menu.dock.locationInParent": "{name}（{parent}）",
   "@menu.dock.locationInParent": {
     "sourceHash": "0bf83e2"
+  },
+  "menu.help.viewDebugLog": "查看调试日志",
+  "@menu.help.viewDebugLog": {
+    "sourceHash": "007c98d"
   }
 }

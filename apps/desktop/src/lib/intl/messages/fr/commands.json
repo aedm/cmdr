@@ -863,5 +863,21 @@
   "commands.suggestedOpsShow.description": "Examinez les opérations sur les fichiers suggérées par l’IA et décidez de ce qui s’exécute",
   "@commands.suggestedOpsShow.description": {
     "sourceHash": "7efe8c9"
+  },
+  "commands.helpViewDebugLog.label": "Visualiser le fichier journal de débogage",
+  "@commands.helpViewDebugLog.label": {
+    "sourceHash": "007c98d"
+  },
+  "commands.helpViewDebugLog.description": "Ouvrez le fichier journal de débogage actuel de Cmdr avec la visionneuse de fichiers interne",
+  "@commands.helpViewDebugLog.description": {
+    "sourceHash": "6d97731"
+  },
+  "commands.handler.viewDebugLog.disabled": "Le stockage des journaux est désactivé. Activez-le dans Réglages > Avancé, puis redémarrez Cmdr pour visualiser le fichier journal de débogage.",
+  "@commands.handler.viewDebugLog.disabled": {
+    "sourceHash": "a781813"
+  },
+  "commands.handler.viewDebugLog.unavailable": "Ouverture du fichier journal de débogage impossible. Réessayez.",
+  "@commands.handler.viewDebugLog.unavailable": {
+    "sourceHash": "794a5b3"
   }
 }

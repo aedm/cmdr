@@ -863,5 +863,21 @@
   "commands.suggestedOpsShow.description": "复查 AI 建议的文件操作，并决定执行哪些",
   "@commands.suggestedOpsShow.description": {
     "sourceHash": "7efe8c9"
+  },
+  "commands.helpViewDebugLog.label": "查看调试日志",
+  "@commands.helpViewDebugLog.label": {
+    "sourceHash": "007c98d"
+  },
+  "commands.helpViewDebugLog.description": "用内置文件查看器打开 Cmdr 当前的调试日志",
+  "@commands.helpViewDebugLog.description": {
+    "sourceHash": "6d97731"
+  },
+  "commands.handler.viewDebugLog.disabled": "日志存储已关闭。在“设置 > 高级”中开启，然后重启 Cmdr 来查看调试日志。",
+  "@commands.handler.viewDebugLog.disabled": {
+    "sourceHash": "a781813"
+  },
+  "commands.handler.viewDebugLog.unavailable": "无法打开调试日志。再试一次。",
+  "@commands.handler.viewDebugLog.unavailable": {
+    "sourceHash": "794a5b3"
   }
 }

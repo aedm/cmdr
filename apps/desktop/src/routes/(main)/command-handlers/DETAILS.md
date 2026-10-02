@@ -26,6 +26,11 @@ shortcuts editor uses to render those rows read-only, so each "who owns this key
 `DispatchExemptId` union still lists the literals (a type can't spread a runtime tuple); `command-registry.test.ts` pins
 the union and the tuple in sync.
 
+## Debug log viewer
+
+The app-dialog handler for `help.viewDebugLog` delegates to `$lib/logging/open-debug-log`. Its behavior lives in
+`apps/desktop/src/lib/logging/DETAILS.md`; the handler adds no path or logging policy.
+
 ## Shared bodies behind grouped ids
 
 - `applyZoomPreset` (`view-handlers.ts`) backs the four `view.zoom.setNN` presets.

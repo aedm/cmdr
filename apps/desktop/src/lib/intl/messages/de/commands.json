@@ -863,5 +863,21 @@
   "commands.suggestedOpsShow.description": "Sieh dir die von der KI vorgeschlagenen Dateivorgänge an und entscheide, was läuft",
   "@commands.suggestedOpsShow.description": {
     "sourceHash": "7efe8c9"
+  },
+  "commands.helpViewDebugLog.label": "Debug-Protokoll ansehen",
+  "@commands.helpViewDebugLog.label": {
+    "sourceHash": "007c98d"
+  },
+  "commands.helpViewDebugLog.description": "Das aktuelle Debug-Protokoll von Cmdr mit der internen Dateivorschau öffnen",
+  "@commands.helpViewDebugLog.description": {
+    "sourceHash": "6d97731"
+  },
+  "commands.handler.viewDebugLog.disabled": "Die Protokollspeicherung ist deaktiviert. Aktiviere sie unter Einstellungen > Erweitert und starte Cmdr neu, um das Debug-Protokoll anzusehen.",
+  "@commands.handler.viewDebugLog.disabled": {
+    "sourceHash": "a781813"
+  },
+  "commands.handler.viewDebugLog.unavailable": "Das Debug-Protokoll ließ sich nicht öffnen. Versuche es noch einmal.",
+  "@commands.handler.viewDebugLog.unavailable": {
+    "sourceHash": "794a5b3"
   }
 }

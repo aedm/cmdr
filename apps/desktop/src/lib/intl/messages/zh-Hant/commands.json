@@ -863,5 +863,21 @@
   "commands.suggestedOpsShow.description": "檢視 AI 建議的檔案操作，決定要執行哪些",
   "@commands.suggestedOpsShow.description": {
     "sourceHash": "7efe8c9"
+  },
+  "commands.helpViewDebugLog.label": "檢視除錯記錄檔",
+  "@commands.helpViewDebugLog.label": {
+    "sourceHash": "007c98d"
+  },
+  "commands.helpViewDebugLog.description": "用內建檔案檢視器開啟 Cmdr 目前的除錯記錄檔",
+  "@commands.helpViewDebugLog.description": {
+    "sourceHash": "6d97731"
+  },
+  "commands.handler.viewDebugLog.disabled": "記錄檔儲存已停用。在「設定 > 進階」中啟用，然後重新啟動 Cmdr 來檢視除錯記錄檔。",
+  "@commands.handler.viewDebugLog.disabled": {
+    "sourceHash": "a781813"
+  },
+  "commands.handler.viewDebugLog.unavailable": "無法開啟除錯記錄檔。再試一次。",
+  "@commands.handler.viewDebugLog.unavailable": {
+    "sourceHash": "794a5b3"
   }
 }

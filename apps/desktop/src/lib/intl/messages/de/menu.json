@@ -669,5 +669,9 @@
   "@menu.dock.locationInParent": {
     "sourceHash": "0bf83e2",
     "sameAsSourceJustification": "Pure placeholder-and-punctuation label, and German disambiguates a name with the same parenthetical frame: macOS de renders \"^2 (^3)\" (Finder LocalizableMerged IN_G6_V1) and \"Location (%@)\" → \"Umgebung (%@)\" (AppKit Menus), so the qualifier stays second in parentheses with a space before the opening paren."
+  },
+  "menu.help.viewDebugLog": "Debug-Protokoll ansehen",
+  "@menu.help.viewDebugLog": {
+    "sourceHash": "007c98d"
   }
 }

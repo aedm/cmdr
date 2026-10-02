@@ -666,5 +666,9 @@
   "@menu.dock.locationInParent": {
     "sourceHash": "0bf83e2",
     "sameAsSourceJustification": "Pure punctuation around two literal folder names. Swedish appends a disambiguating qualifier in parentheses exactly as English does, in the same order: Finder sv 'SB_iCloudDetail' is the bare '^0 (^1)' (pile macOS/Finder/LocalizableMerged.json), and the sv catalog already uses the same trailing parenthetical for qualifiers ('Mata ut ({name}) (upptagen)'). Deliberately identical."
+  },
+  "menu.help.viewDebugLog": "Visa felsökningslogg",
+  "@menu.help.viewDebugLog": {
+    "sourceHash": "007c98d"
   }
 }

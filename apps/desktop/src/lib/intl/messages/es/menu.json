@@ -670,5 +670,9 @@
   "@menu.dock.locationInParent": {
     "sourceHash": "0bf83e2",
     "sameAsSourceJustification": "Pure punctuation around two literal folder names: Spanish qualifies with the same trailing parenthesis and the same order, and macOS Spanish ships the pattern unchanged (AppKit Common/InfoPanel translate \"%@ (%@)\" as \"%1$@ (%2$@)\"). Nothing here is a word, so there is nothing to translate."
+  },
+  "menu.help.viewDebugLog": "Ver registro de depuración",
+  "@menu.help.viewDebugLog": {
+    "sourceHash": "007c98d"
   }
 }

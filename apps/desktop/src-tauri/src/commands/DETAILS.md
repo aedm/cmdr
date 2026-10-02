@@ -500,3 +500,8 @@ Why it matters: sharing one `Deadline` lets a wedged optional leg spend everythi
 answers the question fails instantly on an empty budget. The user then reads a timeout blamed on a device the command
 never got around to asking (here: "couldn't read the destination" for a hung SOURCE share), which sends them debugging
 the wrong end.
+
+## Debug log path IPC
+
+`logging.rs::get_debug_log_path` delegates to `logging::debug_log_path` without filesystem work. Path policy:
+`apps/desktop/src-tauri/src/logging/DETAILS.md`.

@@ -7,6 +7,7 @@
  * The selection-dialog openers (`selection.selectFiles` / `selection.deselectFiles`)
  * live in `selection-handlers`, not here.
  */
+import { openDebugLog } from '$lib/logging/open-debug-log'
 import { openExternalUrl } from '$lib/tauri-commands'
 import { openSettingsWindow } from '$lib/settings/settings-window'
 import { openShortcutsWindow } from '$lib/shortcuts/shortcuts-window'
@@ -53,6 +54,10 @@ export const appDialogHandlers = {
 
   'queue.show': () => {
     void openQueueWindow()
+  },
+
+  'help.viewDebugLog': () => {
+    void openDebugLog()
   },
 
   'help.sendErrorReport': () => {

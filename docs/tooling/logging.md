@@ -156,6 +156,7 @@ RUST_LOG=trace pnpm dev
 - **Cap**: `Advanced > Maximum disk space for log files (MB)`, default 200 MB, range 0–5000. Set to `0` to disable log
   storage entirely. Error reports cannot be sent without logs. Lowering the cap at runtime eagerly prunes excess files.
   `0 ↔ non-zero` transitions (and raising the cap beyond its baked-in value) require an app restart.
+- Open the current file read-only from **Help > View debug log** or **View debug log** in the command palette.
 - Accessible from **Settings > Advanced > "Logging and diagnostics" > "Open log file"**, which reveals the log FOLDER in
   Finder rather than opening a file. Also bundled into error reports sent via **Help > Send error report…** (passes
   through the shared redactor first)

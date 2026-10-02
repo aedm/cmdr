@@ -670,5 +670,9 @@
   "@menu.dock.locationInParent": {
     "sourceHash": "0bf83e2",
     "sameAsSourceJustification": "Apple's own pt-BR keeps this composer byte-identical: AppKit's `%@ (%@)` renders as `%1$@ (%2$@)` in `pt` (Common.loctable, macOS 26.6.2 build 25G83, read 2026-09-09), while the same key is genuinely adapted elsewhere (ja fullwidth parens, zh_CN no space, ar/he bidi isolates). Brazilian Portuguese writes a parenthetical qualifier after the head noun with ASCII parens and one leading space, exactly as English does, and both tokens are uncontrolled folder names that nothing may agree with."
+  },
+  "menu.help.viewDebugLog": "Visualizar registro de depuração",
+  "@menu.help.viewDebugLog": {
+    "sourceHash": "007c98d"
   }
 }

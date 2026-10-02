@@ -49,6 +49,12 @@
     "forms": "button Voeg … toe with the particle LAST (Voeg aan rapport toe, Voeg server toe…, Voeg huidige map aan favorieten toe); window title Toevoegen aan je foutrapport; participle toegevoegd",
     "sources": "macOS Finder (Add Password → Voeg wachtwoord toe, Add Tags → Voeg tags toe), AppKit (Voeg aan begin van knoppenbalk toe)"
   },
+  "advanced": {
+    "chosen": "Geavanceerd",
+    "confidence": "high",
+    "forms": "Cmdr Settings section → Geavanceerd; quote settings.section.advanced exactly in navigation paths",
+    "sources": "Network.appex Localizable (ADVANCED); catalog settings.section.advanced (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
+  },
   "ai-feature": {
     "accept": ["de AI", "AI-"],
     "chosen": "AI-functies",
@@ -615,6 +621,13 @@
     "chosen": "dashboard",
     "confidence": "high",
     "sources": "MS terminology"
+  },
+  "debugging": {
+    "chosen": "foutopsporing",
+    "accept": ["foutopspor", "debug"],
+    "confidence": "high",
+    "forms": "debug log → foutopsporingslogbestand; the technical level stays debug",
+    "sources": "ConsoleKit.framework Localizable (Debug Type, value_debug); catalog settings.developer.verboseLogging.description (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
   },
   "default": {
     "accept": ["standaard"],
@@ -2528,6 +2541,12 @@
     "confidence": "high",
     "forms": "button Stop everywhere (Stop met zoeken, Stop en verwijder …); a button that stops running work is the imperative even when only a screen reader hears it",
     "sources": "macOS Finder (BN62, PE107, SD23)"
+  },
+  "storage": {
+    "chosen": "opslag",
+    "confidence": "high",
+    "forms": "storing logs → logopslag",
+    "sources": "Storage.appex InfoPlist (CFBundleDisplayName, en_GB paired with target); catalog settings.advanced.maxLogStorageMb.description (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
   },
   "streaming": {
     "accept": ["streammodus", "stream"],

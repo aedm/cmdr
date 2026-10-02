@@ -57,6 +57,8 @@ export type {
   ListingCancelledEvent,
 } from './file-listing'
 
+export { getDebugLogPath } from './logging'
+
 // File viewer (session management, search, seeking)
 export {
   viewerOpen,

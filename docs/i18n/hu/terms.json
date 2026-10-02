@@ -59,6 +59,12 @@
       "settings.appearance.tintGroupDescription": "adds a tint → háttérszínezést ad: the natural verb for giving a visual effect."
     }
   },
+  "advanced": {
+    "chosen": "Speciális",
+    "confidence": "high",
+    "forms": "Cmdr Settings section → Speciális; quote settings.section.advanced exactly in navigation paths; the shipped section name stays distinct from Apple’s generic Advanced label",
+    "sources": "Network.appex Localizable (ADVANCED); catalog settings.section.advanced (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
+  },
   "ai-agent": {
     "chosen": "ágens",
     "forms": "the provenance label Agent → Ágens; You → Te",
@@ -789,6 +795,13 @@
     "confidence": "tentative",
     "sources": "descriptive; advanced settings only"
   },
+  "debugging": {
+    "chosen": "hibakeresés",
+    "accept": ["hibakeres", "debug"],
+    "confidence": "high",
+    "forms": "debug log → hibakeresési napló; the technical log level stays debug",
+    "sources": "ConsoleKit.framework Localizable (Debug Type, value_debug); catalog settings.developer.verboseLogging.description (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)"
+  },
   "default": {
     "chosen": "alapértelmezett",
     "accept": ["alapérték", "rendszer szerinti", "alapból"],
@@ -1340,6 +1353,13 @@
     "confidence": "high",
     "forms": "Step 1 of 2: X → 1/2. lépés: X (the AI install steps); the onboarding counter reads Lépés: 1/2",
     "sources": "MS terminology (step → lépés); shipped catalog (onboarding.wizard.stepProgress, ai.local.installStepExtracting)"
+  },
+  "storage": {
+    "chosen": "tárhely",
+    "confidence": "high",
+    "forms": "storage capacity → tárhely; storing logs → naplótárolás",
+    "sources": "Storage.appex InfoPlist (CFBundleDisplayName, en_GB paired with target); catalog settings.advanced.maxLogStorageMb.description (macOS 26.6.2 build 25G83, live loctable key cross-reference, 2026-10-02)",
+    "accept": ["tárol"]
   },
   "worktree": {
     "chosen": "worktree",
