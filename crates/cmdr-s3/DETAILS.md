@@ -440,17 +440,22 @@ PUT or `CompleteMultipartUpload` finishes, and a replaced object stays readable 
 (`apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Whole-publish destinations").
 Decision/Why: a `.cmdr-tmp-*` temp would cost a landing rename, which on S3 is a server-side copy plus a delete (twice
 the requests, a single copy fails past 5 GB), and buys nothing the protocol doesn't already give. `write_is_single_shot`
-stays `false`: a request is open while the source drains.
+stays `false`: the server holds nothing until the request's last byte, yet a multipart upload spans many requests.
 
-- **Shape** (`writes.rs::shape_for`): one streamed PUT when `plan_parts` gives a single part (so up to 69 MiB, a 64 MiB
-  part plus a folded tail), a multipart upload otherwise. A stream of unknown length goes in parts of the floor size (64
-  MiB, so at most 625 GiB), and one that ends inside its first part goes out as one PUT from the buffer.
-- **The streamed PUT** sends `Content-Length` and reads one piece ahead (`upload_body.rs`), the WebDAV body's design
-  with one more guard: a source that proves longer than promised fails the body BEFORE its last promised byte goes out,
-  so S3 never stores a truncated prefix (WebDAV removes its truncated file afterwards; on S3 that file would already be
-  the user's). ❗ The last piece also waits for a go-ahead from the upload, which asks the progress callback, where a
-  Cancel arrives: with only the 200 ms tick, a cancel landing between ticks lost to a fast finish and published the
-  object (found by the shared `a_cancelled_upload_leaves_nothing_behind` scenario). ❗ A cancel after the last piece is
+- **Shape** (`writes.rs::shape_for`): one PUT when `plan_parts` gives a single part (so up to 69 MiB, a 64 MiB part plus
+  a folded tail), a multipart upload otherwise. A stream of unknown length goes in parts of the floor size (64 MiB, so
+  at most 625 GiB), and one that ends inside its first part goes out as one PUT from the buffer.
+- **Every request body is in memory** (`upload_body.rs::buffered_body`): a PUT reads its whole object first
+  (`writes.rs::read_whole`), a part its part. So a source that ends short, runs long, or fails ends the write before a
+  byte goes out (S3 never sees a truncated prefix), and any request can be sent again whole (a pause, a part's retry).
+  Peak memory per one-PUT write is its object, at most 69 MiB, within the four part buffers a multipart upload holds.
+  Decision/Why not stream a PUT straight from the source (one piece of read-ahead): a pause longer than R2's ~15 s idle
+  limit fails such a PUT, and its bytes can't be sent again because the source can't be re-read (§ "Pause"). The cost is
+  the overlap of source read and upload inside one file, which matters only for a slow source, and the engine's
+  concurrent files hide most of it.
+- ❗ **A PUT's last piece waits for a go-ahead** from the upload, which asks the progress callback, where a Cancel
+  arrives: with only the 200 ms tick, a cancel landing between ticks lost to a fast finish and published the object
+  (found by the shared `a_cancelled_upload_leaves_nothing_behind` scenario). ❗ A cancel after the last piece is
   released is too late to stop the publish: the PUT waits for its answer and reports the file it finished. Dropping the
   request there reported `Cancelled` over an already replaced object, and the cut-off cleanup then found our token on it
   and deleted it, losing the original AND the new bytes (verified on R2, `live_hostile_cancel_uploads`, 2026-10-02;
@@ -463,27 +468,55 @@ stays `false`: a request is open while the source drains.
   object ONLY when it carries that token AND is short (`writes.rs::settle_cut_off_put`): anything else there is the
   original or another writer's. ❗ Ours at the full size is the write having LANDED (the server published, then the link
   died before the answer), so the write reports it as written; deleting it there lost the original and the new bytes
-  alike on an overwrite. The same holds for the buffered PUT, and a failed `CompleteMultipartUpload` asks `landed_whole`
-  (one HEAD, never a delete) before calling the write failed (`late_cancel_test.rs`, a fake that commits and then hangs
-  up). That covers a write to a FREE name; an overwrite of an existing object on a provider not trusted to refuse a
-  short body never goes as a PUT at all (§ "Overwrites in parts"). The token is visible as user metadata and harmless to
-  other tools.
+  alike on an overwrite. A failed `CompleteMultipartUpload` asks `landed_whole` (one HEAD, never a delete) before
+  calling the write failed (`late_cancel_test.rs`, a fake that commits and then hangs up). That covers a write to a FREE
+  name; an overwrite of an existing object on a provider not trusted to refuse a short body never goes as a PUT at all
+  (§ "Overwrites in parts"). The token is visible as user metadata and harmless to other tools.
 - **Multipart** (`multipart_upload.rs`): up to the profile's `upload_concurrency()` (4) parts in flight, and a part is
   read from the source only when a slot is free, so at most four part buffers exist (256 MiB at the floor). Parts are
   buffered at all because a failed one is sent again after 1, 2, then 4 s on a throttle (`SlowDown`, 503, 429), a server
   fault, or a transport failure. The source is read with progress and cancel still answered after every piece and every
   200 ms tick while one is pending (`PartReader::pull_with`, under both the part fill and the look-ahead past the last
-  part), so a source stalled mid-part or right at its end can't hold a Cancel. The single streamed PUT needs none of
-  this: its own tick loop drops the request whatever the body is waiting on. ❌ a `next_chunk` is dropped half-read only
-  when that ends the upload. A known length is a promise: a part that comes up short, or bytes left after the last part,
-  fail the upload. Cancel is checked once more right before `CompleteMultipartUpload`, which is what publishes.
+  part), so a source stalled mid-part or right at its end can't hold a Cancel; a one-PUT write fills the same way
+  (`read_whole`). ❌ a `next_chunk` is dropped half-read only when that ends the upload. A known length is a promise: a
+  part that comes up short, or bytes left after the last part, fail the upload. Cancel is checked once more right before
+  `CompleteMultipartUpload`, which is what publishes.
 - **Verification**: a HEAD after every write (`verify_landing`, `judge_landing`) compares the size and the ETag with
   what the write answered. It costs one cheap request per file and feeds the pane patch that follows (`take_written`),
   so `notify_mutation` doesn't pay a second one. ETags aren't compared with an MD5 of the bytes: under SSE-KMS and for
   multipart they aren't one.
-- **Throttling on a single PUT isn't retried here**: its body is the source stream, which can't be read twice, and the
-  engine's per-file retry runs only on transport errors. A typed "busy, try again" `VolumeError` the engine retries is a
-  candidate for M8's friendly errors.
+- **Throttling on a single PUT isn't retried here**, though its body is in memory now; the engine's per-file retry runs
+  only on transport errors. A typed "busy, try again" `VolumeError` the engine retries is a candidate for M8's friendly
+  errors.
+
+## Pause
+
+The engine's pause parks the source stream between chunks, which stops a backend that sends each chunk as it reads it.
+An upload here buffers first (§ "Writing"), and a local source drains into those buffers in milliseconds, so that park
+never reached the bytes in flight: a 75 MB upload to R2 or GCS paused at 20% ran to 100% before it showed as paused
+(David's QA, 2026-10-02). So the write takes the operation's own Cancel and pause from the source,
+`VolumeReadStream::stop_signal` (a `cmdr_fs::volume::ScanStop`), and honours it per request (`upload_body.rs`
+`PauseHold`, carried on `writes.rs::Progress`):
+
+- **No request starts while paused**: a PUT, each part attempt, and `CompleteMultipartUpload` park first (and answer
+  `Cancelled` if the operation stopped instead).
+- **A body in flight checks before every 1 MiB piece.** A pause shorter than `writes::PAUSE_HOLD` (5 s) stalls the
+  request and costs nothing. One that outlasts it drops the request (`Halt::SetAside`) and sends it again whole on
+  resume: a part from its buffer without counting an attempt, a PUT from its object after settling the cut-off one
+  (`settle_cut_off_put`, again right before the resend: a server that keeps cut-off bodies may store ours only after
+  draining the dropped connection, and left there it would make the resend's own `If-None-Match: *` refuse the name). A
+  cancel while parked ends the write as `Cancelled`, the multipart upload aborted.
+- **Decision/Why the hold, rather than stalling the request for the whole pause or dropping it at once.** A stalled body
+  dies at the provider's idle timeout: R2 dropped a PUT whose body went silent after about 15 s, AWS answered
+  `400 RequestTimeout` after about 55 s, and GCS waited out 200 s (verified live, a 2 MiB PUT stalled 10–200 s mid-body,
+  2026-10-03), so a long pause would turn into a failed file. Dropping at once would resend up to four 64 MiB parts
+  after every brief pause. The hold keeps a short pause free and stays well under R2's limit.
+- **What a long pause costs**: the in-flight parts' bytes (up to four parts) or the PUT's bytes go again, plus one
+  billed request each. The upload ID stays valid, so the parts already done stay done.
+
+Pinned by `pause_test.rs` (a fake S3 reading at a slow rate: parts and a PUT paused before they go out and mid-body,
+resumed whole, and a cancel while paused) and `upload_body_test.rs` (the hold on a paused clock). The engine side:
+`write_operations/transfer/DETAILS.md` § "Pause reaches between chunks".
 
 ## Overwrites in parts
 

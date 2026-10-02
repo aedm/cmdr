@@ -96,10 +96,6 @@
       "lines": 24,
       "reason": "TODO: the same extraction as the `reconnect.rs` pair's entry: the three-state enum and its `VolumeConnection` mapping move into the shared `http_session` module with the rest of the lifecycle."
     },
-    "crates/cmdr-s3/src/volume/upload_body.rs ↔ crates/cmdr-webdav/src/volume/writes.rs": {
-      "lines": 13,
-      "reason": "TODO: both read-ahead upload bodies pull a piece the same way (`fetch`: count it as fetched, mark the source's end, keep its error). One shared read-ahead source in `cmdr-fs` would serve both, and WebDAV would gain S3's refusal of an over-long source BEFORE its last promised byte goes out (today it removes the truncated file afterwards)."
-    },
     "crates/cmdr-s3/src/volume/volume_impl.rs ↔ crates/cmdr-webdav/src/volume/volume_impl.rs": {
       "lines": 164,
       "reason": "TODO: two kinds of clone. `noting` (the liveness race and the lost-session hook) is lifecycle logic and moves with the `reconnect.rs` pair's `http_session` extraction. The rest is `Volume` trait-method signatures delegating in one line (`list_directory*`, the read path's `open_read_stream*` / `read_range`, the write path's `create_*` / `delete` / `rename` / `notify_mutation`, the copy scans, the lifecycle hooks, `connection_state`), the same trade the `cmdr-sftp` ↔ `cmdr-webdav` entry describes: a macro emitting trait methods costs more than it saves and hides them from symbol search."

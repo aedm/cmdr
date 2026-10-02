@@ -1,89 +1,51 @@
-//! What a body hands the transport, and when it refuses to.
+//! What a body hands the transport, and when it stops: a cancel, a refused
+//! last piece, and a pause held or set aside.
 
-use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Duration;
 
-use cmdr_fs::ignore_poison::IgnorePoison;
+use bytes::Bytes;
 use cmdr_fs::volume::liveness::Liveness;
-use cmdr_fs::volume::{StreamLength, VolumeError, VolumeReadStream};
+use cmdr_fs::volume::scan_stop::TestScanStop;
+use cmdr_fs::volume::{ScanStop, ScanStopSignal};
 use futures_util::StreamExt;
 use tokio_util::sync::CancellationToken;
 
-use super::{BodyCounts, BodyStop, BodyStopSlot, buffered_body, streamed_body};
+use super::{BodyWatch, Halt, HaltSlot, LastPieceAsk, PauseHold, buffered_body};
 
-/// A source that yields exactly these pieces, then an optional error.
-struct Pieces {
-    pieces: Vec<Vec<u8>>,
-    fail_after: bool,
+const MIB: usize = 1024 * 1024;
+
+/// What one drained body did: the bytes it handed over, whether it failed, and
+/// why it stopped itself.
+struct Drained {
+    sent: u64,
+    failed: bool,
+    halted: Option<Halt>,
 }
 
-impl VolumeReadStream for Pieces {
-    fn next_chunk(&mut self) -> Pin<Box<dyn Future<Output = Option<Result<Vec<u8>, VolumeError>>> + Send + '_>> {
-        Box::pin(async move {
-            if self.pieces.is_empty() {
-                if self.fail_after {
-                    self.fail_after = false;
-                    return Some(Err(VolumeError::IoError {
-                        message: "the disk went away".to_string(),
-                        raw_os_error: None,
-                    }));
-                }
-                return None;
-            }
-            Some(Ok(self.pieces.remove(0)))
-        })
-    }
-
-    fn total_size(&self) -> StreamLength {
-        StreamLength::Unknown
-    }
-
-    fn bytes_read(&self) -> u64 {
-        0
-    }
-}
-
-fn pieces(sizes: &[usize]) -> Box<dyn VolumeReadStream> {
-    Box::new(Pieces {
-        pieces: sizes.iter().map(|&n| vec![7u8; n]).collect(),
-        fail_after: false,
-    })
-}
-
-/// Drains a body, answering what it handed over and whether it failed.
-async fn drain(
-    source: Box<dyn VolumeReadStream>,
-    size: u64,
-    stop: CancellationToken,
-) -> (u64, bool, BodyCounts, BodyStopSlot) {
-    drain_answering(source, size, stop, true).await
-}
-
-/// [`drain`], with the last piece's go-ahead answered `last_piece_may_go`.
-async fn drain_answering(
-    source: Box<dyn VolumeReadStream>,
-    size: u64,
-    stop: CancellationToken,
-    last_piece_may_go: bool,
-) -> (u64, bool, BodyCounts, BodyStopSlot) {
-    let counts = BodyCounts::default();
-    let stopped: BodyStopSlot = Arc::default();
-    let (last_piece, mut asks) = tokio::sync::mpsc::channel::<tokio::sync::oneshot::Sender<bool>>(1);
-    tokio::spawn(async move {
-        while let Some(reply) = asks.recv().await {
-            let _ = reply.send(last_piece_may_go);
-        }
-    });
-    let mut body = streamed_body(
-        source,
-        size,
-        counts.clone(),
+fn watch(stop: CancellationToken, pause: PauseHold, halted: &HaltSlot, last_piece: Option<LastPieceAsk>) -> BodyWatch {
+    BodyWatch {
+        handed: Arc::new(AtomicU64::new(0)),
         stop,
-        Arc::clone(&stopped),
-        Arc::new(Liveness::new()),
+        liveness: Arc::new(Liveness::new()),
+        pause,
+        halted: halted.clone(),
         last_piece,
-    );
+    }
+}
+
+fn unpaused() -> PauseHold {
+    PauseHold::new(ScanStop::none(), Duration::from_secs(5))
+}
+
+fn pausable(signal: &Arc<TestScanStop>, hold: Duration) -> PauseHold {
+    PauseHold::new(ScanStop::new(Arc::clone(signal) as Arc<dyn ScanStopSignal>), hold)
+}
+
+async fn drain(len: usize, stop: CancellationToken, pause: PauseHold, last_piece: Option<LastPieceAsk>) -> Drained {
+    let halted = HaltSlot::default();
+    let mut body = buffered_body(Bytes::from(vec![3u8; len]), watch(stop, pause, &halted, last_piece));
     let mut sent = 0u64;
     let mut failed = false;
     while let Some(piece) = body.next().await {
@@ -95,33 +57,35 @@ async fn drain_answering(
             }
         }
     }
-    (sent, failed, counts, stopped)
+    Drained {
+        sent,
+        failed,
+        halted: halted.get(),
+    }
+}
+
+/// A go-ahead channel that answers every last-piece ask with `go`.
+fn answering(go: bool) -> LastPieceAsk {
+    let (ask, mut asks) = tokio::sync::mpsc::channel::<tokio::sync::oneshot::Sender<bool>>(1);
+    tokio::spawn(async move {
+        while let Some(reply) = asks.recv().await {
+            let _ = reply.send(go);
+        }
+    });
+    ask
 }
 
 #[tokio::test]
-async fn a_source_of_the_promised_length_goes_out_whole() {
-    let (sent, failed, counts, _) = drain(pieces(&[6, 6]), 12, CancellationToken::new()).await;
-    assert_eq!((sent, failed), (12, false));
-    assert_eq!(counts.handed.load(Ordering::Relaxed), 12);
-    assert!(counts.ended.load(Ordering::Relaxed));
-}
-
-/// ❗ The case the read-ahead exists for: a source whose pieces meet the
-/// promise exactly and then keep going. The body fails BEFORE the last promised
-/// byte goes out, so the request can't complete and S3 publishes nothing.
-#[tokio::test]
-async fn an_overlong_source_fails_the_body_before_its_last_promised_byte() {
-    let (sent, failed, _, stopped) = drain(pieces(&[6, 6, 1]), 12, CancellationToken::new()).await;
-    assert!(failed);
-    assert!(sent < 12, "the request must not have its full length: sent {sent}");
-    assert!(matches!(*stopped.lock_ignore_poison(), Some(BodyStop::Overlong)));
-}
-
-#[tokio::test]
-async fn a_first_piece_past_the_promise_sends_nothing() {
-    let (sent, failed, _, stopped) = drain(pieces(&[20]), 10, CancellationToken::new()).await;
-    assert_eq!((sent, failed), (0, true));
-    assert!(matches!(*stopped.lock_ignore_poison(), Some(BodyStop::Overlong)));
+async fn a_body_goes_out_in_pieces_and_can_be_sent_again() {
+    let bytes = Bytes::from(vec![3u8; 2 * MIB + 5]);
+    for _ in 0..2 {
+        let halted = HaltSlot::default();
+        let w = watch(CancellationToken::new(), unpaused(), &halted, None);
+        let handed = Arc::clone(&w.handed);
+        let pieces: Vec<_> = buffered_body(bytes.clone(), w).collect().await;
+        assert_eq!(pieces.len(), 3);
+        assert_eq!(handed.load(Ordering::Relaxed), bytes.len() as u64);
+    }
 }
 
 /// ❗ The last piece waits for the upload's go-ahead, which is where a Cancel
@@ -129,53 +93,89 @@ async fn a_first_piece_past_the_promise_sends_nothing() {
 /// nothing.
 #[tokio::test]
 async fn a_refused_last_piece_never_goes_out() {
-    let (sent, failed, _, _) = drain_answering(pieces(&[6, 6]), 12, CancellationToken::new(), false).await;
-    assert!(failed);
-    assert_eq!(sent, 6, "everything but the last piece went out");
+    let drained = drain(2 * MIB, CancellationToken::new(), unpaused(), Some(answering(false))).await;
+    assert!(drained.failed);
+    assert_eq!(drained.sent, MIB as u64, "everything but the last piece went out");
 }
 
 #[tokio::test]
-async fn a_short_source_ends_the_body_and_says_it_ended() {
-    let (sent, failed, counts, stopped) = drain(pieces(&[6]), 12, CancellationToken::new()).await;
-    assert_eq!((sent, failed), (6, false));
-    assert!(counts.ended.load(Ordering::Relaxed));
-    assert_eq!(counts.fetched.load(Ordering::Relaxed), 6);
-    assert!(stopped.lock_ignore_poison().is_none());
-}
-
-#[tokio::test]
-async fn a_failing_source_fails_the_body_with_its_own_error() {
-    let source = Box::new(Pieces {
-        pieces: vec![vec![1; 4]],
-        fail_after: true,
-    });
-    let (_, failed, _, stopped) = drain(source, 12, CancellationToken::new()).await;
-    assert!(failed);
-    assert!(matches!(*stopped.lock_ignore_poison(), Some(BodyStop::Source(_))));
+async fn an_allowed_last_piece_goes_out() {
+    let drained = drain(2 * MIB, CancellationToken::new(), unpaused(), Some(answering(true))).await;
+    assert!(!drained.failed);
+    assert_eq!(drained.sent, 2 * MIB as u64);
 }
 
 #[tokio::test]
 async fn a_cancelled_body_sends_nothing_more() {
     let stop = CancellationToken::new();
     stop.cancel();
-    let (sent, failed, _, _) = drain(pieces(&[6, 6]), 12, stop).await;
-    assert_eq!((sent, failed), (0, true));
+    let drained = drain(2 * MIB, stop, unpaused(), None).await;
+    assert_eq!((drained.sent, drained.failed), (0, true));
 }
 
-#[tokio::test]
-async fn a_buffered_body_goes_out_in_pieces_and_can_be_sent_again() {
-    let bytes = bytes::Bytes::from(vec![3u8; 2 * 1024 * 1024 + 5]);
-    for _ in 0..2 {
-        let handed = Arc::new(std::sync::atomic::AtomicU64::new(0));
-        let pieces: Vec<_> = buffered_body(
-            bytes.clone(),
-            Arc::clone(&handed),
-            CancellationToken::new(),
-            Arc::new(Liveness::new()),
-        )
-        .collect()
-        .await;
-        assert_eq!(pieces.len(), 3);
-        assert_eq!(handed.load(Ordering::Relaxed), bytes.len() as u64);
-    }
+/// A pause that ends within the hold costs nothing: the body carries on where
+/// it stood.
+#[tokio::test(start_paused = true)]
+async fn a_pause_shorter_than_the_hold_lets_the_body_carry_on() {
+    let signal = TestScanStop::new();
+    signal.pause();
+    let resumer = Arc::clone(&signal);
+    tokio::spawn(async move {
+        // allowed-test-sleep: virtual time on a paused clock; a pause of 1 s
+        // against a 5 s hold is the subject.
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        resumer.resume();
+    });
+    let drained = drain(
+        2 * MIB,
+        CancellationToken::new(),
+        pausable(&signal, Duration::from_secs(5)),
+        None,
+    )
+    .await;
+    assert!(!drained.failed);
+    assert_eq!(drained.sent, 2 * MIB as u64);
+    assert_eq!(drained.halted, None);
+}
+
+/// A pause that outlasts the hold sets the request aside before the server's
+/// idle timeout can fail it.
+#[tokio::test(start_paused = true)]
+async fn a_pause_past_the_hold_sets_the_body_aside() {
+    let signal = TestScanStop::new();
+    signal.pause();
+    let drained = drain(
+        2 * MIB,
+        CancellationToken::new(),
+        pausable(&signal, Duration::from_secs(5)),
+        None,
+    )
+    .await;
+    assert!(drained.failed);
+    assert_eq!(drained.sent, 0, "nothing goes out while paused");
+    assert_eq!(drained.halted, Some(Halt::SetAside));
+}
+
+/// A Cancel that lands while the body is paused stops it as a stop, ❌ never
+/// as a set-aside that would be sent again.
+#[tokio::test(start_paused = true)]
+async fn a_cancel_while_paused_stops_the_body() {
+    let signal = TestScanStop::new();
+    signal.pause();
+    let stopper = Arc::clone(&signal);
+    tokio::spawn(async move {
+        // allowed-test-sleep: virtual time on a paused clock; the cancel has to
+        // land inside the hold.
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        stopper.stop();
+    });
+    let drained = drain(
+        2 * MIB,
+        CancellationToken::new(),
+        pausable(&signal, Duration::from_secs(5)),
+        None,
+    )
+    .await;
+    assert!(drained.failed);
+    assert_eq!(drained.halted, Some(Halt::Stopped));
 }

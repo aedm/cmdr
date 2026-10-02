@@ -29,9 +29,9 @@ Decisions and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
   locally.
 - ❗ **Parse every success body**: Complete, CopyObject, UploadPartCopy, DeleteObjects can fail inside `200 OK`.
 - ❗ **Keys are never trimmed**; a `.`/`..` segment is refused (`KeyError::DotSegment`).
-- ❗ **Writes go to the final key** (`publishes_writes_whole`). ❌ Nothing partial is ever published: the streamed body
-  reads one piece ahead and holds its last piece for a Cancel check, and a cut-off PUT removes what a server kept of it,
-  by its own `x-amz-meta-cmdr-write` token only. ❌ Don't collapse `fetched` and `handed`.
+- ❗ **Writes go to the final key**. ❌ Nothing partial is ever published: bodies are buffered (≤ one part), a PUT holds
+  its last piece for a Cancel check, and a cut-off PUT removes only what carries its own write token.
+- ❗ **Pause parks requests (`stop_signal`), ❌ never holding one past `PAUSE_HOLD`**: R2 drops a silent body at ~15 s.
 - ❗ **Profile capabilities are allowlists from live evidence, ❌ never a probe** (Garage answers 200 to an ignored
   `If-None-Match`). Re-verify with `apps/desktop/test/s3-servers/live.sh` first. Off the list, `CreateNew` HEADs.
 - ❗ **An upload is recorded before its first part**, and an abort counts only once a listing confirms it; the sweep

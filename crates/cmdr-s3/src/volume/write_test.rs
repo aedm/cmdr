@@ -152,19 +152,18 @@ impl VolumeReadStream for StallingSource {
     }
 }
 
-/// ❗ A single PUT cancelled mid-body leaves nothing under the name. S3 itself
-/// never publishes a PUT short of its `Content-Length`, but VersityGW does: a
-/// body cut off mid-flight is stored as a truncated object under the user's
-/// name (fixture README). So the write cleans up after any PUT that didn't
-/// finish, removing the object only when it carries this write's own token.
-/// The source stalls after its first piece, so the server holds those bytes
-/// when the cancel lands: deterministic, whatever the timing.
+/// ❗ A single PUT cancelled while its source stalls leaves nothing under the
+/// name, and never hangs on the stalled source. A PUT's body is read whole
+/// before it goes (`writes.rs::read_whole`), so the Cancel lands while it
+/// fills, answered every progress tick, and not a byte reaches the server
+/// (VersityGW would otherwise store a cut-off body under the user's name). A
+/// PUT cut off mid-body is settled by its token: `pause_test.rs` pins that
+/// against a fake that keeps cut-off bodies.
 async fn a_cancelled_single_put_publishes_nothing(service: FixtureService) {
     let volume = connect_fixture(service, Some(FIXTURE_BUCKET)).await;
     let prefix = scratch_prefix("write-cancel-put");
     let path = volume.root().join(key_of(&prefix, "cancelled.bin"));
-    // The first piece goes out once the second is read ahead; the third never
-    // comes, so the server holds 1 MiB of 3 when the cancel lands.
+    // Two pieces of three, then the source stalls for good.
     let source = StallingSource {
         pieces: vec![
             self_describing_bytes(MIB, "first"),
@@ -181,8 +180,8 @@ async fn a_cancelled_single_put_publishes_nothing(service: FixtureService) {
             source.total_size(),
             Box::new(source),
             // The user's Cancel, a few ticks into the stall.
-            &|progress| {
-                if progress.bytes_written >= MIB as u64 && asked.fetch_add(1, Ordering::Relaxed) >= 2 {
+            &|_| {
+                if asked.fetch_add(1, Ordering::Relaxed) >= 4 {
                     ControlFlow::Break(())
                 } else {
                     ControlFlow::Continue(())

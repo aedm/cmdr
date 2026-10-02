@@ -11,9 +11,13 @@
 //! - it refuses a listing prefix past S3's 1,024-byte key ceiling with `400
 //!   InvalidRequest` the way B2 does, where other servers answer an empty page;
 //! - a `CopyObject` honours `x-amz-copy-source-if-match` and R2's
-//!   `cf-copy-destination-if-none-match` (`412`), and
+//!   `cf-copy-destination-if-none-match` (`412`), a PUT honours
+//!   `If-None-Match: *` (`412`), and
 //!   [`FakeS3::replace_after_head`] stands in for another writer replacing a
-//!   source between the copy's HEAD and the copy.
+//!   source between the copy's HEAD and the copy;
+//! - [`FakeS3::read_at`]: it reads request bodies at a set rate, a slow uplink
+//!   a pause can land in the middle of, and counts every body byte as it
+//!   arrives ([`FakeS3::body_bytes`]).
 //!
 //! It speaks path style over plain HTTP, one request per connection, and
 //! knows HEAD, PUT, DELETE, `ListObjectsV2`, and the multipart calls. A cell
@@ -76,6 +80,13 @@ struct World {
     batch_deletes: usize,
     /// The next HEAD of this key is answered, then the object replaced.
     replace_after_head: Option<String>,
+    /// Bytes per second each connection's body is read at; `None` is as fast
+    /// as they come.
+    read_rate: Option<usize>,
+    /// Every body byte read so far, counted as it arrives.
+    body_bytes: usize,
+    /// Every body-carrying PUT (a PUT or a part) that arrived whole.
+    puts: usize,
 }
 
 pub(super) struct FakeS3 {
@@ -93,7 +104,7 @@ impl FakeS3 {
             while let Ok((mut socket, _)) = listener.accept().await {
                 let world = Arc::clone(&serving);
                 tokio::spawn(async move {
-                    let Some((head, body, length)) = read_request(&mut socket).await else {
+                    let Some((head, body, length)) = read_request(&mut socket, &world).await else {
                         return;
                     };
                     let Some(response) = answer(&world, &head, &body, length, answer_after).await else {
@@ -140,6 +151,22 @@ impl FakeS3 {
     /// replaces it (a new ETag), as if between a copy's HEAD and the copy.
     pub(super) fn replace_after_head(&self, key: &str) {
         self.world.lock_ignore_poison().replace_after_head = Some(key.to_string());
+    }
+
+    /// From now on, every request body is read at `bytes_per_second` per
+    /// connection.
+    pub(super) fn read_at(&self, bytes_per_second: usize) {
+        self.world.lock_ignore_poison().read_rate = Some(bytes_per_second);
+    }
+
+    /// Every request body byte that has arrived so far, cut-off bodies too.
+    pub(super) fn body_bytes(&self) -> usize {
+        self.world.lock_ignore_poison().body_bytes
+    }
+
+    /// How many PUTs and parts arrived whole (copies not counted).
+    pub(super) fn puts(&self) -> usize {
+        self.world.lock_ignore_poison().puts
     }
 
     pub(super) fn object(&self, key: &str) -> Option<Stored> {
@@ -270,7 +297,11 @@ async fn answer(
         .strip_prefix(&format!("/{BUCKET}/"))
         .map(|key| percent_decode_str(key).decode_utf8_lossy().into_owned());
     if let Some(key) = &key {
-        world.lock_ignore_poison().keys_seen.push(key.clone());
+        let mut world = world.lock_ignore_poison();
+        world.keys_seen.push(key.clone());
+        if method == "PUT" && body_len == length && header(head, "x-amz-copy-source").is_none() {
+            world.puts += 1;
+        }
     }
     let upload_id = param(query, "uploadId");
     let response = match (method.as_str(), key, upload_id) {
@@ -358,6 +389,9 @@ async fn answer(
         ("PUT", Some(key), None) => {
             let (etag, hang) = {
                 let mut world = world.lock_ignore_poison();
+                if header(head, "if-none-match") == Some("*") && world.objects.contains_key(&key) {
+                    return Some(error("412 Precondition Failed", "PreconditionFailed"));
+                }
                 world.writes += 1;
                 let etag = format!("\"v{}\"", world.writes);
                 world.objects.insert(
@@ -516,7 +550,7 @@ fn batch_delete(world: &Mutex<World>, body: &[u8]) -> String {
 }
 
 /// The request head, the body bytes that arrived, and the `Content-Length`.
-async fn read_request(socket: &mut tokio::net::TcpStream) -> Option<(String, Vec<u8>, usize)> {
+async fn read_request(socket: &mut tokio::net::TcpStream, world: &Mutex<World>) -> Option<(String, Vec<u8>, usize)> {
     let mut buffer = Vec::new();
     let mut chunk = [0u8; 65536];
     let head_end = loop {
@@ -544,10 +578,19 @@ async fn read_request(socket: &mut tokio::net::TcpStream) -> Option<(String, Vec
     // (`DeleteObjects`); an upload's bytes are only counted.
     let mut body = buffer[head_end..].to_vec();
     let mut body_len = body.len();
+    world.lock_ignore_poison().body_bytes += body_len;
     while body_len < length {
-        match socket.read(&mut chunk).await {
+        let rate = world.lock_ignore_poison().read_rate;
+        // A small read under a rate, so the pace holds piece by piece.
+        let want = if rate.is_some() { 16 * 1024 } else { chunk.len() };
+        match socket.read(&mut chunk[..want]).await {
             Ok(0) | Err(_) => break,
             Ok(read) => {
+                world.lock_ignore_poison().body_bytes += read;
+                if let Some(rate) = rate {
+                    // allowed-test-sleep: the pace IS this fake's slow uplink.
+                    tokio::time::sleep(Duration::from_secs_f64(read as f64 / rate as f64)).await;
+                }
                 body_len += read;
                 if body.len() < 1 << 20 {
                     body.extend_from_slice(&chunk[..read]);

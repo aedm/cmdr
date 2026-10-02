@@ -1,5 +1,7 @@
-//! Writing an object: `write_from_stream` (a single streamed PUT, or the
-//! multipart upload in `multipart_upload.rs`) and `create_file`.
+//! Writing an object: `write_from_stream` (one PUT of a body read whole into
+//! memory, or the multipart upload in `multipart_upload.rs`) and `create_file`.
+//! A pause parks the requests and sets aside one it outlasts (`upload_body.rs`,
+//! `DETAILS.md` § "Pause").
 //!
 //! ❗ **Every write goes to its FINAL key.** S3 publishes an object only when
 //! its PUT or `CompleteMultipartUpload` finishes, and a replaced object stays
@@ -31,9 +33,11 @@
 
 use std::ops::ControlFlow;
 use std::path::Path;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
+use bytes::Bytes;
 use cmdr_fs::entry::FileEntry;
 use cmdr_fs::ignore_poison::IgnorePoison;
 use cmdr_fs::pluralize::pluralize_grouped;
@@ -44,21 +48,30 @@ use tokio_util::sync::CancellationToken;
 
 use super::S3Volume;
 use super::errors::map_s3_error;
+use super::multipart_upload::PartReader;
 use super::paths::{Target, target_of};
-use super::upload_body::{BodyCounts, BodyStop, BodyStopSlot, streamed_body};
+use super::upload_body::{BodyWatch, Halt, HaltSlot, PauseHold, buffered_body};
 use crate::error::S3Error;
 use crate::multipart::{PartPlan, ShortTail, TooLarge, plan_parts_with_floor};
 use crate::ops::{self, ObjectMetadata, Overwrite};
 use crate::request::{Body, S3Request};
 use crate::transport::{Answer, QUERY_BUDGET, S3Client, map_transport_error};
 
-/// How often a streamed upload reports progress while its body is in flight.
+/// How often an upload reports progress while its body is in flight.
 pub(super) const PROGRESS_TICK: Duration = Duration::from_millis(200);
+
+/// How long a paused upload holds a request open mid-body before setting it
+/// aside, to send it again whole once resumed. A short pause costs nothing;
+/// a long one costs the bytes of the requests in flight. ❗ Well under R2's
+/// limit: R2 drops a body that sits silent for about 15 s, AWS answers `400
+/// RequestTimeout` after about 55 s, and GCS waited out 200 s (verified live,
+/// a PUT body stalled 10–200 s, 2026-10-03).
+pub(super) const PAUSE_HOLD: Duration = Duration::from_secs(5);
 
 /// How a write of a given length goes out.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum UploadShape {
-    /// One streamed PUT of this many bytes.
+    /// One PUT of this many bytes.
     Single(u64),
     /// A multipart upload with this plan.
     Parts(PartPlan),
@@ -170,23 +183,27 @@ pub(super) fn overwrite_for(mode: WriteMode) -> Overwrite {
     }
 }
 
-/// The progress callback, with what it shows held monotonic: a part sent
-/// again after a failure doesn't move the bar backwards.
+/// The user's hold on a write: the progress callback (where a Cancel
+/// arrives), with what it shows held monotonic so a part sent again doesn't
+/// move the bar backwards, and the operation's pause.
 pub(super) struct Progress<'a> {
     report: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
     expected: StreamLength,
     shown: AtomicU64,
+    pub(super) pause: PauseHold,
 }
 
 impl<'a> Progress<'a> {
     pub(super) fn new(
         report: &'a (dyn Fn(StreamWriteProgress) -> ControlFlow<()> + Sync),
         expected: StreamLength,
+        pause: PauseHold,
     ) -> Self {
         Self {
             report,
             expected,
             shown: AtomicU64::new(0),
+            pause,
         }
     }
 
@@ -246,7 +263,11 @@ impl S3Volume {
             write_token: Some(crate::metadata::write_token()),
             carried: Vec::new(),
         };
-        let progress = Progress::new(on_progress, length);
+        let progress = Progress::new(
+            on_progress,
+            length,
+            PauseHold::new(stream.stop_signal(), self.pause_hold()),
+        );
         let target = WriteTarget {
             bucket,
             key,
@@ -265,7 +286,8 @@ impl S3Volume {
         };
         match (shape, short) {
             (UploadShape::Single(size), ShortStream::OnePut) => {
-                self.put_streamed(&client, &target, size, stream, &progress).await
+                let bytes = self.read_whole(&target, size, stream, &progress).await?;
+                self.put_whole(&client, &target, bytes, &progress).await
             }
             (UploadShape::Single(size), ShortStream::OnePart) => {
                 self.upload_in_parts(&client, &target, Some(PartPlan::whole(size)), short, stream, &progress)
@@ -307,17 +329,47 @@ impl S3Volume {
             .is_some())
     }
 
-    /// One streamed PUT of exactly `size` bytes, with progress and cancel.
-    /// ❗ A body that ends short, runs long, fails, or is cancelled aborts the
-    /// request, and S3 publishes nothing: there's never a partial to clean.
-    pub(super) async fn put_streamed(
+    /// The whole of a source promising `size` bytes (at most one part), read
+    /// into memory before anything is sent, with progress and cancel answered
+    /// while it fills. ❗ A source that ends short, runs long, or fails ends the
+    /// write here, before a byte goes out.
+    pub(super) async fn read_whole(
         &self,
-        client: &S3Client,
         target: &WriteTarget<'_>,
         size: u64,
         stream: Box<dyn VolumeReadStream>,
         progress: &Progress<'_>,
+    ) -> Result<Vec<u8>, VolumeError> {
+        let mut reader = PartReader::new(stream);
+        let volume_id = self.volume_id().to_string();
+        let mut between = || match progress.at(0) {
+            ControlFlow::Break(()) => Err(VolumeError::Cancelled(volume_id.clone())),
+            ControlFlow::Continue(()) => Ok(()),
+        };
+        let bytes = reader
+            .fill_with(usize::try_from(size).unwrap_or(usize::MAX), &mut between)
+            .await?;
+        if bytes.len() as u64 != size || !reader.at_end_with(&mut between).await? {
+            return Err(size_mismatch(target.remote, reader.read_so_far(), size));
+        }
+        Ok(bytes)
+    }
+
+    /// One PUT of `bytes`, with progress, cancel, and pause. A PUT a pause
+    /// outlasted is set aside and sent again whole once resumed.
+    /// ❗ A request that's cancelled, set aside, or cut off is settled at the
+    /// key ([`Self::settle_cut_off_put`]): S3 publishes nothing short of its
+    /// `Content-Length`, and what a server that does publish one kept is ours to
+    /// remove by its token.
+    pub(super) async fn put_whole(
+        &self,
+        client: &S3Client,
+        target: &WriteTarget<'_>,
+        bytes: Vec<u8>,
+        progress: &Progress<'_>,
     ) -> Result<u64, VolumeError> {
+        let size = bytes.len() as u64;
+        let bytes = Bytes::from(bytes);
         let built = ops::put_object(
             client.profile(),
             target.bucket,
@@ -328,103 +380,113 @@ impl S3Volume {
         )
         .map_err(|_| VolumeError::NotFound(target.remote.to_string()))?;
         let conditional = target.mode.refuses_occupied() && !built.check_first;
-        if built.check_first {
-            self.refuse_if_taken(client, target).await?;
-        }
-        let counts = BodyCounts::default();
-        let stop = CancellationToken::new();
-        let stopped: BodyStopSlot = std::sync::Arc::default();
-        let (last_piece, mut asks) = tokio::sync::mpsc::channel(1);
-        let body = streamed_body(
-            stream,
-            size,
-            counts.clone(),
-            stop.clone(),
-            std::sync::Arc::clone(&stopped),
-            std::sync::Arc::clone(client.liveness()),
-            last_piece,
-        );
-        // An empty body has no last piece to hold, so the request itself is
-        // the point of no return: a Cancel lands only before it goes.
-        if size == 0 && progress.at(0).is_break() {
-            return Err(VolumeError::Cancelled(self.volume_id().to_string()));
-        }
-        // ❗ Once the last piece is released the server may publish at any
-        // moment, so a Cancel after that is too late: dropping the request
-        // then would report `Cancelled` over a replaced object, and the
-        // cut-off cleanup would find our token on it and delete it (R2 answers
-        // slowly enough to hit this, live). The write waits for the answer and
-        // reports the file it finished (`late_cancel_test.rs`).
-        let mut released = size == 0;
-        // The block scopes the in-flight request: leaving it drops the request,
-        // which is what stops a cancelled upload on the wire.
-        let sent = {
-            let put = client.upload(built.request, body);
-            let mut put = std::pin::pin!(put);
-            let mut tick = tokio::time::interval(PROGRESS_TICK);
-            tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-            loop {
-                tokio::select! {
-                    sent = &mut put => break Some(sent),
-                    // The body's last piece waits here: a Cancel that came in
-                    // since the last tick stops it before S3 can publish.
-                    Some(reply) = asks.recv() => {
-                        let go = progress.at(counts.handed.load(Ordering::Relaxed).min(size)).is_continue();
-                        let _ = reply.send(go);
-                        if !go {
-                            stop.cancel();
-                            break None;
+        let cancelled = || VolumeError::Cancelled(self.volume_id().to_string());
+        let mut set_aside = false;
+        loop {
+            // ❌ No request is open across a pause: the server would drop it.
+            if progress.pause.stopped().await {
+                return Err(cancelled());
+            }
+            // ❗ A server that keeps a cut-off body may store it only once it
+            // has drained the dropped connection, long after the settle right
+            // after the drop. Left there, ours would make this resend's own
+            // no-overwrite header refuse the name, so it's settled again.
+            if set_aside && let Some(head) = self.settle_cut_off_put(client, target, size).await {
+                return Ok(self.published_after_all(target, &head, size, progress));
+            }
+            // Again after a set-aside PUT: a writer may have taken the name
+            // while we were paused.
+            if built.check_first {
+                self.refuse_if_taken(client, target).await?;
+            }
+            // An empty body has no last piece to hold, so the request itself
+            // is the point of no return: a Cancel lands only before it goes.
+            if size == 0 && progress.at(0).is_break() {
+                return Err(cancelled());
+            }
+            let handed = Arc::new(AtomicU64::new(0));
+            let stop = CancellationToken::new();
+            let halted = HaltSlot::default();
+            let (last_piece, mut asks) = tokio::sync::mpsc::channel(1);
+            let body = buffered_body(
+                bytes.clone(),
+                BodyWatch {
+                    handed: Arc::clone(&handed),
+                    stop: stop.clone(),
+                    liveness: Arc::clone(client.liveness()),
+                    pause: progress.pause.clone(),
+                    halted: halted.clone(),
+                    last_piece: Some(last_piece),
+                },
+            );
+            // ❗ Once the last piece is released the server may publish at any
+            // moment, so a Cancel after that is too late: dropping the request
+            // then would report `Cancelled` over a replaced object, and the
+            // cut-off cleanup would find our token on it and delete it (R2
+            // answers slowly enough to hit this, live). The write waits for the
+            // answer and reports the file it finished (`late_cancel_test.rs`).
+            let mut released = size == 0;
+            // The block scopes the in-flight request: leaving it drops the
+            // request, which is what stops a cancelled upload on the wire.
+            let sent = {
+                let put = client.upload(built.request.clone(), body);
+                let mut put = std::pin::pin!(put);
+                let mut tick = tokio::time::interval(PROGRESS_TICK);
+                tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+                loop {
+                    tokio::select! {
+                        sent = &mut put => break Some(sent),
+                        // The body's last piece waits here: a Cancel that came
+                        // in since the last tick stops it before S3 can publish.
+                        Some(reply) = asks.recv() => {
+                            let go = progress.at(handed.load(Ordering::Relaxed)).is_continue();
+                            let _ = reply.send(go);
+                            if !go {
+                                stop.cancel();
+                                break None;
+                            }
+                            released = true;
                         }
-                        released = true;
-                    }
-                    _ = tick.tick() => {
-                        let asked_to_stop = progress.at(counts.handed.load(Ordering::Relaxed).min(size)).is_break();
-                        if asked_to_stop && !released {
-                            stop.cancel();
-                            break None;
+                        _ = tick.tick() => {
+                            let asked_to_stop = progress.at(handed.load(Ordering::Relaxed)).is_break();
+                            if asked_to_stop && !released {
+                                stop.cancel();
+                                break None;
+                            }
                         }
                     }
                 }
-            }
-        };
-        let fetched = counts.fetched.load(Ordering::Relaxed);
-        let answer = match sent {
-            None => {
-                if let Some(head) = self.settle_cut_off_put(client, target, size).await {
-                    return Ok(self.published_after_all(target, &head, size, progress));
-                }
-                return Err(VolumeError::Cancelled(self.volume_id().to_string()));
-            }
-            Some(Err(e)) => {
+            };
+            let answer = match sent {
+                Some(Ok(answer)) => answer,
                 // ❗ The link can die after the server published our whole
                 // body: then the write landed, and it's reported as such.
-                if let Some(head) = self.settle_cut_off_put(client, target, size).await {
-                    return Ok(self.published_after_all(target, &head, size, progress));
-                }
-                return Err(match stopped.lock_ignore_poison().take() {
-                    Some(BodyStop::Source(source)) => source,
-                    Some(BodyStop::Overlong) => size_mismatch(target.remote, fetched, size),
-                    // ❗ A short source ends the request from OUR side, which
-                    // `reqwest` reports the way a dropped connection is: ❌ not
-                    // the server's fault, so not `DeviceDisconnected`.
-                    None if counts.ended.load(Ordering::Relaxed) && fetched != size => {
-                        size_mismatch(target.remote, fetched, size)
+                interrupted => {
+                    if let Some(head) = self.settle_cut_off_put(client, target, size).await {
+                        return Ok(self.published_after_all(target, &head, size, progress));
                     }
-                    None => map_transport_error(&e, self.volume_id(), target.remote),
-                });
+                    match (interrupted, halted.get()) {
+                        (Some(Err(_)), Some(Halt::SetAside)) => {
+                            debug!(target: "volume", "s3: set {} aside for a pause; it goes again on resume", target.remote);
+                            set_aside = true;
+                            continue;
+                        }
+                        (Some(Err(e)), None) => return Err(map_transport_error(&e, self.volume_id(), target.remote)),
+                        _ => return Err(cancelled()),
+                    }
+                }
+            };
+            if !answer.status.is_success() {
+                let error = S3Error::from_response(answer.status, &answer.text());
+                self.note_refused_condition(client, &error, crate::profile::ConditionalOp::Put, conditional);
+                return Err(map_s3_error(&error, target.remote));
             }
-            Some(Ok(answer)) => answer,
-        };
-        if !answer.status.is_success() {
-            let error = S3Error::from_response(answer.status, &answer.text());
-            self.note_refused_condition(client, &error, crate::profile::ConditionalOp::Put, conditional);
-            return Err(map_s3_error(&error, target.remote));
+            // Published: a cancel this late can't take it back, and the bytes
+            // are whole, so the final report's answer changes nothing.
+            let _ = progress.at(size);
+            self.verify_landing(client, target, size, answer.header("etag")).await?;
+            return Ok(size);
         }
-        // Published: a cancel this late can't take it back, and the bytes are
-        // whole, so the final report's answer changes nothing.
-        let _ = progress.at(size);
-        self.verify_landing(client, target, size, answer.header("etag")).await?;
-        Ok(size)
     }
 
     /// After a PUT of `size` bytes that was cancelled or failed without an

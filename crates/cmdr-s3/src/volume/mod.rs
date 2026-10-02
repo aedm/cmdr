@@ -126,6 +126,9 @@ struct S3VolumeInner {
     /// The smallest part a multipart upload cuts: `MIN_PART_SIZE`, except in a
     /// Docker cell that wants several parts from a small file.
     part_floor: AtomicU64,
+    /// How long a paused upload holds its in-flight requests open, in
+    /// milliseconds: `writes::PAUSE_HOLD`, except in a cell that can't wait it out.
+    pause_hold_ms: AtomicU64,
     /// The server-side paths of files the last listing of their folder showed
     /// beside a folder of their own name, as `<name> (file)` (`paths.rs` §
     /// "A file beside a folder of its name").
@@ -221,6 +224,20 @@ impl S3Volume {
     #[cfg(any(test, feature = "testing"))]
     pub fn set_part_floor(&self, bytes: u64) {
         self.inner.part_floor.store(bytes, Ordering::Relaxed);
+    }
+
+    /// How long a paused upload holds its in-flight requests open.
+    fn pause_hold(&self) -> std::time::Duration {
+        std::time::Duration::from_millis(self.inner.pause_hold_ms.load(Ordering::Relaxed))
+    }
+
+    /// Lets a paused upload hold its requests open for `hold` only, so a cell
+    /// sees a request set aside without waiting out the production hold.
+    #[cfg(any(test, feature = "testing"))]
+    pub fn set_pause_hold(&self, hold: std::time::Duration) {
+        self.inner
+            .pause_hold_ms
+            .store(u64::try_from(hold.as_millis()).unwrap_or(u64::MAX), Ordering::Relaxed);
     }
 
     /// Points this volume's no-overwrite writes at the `If-None-Match: *`
@@ -347,6 +364,7 @@ impl S3Volume {
                 written: std::sync::Mutex::new(HashMap::new()),
                 beside_folders: std::sync::Mutex::new(HashSet::new()),
                 part_floor: AtomicU64::new(MIN_PART_SIZE),
+                pause_hold_ms: AtomicU64::new(u64::try_from(writes::PAUSE_HOLD.as_millis()).unwrap_or(u64::MAX)),
             }),
         }
     }
@@ -392,6 +410,10 @@ mod live_protocol_test;
 mod live_support;
 #[cfg(test)]
 mod long_key_test;
+#[cfg(test)]
+mod pause_test;
+#[cfg(test)]
+mod put_source_test;
 #[cfg(test)]
 mod read_test;
 #[cfg(test)]

@@ -27,7 +27,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::errors::map_s3_error;
 use super::query::body_error;
-use super::upload_body::buffered_body;
+use super::upload_body::{BodyWatch, Halt, HaltSlot, PauseHold, buffered_body};
 use super::upload_ledger::{UnfinishedUpload, UploadLedger};
 use super::writes::{PROGRESS_TICK, Progress, ShortStream, WriteTarget, overwrite_for, size_mismatch};
 use super::{S3Volume, S3VolumeInner};
@@ -184,6 +184,9 @@ struct PartJob {
     /// This part's bytes on the wire, for progress. Reset on a retry.
     handed: Arc<AtomicU64>,
     stop: CancellationToken,
+    /// The operation's pause: no attempt starts while paused, and one the
+    /// pause outlasts is set aside and sent again.
+    pause: PauseHold,
     /// Set when the server answers that the upload is gone (`NoSuchUpload`).
     gone: Arc<AtomicBool>,
     volume_id: String,
@@ -208,11 +211,16 @@ pub(super) fn upload_refusal(error: &S3Error, remote: &str, gone: &AtomicBool) -
 
 impl PartJob {
     /// Sends the part, again after a throttle (`SlowDown`, 503, 429), a server
-    /// fault, or a transport failure, up to [`retry_after`]'s limit.
+    /// fault, or a transport failure, up to [`retry_after`]'s limit, and again
+    /// after a pause set it aside, which costs no attempt.
     async fn send(self) -> Result<(CompletedPart, u64), VolumeError> {
         let length = self.bytes.len() as u64;
         let mut attempt = 0;
         loop {
+            // ❌ No request is open across a pause: the server would drop it.
+            if self.pause.stopped().await {
+                return Err(VolumeError::Cancelled(self.volume_id.clone()));
+            }
             attempt += 1;
             self.handed.store(0, Ordering::Relaxed);
             let request = ops::upload_part(
@@ -224,11 +232,17 @@ impl PartJob {
                 length,
             )
             .map_err(|_| VolumeError::NotFound(self.remote.clone()))?;
+            let halted = HaltSlot::default();
             let body = buffered_body(
                 self.bytes.clone(),
-                Arc::clone(&self.handed),
-                self.stop.clone(),
-                Arc::clone(self.client.liveness()),
+                BodyWatch {
+                    handed: Arc::clone(&self.handed),
+                    stop: self.stop.clone(),
+                    liveness: Arc::clone(self.client.liveness()),
+                    pause: self.pause.clone(),
+                    halted: halted.clone(),
+                    last_piece: None,
+                },
             );
             let failure = match self.client.upload(request, body).await {
                 Ok(answer) if answer.status.is_success() => {
@@ -252,7 +266,19 @@ impl PartJob {
                     map_s3_error(&error, &self.remote)
                 }
                 Err(_) if self.stop.is_cancelled() => return Err(VolumeError::Cancelled(self.volume_id.clone())),
-                Err(e) => map_transport_error(&e, &self.volume_id, &self.remote),
+                Err(e) => match halted.get() {
+                    Some(Halt::SetAside) => {
+                        debug!(
+                            target: "volume",
+                            "s3: set part {} of {} aside for a pause; it goes again on resume",
+                            self.number, self.remote
+                        );
+                        attempt -= 1;
+                        continue;
+                    }
+                    Some(Halt::Stopped) => return Err(VolumeError::Cancelled(self.volume_id.clone())),
+                    None => map_transport_error(&e, &self.volume_id, &self.remote),
+                },
             };
             let Some(wait) = retry_after(attempt) else {
                 return Err(failure);
@@ -327,7 +353,7 @@ impl S3Volume {
                 .fill_with(usize::try_from(part_size).unwrap_or(usize::MAX), &mut between)
                 .await?;
             if reader.at_end_with(&mut between).await? && (short == ShortStream::OnePut || head.is_empty()) {
-                return self.put_buffered(client, target, head, progress).await;
+                return self.put_whole(client, target, head, progress).await;
             }
             first = Some(head);
         }
@@ -341,8 +367,13 @@ impl S3Volume {
         let sent = self
             .send_parts(client, target, &upload_id, &sizes, &mut reader, first, progress, &gone)
             .await;
-        // ❗ The completion is what publishes, so a Cancel that came in while
-        // the last part was in flight is honoured here, before it.
+        // ❗ The completion is what publishes, so a pause waits here, and a
+        // Cancel that came in while the last part was in flight (or while
+        // paused) is honoured here, before it.
+        let sent = match sent {
+            Ok(_) if progress.pause.stopped().await => Err(VolumeError::Cancelled(self.volume_id().to_string())),
+            sent => sent,
+        };
         let sent = sent.and_then(|(parts, total)| match progress.at(total) {
             std::ops::ControlFlow::Break(()) => Err(VolumeError::Cancelled(self.volume_id().to_string())),
             std::ops::ControlFlow::Continue(()) => Ok((parts, total)),
@@ -392,63 +423,6 @@ impl S3Volume {
                 Err(e)
             }
         }
-    }
-
-    /// The whole of a short stream of unknown length, as one PUT.
-    async fn put_buffered(
-        &self,
-        client: &S3Client,
-        target: &WriteTarget<'_>,
-        bytes: Vec<u8>,
-        progress: &Progress<'_>,
-    ) -> Result<u64, VolumeError> {
-        let length = bytes.len() as u64;
-        let built = ops::put_object(
-            client.profile(),
-            target.bucket,
-            target.key,
-            length,
-            overwrite_for(target.mode),
-            target.metadata,
-        )
-        .map_err(|_| VolumeError::NotFound(target.remote.to_string()))?;
-        let conditional = target.mode.refuses_occupied() && !built.check_first;
-        if built.check_first {
-            self.refuse_if_taken(client, target).await?;
-        }
-        // The PUT is what publishes: a Cancel that came in while the source
-        // filled is honoured before it.
-        if progress.at(0).is_break() {
-            return Err(VolumeError::Cancelled(self.volume_id().to_string()));
-        }
-        let handed = Arc::new(AtomicU64::new(0));
-        let body = buffered_body(
-            Bytes::from(bytes),
-            Arc::clone(&handed),
-            CancellationToken::new(),
-            Arc::clone(client.liveness()),
-        );
-        let answer = match client.upload(built.request, body).await {
-            Ok(answer) => answer,
-            Err(e) => {
-                // A transport failure mid-body can leave a truncated object on
-                // a server that keeps one, or come after the server published
-                // the whole body (`writes.rs::settle_cut_off_put`).
-                if let Some(head) = self.settle_cut_off_put(client, target, length).await {
-                    return Ok(self.published_after_all(target, &head, length, progress));
-                }
-                return Err(map_transport_error(&e, self.volume_id(), target.remote));
-            }
-        };
-        if !answer.status.is_success() {
-            let error = S3Error::from_response(answer.status, &answer.text());
-            self.note_refused_condition(client, &error, ConditionalOp::Put, conditional);
-            return Err(map_s3_error(&error, target.remote));
-        }
-        let _ = progress.at(length);
-        self.verify_landing(client, target, length, answer.header("etag"))
-            .await?;
-        Ok(length)
     }
 
     /// `CreateMultipartUpload`, carrying the object's metadata.
@@ -568,6 +542,7 @@ impl S3Volume {
                         bytes: Bytes::from(bytes),
                         handed,
                         stop: stop.clone(),
+                        pause: progress.pause.clone(),
                         gone: Arc::clone(gone),
                         volume_id: self.volume_id().to_string(),
                         remote: target.remote.to_string(),
