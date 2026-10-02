@@ -146,3 +146,27 @@ It resets around 00:00 UTC, or when the cap is raised on B2's Caps & Alerts page
    it either; only versioning would.
 4. **R2's multipart listing**: worth re-verifying the "lists nothing" claim (§ "Provider quirks seen") before relying on
    it in `abort_upload`'s R2 special case.
+
+## Follow-up: the lead's decisions, and what landed
+
+1. **B2's cap**: confirmed as B2's free daily Class B cap. `live_hostile_sizes` on B2 stays unverified, cap hit; the
+   lead reruns it.
+2. **Typed refusal for names** (`745c7777e`, `1b325ae93`): `cmdr_fs` already had `VolumeError::InvalidName` (SMB's
+   reserved names), so it's reused. The volume can't map B2 by code (`InvalidRequest` is its catch-all) or GCS's
+   no-overwrite HEAD (bodyless 400), so the refusal happens up front: `ProviderProfile::refused_key_chars` (GCS CR/LF,
+   B2 every control character) and `writes.rs::refuse_unstorable` answer `InvalidName` before any request on every write
+   path (upload, New File, New Folder, a rename's destination, a server copy's destination). GCS's `InvalidObjectName`
+   maps to `InvalidName` by code as a backstop. Verified live on GCS:
+   `InvalidName("…: this provider doesn't store U+000A in a name")`, nothing sent (a raw PUT of the same key answers
+   `400 InvalidObjectName`). B2's live recheck waits for the cap; `refused_name_test.rs` covers it against the fake.
+   What the user sees: the copy dialog's existing invalid-name message ("{path} has a name the destination can't
+   store.", no Retry), its suggestion now naming tabs and line breaks; Rename, New File, and New Folder say "“{name}”
+   can't be stored here. Pick a different name." English only: `i18n-coverage` lists `errors.volume.invalidNameNamed`,
+   and `i18n-stale` the changed suggestion, until the translator agent runs.
+3. **Blind window**: accepted for B2 and Wasabi; GCS's native precondition is `live-providers`' to look at.
+4. **R2's multipart listing**: `DETAILS.md` corrected; it lists an unfinished upload under a prefix. Nothing relied on
+   the old claim: `abort_upload` and the sweep never special-cased R2, so their confirming listing simply works there.
+5. **Lost answers** (`bb6e85267`, the lead's priority ask): a PUT, buffered PUT, or `CompleteMultipartUpload` whose
+   server published before the connection dropped now reports the file. The cut-off cleanup removes only our object at a
+   SHORT size. Still open: a server-side multipart copy whose completion answer is lost reports a failure though the
+   copy landed (nothing is deleted).
