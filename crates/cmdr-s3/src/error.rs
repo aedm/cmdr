@@ -30,6 +30,8 @@ pub(crate) enum S3ErrorCode {
     /// The object is archived (Glacier Flexible Retrieval, Deep Archive) and
     /// must be restored before it can be read or copied.
     InvalidObjectState,
+    /// GCS: the name holds a character it can't store (CR or LF).
+    InvalidObjectName,
     /// A part's ETag didn't match, or (R2) the parts weren't all one size.
     InvalidPart,
     InvalidPartOrder,
@@ -78,6 +80,7 @@ impl S3ErrorCode {
             "InvalidBucketName" => Self::InvalidBucketName,
             "InvalidDigest" => Self::InvalidDigest,
             "InvalidObjectState" => Self::InvalidObjectState,
+            "InvalidObjectName" => Self::InvalidObjectName,
             "InvalidPart" => Self::InvalidPart,
             "InvalidPartOrder" => Self::InvalidPartOrder,
             "InvalidRange" => Self::InvalidRange,

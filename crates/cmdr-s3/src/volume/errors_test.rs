@@ -100,3 +100,14 @@ fn anything_else_is_an_io_error_naming_the_code_and_status() {
     };
     assert!(message.contains("SlowDown") && message.contains("503"), "{message}");
 }
+
+/// GCS refuses a name it can't store (a line break) with `400
+/// InvalidObjectName`: the fix is another name, never a retry.
+#[test]
+fn an_invalid_object_name_is_an_invalid_name() {
+    let error = from_code(StatusCode::BAD_REQUEST, "InvalidObjectName");
+    assert!(
+        matches!(map_s3_error(&error, "/b/a.txt"), VolumeError::InvalidName(_)),
+        "{error}"
+    );
+}

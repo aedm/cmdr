@@ -29,7 +29,6 @@ use tokio::net::TcpListener;
 
 use super::S3Volume;
 use crate::params::{S3ConnectionParams, S3Provider};
-use crate::profile::{Preset, ProviderProfile};
 use crate::sigv4::Credentials;
 use crate::transport::S3Client;
 
@@ -64,6 +63,8 @@ struct World {
     listed: Vec<String>,
     hang_up_after_commit: bool,
     keep_cut_off_bodies: bool,
+    /// The decoded key of every object request, in order.
+    keys_seen: Vec<String>,
 }
 
 pub(super) struct FakeS3 {
@@ -131,16 +132,28 @@ impl FakeS3 {
         self.world.lock_ignore_poison().uploads.len()
     }
 
+    /// How many requests named `key` (any method, the multipart calls too).
+    pub(super) fn requests_about(&self, key: &str) -> usize {
+        self.world
+            .lock_ignore_poison()
+            .keys_seen
+            .iter()
+            .filter(|seen| *seen == key)
+            .count()
+    }
+
     /// A bucket place on R2, its endpoint dialing this fake over plain HTTP.
     pub(super) fn volume(&self) -> S3Volume {
-        let provider = S3Provider::R2 {
-            account_id: ACCOUNT.into(),
-        };
-        let params = S3ConnectionParams::new(provider, KEY_ID, Some(BUCKET)).expect("valid params");
-        let mut profile = ProviderProfile::from_preset(&Preset::R2 {
+        self.volume_for(S3Provider::R2 {
             account_id: ACCOUNT.into(),
         })
-        .expect("an R2 profile");
+    }
+
+    /// A bucket place on `provider`'s preset, its endpoint dialing this fake
+    /// over plain HTTP. Path-style presets only (everyone but AWS).
+    pub(super) fn volume_for(&self, provider: S3Provider) -> S3Volume {
+        let params = S3ConnectionParams::new(provider, KEY_ID, Some(BUCKET)).expect("valid params");
+        let mut profile = params.profile().expect("a profile");
         profile.scheme = "http".into();
         let host = profile.endpoint_host.clone();
         let client = S3Client::resolving(
@@ -200,6 +213,9 @@ async fn answer(
     let key = path
         .strip_prefix(&format!("/{BUCKET}/"))
         .map(|key| percent_decode_str(key).decode_utf8_lossy().into_owned());
+    if let Some(key) = &key {
+        world.lock_ignore_poison().keys_seen.push(key.clone());
+    }
     let upload_id = param(query, "uploadId");
     let response = match (method.as_str(), key, upload_id) {
         ("PUT", Some(_), Some(id)) if body_len == length => {

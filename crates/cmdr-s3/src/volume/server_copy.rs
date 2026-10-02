@@ -37,7 +37,7 @@ use super::errors::map_s3_error;
 use super::multipart_upload::{abort_upload, retry_after, upload_refusal};
 use super::paths::{Target, target_of};
 use super::query::{body_error, stored_mtime};
-use super::writes::{WriteTarget, normalize_etag, overwrite_for};
+use super::writes::{WriteTarget, normalize_etag, overwrite_for, refuse_unstorable};
 use crate::error::{S3Error, S3ErrorCode};
 use crate::metadata::{MTIME_HEADER, WRITE_TOKEN_HEADER};
 use crate::multipart::{MAX_COPY_OBJECT_SIZE, PartPlan, TooLarge, plan_parts_with_floor};
@@ -320,6 +320,7 @@ impl S3Volume {
             return Err(VolumeError::IsADirectory(from_remote));
         };
         let client = self.clone_client().await?;
+        refuse_unstorable(&client, to_key, &to_remote)?;
         if from_bucket != to_bucket && !client.profile().cross_bucket_copy() {
             // A provider that copies within one bucket only: stream it instead.
             return Err(VolumeError::NotSupported);

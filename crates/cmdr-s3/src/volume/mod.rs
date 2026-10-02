@@ -381,6 +381,8 @@ mod fake_s3;
 #[cfg(test)]
 mod long_key_test;
 #[cfg(test)]
+mod refused_name_test;
+#[cfg(test)]
 mod live_protocol_test;
 #[cfg(test)]
 mod live_support;

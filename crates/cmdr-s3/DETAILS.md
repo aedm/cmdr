@@ -318,9 +318,10 @@ in two runs. Full per-cell findings: `docs/notes/s3/live-verification-2026-10.md
   `ShortTail::Keep`; `UploadPartCopy` takes a 1 MiB source as the last part and enforces `x-amz-copy-source-if-match`;
   an NFD key reads back through its NFC twin and one PUT replaces the other. With a bucket-scoped key: `ListBuckets` is
   `AccessDenied` (so the account root is `BucketListRefused`, wrong secret or not), a missing bucket is a 403 (connect
-  says `AccessDenied`, never `NoSuchBucket`), and ❗ `ListMultipartUploads` lists nothing, not even an upload just
-  created, so an abort's confirming listing is vacuous there (the abort itself works, and a later part is refused). R2's
-  default lifecycle rule aborts unfinished uploads after seven days.
+  says `AccessDenied`, never `NoSuchBucket`). `ListMultipartUploads` under a prefix lists an unfinished upload there
+  (a SIGKILLed child's, in every `live_hostile_crash_recovery` run, 2026-10-02), so an abort's confirming listing is a
+  real confirmation on R2 too; a second abort of an aborted upload answers a success, so only a listing or a refused
+  part proves it gone. R2's default lifecycle rule aborts unfinished uploads after seven days.
 - **Hetzner**: `If-None-Match` enforced on Put only; parts of any sizes land; `UploadPartCopy` ignores
   `x-amz-copy-source-if-match`; ❗ `CopyObject` and `UploadPartCopy` work between two buckets of one location (the
   research note's "within one bucket only" didn't hold); the key may `ListBuckets`; NFD and NFC are two objects.
@@ -354,8 +355,11 @@ in two runs. Full per-cell findings: `docs/notes/s3/live-verification-2026-10.md
   and left no upload.
 - **Names** (`live_hostile_names_round_trip`, 2026-10-02): NFC and NFD, emoji, RTL, leading and trailing spaces, a
   trailing dot, `...`, `%`, `+`, `#`, `?`, `&`, `\`, quotes, and a 1,024-byte key round-trip everywhere. ❗ GCS refuses
-  a key holding CR or LF (400), and B2 any control character, a tab included (`400 InvalidRequest`); both surface as an
-  `IoError`, nothing lands. Every hostile cell's findings (names, sizes, cancels, crashes, races, scale):
+  a key holding CR or LF (`400 InvalidObjectName`; bodyless to a HEAD), and B2 any control character, a tab included
+  (`400 InvalidRequest`, B2's catch-all, so the code can't say why). So the profile carries them
+  (`ProviderProfile::refused_key_chars`) and every write path (upload, New File, New Folder, a rename's or a server
+  copy's destination) answers `VolumeError::InvalidName` before a request goes out (`writes.rs::refuse_unstorable`,
+  `refused_name_test.rs`); GCS's `InvalidObjectName` maps to it too, as a backstop. Every hostile cell's findings (names, sizes, cancels, crashes, races, scale):
   `docs/notes/s3/live-hostile-2026-10.md`.
 - **Unverified, and why**: a cross-bucket copy on R2, GCS, and Spaces (each key reaches one bucket).
 - ❗ **A copy's ETag pin is ignored on Hetzner, Spaces, and Wasabi**, so a source replaced mid-copy could be stitched
@@ -479,8 +483,8 @@ abort it on the spot; what an abort can't reach (a crash, a dropped future, a se
   owns, in a directory the host hands every backend, keeps it where the knowledge is.
 - **An abort is confirmed by listing** (`abort_upload`): a part request cut off just before an abort can land after it
   and bring the upload back (VersityGW does; AWS documents the race), so each round aborts and then lists the key's
-  uploads, up to four rounds 200 ms apart, and only a listing without the upload ID forgets the record. On R2 that
-  listing is always empty, so the abort's own answer is what counts there (§ "Verified providers").
+  uploads, up to four rounds 200 ms apart, and only a listing without the upload ID forgets the record. Every preset's
+  listing shows its unfinished uploads, R2 included (§ "Verified providers"); nothing special-cases a provider here.
 - **The sweep** (`S3VolumeInner::sweep_unfinished_uploads`) runs in the background at every connect and after a
   reconnect, and aborts the account's open records that no task in this process is running. A record the server confirms
   gone (aborted now or already) is forgotten; any other answer keeps it for the next connect. ❌ It never aborts an

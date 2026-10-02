@@ -137,6 +137,21 @@ pub(super) fn judge_landing(expected: u64, ours: Option<&str>, found: Option<&La
     }
 }
 
+/// ❗ A key the provider refuses to store (`ProviderProfile::refused_key_char`:
+/// GCS a line break, B2 any control character) is `InvalidName` before any
+/// request: the only fix is another name, and sending it would only buy a 400
+/// whose code can't say why (B2's catch-all `InvalidRequest`, GCS's bodyless
+/// answer to the no-overwrite HEAD).
+pub(super) fn refuse_unstorable(client: &S3Client, key: &str, remote: &str) -> Result<(), VolumeError> {
+    match client.profile().refused_key_char(key) {
+        Some(refused) => Err(VolumeError::InvalidName(format!(
+            "{remote}: this provider doesn't store U+{:04X} in a name",
+            u32::from(refused)
+        ))),
+        None => Ok(()),
+    }
+}
+
 /// Whether a HEAD shows this write's own object (`token`) at the full `size`:
 /// what a write that lost its answer left when it landed whole.
 fn is_ours_whole(head: &Answer, token: &str, size: u64) -> bool {
@@ -218,6 +233,7 @@ impl S3Volume {
             return Err(VolumeError::IsADirectory(remote));
         };
         let client = self.clone_client().await?;
+        refuse_unstorable(&client, key, &remote)?;
         let shape = shape_for(length, self.part_floor(), client.profile().short_tail).map_err(|TooLarge| {
             VolumeError::IoError {
                 message: format!("{remote}: too big for one S3 object (10,000 parts of 5 GiB)"),
@@ -621,6 +637,7 @@ impl S3Volume {
             return Err(VolumeError::AlreadyExists(remote));
         };
         let client = self.clone_client().await?;
+        refuse_unstorable(&client, key, &remote)?;
         // A folder of that name holds it too, and an object beside it would
         // hide under the folder in every listing.
         if self.has_keys_under(&client, bucket, key, &remote).await? {

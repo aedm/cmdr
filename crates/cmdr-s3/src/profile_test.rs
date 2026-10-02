@@ -553,3 +553,25 @@ fn spaces_is_regional_and_path_style() {
         Some(ProfileError::InvalidHostPart)
     );
 }
+
+/// ❗ The characters a provider refuses in a key, from live evidence: GCS a
+/// line break (`400 InvalidObjectName`), B2 any control character, a tab
+/// included (`400 InvalidRequest`); everyone else stores them.
+#[test]
+fn gcs_and_b2_refuse_some_characters_in_a_key() {
+    let gcs = profile(Preset::Gcs);
+    assert_eq!(gcs.refused_key_char("a\nb"), Some('\n'));
+    assert_eq!(gcs.refused_key_char("a\rb"), Some('\r'));
+    assert_eq!(gcs.refused_key_char("a\tb"), None);
+    let b2 = profile(Preset::B2 {
+        region: "eu-central-003".into(),
+    });
+    assert_eq!(b2.refused_key_char("a\tb"), Some('\t'));
+    assert_eq!(b2.refused_key_char("a\nb"), Some('\n'));
+    assert_eq!(b2.refused_key_char("a\u{7f}b"), Some('\u{7f}'));
+    assert_eq!(b2.refused_key_char("café 🦀 #?.txt"), None);
+    let r2 = profile(Preset::R2 {
+        account_id: "acct".into(),
+    });
+    assert_eq!(r2.refused_key_char("a\tb\nc"), None);
+}

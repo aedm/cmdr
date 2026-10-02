@@ -86,7 +86,8 @@ async fn live_hostile_names_round_trip() {
             let refused = write(&volume, &at(&volume, &key), WriteMode::CreateNew, b"no".to_vec()).await;
             let raw = verdict(&live.put(&client, &key, b"no", &[]).await);
             m.check(
-                refused.is_err() && live.keys_under(&client, &prefix).await.is_empty(),
+                matches!(refused, Err(VolumeError::InvalidName(_)))
+                    && live.keys_under(&client, &prefix).await.is_empty(),
                 &format!("the provider refuses {refused_name:?}"),
                 format!("{refused:?}; a raw PUT answers {raw}"),
             );

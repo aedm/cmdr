@@ -93,6 +93,19 @@ pub(crate) enum ConditionalOp {
     Copy,
 }
 
+/// Which characters a provider refuses in a key (live evidence,
+/// `DETAILS.md` § "Verified providers").
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum KeyChars {
+    /// Every character S3 allows.
+    Any,
+    /// CR and LF: GCS (`400 InvalidObjectName`).
+    LineBreaks,
+    /// Every control character, U+0000 to U+001F and DEL: B2 (`400
+    /// InvalidRequest`, its catch-all, so the code alone can't say why).
+    ControlChars,
+}
+
 /// How a no-overwrite write is made safe right now.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum NoOverwrite {
@@ -212,6 +225,9 @@ pub(crate) struct ProviderProfile {
     /// R2 stores keys NFC, so an NFD key and its NFC twin are one object
     /// there. Composing before sending keeps our own comparisons honest.
     pub nfc_keys: bool,
+    /// The characters the provider refuses in a key, refused here before a
+    /// request goes out ([`Self::refused_key_char`]).
+    pub refused_key_chars: KeyChars,
     /// What a multipart plan does with a tail under 5 MiB: R2 refuses a last
     /// part larger than the rest, Garage a small `UploadPartCopy` source.
     pub short_tail: ShortTail,
@@ -279,6 +295,7 @@ impl ProviderProfile {
                 );
                 b2.refuses_short_body = true;
                 b2.enforces_copy_source_pin = true;
+                b2.refused_key_chars = KeyChars::ControlChars;
                 b2
             }
             Preset::Wasabi { region } => {
@@ -318,6 +335,7 @@ impl ProviderProfile {
                 );
                 gcs.refuses_short_body = true;
                 gcs.copies_in_parts = false;
+                gcs.refused_key_chars = KeyChars::LineBreaks;
                 gcs
             }
             Preset::DigitalOcean { region } => {
@@ -379,6 +397,7 @@ impl ProviderProfile {
             refuses_short_body: false,
             enforces_copy_source_pin: false,
             nfc_keys: false,
+            refused_key_chars: KeyChars::Any,
             short_tail: ShortTail::Keep,
             copies_in_parts: true,
             copy_concurrency: AtomicUsize::new(DEFAULT_COPY_CONCURRENCY),
@@ -439,6 +458,15 @@ impl ProviderProfile {
     pub(crate) fn set_concurrency(&self, copy: usize, upload: usize) {
         self.copy_concurrency.store(copy.max(1), Ordering::Relaxed);
         self.upload_concurrency.store(upload.max(1), Ordering::Relaxed);
+    }
+
+    /// The first character of `key` this provider refuses to store, if any.
+    pub(crate) fn refused_key_char(&self, key: &str) -> Option<char> {
+        match self.refused_key_chars {
+            KeyChars::Any => None,
+            KeyChars::LineBreaks => key.chars().find(|c| matches!(c, '\r' | '\n')),
+            KeyChars::ControlChars => key.chars().find(|c| c.is_ascii_control()),
+        }
     }
 
     /// The key as this provider stores it: NFC on R2, untouched elsewhere.

@@ -38,6 +38,12 @@ pub(crate) fn map_s3_error(error: &S3Error, path: &str) -> VolumeError {
         debug!("S3 path={path:?}: backend=s3, error_kind=cold_storage, code={error}");
         return VolumeError::ColdStorage(path.to_string());
     }
+    // GCS refuses a name it can't store (a CR or LF) with `400
+    // InvalidObjectName`: the fix is another name, so a retry is no use.
+    if error.code == S3ErrorCode::InvalidObjectName {
+        debug!("S3 path={path:?}: backend=s3, error_kind=invalid_name, code={error}");
+        return VolumeError::InvalidName(error.to_string());
+    }
     if error.is_not_implemented() || error.status == http::StatusCode::METHOD_NOT_ALLOWED {
         return VolumeError::NotSupported;
     }

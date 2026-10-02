@@ -35,7 +35,7 @@ use super::errors::map_s3_error;
 use super::listing::{FolderContents, can_hold_keys, folder_contents};
 use super::paths::{Holder, Resolved, Target, target_of};
 use super::query::body_error;
-use super::writes::{Landed, Landing, judge_landing};
+use super::writes::{Landed, Landing, judge_landing, refuse_unstorable};
 use crate::error::S3Error;
 use crate::ops::{self, BuildError, CopySource, ListObjectsParams, MetadataDirective, ObjectMetadata, Overwrite};
 use crate::transport::S3Client;
@@ -81,6 +81,9 @@ impl S3Volume {
     pub(super) async fn create_directory_impl(&self, path: &Path) -> Result<(), VolumeError> {
         let remote = self.to_remote_path(path)?;
         let client = self.clone_client().await?;
+        if let Target::Key { key, .. } = target_of(&remote) {
+            refuse_unstorable(&client, key, &remote)?;
+        }
         self.make_folder(&client, &remote).await?;
         patch_created(self, path).await;
         Ok(())
@@ -256,6 +259,7 @@ impl S3Volume {
             return Ok(());
         }
         let client = self.clone_client().await?;
+        refuse_unstorable(&client, to_key, &remote_to)?;
         let Some(head) = self.head_object(&client, from_bucket, from_key, &remote_from).await? else {
             return Err(
                 if holder == Holder::Either
