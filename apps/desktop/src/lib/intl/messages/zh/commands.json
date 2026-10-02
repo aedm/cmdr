@@ -578,7 +578,7 @@
   },
   "commands.fileCopyShareLinkOneHour.description": "拷贝一个链接，任何人都能在接下来的 1 小时内打开它，下载这个文件",
   "@commands.fileCopyShareLinkOneHour.description": {
-    "sourceHash": "45091c5"
+    "sourceHash": "c334535"
   },
   "commands.tagsToggleGrey.label": "切换灰色标签",
   "@commands.tagsToggleGrey.label": {

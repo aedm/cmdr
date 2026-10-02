@@ -578,7 +578,7 @@
   },
   "commands.fileCopyShareLinkOneHour.description": "Kopierar en länk som vem som helst kan öppna för att hämta filen den kommande timmen",
   "@commands.fileCopyShareLinkOneHour.description": {
-    "sourceHash": "45091c5"
+    "sourceHash": "c334535"
   },
   "commands.tagsToggleGrey.label": "Växla taggen Grå",
   "@commands.tagsToggleGrey.label": {

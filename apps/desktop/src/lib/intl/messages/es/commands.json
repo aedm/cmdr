@@ -578,7 +578,7 @@
   },
   "commands.fileCopyShareLinkOneHour.description": "Copia un enlace que cualquiera puede abrir para descargar el archivo durante una hora",
   "@commands.fileCopyShareLinkOneHour.description": {
-    "sourceHash": "45091c5"
+    "sourceHash": "c334535"
   },
   "commands.tagsToggleGrey.label": "Alternar etiqueta Gris",
   "@commands.tagsToggleGrey.label": {

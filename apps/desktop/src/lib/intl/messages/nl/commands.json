@@ -580,7 +580,7 @@
   },
   "commands.fileCopyShareLinkOneHour.description": "Kopieert een link die iedereen het komende uur kan openen om het bestand te downloaden",
   "@commands.fileCopyShareLinkOneHour.description": {
-    "sourceHash": "45091c5"
+    "sourceHash": "c334535"
   },
   "commands.tagsToggleGrey.label": "Tag ‘Grijs’ in-/uitschakelen",
   "@commands.tagsToggleGrey.label": {

@@ -578,7 +578,7 @@
   },
   "commands.fileCopyShareLinkOneHour.description": "Sao chép một liên kết mà ai cũng mở được để tải tệp về trong một giờ tới",
   "@commands.fileCopyShareLinkOneHour.description": {
-    "sourceHash": "45091c5"
+    "sourceHash": "c334535"
   },
   "commands.tagsToggleGrey.label": "Bật/tắt thẻ Xám",
   "@commands.tagsToggleGrey.label": {

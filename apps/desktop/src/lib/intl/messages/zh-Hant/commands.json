@@ -578,7 +578,7 @@
   },
   "commands.fileCopyShareLinkOneHour.description": "複製一個任何人都能開啟的連結，在接下來 1 小時內可以用來下載這個檔案",
   "@commands.fileCopyShareLinkOneHour.description": {
-    "sourceHash": "45091c5"
+    "sourceHash": "c334535"
   },
   "commands.tagsToggleGrey.label": "切換灰色標籤",
   "@commands.tagsToggleGrey.label": {

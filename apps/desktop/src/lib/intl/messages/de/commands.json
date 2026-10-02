@@ -578,7 +578,7 @@
   },
   "commands.fileCopyShareLinkOneHour.description": "Kopiert einen Link, den alle eine Stunde lang öffnen können, um die Datei herunterzuladen",
   "@commands.fileCopyShareLinkOneHour.description": {
-    "sourceHash": "45091c5"
+    "sourceHash": "c334535"
   },
   "commands.tagsToggleGrey.label": "Tag „Grau“ umschalten",
   "@commands.tagsToggleGrey.label": {

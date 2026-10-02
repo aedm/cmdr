@@ -578,7 +578,7 @@
   },
   "commands.fileCopyShareLinkOneHour.description": "Copie un lien que n’importe qui peut ouvrir pour télécharger le fichier pendant une heure",
   "@commands.fileCopyShareLinkOneHour.description": {
-    "sourceHash": "45091c5"
+    "sourceHash": "c334535"
   },
   "commands.tagsToggleGrey.label": "Activer/désactiver le tag Gris",
   "@commands.tagsToggleGrey.label": {

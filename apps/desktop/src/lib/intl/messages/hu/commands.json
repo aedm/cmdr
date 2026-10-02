@@ -578,7 +578,7 @@
   },
   "commands.fileCopyShareLinkOneHour.description": "Olyan linket másol, amelyet egy óráig bárki megnyithat a fájl letöltéséhez",
   "@commands.fileCopyShareLinkOneHour.description": {
-    "sourceHash": "45091c5"
+    "sourceHash": "c334535"
   },
   "commands.tagsToggleGrey.label": "Szürke címke be-/kikapcsolása",
   "@commands.tagsToggleGrey.label": {
