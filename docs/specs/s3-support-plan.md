@@ -103,14 +103,14 @@ copy and one delete per object, and a big file's is a slow server-side copy.
 
 - Copies within one account (one endpoint and key id, any of its places) never touch the Mac: `Volume::copy_on_server`,
   `CopyObject` up to the part floor, `UploadPartCopy` above it (even under 5 GB), so progress advances per part and
-  pause lands between parts. A provider that copies within one bucket only (Hetzner) streams a cross-bucket copy
-  instead. Each part is pinned to the source's ETag; a source without `x-amz-meta-mtime` has its `Last-Modified` written
-  as the copy's mtime.
-- **Part size**: one size per upload (R2 requires equal parts), at least 64 MiB and at least `size / 10,000`. Garage
-  refuses an `UploadPartCopy` source under 5 MiB even as the last part (fixture README), so a tail under 5 MiB folds
-  into the part before it; confirm on R2 in M8 that a last part LARGER than the rest is accepted, else split the tail
-  differently there. **Concurrency**: ~16 parts for server-side copies, four to eight for uploads, AIMD back-off on
-  `SlowDown` / 503 / 429. Hetzner's 750 requests/s per bucket is the low bar. Tune per provider in M8.
+  pause lands between parts. A provider that copies within one bucket only (Spaces) streams a cross-bucket copy instead,
+  and GCS, which has no `UploadPartCopy`, copies whole in one `CopyObject`. Each part is pinned to the source's ETag; a
+  source without `x-amz-meta-mtime` has its `Last-Modified` written as the copy's mtime.
+- **Part size**: one size per upload (R2 requires equal parts), at least 64 MiB and at least `size / 10,000`. A tail
+  under 5 MiB stays its own last part on every preset (R2 refuses a last part LARGER than the rest), and folds into the
+  part before it only on "Other", since Garage refuses an `UploadPartCopy` source that small even as the last part.
+  **Concurrency**: 16 parts for server-side copies and four for uploads on every provider measured, AIMD back-off on
+  `SlowDown` / 503 / 429 (`crates/cmdr-s3/DETAILS.md` § "Verified providers").
 - **Cancel** aborts the multipart upload. **Connect** (and a reconnect) aborts our own unfinished uploads, because
   they're invisible and billed forever. ❗ `ListMultipartUploads` returns no initiation metadata, so nothing on the
   server marks an upload as Cmdr's: each upload's bucket, key, and upload ID are recorded locally when it starts (a file
@@ -148,3 +148,12 @@ Each one ends green on `pnpm check` with its docs updated. Tiers follow
    root reaching a bucket in another region (tested against a fake AWS only, `crates/cmdr-s3/DETAILS.md` § "Providers"),
    friendly errors, delete-dialog versioning notes, docs (`C+D.md`, `docs/architecture.md`, capability matrix), and the
    i18n brief for the translator agent.
+   - [x] Live suite and runner (`apps/desktop/test/s3-servers/live.sh`, the `live_` cells in `cmdr-s3`), run against R2,
+         Hetzner, GCS, and Spaces on 2026-10-02; findings in `crates/cmdr-s3/DETAILS.md` § "Verified providers".
+   - [x] Allowlists from evidence: conditional writes per operation, `refuses_short_body`, cross-bucket copy, the
+         short-tail rule (R2 refuses a larger last part), GCS's missing `UploadPartCopy`. Two transport bugs the
+         fixtures hid (an empty write without `Content-Length`) fixed.
+   - [x] Concurrency measured: 16 copy parts and four upload parts stay right for every provider tested.
+   - [x] GCS and Spaces presets, with prices.
+   - [ ] Wasabi conditional writes, B2's short-body entry, and AWS region routing on a real account: no accounts.
+   - [ ] Friendly errors, delete-dialog versioning notes, the capability matrix, and the i18n brief.

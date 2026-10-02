@@ -118,6 +118,13 @@ Observed by hand with `curl --aws-sigv4` and a small Go SigV4 signer against Ver
 - Garage's `CompleteMultipartUpload` `<Location>` reads `https://cmdr-test..s3.garage.localhost/...` (a doubled dot from
   its `root_domain`). Cosmetic; nothing should parse it.
 
+**How real providers compare.** `live.sh` beside this README runs `cmdr-s3`'s `live_` cells against real R2, Hetzner,
+GCS, and Spaces accounts (credentials from the secret store; never in a lane). Two things the fixtures here don't show:
+both accept a zero-byte PUT and a bodyless POST without `Content-Length`, which R2, Hetzner, and GCS refuse with 411;
+and R2 refuses a last part LARGER than the rest, the shape Garage's small-copy-source rule pushed toward. Real providers
+refuse a cut-off PUT (VersityGW's publish is the fixture outlier), and VersityGW's `If-None-Match` on Complete matches
+AWS and R2 but not Hetzner, GCS, or Spaces. All findings: `crates/cmdr-s3/DETAILS.md` § "Verified providers".
+
 ❗ **macOS's curl 8.7.1 signs `x-amz-copy-source-range` wrong**: both servers reject the request with a signature
 mismatch, while the same request signed by hand passes. It's a curl bug, not a server one, so don't trust a
 `curl --aws-sigv4` failure on that header as evidence about a server.

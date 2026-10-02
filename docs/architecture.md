@@ -391,12 +391,12 @@ audits landed on. The two dev CLIs and the vendored fork are ordinary members.
   `apps/desktop/test/webdav-servers/README.md`. What it still owes: GitHub issues
   [#173](https://github.com/vdavid/cmdr/issues/173)–[#178](https://github.com/vdavid/cmdr/issues/178).
 - `crates/cmdr-s3/`: everything Cmdr says to an S3-compatible object store (AWS, Cloudflare R2, Backblaze B2, Wasabi,
-  Hetzner, any other). Our own SigV4 signer, one request builder per S3 call, `quick-xml` parsers and typed `S3Error`s,
-  the provider profiles, a `reqwest` transport, and an `S3Volume` per place (a bucket, or the account root that lists
-  them): connect, list, stat, ranged reads, writes to the final key (one PUT or a multipart upload, with the
-  unfinished-upload record under the host's state directory), server-side copy within an account, folders, delete (one
-  node or a `DeleteObjects` batch), share links, reconnect. A folder or big object renames by copy
-  (`Volume::rename_work`), which the app runs as a move
+  Hetzner, Google Cloud Storage, DigitalOcean Spaces, any other). Our own SigV4 signer, one request builder per S3 call,
+  `quick-xml` parsers and typed `S3Error`s, the provider profiles, a `reqwest` transport, and an `S3Volume` per place (a
+  bucket, or the account root that lists them): connect, list, stat, ranged reads, writes to the final key (one PUT or a
+  multipart upload, with the unfinished-upload record under the host's state directory), server-side copy within an
+  account, folders, delete (one node or a `DeleteObjects` batch), share links, reconnect. A folder or big object renames
+  by copy (`Volume::rename_work`), which the app runs as a move
   (`apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Renames that run as moves"). The app keeps
   the place list and the connect wiring (`apps/desktop/src-tauri/src/network/s3_*.rs`), the IPC surface
   (`commands/s3.rs` plus the S3 arm of `commands/servers.rs`), and `s3://` redaction. Cost estimates: the price table

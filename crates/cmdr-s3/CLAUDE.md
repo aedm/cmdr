@@ -1,19 +1,18 @@
 # cmdr-s3
 
-The S3 backend for AWS, R2, B2, Wasabi, Hetzner, and any other S3-compatible server: the protocol layer plus a `Volume`
-per place (a bucket, or the account root that lists them) that lists, stats, reads, and writes. The plan:
-`docs/specs/s3-support-plan.md`. Decisions and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
+The S3 backend for AWS, R2, B2, Wasabi, Hetzner, GCS, Spaces, and any other S3-compatible server: the protocol layer
+plus a `Volume` per place (a bucket, or the account root that lists them). The plan: `docs/specs/s3-support-plan.md`.
+Decisions and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
 
 ## Module map
 
-- `sigv4.rs`, `encoding.rs`, `request.rs`, `ops.rs` (one builder per S3 call), `profile.rs` (preset → endpoint,
-  addressing, conditional writes), `xml/`, `error.rs` (`S3Error`), `multipart.rs`, `metadata.rs`: pure values.
+- `sigv4.rs`, `encoding.rs`, `request.rs`, `ops.rs` (one builder per S3 call), `profile.rs` (preset → endpoint and what
+  the provider enforces), `xml/`, `error.rs` (`S3Error`), `multipart.rs`, `metadata.rs`: pure values.
 - `params.rs`, `refusal.rs` (`S3ConnectError` + the probe's table), `transport.rs` (`S3Client`, the only `reqwest`
   user), `routing.rs` (an AWS account root's per-bucket regions).
-- `volume/`: `mod.rs` (connect), `query.rs` + `listing.rs` (list, stat), `streams.rs` (GET), `writes.rs` (PUT, verify),
-  `temp_overwrite.rs`, `multipart_upload.rs` (parts, the sweep), `server_copy.rs`, `batch.rs` (tally, batch delete),
-  `upload_body.rs`, `upload_ledger.rs`, `mutation.rs` (folders, delete, rename), `scan.rs`, `share_link.rs`, `paths.rs`,
-  `errors.rs`, `state.rs` + `reconnect.rs`, `volume_impl.rs`, `testing.rs`.
+- `volume/`: a file per job: `mod.rs` (connect), `query.rs` + `listing.rs`, `streams.rs` (GET), `writes.rs` (PUT),
+  `temp_overwrite.rs`, `multipart_upload.rs` (+ the sweep), `server_copy.rs`, `batch.rs`, `mutation.rs`, `paths.rs`,
+  `state.rs` + `reconnect.rs`; `testing.rs` (fixtures) and `live_*` (real accounts).
 - `cost/`: the price table (`s3-prices.json`, byte-identical to `apps/api-server`'s), `Workload` (requests counted the
   way the write paths send them), `Estimate`. ❗ A write path that sends a request more or less updates its `Workload`
   method too.
@@ -33,9 +32,8 @@ per place (a bucket, or the account root that lists them) that lists, stats, rea
 - ❗ **Writes go to the final key** (`publishes_writes_whole`). ❌ Nothing partial is ever published: the streamed body
   reads one piece ahead and holds its last piece for a Cancel check, and a cut-off PUT removes what a server kept of it,
   by its own `x-amz-meta-cmdr-write` token only. ❌ Don't collapse `fetched` and `handed`.
-- ❗ **Conditional writes are an allowlist, ❌ never a probe**: Garage and VersityGW answer 200 to an ignored
-  `If-None-Match` and overwrite. Elsewhere `CreateNew` HEADs first (again before Complete), and a HEAD after every write
-  reports another writer's object as `AlreadyExists`.
+- ❗ **Profile capabilities are allowlists from live evidence, ❌ never a probe** (Garage answers 200 to an ignored
+  `If-None-Match`). Re-verify with `apps/desktop/test/s3-servers/live.sh` first. Off the list, `CreateNew` HEADs.
 - ❗ **An upload is recorded before its first part**, and an abort counts only once a listing confirms it; the sweep
   aborts ❌ only recorded uploads, ❌ never one in flight.
 - ❗ **A file beside a folder of its name lists as `<name> (file)`**: resolve paths through `paths.rs::resolve`, ❌
@@ -44,9 +42,10 @@ per place (a bucket, or the account root that lists them) that lists, stats, rea
   or an object past the part floor is `RenameWork::CopyThenDelete`, which callers send through the engine.
 - ❗ **An overwrite of an existing object off the `refuses_short_body` allowlist goes through a temp key**: VersityGW
   publishes a cut-off PUT, which would lose the original.
-- ❗ **Server-side copy stays within one account**, matched on the concrete `S3Volume`, ❌ never a path; parts pinned to
-  the source's ETag.
-- ❗ **No checksum headers; equal-size parts, always** (R2). Streamed bodies sign `UNSIGNED-PAYLOAD`.
+- ❗ **Server-side copy stays within one account**, matched on the concrete `S3Volume`, ❌ never a path. GCS has no
+  `UploadPartCopy`: one `CopyObject` there.
+- ❗ **No checksum headers; equal-size parts** (R2); a short tail follows the provider's `ShortTail`. Streamed bodies
+  sign `UNSIGNED-PAYLOAD`.
 - ❌ **One unattended authentication attempt, never a loop.**
 - ❗ **A share link is a credential**: `cmdr_fs::volume::ShareLink`, ❌ never logged, never across IPC.
 - Every dependency was already in `Cargo.lock`. Check `cargo tree -d` before adding one.

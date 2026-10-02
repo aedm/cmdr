@@ -5,7 +5,12 @@ Capability and pricing facts for the `crates/cmdr-s3` backend, per provider, fro
 claims are labeled **corroboration** and never stand alone for a "supported" verdict.
 
 Providers: AWS S3 (general purpose buckets), Cloudflare R2, Backblaze B2 (S3-compatible API), Wasabi, Hetzner Object
-Storage. MinIO is skipped: nothing trivially available that changes a decision here.
+Storage, Google Cloud Storage (XML API), DigitalOcean Spaces. MinIO is skipped: nothing trivially available that changes
+a decision here.
+
+**Live findings beat this note.** R2, Hetzner, GCS, and Spaces were tested against real accounts on 2026-10-02
+(`apps/desktop/test/s3-servers/live.sh`); the results, and where they contradict a doc below (marked **Live:**), are in
+`crates/cmdr-s3/DETAILS.md` § "Verified providers".
 
 ## AWS S3 (general purpose buckets)
 
@@ -135,7 +140,8 @@ Storage. MinIO is skipped: nothing trivially available that changes a decision h
   time and aren't atomic with the `x-amz-copy-source-if-*` checks. Source:
   https://developers.cloudflare.com/r2/api/s3/extensions/ (page date 2026-06-08)
 - `CompleteMultipartUpload`: the compatibility table lists no conditional headers, so treat it as **not supported** (the
-  table explicitly lists what's implemented per operation).
+  table explicitly lists what's implemented per operation). **Live:** R2 enforces `If-None-Match: *` there (412), and
+  ignores it on `CopyObject`.
 
 ### CopyObject
 
@@ -147,13 +153,14 @@ Storage. MinIO is skipped: nothing trivially available that changes a decision h
 ### Multipart
 
 - Part size 5 MiB to 5 GiB (last part may be smaller); **all parts except the last must be the same size** (error 10048
-  `InvalidPart`). Source: https://developers.cloudflare.com/r2/objects/upload-objects/ (page date 2026-07-29) and the
-  error codes page.
+  `InvalidPart`). **Live:** a last part LARGER than the rest is `InvalidPart` too. Source:
+  https://developers.cloudflare.com/r2/objects/upload-objects/ (page date 2026-07-29) and the error codes page.
 - Max 10,000 parts; single-part upload max 5 GiB; multipart max 4.995 TiB; object max 5 TiB. Source:
   https://developers.cloudflare.com/r2/platform/limits/ (page date 2026-06-08)
 - Uploading the same part number again replaces the earlier part; if the second upload fails, the original part is lost.
   Source: S3 API compatibility page.
-- `ListMultipartUploads` and `AbortMultipartUpload` are implemented. Source: S3 API compatibility page.
+- `ListMultipartUploads` and `AbortMultipartUpload` are implemented. Source: S3 API compatibility page. **Live:** with a
+  bucket-scoped key, `ListMultipartUploads` answers 200 and lists nothing, not even an upload just created.
 - Buckets have a **default** lifecycle rule that expires multipart uploads seven days after initiation;
   `AbortIncompleteMultipartUpload` rules are also supported. Source:
   https://developers.cloudflare.com/r2/buckets/object-lifecycles/ (page date 2026-04-21)
@@ -423,7 +430,8 @@ https://docs.wasabi.com/apidocs/wasabi-api
 ### Compatibility exceptions (page date 2024-09-22)
 
 - Source: https://docs.hetzner.com/storage/object-storage/supported-actions
-- **`CopyObject` is only supported within the same bucket.**
+- **`CopyObject` is only supported within the same bucket.** **Live:** `CopyObject` and `UploadPartCopy` between two
+  buckets of one location (`nbg1`) both worked.
 - Not supported: `Restore`, `Select`, `GetObjectAttributes`, tagging, copying SSE-C objects, conditional `PUT`/`DELETE`
   on **versioned** buckets, `CreateSession`.
 - Only SSE-C encryption.
@@ -431,8 +439,8 @@ https://docs.wasabi.com/apidocs/wasabi-api
 ### Conditional writes
 
 - Only exclusion listed is conditional `PUT`/`DELETE` on versioned buckets, which implies unversioned buckets support
-  them. Backend is Ceph (overview page). **Not verified** for `CompleteMultipartUpload` or `CopyObject`, and the clash
-  status code isn't documented; probe it.
+  them. Backend is Ceph (overview page). **Live:** `If-None-Match: *` is enforced on `PutObject` (412) and ignored on
+  `CompleteMultipartUpload` and `CopyObject`.
 
 ### Limits (page date 2024-09-23)
 
@@ -476,17 +484,58 @@ https://docs.wasabi.com/apidocs/wasabi-api
 - **Minimum billable object size: 64 KB.** Metadata counts toward billed size.
 - No minimum storage duration mentioned.
 
+## Google Cloud Storage (XML API, HMAC keys)
+
+- **Interoperability**: the XML API at `storage.googleapis.com` speaks SigV4 with HMAC keys (a service account's or a
+  user's, made under Cloud Storage › Settings › Interoperability). Region `auto` signs fine. Source:
+  https://cloud.google.com/storage/docs/interoperability (accessed 2026-10-02).
+- **Copies**: `x-amz-copy-source` works; a large copy across locations or storage classes may need several JSON-API
+  `rewrite` calls, which the XML API can't express. Source:
+  https://cloud.google.com/storage/docs/json_api/v1/objects/rewrite.
+- **Bucket names** may hold dots and underscores (3–63 characters, up to 222 with dots). Source:
+  https://cloud.google.com/storage/docs/buckets#naming.
+- **Live** (2026-10-02): no `UploadPartCopy` (400 `NotImplemented`); `If-None-Match` ignored on every write;
+  `x-goog-if-generation-match` refused beside `x-amz-*` headers (400 `ExcessHeaderValues`); `DeleteObjects` works up to
+  1,000 keys; a bodyless POST needs `Content-Length: 0` (411 otherwise); metadata stays `x-amz-meta-*`.
+
+### Pricing (accessed 2026-10-02)
+
+- Source: https://cloud.google.com/storage/pricing. Standard storage in one region (us-central1): $0.020/GB-month.
+- Class A $0.005 per 1,000 (every XML `PUT` and `POST`, listing objects), Class B $0.0004 per 1,000 (`GET`, `HEAD`),
+  `DELETE` free. A multi-object delete is a `POST`, so Class A.
+- Internet egress $0.12/GB for the first 10 TiB (worldwide excluding Asia and Australia).
+- Always Free (US regions): 5 GB-months, 5,000 Class A, 50,000 Class B, 100 GB egress from North America.
+- Soft delete keeps deleted objects seven days by default and bills them meanwhile.
+
+## DigitalOcean Spaces
+
+- **Endpoint**: `https://<region>.digitaloceanspaces.com`, region = the slug. Standard Storage regions: nyc3, ams3,
+  sfo2, sfo3, sgp1, lon1, fra1, tor1, blr1, syd1, atl1, ric1, mkc1. Source:
+  https://docs.digitalocean.com/products/spaces/details/availability/ (generated 2026-10-01).
+- **Copies**: "Supported with `CopyObject`. Cross-region and cross-cluster copies are not supported." Source:
+  https://docs.digitalocean.com/products/spaces/reference/s3-compatibility/ (accessed 2026-10-02).
+- **Live** (2026-10-02): `If-None-Match` enforced on `PutObject` only; `UploadPartCopy` works and ignores
+  `x-amz-copy-source-if-match`; the test key was bucket-scoped (`ListBuckets` and `CreateBucket` refused).
+
+### Pricing (page date 2026-07-13)
+
+- Source: https://docs.digitalocean.com/products/spaces/details/pricing/.
+  $5.00/month subscription with 250 GiB of
+  storage and 1,024 GiB of outbound transfer shared by every bucket; then $0.02/GiB-month
+  and $0.01/GiB. No per-request fees.
+
 ## Server-side copy throughput
 
 - No provider publishes per-request `CopyObject` / `UploadPartCopy` throughput (MB/s). AWS documents only request rates
-  (3,500 `COPY` per second per prefix). Hetzner's 10 Gbit/s per-bucket cap is the only bandwidth number found.
+  (3,500 `COPY` per second per prefix). Hetzner's 10 Gbit/s per-bucket cap is the only bandwidth number found. Measured
+  numbers for R2, Hetzner, GCS, and Spaces: `crates/cmdr-s3/DETAILS.md` § "Verified providers".
 
 ## Surprises / risks for Cmdr
 
-- **`If-None-Match: *` is not portable.** AWS supports it on all three write paths. R2 supports it on `PutObject` only
-  (`CopyObject` needs `cf-copy-destination-if-none-match`; `CompleteMultipartUpload` has none). B2 rejects it (501, per
-  corroboration). Wasabi and Hetzner are unknown. The no-overwrite guarantee needs a per-provider capability probe and a
-  HEAD-then-write fallback with a documented race window.
+- **`If-None-Match: *` is not portable.** AWS supports it on all three write paths. R2 on `PutObject` and (live)
+  `CompleteMultipartUpload`, with `cf-copy-destination-if-none-match` for `CopyObject`. Hetzner and Spaces on
+  `PutObject` only (live); GCS nowhere (live). B2 rejects it (501, per corroboration); Wasabi is unknown. The
+  no-overwrite guarantee needs a per-provider allowlist and a HEAD-then-write fallback with a documented race window.
 - **Default SDK checksums break Wasabi.** The aws-sdk default `CRC64NVME` is rejected by Wasabi (page date 2026-09-23).
   R2 only accepts `CRC64NVME` as full-object and CRC32/CRC32C/SHA as composite. B2 only gained checksum headers in July
   2025 (corroboration). Pin a conservative `request_checksum_calculation` per provider.
@@ -494,8 +543,9 @@ https://docs.wasabi.com/apidocs/wasabi-api
   but stay distinct on other providers. Listing an R2 bucket returns NFC, so round-trips may "rename" files.
 - **R2 multipart parts must be equal-sized** (except the last). A part-size scheme that varies sizes, or a resume that
   re-chunks, fails at `CompleteMultipartUpload` with `InvalidPart`. Re-uploading a part number can lose the old part.
-- **Hetzner `CopyObject` is same-bucket only**, so cross-bucket move/copy must stream through the client. 750 req/s per
-  bucket is also low for parallel small-file operations.
+- **Hetzner's docs say `CopyObject` is same-bucket only**, but a live cross-bucket copy within one location worked. 750
+  req/s per bucket is low for parallel small-file operations. Spaces documents no cross-cluster copy, so cross-bucket
+  copies stream there.
 - **Rename = copy + delete is expensive on Wasabi.** The 90-day minimum and the overwrite rule mean renaming or
   overwriting a fresh object bills up to 89 extra days of the old copy. Wasabi's native `MOVE` (with `X-Wasabi-Prefix`
   for whole folders) avoids the copy, but billing impact is undocumented.
@@ -514,17 +564,17 @@ https://docs.wasabi.com/apidocs/wasabi-api
 
 ## Couldn't verify
 
-- R2: single-request `CopyObject` size limit; cross-bucket `CopyObject`; `DeleteObjects` max keys; exact S3
-  `ListBuckets` response for a bucket-scoped token.
-- B2: conditional writes from an official source (only corroboration found); `CRC64NVME` support; presigned URL max
-  expiry; `DeleteObjects` max keys; max parts on the S3 API; cross-bucket `CopyObject`; HTTP status for `ListBuckets`
-  without `listAllBucketNames`.
-- Wasabi: conditional writes (`If-None-Match`) on any operation; `CopyObject` size limit; `DeleteObjects` max keys;
-  metadata size limit; numeric rate limits and the rate-limit status code; whether `MOVE` is atomic and how it's billed
-  under the 90-day rule; whether any non-hot storage class exists.
-- Hetzner: conditional write support and clash status code (inferred only); `CompleteMultipartUpload` / `CopyObject`
-  conditionals; presigned URL max expiry; checksum header handling; `DeleteObjects` max keys; rate-limit response code
-  (503 vs 429); minimum part size.
-- AWS: the exact response for `ListBuckets` with a bucket-scoped IAM policy (403 inferred from the required permission);
-  whether third-party providers accept a flexible checksum in place of `Content-MD5` on `DeleteObjects`.
-- Any published server-side copy throughput figure (MB/s per request) for any provider.
+- R2: single-request `CopyObject` size limit; cross-bucket `CopyObject` (the test key reaches one bucket).
+- B2 (no account): conditional writes from an official source (only corroboration found); `CRC64NVME` support; presigned
+  URL max expiry; `DeleteObjects` max keys; max parts on the S3 API; cross-bucket `CopyObject`; HTTP status for
+  `ListBuckets` without `listAllBucketNames`; whether a short PUT is refused.
+- Wasabi (no account): conditional writes (`If-None-Match`) on any operation; `CopyObject` size limit; `DeleteObjects`
+  max keys; metadata size limit; numeric rate limits and the rate-limit status code; whether `MOVE` is atomic and how
+  it's billed under the 90-day rule; whether any non-hot storage class exists; the wrong-region behavior.
+- Hetzner: presigned URL max expiry past seven days; rate-limit response code (503 vs 429; nothing throttled at 16 parts
+  in flight); minimum part size beyond "5 MiB before the last part is refused".
+- GCS: a large cross-location copy through the XML API (the test bucket is the only one the key reaches).
+- Spaces: a cross-bucket copy within one region (the test key is bucket-scoped).
+- AWS (no account): the exact response for `ListBuckets` with a bucket-scoped IAM policy (403 inferred from the required
+  permission); whether third-party providers accept a flexible checksum in place of `Content-MD5` on `DeleteObjects`; a
+  bucket in another region reached from the account root (tested against a fake AWS only).

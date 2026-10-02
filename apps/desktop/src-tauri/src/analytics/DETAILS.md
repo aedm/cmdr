@@ -218,7 +218,7 @@ Backend events fire at success chokepoints; frontend events ride `track_event`.
 - `webdav_connected` (backend, `crates/cmdr-webdav/src/volume/mod.rs` `connect_webdav_volume`): no host/account/port/path
   props.
 - `s3_connected` (backend, `crates/cmdr-s3/src/volume/mod.rs` `connect_s3_volume`): one prop, `provider` (`aws`, `r2`,
-  `b2`, `wasabi`, `hetzner`, `other`), a fixed preset name. No endpoint, key, bucket, or region.
+  `b2`, `wasabi`, `hetzner`, `gcs`, `digitalocean`, `other`: `S3Provider::kind_name`), a fixed preset name. No endpoint, key, bucket, or region.
   The connection events go through the `AnalyticsSink` seam rather than `capture` directly, since the backend crates
   can't see `tauri` (`volume_sink.rs`).
 - `mtp_connected` (backend, `crates/cmdr-mtp/src/connection/mod.rs` `connect`): no device/product props.

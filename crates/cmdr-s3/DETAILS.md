@@ -33,8 +33,8 @@ switcher row each key on a place.
 
 `connect_s3_volume` reads the secret from the `CredentialStore` (nothing stored is `NeedsCredentials`), builds an
 `S3Client` (`user_agent("Cmdr")`, 10 s connect timeout, no `read_timeout`, redirects off, plus a pool-free twin for the
-silence probe), and probes. On success it records the PII-free `s3_connected` with one property, `provider` (`aws`,
-`r2`, `b2`, `wasabi`, `hetzner`, `other`).
+silence probe), and probes. On success it records the PII-free `s3_connected` with one property, `provider`
+(`S3Provider::kind_name`).
 
 **The probe is `ListBuckets` first, then `HeadBucket` for a bucket place.** `ListBuckets` goes first even for a bucket
 because its error BODY is the only thing that can tell a wrong secret from a key without rights; a HEAD has no body. The
@@ -149,9 +149,14 @@ it tests. `copy_test.rs` covers server-side copy (whole and in parts, the date k
 the profile forbids it, cancel, pause between parts, no-overwrite) and `batch_test.rs` the batch delete past 1,000 keys,
 the capped tally, and `rename_work`, both on both fixtures; the app's `backend_suites/s3_rename_integration_test.rs`
 drives renames that run as moves end to end. Multipart cells cut 5 MiB parts (`S3Volume::set_part_floor`, testing only)
-except one per fixture at the production 64 MiB. The 1,005-key paging prefix (`cmdr-test-paging-1005/`) and the 65 MiB
-object (`cmdr-test-large-65mib/blob.bin`, `seed_once`) are seeded once per fixture and kept; every other cell works
-under a `scratch_prefix` of its own, since the stack's objects persist across runs.
+except one per fixture at the production 64 MiB. **Live cells** (`live_protocol_test.rs`, `live_flow_test.rs`, over
+`live_support.rs`) run the same questions against real R2, Hetzner, GCS, and Spaces accounts, only through
+`apps/desktop/test/s3-servers/live.sh` (`CMDR_S3_LIVE=1` plus each account's variables; without them every cell skips
+silently, so the lanes never reach an account). Each protocol cell also asserts the profile against what it saw, so an
+allowlist trusting a header a provider ignores fails the run; § "Verified providers" holds the findings. The 1,005-key
+paging prefix (`cmdr-test-paging-1005/`) and the 65 MiB object (`cmdr-test-large-65mib/blob.bin`, `seed_once`) are
+seeded once per fixture and kept; every other cell works under a `scratch_prefix` of its own, since the stack's objects
+persist across runs.
 
 ## The public surface is capped
 
@@ -197,19 +202,26 @@ they can't be reached over HTTP through this stack.
 
 `ProviderProfile::from_preset` turns the connect form's preset into everything a request needs:
 
-- **AWS**: `s3.<region>.amazonaws.com`, virtual-hosted. Put, Complete, and Copy all take `If-None-Match: *`.
-- **R2**: `<account>.r2.cloudflarestorage.com`, region `auto`, path style. Put takes `If-None-Match`; Complete takes
-  nothing; Copy takes `cf-copy-destination-if-none-match`. Keys composed NFC before they leave (`nfc_keys`), because R2
-  stores them NFC and an NFD key would otherwise collide with its twin while our own comparisons said they differ.
-  Jurisdictional endpoints (EU, FedRAMP) aren't offered yet.
+- **AWS**: `s3.<region>.amazonaws.com`, virtual-hosted. Put, Complete, and Copy all take `If-None-Match: *` (docs).
+- **R2**: `<account>.r2.cloudflarestorage.com`, region `auto`, path style. Put and Complete take `If-None-Match`; Copy
+  takes `cf-copy-destination-if-none-match` (it ignores `If-None-Match`). Keys composed NFC before they leave
+  (`nfc_keys`), because R2 stores them NFC and an NFD key would otherwise collide with its twin while our own
+  comparisons said they differ. Jurisdictional endpoints (EU, FedRAMP) aren't offered yet.
 - **B2**: `s3.<region>.backblazeb2.com`, path style. No conditional writes (501, per corroboration only).
 - **Wasabi**: `s3.<region>.wasabisys.com`, path style (Wasabi's recommendation). Check-then-write (undocumented).
-- **Hetzner**: `<location>.your-objectstorage.com`, region = location, path style. Check-then-write (undocumented).
-  `cross_bucket_copy()` is false: Hetzner's `CopyObject` works within one bucket only, and the builders refuse a
-  cross-bucket copy with `BuildError::CrossBucketCopy` before sending it; `copy_on_server` answers `NotSupported`, so
-  the engine streams it. `forbid_cross_bucket_copy` (testing only) makes a fixture behave that way.
+- **Hetzner**: `<location>.your-objectstorage.com`, region = location, path style. Put takes `If-None-Match`; Complete
+  and Copy check then write.
+- **GCS**: `storage.googleapis.com` for every bucket, region `auto`, path style (a GCS bucket name may hold dots and
+  underscores). Check-then-write on all three: GCS ignores `If-None-Match`, and its own `x-goog-if-generation-match`
+  can't ride a request signed with `x-amz-*` headers (400 `ExcessHeaderValues`). No `UploadPartCopy` (`copies_in_parts`
+  is false; § "Server-side copy").
+- **Spaces**: `<region>.digitaloceanspaces.com`, region = region, path style. Put takes `If-None-Match`; Complete and
+  Copy check then write. `cross_bucket_copy()` is false: Spaces documents no cross-cluster copy, and two buckets of one
+  region may sit on two clusters, so the builders refuse a cross-bucket copy with `BuildError::CrossBucketCopy` before
+  sending it and `copy_on_server` answers `NotSupported`, so the engine streams it. `forbid_cross_bucket_copy` (testing
+  only) makes a fixture behave that way.
 - **Other**: the given `http(s)://host[:port]` (nothing after it), region default `us-east-1`, the path-style toggle as
-  given except that an IP endpoint is always path style. Check-then-write.
+  given except that an IP endpoint is always path style. Check-then-write, and a short tail folds (§ "Multipart").
 
 **Addressing.** Path style everywhere but AWS: one host for every bucket means one connection pool and one TLS
 certificate. On AWS (where path style is deprecated, no date set) a bucket that isn't a plain DNS label (3–63 of
@@ -232,34 +244,83 @@ one `HeadBucket` per bucket per session, which the cost estimate ignores.
 - ❗ **A bucket place doesn't route**: its connect probe's `WrongRegion` refusal names the region to use instead
   (`route_each_bucket` is called for the account root only).
 - **AWS only.** The research note documents no region redirect elsewhere (Wasabi says a wrong-region host serves GETs
-  but refuses writes, with no redirect named; M8 checks on a real account).
+  but refuses writes, with no redirect named; unverified, no account).
 - **Verified against a fake AWS only** (`transport_routing_test.rs`: one local server behind every `*.amazonaws.com`
-  host, answering the way the S3 docs say), because the Docker fixtures have one region. M8 confirms it on a real
-  account.
+  host, answering the way the S3 docs say), because the Docker fixtures have one region and there's no AWS account to
+  test with.
 
 **A short body is refused only where we have evidence (`refuses_short_body`, an allowlist).** S3's contract is that a
 PUT whose body ends before its `Content-Length` publishes nothing and keeps the old object; VersityGW breaks it and
-stores what arrived (fixture README). Trusted, each on evidence (2026-10-01):
+stores what arrived (fixture README). Trusted, each on evidence:
 
 - **AWS**: documents `IncompleteBody` (400): "You did not provide the number of bytes specified by the Content-Length
   HTTP header" (https://docs.aws.amazon.com/AmazonS3/latest/developerguide/ErrorResponses.html).
 - **R2**: documents error 10013 / `IncompleteBody` (400): "Request body terminated before expected `Content-Length`"
   (https://developers.cloudflare.com/r2/api/error-codes/).
 - **B2**: not documented; observed answering a short PUT with its own `InvalidRequest` (400) "The request body was too
-  small" (https://stackoverflow.com/questions/76163129). The weakest of the three; M8 confirms it on a real account, and
-  if it doesn't hold, B2 comes off the list.
+  small" (https://stackoverflow.com/questions/76163129). The weakest entry, unverified for want of an account; if it
+  doesn't hold, B2 comes off the list.
+- **R2, Hetzner, GCS, and Spaces, live** (2026-10-02, `live_a_cut_off_put_publishes_nothing`): a PUT promising 4 MiB and
+  cut off after 2 MiB, over an object and on a free key, kept the original and published nothing, looked at 2 s and 17 s
+  later.
 
-Wasabi, Hetzner, and "Other" (VersityGW, MinIO, Garage, anything) are off it, Garage included though it refuses too
-(fixture README): it's reached as "Other", and the list is per preset. Off the list, an overwrite of an existing object
-goes through a temp key (§ "Overwrites through a temp key").
+Wasabi and "Other" (VersityGW, MinIO, Garage, anything) are off it, Garage included though it refuses too (fixture
+README): it's reached as "Other", and the list is per preset. Off the list, an overwrite of an existing object goes
+through a temp key (§ "Overwrites through a temp key").
 
 **Conditional writes are an allowlist, ❌ never a probe.** A server can ignore `If-None-Match: *` and answer 200 while
 overwriting: Garage does on Put, Complete, and Copy, VersityGW on Copy (`apps/desktop/test/s3-servers/README.md`,
 observed 2026-10-01). A success proves nothing, so only an operation the provider documents enforcing carries a header
-(AWS's three, R2's Put and its Copy header); every other cell is `CheckThenWrite`. The allowlist rests on provider docs
-until M8 verifies each entry on a real account. A `501 NotImplemented` (`S3Error::is_not_implemented`) on an allowlisted
-operation means the caller should call `ProviderProfile::downgrade(op)`: that one operation becomes check-then-write for
-the session, and the first call logs. The cells are atomics because one profile serves every concurrent operation.
+(AWS's three; R2's Put, Complete, and its Copy header; Hetzner's and Spaces' Put); every other cell is `CheckThenWrite`.
+AWS's entries rest on its docs; the rest are verified live (§ "Verified providers"). A `501 NotImplemented`
+(`S3Error::is_not_implemented`) on an allowlisted operation means the caller should call
+`ProviderProfile::downgrade(op)`: that one operation becomes check-then-write for the session, and the first call logs.
+The cells are atomics because one profile serves every concurrent operation.
+
+## Verified providers
+
+Live against real accounts on 2026-10-02 (`apps/desktop/test/s3-servers/live.sh`, every `live_` cell; R2, Hetzner
+`nbg1`, GCS `us-central1` through HMAC keys, Spaces `fra1`). Re-run it before changing an allowlist. AWS, B2, and Wasabi
+have no account: their entries rest on docs.
+
+- **Everyone**: a cut-off PUT publishes nothing; a cut-off part racing an abort leaves no upload and no object; a part
+  sent after an abort is `NoSuchUpload`; `DeleteObjects` takes 1,000 keys and refuses 1,001 (`MalformedXML`, GCS
+  `InvalidMultiObjectDeleteRequest`, Hetzner a bodyless 400), so GCS needs no per-object fallback; a delimited
+  `ListObjectsV2` echoes `encoding-type=url` and round-trips `a b+c.txt` and `x + y/`; `x-amz-meta-mtime` comes back
+  verbatim (GCS adds `x-goog-metageneration` beside it); a seven-day presigned GET fetches unsigned; a part under 5 MiB
+  before the last is `EntityTooSmall`; a wrong secret is `SignatureDoesNotMatch` on `ListObjectsV2`, and `HeadBucket`
+  answers a bodyless 403. The SDKs' `x-amz-checksum-crc32` and `-crc64nvme` are accepted everywhere, and a WRONG crc32
+  is `BadDigest` on R2 only (the rest ignore it); we send none.
+- **Two gotchas the fixtures hid**: GCS answers `411` to a bodyless POST (`CreateMultipartUpload`), and R2, Hetzner, and
+  GCS to a zero-byte PUT (a folder marker), when it carries no `Content-Length`; hyper sends none for an empty body, so
+  `S3Client::send` adds `content-length: 0` (`transport_test.rs`).
+- **R2**: `If-None-Match` enforced on Put and Complete, ignored on Copy, `cf-copy-destination-if-none-match` enforced;
+  ❗ a last part LARGER than the rest is `InvalidPart` (equal parts and a smaller last part land), hence
+  `ShortTail::Keep`; `UploadPartCopy` takes a 1 MiB source as the last part and enforces `x-amz-copy-source-if-match`;
+  an NFD key reads back through its NFC twin and one PUT replaces the other. With a bucket-scoped key: `ListBuckets` is
+  `AccessDenied` (so the account root is `BucketListRefused`, wrong secret or not), a missing bucket is a 403 (connect
+  says `AccessDenied`, never `NoSuchBucket`), and ❗ `ListMultipartUploads` lists nothing, not even an upload just
+  created, so an abort's confirming listing is vacuous there (the abort itself works, and a later part is refused). R2's
+  default lifecycle rule aborts unfinished uploads after seven days.
+- **Hetzner**: `If-None-Match` enforced on Put only; parts of any sizes land; `UploadPartCopy` ignores
+  `x-amz-copy-source-if-match`; ❗ `CopyObject` and `UploadPartCopy` work between two buckets of one location (the
+  research note's "within one bucket only" didn't hold); the key may `ListBuckets`; NFD and NFC are two objects.
+- **GCS**: `If-None-Match` ignored on all three writes; ❗ no `UploadPartCopy` (400 `NotImplemented`), so copies go
+  whole (a 140 MiB `CopyObject` took about 1.5 s); multipart uploads of any part sizes land; `DeleteObjects` works; NFD
+  and NFC are two objects; `ListBuckets` refused for a bucket-scoped service account.
+- **Spaces**: `If-None-Match` enforced on Put only; parts of any sizes land; `UploadPartCopy` ignores
+  `x-amz-copy-source-if-match`; NFD and NFC are two objects; the key is bucket-scoped (`ListBuckets` and `CreateBucket`
+  refused), so a cross-bucket copy is unverified and stays off (§ "Providers").
+- **Throughput** (`live_throughput_by_part_width`, a ~250 Mbit/s uplink from Stockholm): a 140 MiB server-side copy in 8
+  MiB parts at 4 / 8 / 16 in flight took R2 3.3 / 2.6 / 1.5 s, Hetzner 1.2 / 1.0 / 0.6 s, Spaces 0.7 / 0.5 / 0.4 s, with
+  no throttle surfacing as an error (AIMD halvings aren't counted), so 16 stays everyone's copy width. A 64 MiB upload
+  at 2 / 4 / 8 parts ran 24 / 26 / 23 MiB/s on R2, 30 / 31 / 31 on Hetzner, 27 / 27 / 21 on Spaces, and 7 / 13 / 18 on
+  GCS (far away, so latency-bound); four stays the upload width, since eight 64 MiB buffers is 512 MiB.
+- **Unverified, and why**: AWS, B2, and Wasabi (no account), so AWS's region routing still rests on the fake AWS; a
+  cross-bucket copy on R2, GCS, and Spaces (each key reaches one bucket); B2's short-body entry.
+- ❗ **A copy's ETag pin is ignored on Hetzner and Spaces**, so a source replaced mid-copy could be stitched from two
+  versions there; only R2 (of the four) refuses the part. Undecided: re-HEADing the source before the delete would close
+  most of that window for one request per multipart copy.
 
 ## Writing
 
@@ -289,12 +350,13 @@ stays `false`: a request is open while the source drains.
   another writer's. That covers a write to a FREE name; an overwrite of an existing object on a provider not trusted to
   refuse a short body never writes in place at all (§ "Overwrites through a temp key"). The token is visible as user
   metadata and harmless to other tools.
-- **Multipart** (`multipart_upload.rs`): up to `UPLOAD_CONCURRENCY` (4) parts in flight, and a part is read from the
-  source only when a slot is free, so at most four part buffers exist (256 MiB at the floor). Parts are buffered at all
-  because a failed one is sent again after 1, 2, then 4 s on a throttle (`SlowDown`, 503, 429), a server fault, or a
-  transport failure. The source is read between pieces with progress and cancel still answered, and ❌ a `next_chunk` is
-  never dropped half-read. A known length is a promise: a part that comes up short, or bytes left after the last part,
-  fail the upload. Cancel is checked once more right before `CompleteMultipartUpload`, which is what publishes.
+- **Multipart** (`multipart_upload.rs`): up to the profile's `upload_concurrency()` (4) parts in flight, and a part is
+  read from the source only when a slot is free, so at most four part buffers exist (256 MiB at the floor). Parts are
+  buffered at all because a failed one is sent again after 1, 2, then 4 s on a throttle (`SlowDown`, 503, 429), a server
+  fault, or a transport failure. The source is read between pieces with progress and cancel still answered, and ❌ a
+  `next_chunk` is never dropped half-read. A known length is a promise: a part that comes up short, or bytes left after
+  the last part, fail the upload. Cancel is checked once more right before `CompleteMultipartUpload`, which is what
+  publishes.
 - **Verification**: a HEAD after every write (`verify_landing`, `judge_landing`) compares the size and the ETag with
   what the write answered. It costs one cheap request per file and feeds the pane patch that follows (`take_written`),
   so `notify_mutation` doesn't pay a second one. ETags aren't compared with an MD5 of the bytes: under SSE-KMS and for
@@ -364,7 +426,8 @@ abort it on the spot; what an abort can't reach (a crash, a dropped future, a se
   owns, in a directory the host hands every backend, keeps it where the knowledge is.
 - **An abort is confirmed by listing** (`abort_upload`): a part request cut off just before an abort can land after it
   and bring the upload back (VersityGW does; AWS documents the race), so each round aborts and then lists the key's
-  uploads, up to four rounds 200 ms apart, and only a listing without the upload ID forgets the record.
+  uploads, up to four rounds 200 ms apart, and only a listing without the upload ID forgets the record. On R2 that
+  listing is always empty, so the abort's own answer is what counts there (§ "Verified providers").
 - **The sweep** (`S3VolumeInner::sweep_unfinished_uploads`) runs in the background at every connect and after a
   reconnect, and aborts the account's open records that no task in this process is running. A record the server confirms
   gone (aborted now or already) is forgotten; any other answer keeps it for the next connect. ❌ It never aborts an
@@ -403,17 +466,19 @@ folder wins over an object of the same name (`NameHolds`), except where the list
 
 `server_copy.rs`. `copy_on_server` copies from this place or a sibling place of the SAME account (the endpoint and key
 id, matched on the concrete `S3Volume` the source downcasts to); another account or another backend is `NotSupported`,
-and so is a cross-bucket copy where the provider copies within one bucket only (Hetzner). The engine then streams.
+and so is a cross-bucket copy where the provider copies within one bucket only (Spaces). The engine then streams.
 
 - **The source is HEADed once**: its size picks the shape, its ETag pins every part (`x-amz-copy-source-if-match`, so an
-  object replaced mid-copy fails the part rather than stitching two versions; both fixtures accept it, whether they
-  enforce it is unverified), and its metadata travels.
+  object replaced mid-copy fails the part rather than stitching two versions; R2 enforces it, Hetzner and Spaces ignore
+  it, § "Verified providers"), and its metadata travels.
 - **Up to the part floor, one `CopyObject`**; past it, a multipart upload of `UploadPartCopy` ranges with the upload
-  plan's part size and folded tail (§ "Multipart"), even under 5 GB, so progress moves per part and a pause lands
-  between parts. ❗ Garage refuses a copy source under 5 MiB even as the last part, which the folded tail avoids.
-- **Up to `COPY_CONCURRENCY` (16) parts in flight**, with AIMD on the window (`Window`): halved on a throttle
-  (`S3Error::is_throttle`: `SlowDown`, 503, 429, Wasabi's and R2's codes), one wider per landed part. A throttled or
-  faulted part goes again after 1, 2, then 4 s.
+  plan's part size and the provider's tail rule (§ "Multipart"), even under 5 GB, so progress moves per part and a pause
+  lands between parts. ❗ **GCS has no `UploadPartCopy`** (`copies_in_parts` is false): there a copy of any size is one
+  `CopyObject`, and past S3's 5 GiB ceiling (`MAX_COPY_OBJECT_SIZE`) `copy_on_server` answers `NotSupported` so the
+  engine streams it.
+- **Up to the profile's `copy_concurrency()` (16) parts in flight**, with AIMD on the window (`Window`): halved on a
+  throttle (`S3Error::is_throttle`: `SlowDown`, 503, 429, Wasabi's and R2's codes), one wider per landed part. A
+  throttled or faulted part goes again after 1, 2, then 4 s.
 - **A pause lands at `ServerCopyProgress::checkpoint`**, asked before creating the upload and before each part; while it
   waits, the parts in flight keep being driven to completion. A cancel aborts the upload through the ledger's
   listed-until-gone abort, and the source is never touched.
@@ -473,11 +538,14 @@ to the status only for `NoBody` (and `Other`, for retryability). `region` (on `A
 `plan_parts(total)`: one part size for the whole upload, at least 64 MiB (fewer billed requests than S3's 5 MiB floor)
 and at least `total / 10,000`, rounded up to a whole MiB. Past 10,000 × 5 GiB it's `TooLarge`. Equal parts are an R2
 requirement (`InvalidPart` at completion otherwise); doing it everywhere also means a re-sent part covers the same
-bytes. A tail under 5 MiB folds into the part before it: Garage refuses an `UploadPartCopy` source that small even as
-the last part (fixture README). The fold is skipped when it would push that part past 5 GiB, which only happens near the
-48.8 TiB ceiling. Whether R2 accepts a last part LARGER than the rest is for M8 to confirm; if it doesn't, the tail has
-to split differently there. `PartPlan::range` gives each part's inclusive byte range for `x-amz-copy-source-range` or a
-ranged read, the last one running to the end of the object.
+bytes. **A tail under 5 MiB follows the provider's `ShortTail`** (`ProviderProfile::short_tail`), because two servers
+refuse opposite shapes: R2 answers `InvalidPart` to a last part LARGER than the rest (live, 2026-10-02), and Garage
+refuses an `UploadPartCopy` source under 5 MiB even as the last part (fixture README). So every preset keeps the tail as
+its own smaller part (`Keep`, S3's own rule), and "Other", which may be Garage, folds it into the part before (`Fold`),
+skipped when that part would pass 5 GiB, which only happens near the 48.8 TiB ceiling. Whether an upload goes as one PUT
+is decided with the tail folded either way (`shape_for`), so 65 MiB stays one PUT everywhere. `PartPlan::range` gives
+each part's inclusive byte range for `x-amz-copy-source-range` or a ranged read, the last one running to the end of the
+object.
 
 **Spec correction: no marker can find our own unfinished uploads.** The plan says the startup sweep matches unfinished
 uploads "by a Cmdr marker in the initiation metadata". `ListMultipartUploads` returns only key, upload ID, initiator,

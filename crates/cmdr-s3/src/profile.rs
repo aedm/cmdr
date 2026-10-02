@@ -1,8 +1,10 @@
 //! What one provider can and can't do, chosen by the connect form's preset.
 //!
 //! The preset fixes the endpoint, the signing region, and the addressing
-//! style, plus what each provider's docs say about conditional writes and
-//! server-side copy (`docs/notes/s3/provider-research.md` has the sources).
+//! style, plus what each provider enforces: conditional writes, short bodies,
+//! server-side copy, and part shapes. Verified live where an account exists,
+//! from docs elsewhere (`crates/cmdr-s3/DETAILS.md` § "Verified providers").
+//! Re-run `apps/desktop/test/s3-servers/live.sh` before changing an entry.
 //!
 //! ❗ Conditional writes are an allowlist, ❌ never a probe: a server can ignore
 //! `If-None-Match: *` and answer 200 while overwriting (Garage on Put,
