@@ -633,6 +633,22 @@
   "@fileExplorer.unreachable.openHome": {
     "sourceHash": "a178b4d"
   },
+  "fileExplorer.listingStalled.title": "Vẫn đang chờ thư mục này",
+  "@fileExplorer.listingStalled.title": {
+    "sourceHash": "2c288e7"
+  },
+  "fileExplorer.listingStalled.detail": "Máy chủ hoặc ổ đĩa chứa thư mục này không phản hồi. Cmdr vẫn tiếp tục thử ở chế độ nền và sẽ mở thư mục ngay khi có phản hồi.",
+  "@fileExplorer.listingStalled.detail": {
+    "sourceHash": "3d5ca69"
+  },
+  "fileExplorer.listingStalled.tryAgain": "Thử lại",
+  "@fileExplorer.listingStalled.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "fileExplorer.listingStalled.goBack": "Trở lại",
+  "@fileExplorer.listingStalled.goBack": {
+    "sourceHash": "6aadac2"
+  },
   "fileExplorer.clipboard.copied": "Đã sao chép {countText} {count, plural, other {mục}}",
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"

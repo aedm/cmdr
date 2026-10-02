@@ -133,6 +133,14 @@
   "@indexing.progress.percentEta": {
     "sourceHash": "26b29da"
   },
+  "indexing.overall.eta": "Totalt: {eta}",
+  "@indexing.overall.eta": {
+    "sourceHash": "a9a2ffc"
+  },
+  "indexing.overall.estimating": "Totalt: beräknar…",
+  "@indexing.overall.estimating": {
+    "sourceHash": "9dac967"
+  },
   "indexing.eta.almostDone": "Snart klar",
   "@indexing.eta.almostDone": {
     "sourceHash": "506f162"

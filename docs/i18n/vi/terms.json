@@ -1437,6 +1437,12 @@
     "forms": "tool labels Đang xem bên trong tệp / Đã xem bên trong tệp",
     "sources": "catalog (bên trong), sibling tool labels"
   },
+  "overall": {
+    "chosen": "Tổng thể",
+    "confidence": "tentative",
+    "forms": "the whole-run time-left label → Tổng thể: {eta}",
+    "sources": "GN tổng (a summed quantity); no source names a whole-run time; tổng thể is the standard gloss for overall"
+  },
   "step": {
     "chosen": "bước",
     "accept": ["Bước"],

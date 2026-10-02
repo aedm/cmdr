@@ -1218,6 +1218,12 @@
     "confidence": "high",
     "sources": "macOS Finder („Informationen“)"
   },
+  "overall": {
+    "chosen": "Insgesamt",
+    "confidence": "high",
+    "forms": "the whole-run time-left label → Insgesamt: {eta}",
+    "sources": "GN insgesamt; DC Gesamt: (the label form, read stiffer before a time phrase)"
+  },
   "step": {
     "chosen": "Schritt",
     "confidence": "high",

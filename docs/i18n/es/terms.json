@@ -1710,6 +1710,12 @@
     "sources": "macOS Finder (NE103/NE105 no estén actualizados)",
     "decision": "El índice desactualizado de un teléfono por ADB"
   },
+  "overall": {
+    "chosen": "En total",
+    "confidence": "high",
+    "forms": "the whole-run time-left label → En total: {eta}",
+    "sources": "GN total, DC Total:; En total is the adverbial form that reads before a time phrase"
+  },
   "overwrite": {
     "chosen": "Sobrescribir",
     "accept": ["sobrescrib", "sobrescrit"],

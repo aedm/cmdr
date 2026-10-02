@@ -631,6 +631,22 @@
   "@fileExplorer.unreachable.openHome": {
     "sourceHash": "a178b4d"
   },
+  "fileExplorer.listingStalled.title": "还在等待这个文件夹",
+  "@fileExplorer.listingStalled.title": {
+    "sourceHash": "2c288e7"
+  },
+  "fileExplorer.listingStalled.detail": "这个文件夹所在的服务器或驱动器没有响应。Cmdr 会在后台继续尝试，一有响应就打开这个文件夹。",
+  "@fileExplorer.listingStalled.detail": {
+    "sourceHash": "3d5ca69"
+  },
+  "fileExplorer.listingStalled.tryAgain": "重试",
+  "@fileExplorer.listingStalled.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "fileExplorer.listingStalled.goBack": "返回",
+  "@fileExplorer.listingStalled.goBack": {
+    "sourceHash": "6aadac2"
+  },
   "fileExplorer.clipboard.copied": "已拷贝 {countText} {count, plural, other {个项目}}",
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"

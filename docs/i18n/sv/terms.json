@@ -1131,6 +1131,12 @@
     "confidence": "tentative",
     "sources": "standard Swedish git usage; MS förgrena is the verb sense"
   },
+  "overall": {
+    "chosen": "Totalt",
+    "confidence": "high",
+    "forms": "the whole-run time-left label → Totalt: {eta}",
+    "sources": "GN totalt; catalog Totalt (errorReporter.dialog.totalLines)"
+  },
   "repository": {
     "accept": ["repository"],
     "chosen": "repo",

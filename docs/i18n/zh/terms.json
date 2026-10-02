@@ -1919,6 +1919,12 @@
     "forms": "an index that may be stale 可能已过期 / 已过时",
     "sources": "catalog"
   },
+  "overall": {
+    "chosen": "总体",
+    "confidence": "tentative",
+    "forms": "the whole-run time-left label → 总体：{eta}",
+    "sources": "GN 总计, DC 合计 (both a summed quantity, odd before 剩余 time); 总体 is the standard gloss for overall"
+  },
   "overwrite": {
     "chosen": "覆盖",
     "confidence": "high",

@@ -633,6 +633,22 @@
   "@fileExplorer.unreachable.openHome": {
     "sourceHash": "a178b4d"
   },
+  "fileExplorer.listingStalled.title": "Ainda aguardando esta pasta",
+  "@fileExplorer.listingStalled.title": {
+    "sourceHash": "2c288e7"
+  },
+  "fileExplorer.listingStalled.detail": "O servidor ou disco desta pasta não está respondendo. O Cmdr continua tentando em segundo plano e abre a pasta assim que houver resposta.",
+  "@fileExplorer.listingStalled.detail": {
+    "sourceHash": "3d5ca69"
+  },
+  "fileExplorer.listingStalled.tryAgain": "Tentar novamente",
+  "@fileExplorer.listingStalled.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "fileExplorer.listingStalled.goBack": "Voltar",
+  "@fileExplorer.listingStalled.goBack": {
+    "sourceHash": "6aadac2"
+  },
   "fileExplorer.clipboard.copied": "{count, plural, one {{countText} item copiado} many {{countText} itens copiados} other {{countText} itens copiados}}",
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"

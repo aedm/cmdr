@@ -1862,6 +1862,12 @@
     "forms": "De index van deze schijf is mogelijk verouderd",
     "sources": "standard NL"
   },
+  "overall": {
+    "chosen": "In totaal",
+    "confidence": "high",
+    "forms": "the whole-run time-left label → In totaal: {eta}",
+    "sources": "GN totaal, DC Totaal:; catalog in totaal (servers.paneState.retryKeepsTrying)"
+  },
   "overwrite": {
     "accept": ["overschrijven", "overschreven"],
     "chosen": "Overschrijf",

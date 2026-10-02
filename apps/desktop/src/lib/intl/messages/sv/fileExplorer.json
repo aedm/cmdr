@@ -633,6 +633,22 @@
   "@fileExplorer.unreachable.openHome": {
     "sourceHash": "a178b4d"
   },
+  "fileExplorer.listingStalled.title": "Väntar fortfarande på den här mappen",
+  "@fileExplorer.listingStalled.title": {
+    "sourceHash": "2c288e7"
+  },
+  "fileExplorer.listingStalled.detail": "Servern eller enheten som mappen ligger på svarar inte. Cmdr fortsätter att försöka i bakgrunden och öppnar mappen så snart det kommer ett svar.",
+  "@fileExplorer.listingStalled.detail": {
+    "sourceHash": "3d5ca69"
+  },
+  "fileExplorer.listingStalled.tryAgain": "Försök igen",
+  "@fileExplorer.listingStalled.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "fileExplorer.listingStalled.goBack": "Gå bakåt",
+  "@fileExplorer.listingStalled.goBack": {
+    "sourceHash": "6aadac2"
+  },
   "fileExplorer.clipboard.copied": "Kopierade {countText} {count, plural, one {objekt} other {objekt}}",
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"

@@ -1696,6 +1696,12 @@
     "confidence": "high",
     "sources": "macOS Finder pt-BR (NE103 Os itens podem estar desatualizados.)"
   },
+  "overall": {
+    "chosen": "No total",
+    "confidence": "high",
+    "forms": "the whole-run time-left label → No total: {eta}",
+    "sources": "GN total, DC Total:; No total is the adverbial form before a time phrase"
+  },
   "overwrite": {
     "chosen": "substituir",
     "accept": ["substitu"],

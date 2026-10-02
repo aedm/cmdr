@@ -633,6 +633,22 @@
   "@fileExplorer.unreachable.openHome": {
     "sourceHash": "a178b4d"
   },
+  "fileExplorer.listingStalled.title": "Toujours en attente de ce dossier",
+  "@fileExplorer.listingStalled.title": {
+    "sourceHash": "2c288e7"
+  },
+  "fileExplorer.listingStalled.detail": "Le serveur ou le disque qui contient ce dossier ne répond pas. Cmdr continue d’essayer en arrière-plan et ouvre le dossier dès qu’une réponse arrive.",
+  "@fileExplorer.listingStalled.detail": {
+    "sourceHash": "3d5ca69"
+  },
+  "fileExplorer.listingStalled.tryAgain": "Réessayer",
+  "@fileExplorer.listingStalled.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "fileExplorer.listingStalled.goBack": "Revenir",
+  "@fileExplorer.listingStalled.goBack": {
+    "sourceHash": "6aadac2"
+  },
   "fileExplorer.clipboard.copied": "{countText} {count, plural, one {élément copié} many {éléments copiés} other {éléments copiés}}",
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"

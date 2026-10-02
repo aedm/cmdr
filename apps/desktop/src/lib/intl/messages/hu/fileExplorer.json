@@ -633,6 +633,22 @@
   "@fileExplorer.unreachable.openHome": {
     "sourceHash": "a178b4d"
   },
+  "fileExplorer.listingStalled.title": "A Cmdr még mindig vár erre a mappára",
+  "@fileExplorer.listingStalled.title": {
+    "sourceHash": "2c288e7"
+  },
+  "fileExplorer.listingStalled.detail": "Nem válaszol a szerver vagy a meghajtó, amelyen ez a mappa van. A Cmdr a háttérben tovább próbálkozik, és megnyitja a mappát, amint válasz érkezik.",
+  "@fileExplorer.listingStalled.detail": {
+    "sourceHash": "3d5ca69"
+  },
+  "fileExplorer.listingStalled.tryAgain": "Próbáld újra",
+  "@fileExplorer.listingStalled.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "fileExplorer.listingStalled.goBack": "Vissza",
+  "@fileExplorer.listingStalled.goBack": {
+    "sourceHash": "6aadac2"
+  },
   "fileExplorer.clipboard.copied": "{countText} {count, plural, one {elem} other {elem}} másolva",
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"

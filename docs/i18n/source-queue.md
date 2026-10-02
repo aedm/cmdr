@@ -69,3 +69,7 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   decides transitive vs reflexive in fr. (fr)
 - No concept yet for "called", "others", "reach", "usual", "leaving", "android", "adb"; "switcher" is the one that
   matters (zh-Hant has both 卷宗切換器 and a bare 切換器). (de, zh-Hant)
+- `fileExplorer.listingStalled.*`, `indexing.overall.*`: no `screenshot`. Capture the stalled-listing pane and the
+  checklist with the whole-run line, so locales can judge length and the spinner context. (all)
+- `indexing.overall.eta`: `{eta}` can be "Almost done", which arrives capitalized after the colon; several locales then
+  read "Total: Almost done". Say in the description whether the inserted phrase is sentence-initial or not. (de, hu, vi)

@@ -1089,6 +1089,12 @@
     "forms": "masculine (l’historique); git history → historique git; the repo’s history → l’historique du dépôt; file history → historique de fichiers",
     "sources": "macOS AppKit (NSToolbarHistoryTemplate historique; historique des versions); catalog (operationLog.dialog.loadError, errors.git.blobTooLarge.title)"
   },
+  "overall": {
+    "chosen": "Au total",
+    "confidence": "high",
+    "forms": "the whole-run time-left label → Au total : {eta}",
+    "sources": "GN total, DC Total :; Au total is the adverbial form (Dans l’ensemble reads as on the whole, a judgment)"
+  },
   "placeholder": {
     "chosen": "espace réservé",
     "confidence": "high",

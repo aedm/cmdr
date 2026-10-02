@@ -2182,6 +2182,12 @@
     "forms": "the originals → 原本的檔案; Finder’s own item wording → 原項目",
     "sources": "macOS Finder PE117 (…the original could not be deleted): 原項目; catalog (errors.write.destinationNotFound.message.copy, errors.write.deviceDisconnected.sided.destination.copy)"
   },
+  "overall": {
+    "chosen": "整體",
+    "confidence": "tentative",
+    "forms": "the whole-run time-left label → 整體：{eta}",
+    "sources": "GN 總計 (a summed quantity, odd before 剩餘 time); 整體 is the Taiwan gloss for overall"
+  },
   "overwrite": {
     "avoid": [
       {
@@ -3443,6 +3449,13 @@
     "chosen": "喚醒",
     "confidence": "high",
     "sources": "AP-TW live (BatteryUI Start up or wake → 開機或喚醒)"
+  },
+  "waiting": {
+    "accept": ["等"],
+    "chosen": "等待",
+    "confidence": "high",
+    "forms": "queued status 等待中; progress 正在等待⋯; still waiting → 還在等待; running prose may say the spoken 等 (等你確認, 等一下, 要等多久)",
+    "sources": "AP-TW 等待 17 vs 等候 0, AP-HK 18 vs 0; catalog operationLog.status.queued 等待中"
   },
   "warning": {
     "chosen": "警告",

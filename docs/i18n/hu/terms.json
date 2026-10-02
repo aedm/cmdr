@@ -1348,6 +1348,12 @@
     "confidence": "tentative",
     "sources": "literal"
   },
+  "overall": {
+    "chosen": "Összesen",
+    "confidence": "high",
+    "forms": "the whole-run time-left label → Összesen: {eta}",
+    "sources": "GN összesen, DC Összesen:; catalog servers.paneState.retryKeepsTrying"
+  },
   "step": {
     "chosen": "lépés",
     "confidence": "high",

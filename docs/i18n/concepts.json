@@ -2115,6 +2115,12 @@
     "notMatch": ["stale connection"],
     "sense": "An index that may no longer match what's on the drive."
   },
+  "overall": {
+    "en": "Overall",
+    "match": ["overall"],
+    "notMatch": ["overall solid"],
+    "sense": "The label for the whole drive-indexing run's time left, across every step still to go (vs one step's own time left)."
+  },
   "overwrite": {
     "distinct": ["replace", "skip", "merge"],
     "en": "overwrite",
