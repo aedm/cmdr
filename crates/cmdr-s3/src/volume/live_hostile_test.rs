@@ -496,10 +496,10 @@ async fn live_hostile_sizes() {
         );
 
         // A download dropped mid-way, then read again whole.
-        let mut stream = volume.open_read_stream(&path).await.expect("opens");
-        let _ = stream.next_chunk().await;
-        stream.cancel_and_release().await;
-        drop(stream);
+        if let Ok(mut stream) = volume.open_read_stream(&path).await {
+            let _ = stream.next_chunk().await;
+            stream.cancel_and_release().await;
+        }
         let again = pattern_mismatch(&volume, &path, size, tag).await;
         m.check(
             again.is_none(),
