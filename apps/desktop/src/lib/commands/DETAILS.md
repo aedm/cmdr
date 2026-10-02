@@ -249,8 +249,3 @@ other way, `on_menu_event` → `settings-changed` → the `listener-setup.ts` li
   needs an array of strings anyway. Indexing by id would add complexity for no measurable gain at this scale. There's no
   `getCommandById()`: lookup by id happens in the shortcuts system (its own reverse map) and in `handleCommandExecute`
   (the flat handler record). The module stays a registry and a search engine, not a command bus.
-
-## Debug log command
-
-`help.viewDebugLog` is an App-scoped, palette-visible command with no default shortcut. It runs over dialogs because it
-opens its own viewer window. Its handler’s behavior lives in `apps/desktop/src/lib/logging/DETAILS.md`.

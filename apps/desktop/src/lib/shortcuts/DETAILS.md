@@ -478,9 +478,6 @@ side, `MenuState.items` is a `HashMap<String, MenuItemEntry>` that tracks regula
 `update_menu_item_accelerator()` handles the remove/recreate/reinsert cycle. View mode CheckMenuItems still use the
 separate `update_view_mode_accelerator()` path to preserve checked state.
 
-Help’s `help.viewDebugLog` has no default shortcut, but is in `menuCommands` so a user binding reaches the native menu.
-The command and handler are described in `apps/desktop/src/lib/commands/DETAILS.md`.
-
 A menu-bar REBUILD (the UI language changed) throws every menu item away, so the customized accelerators are back at
 their registry defaults on brand-new objects. `resyncMenuAccelerators()` pushes them all again, driven by the
 `menu-bar-rebuilt` event in `DualPaneExplorer.svelte`. Only the CUSTOMIZED ones need re-pushing: the fresh items already

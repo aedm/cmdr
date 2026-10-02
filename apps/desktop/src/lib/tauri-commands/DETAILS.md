@@ -94,6 +94,7 @@ commands, and notable non-obvious placements.
   ask once their scan preview settles (`apps/desktop/src-tauri/src/s3_costs/DETAILS.md`).
 - **`licensing.ts`**: license status, activation, expiry, server validation.
 - **`settings.ts`**: port checking, file watcher debounce, indexing toggle, MCP server control, AI subsystem commands.
+- **`logging.ts`**: `getDebugLogPath`, the log file this session writes (Help > View debug log).
 - **`tab.ts`**: tab context menu: `showTabContextMenu`, `onTabContextAction`.
 - **`function-key-bar.ts`**: the function key bar's one-item context menu: `showFunctionKeyBarContextMenu`,
   `onFunctionKeyBarHideRequested` (payload-less; the frontend owns the setting write and the toast).
@@ -209,8 +210,3 @@ text only (`../ask-cmdr/DETAILS.md` § The "Why this name" column).
   test; change one side and it tells you about the other. ❌ Don't invent a per-feature bucketing next to a call to it —
   the one documented exception is a count with a hard low cap of its own (open tabs cap at ten, where this ladder has
   two values across the whole range), and those say so at the call site.
-
-## Logging path
-
-`logging.ts` wraps `get_debug_log_path` as `getDebugLogPath`. Path policy lives in
-`apps/desktop/src-tauri/src/logging/DETAILS.md`.

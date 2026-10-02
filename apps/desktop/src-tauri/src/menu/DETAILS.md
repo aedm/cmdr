@@ -1249,9 +1249,3 @@ class of bug.
   per right-click, so `show_file_context_menu` carries the answer in `PaneContextMenuFacts.can_open_terminal_here`.
   ⚠️ Greying is CHROME: a disabled item's accelerator still fires, and the palette has no disabled state at all, so
   the real refusal is the frontend handler (`apps/desktop/src/lib/open-terminal/CLAUDE.md`).
-
-## Debug log entry point
-
-Help’s `HELP_DEBUG_LOG_ID` (`help_debug_log`) maps to the App-scoped `help.viewDebugLog` command in both directions.
-The tracked item supports custom accelerator sync. The action itself lives in
-`apps/desktop/src/lib/logging/DETAILS.md`.
