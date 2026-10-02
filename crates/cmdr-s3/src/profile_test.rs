@@ -6,6 +6,7 @@ use super::{
     Addressing, ConditionalOp, LocateError, Location, NoOverwrite, Preset, ProfileError, ProviderKind, ProviderProfile,
 };
 use crate::encoding::KeyError;
+use crate::multipart::ShortTail;
 
 fn profile(preset: Preset) -> ProviderProfile {
     ProviderProfile::from_preset(&preset).unwrap()
@@ -75,12 +76,16 @@ fn r2_signs_for_auto_composes_keys_and_copies_with_its_own_header() {
     assert_eq!(r2.region, "auto");
     assert_eq!(r2.addressing, Addressing::Path);
     assert!(r2.nfc_keys);
+    // Each verified live on 2026-10-02: R2 enforces `If-None-Match` on a PUT
+    // and a completion, and ignores it on a copy, which takes its own header.
     assert_eq!(r2.no_overwrite(ConditionalOp::Put), NoOverwrite::IfNoneMatch);
     assert_eq!(
         r2.no_overwrite(ConditionalOp::CompleteMultipart),
-        NoOverwrite::CheckThenWrite
+        NoOverwrite::IfNoneMatch
     );
     assert_eq!(r2.no_overwrite(ConditionalOp::Copy), NoOverwrite::CloudflareCopyHeader);
+    // A last part larger than the rest is `InvalidPart` there.
+    assert_eq!(r2.short_tail, ShortTail::Keep);
     assert_eq!(
         r2.locate(Some("b"), Some("x")).unwrap(),
         loc("0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com", "/b/x")
@@ -142,9 +147,7 @@ fn every_provider_off_the_allowlist_checks_then_writes() {
         Preset::Wasabi {
             region: "eu-central-2".into(),
         },
-        Preset::Hetzner {
-            location: "hel1".into(),
-        },
+        Preset::Gcs,
         Preset::Other {
             endpoint: Url::parse("http://127.0.0.1:17480").unwrap(),
             region: None,
@@ -181,7 +184,74 @@ fn wasabi_and_hetzner_endpoints_and_hetzner_copies_within_a_bucket_only() {
     });
     assert_eq!(hetzner.endpoint_host, "hel1.your-objectstorage.com");
     assert_eq!(hetzner.region, "hel1");
-    assert!(!hetzner.cross_bucket_copy());
+    // Copies between two buckets of one location (live, 2026-10-02).
+    assert!(hetzner.cross_bucket_copy());
+}
+
+/// Hetzner and Spaces enforce `If-None-Match` on a PUT and ignore it on a
+/// completion and a copy (live, 2026-10-02).
+#[test]
+fn hetzner_and_spaces_refuse_by_header_on_a_put_only() {
+    for preset in [
+        Preset::Hetzner {
+            location: "nbg1".into(),
+        },
+        Preset::DigitalOcean { region: "fra1".into() },
+    ] {
+        let listed = profile(preset);
+        assert_eq!(listed.no_overwrite(ConditionalOp::Put), NoOverwrite::IfNoneMatch);
+        for op in [ConditionalOp::CompleteMultipart, ConditionalOp::Copy] {
+            assert_eq!(
+                listed.no_overwrite(op),
+                NoOverwrite::CheckThenWrite,
+                "{:?} {op:?}",
+                listed.kind
+            );
+        }
+    }
+}
+
+/// GCS has no `UploadPartCopy` (400 `NotImplemented`, live 2026-10-02), so a
+/// server-side copy is one `CopyObject` whatever its size.
+#[test]
+fn only_gcs_copies_without_parts() {
+    assert!(!profile(Preset::Gcs).copies_in_parts);
+    assert!(
+        profile(Preset::Aws {
+            region: "us-east-1".into()
+        })
+        .copies_in_parts
+    );
+    assert!(profile(other("http://127.0.0.1:9000", true)).copies_in_parts);
+}
+
+/// Garage refuses a small `UploadPartCopy` source even as the last part, and
+/// "Other" may be Garage; every preset keeps a short tail as its own part.
+#[test]
+fn only_other_folds_a_short_tail() {
+    assert_eq!(
+        profile(other("http://127.0.0.1:9000", true)).short_tail,
+        ShortTail::Fold
+    );
+    for preset in [
+        Preset::Aws {
+            region: "us-east-1".into(),
+        },
+        Preset::B2 {
+            region: "us-east-005".into(),
+        },
+        Preset::Wasabi {
+            region: "eu-central-2".into(),
+        },
+        Preset::Hetzner {
+            location: "nbg1".into(),
+        },
+        Preset::Gcs,
+        Preset::DigitalOcean { region: "fra1".into() },
+    ] {
+        let listed = profile(preset);
+        assert_eq!(listed.short_tail, ShortTail::Keep, "{:?}", listed.kind);
+    }
 }
 
 #[test]
@@ -293,7 +363,7 @@ fn a_bad_bucket_or_key_is_refused_before_any_url_exists() {
 /// it refuses a short body keeps writing an overwrite in place. VersityGW
 /// publishes a cut-off PUT, and "Other" may be VersityGW.
 #[test]
-fn only_aws_r2_and_b2_are_trusted_to_refuse_a_short_body() {
+fn every_preset_but_wasabi_is_trusted_to_refuse_a_short_body() {
     let trusted = [
         Preset::Aws {
             region: "us-east-1".into(),
@@ -304,6 +374,11 @@ fn only_aws_r2_and_b2_are_trusted_to_refuse_a_short_body() {
         Preset::B2 {
             region: "us-east-005".into(),
         },
+        Preset::Hetzner {
+            location: "nbg1".into(),
+        },
+        Preset::Gcs,
+        Preset::DigitalOcean { region: "fra1".into() },
     ];
     for preset in trusted {
         let listed = profile(preset);
@@ -312,9 +387,6 @@ fn only_aws_r2_and_b2_are_trusted_to_refuse_a_short_body() {
     let untrusted = [
         Preset::Wasabi {
             region: "eu-central-2".into(),
-        },
-        Preset::Hetzner {
-            location: "hel1".into(),
         },
         Preset::Other {
             endpoint: Url::parse("http://127.0.0.1:17480").unwrap(),
@@ -366,4 +438,37 @@ fn only_aws_reroutes_and_only_to_a_region_a_hostname_can_carry() {
     );
     let minio = profile(other("http://127.0.0.1:9000", true));
     assert!(minio.reroute(request_to(&minio, "photos", "k"), "us-east-1").is_none());
+}
+
+#[test]
+fn gcs_is_one_global_path_style_endpoint_signed_for_auto() {
+    let gcs = profile(Preset::Gcs);
+    assert_eq!(gcs.kind, ProviderKind::Gcs);
+    assert_eq!(gcs.endpoint_host, "storage.googleapis.com");
+    assert_eq!(gcs.region, "auto");
+    assert_eq!(gcs.addressing, Addressing::Path);
+    // GCS bucket names may hold dots and underscores; the path carries them.
+    assert_eq!(
+        gcs.locate(Some("my.photos_2024"), Some("a b.jpg")).unwrap(),
+        loc("storage.googleapis.com", "/my.photos_2024/a%20b.jpg")
+    );
+}
+
+#[test]
+fn spaces_is_regional_and_path_style() {
+    let spaces = profile(Preset::DigitalOcean { region: "fra1".into() });
+    assert_eq!(spaces.kind, ProviderKind::DigitalOcean);
+    assert_eq!(spaces.endpoint_host, "fra1.digitaloceanspaces.com");
+    assert_eq!(spaces.region, "fra1");
+    assert_eq!(spaces.addressing, Addressing::Path);
+    // "Cross-region and cross-cluster copies are not supported", and two
+    // buckets of one region may sit on two clusters: stream between them.
+    assert!(!spaces.cross_bucket_copy());
+    assert_eq!(
+        ProviderProfile::from_preset(&Preset::DigitalOcean {
+            region: "fra1.evil.com/".into()
+        })
+        .err(),
+        Some(ProfileError::InvalidHostPart)
+    );
 }

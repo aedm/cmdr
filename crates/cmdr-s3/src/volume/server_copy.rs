@@ -4,7 +4,7 @@
 //!   upload of `UploadPartCopy` ranges, even under S3's 5 GB `CopyObject`
 //!   ceiling, so progress moves per part and a pause lands between parts. One
 //!   part size per copy (`multipart.rs`, R2's rule).
-//! - **Up to [`COPY_CONCURRENCY`] parts in flight**, halved on every throttle
+//! - **Up to the profile's `copy_concurrency()` parts in flight**, halved on every throttle
 //!   (`SlowDown`, 503, 429) and grown back by one per finished part ([`Window`]).
 //! - ❗ **The source is HEADed once**, which gives its size, its ETag (every
 //!   part is pinned to that version with `x-amz-copy-source-if-match`), and its
@@ -47,10 +47,8 @@ use crate::transport::{Answer, COMPLETE_BUDGET, S3Client, map_transport_error};
 use crate::xml::build::CompletedPart;
 use crate::xml::parse_copy_result;
 
-/// The most parts a server-side copy keeps in flight. A first number, tuned
-/// per provider against real accounts in the plan's M8; Hetzner's 750
-/// requests a second per bucket is the low bar.
-pub(super) const COPY_CONCURRENCY: usize = 16;
+/// S3's ceiling on one `CopyObject`: 5 GiB.
+const MAX_COPY_OBJECT_SIZE: u64 = 5 * 1024 * 1024 * 1024;
 
 /// The system headers a copy restates when it can't keep them by `COPY`.
 const CARRIED_SYSTEM_HEADERS: [&str; 5] = [
@@ -299,7 +297,7 @@ impl S3Volume {
         };
         let client = self.clone_client().await?;
         if from_bucket != to_bucket && !client.profile().cross_bucket_copy() {
-            // Hetzner copies within one bucket only: stream it instead.
+            // A provider that copies within one bucket only: stream it instead.
             return Err(VolumeError::NotSupported);
         }
         let head = self
@@ -334,14 +332,22 @@ impl S3Volume {
         progress: &dyn ServerCopyProgress,
     ) -> Result<u64, VolumeError> {
         let size = from.object.size;
-        if self.copies_whole(size) {
+        let in_parts = client.profile().copies_in_parts;
+        if !in_parts && size > MAX_COPY_OBJECT_SIZE {
+            // No `UploadPartCopy` (GCS), and too big for one `CopyObject`:
+            // the engine streams it.
+            return Err(VolumeError::NotSupported);
+        }
+        if self.copies_whole(size) || !in_parts {
             return self
                 .copy_whole(client, from, to_bucket, to_key, to_remote, mode, progress)
                 .await;
         }
-        let plan = plan_parts_with_floor(size, self.part_floor()).map_err(|TooLarge| VolumeError::IoError {
-            message: format!("{to_remote}: too big for one S3 object (10,000 parts of 5 GiB)"),
-            raw_os_error: None,
+        let plan = plan_parts_with_floor(size, self.part_floor(), client.profile().short_tail).map_err(|TooLarge| {
+            VolumeError::IoError {
+                message: format!("{to_remote}: too big for one S3 object (10,000 parts of 5 GiB)"),
+                raw_os_error: None,
+            }
         })?;
         let metadata = from.object.restated();
         let target = WriteTarget {
@@ -534,7 +540,7 @@ impl S3Volume {
         let mut waiting: VecDeque<u32> = (1..=plan.part_count).collect();
         let mut in_flight: FuturesUnordered<PartFuture> = FuturesUnordered::new();
         let volume_id = self.volume_id();
-        let mut window = Window::new(COPY_CONCURRENCY);
+        let mut window = Window::new(client.profile().copy_concurrency());
         let mut parts: Vec<CompletedPart> = Vec::with_capacity(plan.part_count as usize);
         let mut done_bytes = 0u64;
         loop {

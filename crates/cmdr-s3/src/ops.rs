@@ -29,7 +29,7 @@ pub(crate) const MAX_DELETE_KEYS: usize = 1_000;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum BuildError {
     Locate(LocateError),
-    /// The profile copies within one bucket only (Hetzner); stream instead.
+    /// The profile copies within one bucket only (Spaces); stream instead.
     CrossBucketCopy,
     /// More than [`MAX_DELETE_KEYS`] keys, or none.
     DeleteBatchSize,

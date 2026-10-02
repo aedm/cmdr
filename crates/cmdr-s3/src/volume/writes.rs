@@ -44,7 +44,7 @@ use super::errors::map_s3_error;
 use super::paths::{Target, target_of};
 use super::upload_body::{BodyCounts, BodyStop, BodyStopSlot, streamed_body};
 use crate::error::S3Error;
-use crate::multipart::{PartPlan, TooLarge, plan_parts_with_floor};
+use crate::multipart::{PartPlan, ShortTail, TooLarge, plan_parts_with_floor};
 use crate::ops::{self, ObjectMetadata, Overwrite};
 use crate::request::{Body, S3Request};
 use crate::transport::{Answer, QUERY_BUDGET, S3Client, map_transport_error};
@@ -64,19 +64,18 @@ pub(super) enum UploadShape {
     Open,
 }
 
-/// The shape for `length`: one PUT when the plan has a single part (fewer
-/// billed requests), parts otherwise. `part_floor` is
-/// [`MIN_PART_SIZE`](crate::multipart::MIN_PART_SIZE) in production.
-pub(super) fn shape_for(length: StreamLength, part_floor: u64) -> Result<UploadShape, TooLarge> {
+/// The shape for `length`: one PUT when it fits one part with a short tail
+/// folded in (fewer billed requests), else parts cut by the provider's `tail`
+/// rule. `part_floor` is [`MIN_PART_SIZE`](crate::multipart::MIN_PART_SIZE)
+/// in production.
+pub(super) fn shape_for(length: StreamLength, part_floor: u64, tail: ShortTail) -> Result<UploadShape, TooLarge> {
     let Some(size) = length.known() else {
         return Ok(UploadShape::Open);
     };
-    let plan = plan_parts_with_floor(size, part_floor)?;
-    Ok(if plan.part_count <= 1 {
-        UploadShape::Single(size)
-    } else {
-        UploadShape::Parts(plan)
-    })
+    if plan_parts_with_floor(size, part_floor, ShortTail::Fold)?.part_count <= 1 {
+        return Ok(UploadShape::Single(size));
+    }
+    Ok(UploadShape::Parts(plan_parts_with_floor(size, part_floor, tail)?))
 }
 
 /// What a HEAD after a write found at the key.
@@ -197,11 +196,13 @@ impl S3Volume {
         let Target::Key { bucket, key } = target_of(&remote) else {
             return Err(VolumeError::IsADirectory(remote));
         };
-        let shape = shape_for(length, self.part_floor()).map_err(|TooLarge| VolumeError::IoError {
-            message: format!("{remote}: too big for one S3 object (10,000 parts of 5 GiB)"),
-            raw_os_error: None,
-        })?;
         let client = self.clone_client().await?;
+        let shape = shape_for(length, self.part_floor(), client.profile().short_tail).map_err(|TooLarge| {
+            VolumeError::IoError {
+                message: format!("{remote}: too big for one S3 object (10,000 parts of 5 GiB)"),
+                raw_os_error: None,
+            }
+        })?;
         // The source file's own date, carried as `x-amz-meta-mtime`, and this
         // write's token, so a cut-off PUT can find its own leftover.
         let metadata = ObjectMetadata {

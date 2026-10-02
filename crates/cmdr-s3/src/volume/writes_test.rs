@@ -3,52 +3,68 @@
 use cmdr_fs::volume::{StreamLength, WriteMode};
 
 use super::{Landed, Landing, UploadShape, judge_landing, shape_for};
-use crate::multipart::MIN_PART_SIZE;
+use crate::multipart::{MIN_PART_SIZE, ShortTail};
 
 const MIB: u64 = 1024 * 1024;
 
 #[test]
 fn a_write_that_fits_one_part_is_a_single_put() {
     assert!(matches!(
-        shape_for(StreamLength::Known(0), MIN_PART_SIZE),
+        shape_for(StreamLength::Known(0), MIN_PART_SIZE, ShortTail::Fold),
         Ok(UploadShape::Single(0))
     ));
     assert!(matches!(
-        shape_for(StreamLength::Known(10 * MIB), MIN_PART_SIZE),
+        shape_for(StreamLength::Known(10 * MIB), MIN_PART_SIZE, ShortTail::Fold),
         Ok(UploadShape::Single(n)) if n == 10 * MIB
     ));
     // 65 MiB is one 64 MiB part plus a 1 MiB tail that folds into it: one
     // part, so one PUT rather than three multipart requests.
-    assert!(matches!(
-        shape_for(StreamLength::Known(65 * MIB), MIN_PART_SIZE),
-        Ok(UploadShape::Single(_))
-    ));
+    // Where the provider keeps a short tail as its own part, it's still one
+    // PUT: the tail only matters once there are parts.
+    for tail in [ShortTail::Fold, ShortTail::Keep] {
+        assert!(matches!(
+            shape_for(StreamLength::Known(65 * MIB), MIN_PART_SIZE, tail),
+            Ok(UploadShape::Single(_))
+        ));
+    }
 }
 
 #[test]
 fn a_write_past_one_part_goes_in_parts() {
-    let Ok(UploadShape::Parts(plan)) = shape_for(StreamLength::Known(140 * MIB), MIN_PART_SIZE) else {
+    let Ok(UploadShape::Parts(plan)) = shape_for(StreamLength::Known(140 * MIB), MIN_PART_SIZE, ShortTail::Fold) else {
         panic!("140 MiB is three parts");
     };
     assert_eq!((plan.part_size, plan.part_count), (64 * MIB, 3));
     // A 2 MiB tail folds into the part before it.
-    let Ok(UploadShape::Parts(plan)) = shape_for(StreamLength::Known(130 * MIB), MIN_PART_SIZE) else {
+    let Ok(UploadShape::Parts(plan)) = shape_for(StreamLength::Known(130 * MIB), MIN_PART_SIZE, ShortTail::Fold) else {
         panic!("130 MiB is two parts");
     };
     assert_eq!(plan.part_count, 2);
+    // Kept as its own part where a larger last part is refused (R2).
+    let Ok(UploadShape::Parts(plan)) = shape_for(StreamLength::Known(130 * MIB), MIN_PART_SIZE, ShortTail::Keep) else {
+        panic!("130 MiB is three parts");
+    };
+    assert_eq!(plan.part_count, 3);
 }
 
 #[test]
 fn a_write_of_unknown_length_is_open() {
     assert!(matches!(
-        shape_for(StreamLength::Unknown, MIN_PART_SIZE),
+        shape_for(StreamLength::Unknown, MIN_PART_SIZE, ShortTail::Fold),
         Ok(UploadShape::Open)
     ));
 }
 
 #[test]
 fn a_write_too_big_for_ten_thousand_parts_is_refused_before_anything_is_sent() {
-    assert!(shape_for(StreamLength::Known(49 * 1024 * 1024 * MIB), MIN_PART_SIZE).is_err());
+    assert!(
+        shape_for(
+            StreamLength::Known(49 * 1024 * 1024 * MIB),
+            MIN_PART_SIZE,
+            ShortTail::Fold
+        )
+        .is_err()
+    );
 }
 
 fn landed(size: u64, etag: &str) -> Landed {

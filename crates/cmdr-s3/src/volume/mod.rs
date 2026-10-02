@@ -172,12 +172,16 @@ impl S3Volume {
 
     /// Whether a copy from `source` to here would run on the server, asked
     /// without a request: the same account, and buckets the provider copies
-    /// between (Hetzner copies within one). `copy_on_server_impl` decides it
+    /// between (Spaces copies within one). `copy_on_server_impl` decides it
     /// for real per file.
     pub fn copies_on_server_from(&self, source: &S3Volume) -> bool {
         let (here, there) = (self.inner.params(), source.inner.params());
         source.inner.account() == self.inner.account()
-            && (here.bucket() == there.bucket() || !matches!(here.provider(), crate::S3Provider::Hetzner { .. }))
+            && (here.bucket() == there.bucket()
+                || here
+                    .provider()
+                    .profile()
+                    .is_ok_and(|profile| profile.cross_bucket_copy()))
     }
 
     /// Drops the live client. There is no session to close: dropping IS the
@@ -231,11 +235,20 @@ impl S3Volume {
     }
 
     /// Makes this volume's provider copy within one bucket only, the way
-    /// Hetzner's does, for a cell proving a cross-bucket copy streams instead.
+    /// Spaces' does, for a cell proving a cross-bucket copy streams instead.
     #[cfg(any(test, feature = "testing"))]
     pub async fn forbid_cross_bucket_copy(&self) {
         if let Some(client) = self.inner.client.read().await.as_ref() {
             client.profile().forbid_cross_bucket_copy();
+        }
+    }
+
+    /// Runs server-side copies and uploads at other part widths, for a live
+    /// cell measuring throughput.
+    #[cfg(any(test, feature = "testing"))]
+    pub async fn set_concurrency(&self, copy: usize, upload: usize) {
+        if let Some(client) = self.inner.client.read().await.as_ref() {
+            client.profile().set_concurrency(copy, upload);
         }
     }
 

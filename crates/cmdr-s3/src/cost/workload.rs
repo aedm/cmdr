@@ -10,7 +10,8 @@ use std::collections::HashMap;
 
 use super::prices::RequestKind;
 use crate::S3Provider;
-use crate::multipart::{MAX_PARTS, MIN_PART_SIZE, plan_parts_with_floor};
+use crate::multipart::{MAX_PARTS, MIN_PART_SIZE, ShortTail, plan_parts_with_floor};
+use crate::profile::{ConditionalOp, NoOverwrite};
 
 /// The billed work of one planned operation on one provider.
 #[derive(Debug, Clone, PartialEq)]
@@ -18,9 +19,12 @@ pub struct Workload {
     /// The price table's key for the provider; `None` for "Other", which has
     /// no list prices.
     pub(crate) price_key: Option<&'static str>,
-    /// Whether a write HEADs its key first, because the provider ignores or
-    /// lacks `If-None-Match` (`DETAILS.md` § "No-overwrite writes").
-    pub(crate) checks_before_write: bool,
+    /// Whether a no-overwrite PUT, `CopyObject`, and multipart completion
+    /// HEAD their key first, because the provider ignores or lacks a header
+    /// for that write (`ProviderProfile::no_overwrite`).
+    pub(crate) checks: Checks,
+    /// How the provider's multipart plans cut a short tail.
+    pub(crate) short_tail: ShortTail,
     /// Whether a one-PUT overwrite of an existing object lands through a temp
     /// key, because the provider is off the `refuses_short_body` allowlist
     /// (`volume/temp_overwrite.rs`).
@@ -47,15 +51,16 @@ impl Workload {
     /// An empty workload for `provider`, with ages measured from `now` (Unix
     /// seconds).
     pub fn for_provider_at(provider: &S3Provider, now: u64) -> Self {
+        let profile = provider.profile();
         Self {
             price_key: match provider {
                 S3Provider::Other { .. } => None,
                 priced => Some(priced.kind_name()),
             },
-            // AWS takes `If-None-Match` on every write and R2 on a PUT and a
-            // copy (`ProviderProfile::from_preset`); everyone else HEADs first.
-            checks_before_write: !matches!(provider, S3Provider::Aws { .. } | S3Provider::R2 { .. }),
-            overwrites_through_temp: !provider.refuses_short_body(),
+            checks: Checks::of(provider),
+            short_tail: profile.as_ref().map_or(ShortTail::Fold, |profile| profile.short_tail),
+            // A profile that won't build is the temp-key side, the safe one.
+            overwrites_through_temp: !profile.as_ref().is_ok_and(|profile| profile.refuses_short_body),
             requests: HashMap::new(),
             deleted_objects: 0,
             egress_bytes: 0,
@@ -68,8 +73,8 @@ impl Workload {
     /// else Create, a PUT per part, and Complete; a verifying HEAD after, and
     /// the no-overwrite HEADs where the provider can't refuse on its own.
     pub fn upload(&mut self, size: u64) {
-        let parts = part_count(size);
-        let whole = parts <= 1;
+        let whole = fits_one_put(size);
+        let parts = self.part_count(size);
         if whole {
             self.add(RequestKind::PutObject, 1);
         } else {
@@ -77,7 +82,8 @@ impl Workload {
             self.add(RequestKind::UploadPart, parts);
             self.add(RequestKind::CompleteMultipartUpload, 1);
         }
-        self.add(RequestKind::HeadObject, 1 + self.checks_for(whole));
+        let checks = if whole { self.checks.put } else { self.checks.complete };
+        self.add(RequestKind::HeadObject, 1 + checks);
     }
 
     /// One object downloaded to the Mac (`volume/streams.rs`): one GET, and its
@@ -99,10 +105,11 @@ impl Workload {
             self.add(RequestKind::CopyObject, 1);
         } else {
             self.add(RequestKind::CreateMultipartUpload, 1);
-            self.add(RequestKind::UploadPartCopy, part_count(size));
+            self.add(RequestKind::UploadPartCopy, self.part_count(size));
             self.add(RequestKind::CompleteMultipartUpload, 1);
         }
-        self.add(RequestKind::HeadObject, 2 + self.checks_for(whole));
+        let checks = if whole { self.checks.copy } else { self.checks.complete };
+        self.add(RequestKind::HeadObject, 2 + checks);
     }
 
     /// One object deleted, in a `DeleteObjects` batch (`volume/batch.rs`).
@@ -137,7 +144,7 @@ impl Workload {
     /// term. A multipart upload goes straight to the key (only its completion
     /// publishes), and adds nothing.
     pub fn upload_over(&mut self, size: u64) {
-        if !self.overwrites_through_temp || part_count(size) > 1 {
+        if !self.overwrites_through_temp || !fits_one_put(size) {
             return;
         }
         self.add(RequestKind::HeadObject, 4);
@@ -163,22 +170,49 @@ impl Workload {
         *self.requests.entry(kind).or_default() += count;
     }
 
-    /// The no-overwrite HEADs a write sends where the provider can't refuse on
-    /// its own: one before a PUT, and again before a Complete.
-    fn checks_for(&self, whole: bool) -> u64 {
-        match (self.checks_before_write, whole) {
-            (false, _) => 0,
-            (true, true) => 1,
-            (true, false) => 2,
+    /// How many parts an object of `size` goes in: the write paths' own plan.
+    /// Past S3's 48.8 TiB ceiling the write would refuse; the estimate counts
+    /// the most parts it could have sent.
+    fn part_count(&self, size: u64) -> u64 {
+        plan_parts_with_floor(size, MIN_PART_SIZE, self.short_tail).map_or(MAX_PARTS, |plan| u64::from(plan.part_count))
+    }
+}
+
+/// The no-overwrite HEADs each write sends where the provider can't refuse
+/// on its own: one before a PUT or a `CopyObject`, and for a multipart write
+/// one before it starts and again before its completion.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Checks {
+    pub put: u64,
+    pub copy: u64,
+    pub complete: u64,
+}
+
+impl Checks {
+    fn of(provider: &S3Provider) -> Self {
+        let Ok(profile) = provider.profile() else {
+            return Self {
+                put: 1,
+                copy: 1,
+                complete: 2,
+            };
+        };
+        let heads = |op, count| match profile.no_overwrite(op) {
+            NoOverwrite::CheckThenWrite => count,
+            NoOverwrite::IfNoneMatch | NoOverwrite::CloudflareCopyHeader => 0,
+        };
+        Self {
+            put: heads(ConditionalOp::Put, 1),
+            copy: heads(ConditionalOp::Copy, 1),
+            complete: heads(ConditionalOp::CompleteMultipart, 2),
         }
     }
 }
 
 const SECONDS_PER_DAY: u64 = 86_400;
 
-/// How many parts an object of `size` goes in: the write paths' own plan. Past
-/// S3's 48.8 TiB ceiling the write would refuse; the estimate counts the most
-/// parts it could have sent.
-fn part_count(size: u64) -> u64 {
-    plan_parts_with_floor(size, MIN_PART_SIZE).map_or(MAX_PARTS, |plan| u64::from(plan.part_count))
+/// Whether an upload of `size` goes as one PUT (`volume/writes.rs`'s
+/// `shape_for`): one part once a short tail is folded in.
+fn fits_one_put(size: u64) -> bool {
+    plan_parts_with_floor(size, MIN_PART_SIZE, ShortTail::Fold).is_ok_and(|plan| plan.part_count <= 1)
 }

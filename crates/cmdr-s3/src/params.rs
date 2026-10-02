@@ -35,6 +35,13 @@ pub enum S3Provider {
         /// The location the endpoint is in.
         location: String,
     },
+    /// Google Cloud Storage, through its S3-compatible XML API with HMAC keys.
+    Gcs,
+    /// DigitalOcean Spaces, in one region (`fra1`).
+    DigitalOcean {
+        /// The region the endpoint is in.
+        region: String,
+    },
     /// Any other S3-compatible server.
     Other {
         /// `http(s)://host[:port]`, nothing after it.
@@ -48,7 +55,7 @@ pub enum S3Provider {
 
 impl S3Provider {
     /// The preset's fixed name (`aws`, `r2`, `b2`, `wasabi`, `hetzner`,
-    /// `other`), for the PII-free `s3_connected` counter. ❌ Never a field.
+    /// `gcs`, `digitalocean`, `other`), for the PII-free `s3_connected` counter. ❌ Never a field.
     pub fn kind_name(&self) -> &'static str {
         match self {
             Self::Aws { .. } => "aws",
@@ -56,15 +63,15 @@ impl S3Provider {
             Self::B2 { .. } => "b2",
             Self::Wasabi { .. } => "wasabi",
             Self::Hetzner { .. } => "hetzner",
+            Self::Gcs => "gcs",
+            Self::DigitalOcean { .. } => "digitalocean",
             Self::Other { .. } => "other",
         }
     }
 
-    /// Whether the provider is on the `refuses_short_body` allowlist
-    /// (`ProviderProfile`), so an overwrite goes straight to its key. A
-    /// provider whose profile won't build answers `false`, the temp-key side.
-    pub(crate) fn refuses_short_body(&self) -> bool {
-        ProviderProfile::from_preset(&self.preset()).is_ok_and(|profile| profile.refuses_short_body)
+    /// The provider's profile: what it enforces and how it cuts parts.
+    pub(crate) fn profile(&self) -> Result<ProviderProfile, ProfileError> {
+        ProviderProfile::from_preset(&self.preset())
     }
 
     fn preset(&self) -> Preset {
@@ -74,6 +81,8 @@ impl S3Provider {
             Self::B2 { region } => Preset::B2 { region },
             Self::Wasabi { region } => Preset::Wasabi { region },
             Self::Hetzner { location } => Preset::Hetzner { location },
+            Self::Gcs => Preset::Gcs,
+            Self::DigitalOcean { region } => Preset::DigitalOcean { region },
             Self::Other {
                 endpoint,
                 region,

@@ -343,6 +343,31 @@ fn hetzner_prices_in_euros_and_charges_nothing_per_operation() {
     close(estimate.total, 0.0);
 }
 
+/// The no-overwrite HEADs follow each write's own allowlist entry: Hetzner
+/// enforces `If-None-Match` on a PUT only, R2 on a PUT and a completion.
+#[test]
+fn the_check_before_a_write_follows_that_writes_allowlist_entry() {
+    let heads = |provider: &S3Provider, size: u64| {
+        let mut work = workload(provider);
+        work.upload(size);
+        work.requests.get(&RequestKind::HeadObject).copied()
+    };
+    // The verifying HEAD only.
+    assert_eq!(heads(&hetzner(), MIB), Some(1));
+    assert_eq!(heads(&r2(), GIB), Some(1));
+    // Plus a HEAD before the upload starts and another before its completion.
+    assert_eq!(heads(&hetzner(), GIB), Some(3));
+}
+
+/// R2 refuses a last part larger than the rest, so a short tail is its own
+/// part there; everywhere a preset reaches, too.
+#[test]
+fn a_short_tail_counts_as_its_own_part() {
+    let mut work = workload(&r2());
+    work.upload(130 * MIB);
+    assert_eq!(work.requests.get(&RequestKind::UploadPart), Some(&3));
+}
+
 // ---------------------------------------------------------------------------
 // Parsing a served table
 // ---------------------------------------------------------------------------

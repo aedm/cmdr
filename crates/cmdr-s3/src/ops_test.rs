@@ -33,11 +33,8 @@ fn b2() -> ProviderProfile {
     .unwrap()
 }
 
-fn hetzner() -> ProviderProfile {
-    ProviderProfile::from_preset(&Preset::Hetzner {
-        location: "fsn1".into(),
-    })
-    .unwrap()
+fn spaces() -> ProviderProfile {
+    ProviderProfile::from_preset(&Preset::DigitalOcean { region: "fra1".into() }).unwrap()
 }
 
 fn header<'a>(request: &'a S3Request, name: &str) -> Option<&'a str> {
@@ -137,7 +134,13 @@ fn a_refused_overwrite_uses_the_header_where_the_provider_has_one_and_checks_fir
         etag: "\"e\"".into(),
     }];
     let complete_on_r2 = complete_multipart_upload(&r2(), "b", "k", "up", &parts, Overwrite::Refuse).unwrap();
-    assert!(complete_on_r2.check_first, "R2 has no conditional complete");
+    assert_eq!(header(&complete_on_r2.request, "if-none-match"), Some("*"));
+    assert!(
+        !complete_on_r2.check_first,
+        "R2 enforces a conditional complete (live, 2026-10-02)"
+    );
+    let complete_on_spaces = complete_multipart_upload(&spaces(), "b", "k", "up", &parts, Overwrite::Refuse).unwrap();
+    assert!(complete_on_spaces.check_first, "Spaces ignores a conditional complete");
 }
 
 #[test]
@@ -256,14 +259,14 @@ fn a_refused_copy_overwrite_uses_r2s_own_header() {
 }
 
 #[test]
-fn hetzner_refuses_a_cross_bucket_copy_before_sending_it() {
+fn spaces_refuses_a_cross_bucket_copy_before_sending_it() {
     let source = CopySource {
         bucket: "one",
         key: "a",
     };
     assert_eq!(
         copy_object(
-            &hetzner(),
+            &spaces(),
             source,
             "two",
             "a",
@@ -275,7 +278,7 @@ fn hetzner_refuses_a_cross_bucket_copy_before_sending_it() {
     );
     assert!(
         copy_object(
-            &hetzner(),
+            &spaces(),
             source,
             "one",
             "b",
@@ -285,7 +288,7 @@ fn hetzner_refuses_a_cross_bucket_copy_before_sending_it() {
         .is_ok()
     );
     assert_eq!(
-        upload_part_copy(&hetzner(), "two", "a", "up", 1, source, (0, 1), None).err(),
+        upload_part_copy(&spaces(), "two", "a", "up", 1, source, (0, 1), None).err(),
         Some(BuildError::CrossBucketCopy)
     );
 }

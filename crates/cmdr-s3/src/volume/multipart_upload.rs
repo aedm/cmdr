@@ -1,7 +1,7 @@
 //! The multipart upload, and the sweep that aborts the ones Cmdr left behind.
 //!
 //! One part size per upload (`multipart.rs`, equal parts for R2), up to
-//! [`UPLOAD_CONCURRENCY`] parts in flight, and ❗ no buffering beyond them:
+//! the profile's `upload_concurrency()` parts in flight, and ❗ no buffering beyond them:
 //! a part is read from the source only when a slot is free, so peak memory is
 //! part size × concurrency (256 MiB at the 64 MiB floor). A part is buffered at
 //! all because a failed one is sent again ([`retry_after`]), and a stream can't
@@ -38,10 +38,6 @@ use crate::profile::{ConditionalOp, NoOverwrite};
 use crate::transport::{COMPLETE_BUDGET, QUERY_BUDGET, S3Client, map_transport_error};
 use crate::xml::build::CompletedPart;
 use crate::xml::{parse_complete_multipart, parse_initiate_multipart};
-
-/// Parts in flight at once, per upload. A first number, to be tuned per
-/// provider against real accounts (the plan's M8).
-pub(super) const UPLOAD_CONCURRENCY: usize = 4;
 
 /// How long to wait before sending a failed part again, after `attempt`
 /// failures; `None` once it has failed four times.
@@ -474,8 +470,8 @@ impl S3Volume {
         tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         loop {
             // ❗ A part is read only when a slot is free, so no more than
-            // `UPLOAD_CONCURRENCY` parts are ever in memory.
-            while !source_done && in_flight.len() < UPLOAD_CONCURRENCY {
+            // `upload_concurrency()` parts are ever in memory.
+            while !source_done && in_flight.len() < client.profile().upload_concurrency() {
                 let Some(want) = sizes.size_of(next) else {
                     source_done = true;
                     break;

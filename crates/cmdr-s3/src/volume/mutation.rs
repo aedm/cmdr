@@ -290,7 +290,7 @@ impl S3Volume {
             &MetadataDirective::Copy,
         ) {
             Ok(built) => built,
-            // Hetzner copies within one bucket only.
+            // A provider that copies within one bucket only (Spaces).
             Err(BuildError::CrossBucketCopy) => return Err(VolumeError::NotSupported),
             Err(_) => return Err(VolumeError::NotFound(remote_to)),
         };

@@ -1,6 +1,8 @@
 //! The part plan at its edges.
 
-use super::{MAX_PART_SIZE, MAX_PARTS, MIB, MIN_PART_SIZE, PartPlan, TooLarge, plan_parts};
+use super::{
+    MAX_PART_SIZE, MAX_PARTS, MIB, MIN_PART_SIZE, PartPlan, ShortTail, TooLarge, plan_parts, plan_parts_with_floor,
+};
 
 const GIB: u64 = 1024 * MIB;
 const TIB: u64 = 1024 * GIB;
@@ -90,4 +92,19 @@ fn a_tail_stays_separate_when_folding_would_pass_5_gib() {
     assert_eq!(plan.part_size, MAX_PART_SIZE);
     assert_eq!(u64::from(plan.part_count), MAX_PARTS);
     assert_eq!(plan.range(10_000), (total - 1, total - 1));
+}
+
+#[test]
+fn a_short_tail_stays_its_own_last_part_where_the_provider_refuses_a_larger_one() {
+    // R2 answers `InvalidPart` when the last part is larger than the rest
+    // (live, 2026-10-02), and takes a small last part fine.
+    let plan = plan_parts_with_floor(130 * MIB, MIN_PART_SIZE, ShortTail::Keep).unwrap();
+    assert_eq!((plan.part_size, plan.part_count), (64 * MIB, 3));
+    assert_eq!(plan.range(3), (128 * MIB, 130 * MIB - 1));
+    assert_eq!(
+        plan_parts_with_floor(MIN_PART_SIZE + 1, MIN_PART_SIZE, ShortTail::Keep)
+            .unwrap()
+            .part_count,
+        2
+    );
 }

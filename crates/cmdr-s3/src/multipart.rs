@@ -2,11 +2,12 @@
 //!
 //! One part size per upload, every part that size except the last: R2 refuses
 //! a completion whose parts differ (`InvalidPart`), so we always do it, and it
-//! makes a resumed or re-sent part land on the same byte range. A tail under
-//! 5 MiB folds into the part before it, because Garage refuses an
+//! makes a resumed or re-sent part land on the same byte range. What happens
+//! to a tail under 5 MiB is the provider's [`ShortTail`]: Garage refuses an
 //! `UploadPartCopy` source that small even as the last part
-//! (`apps/desktop/test/s3-servers/README.md`). Whether R2 accepts a last part
-//! LARGER than the rest is for M8 to confirm on a real bucket.
+//! (`apps/desktop/test/s3-servers/README.md`), so it folds into the part before
+//! it there; R2 refuses a last part LARGER than the rest (live, 2026-10-02),
+//! so it stays its own part there.
 
 /// 1 MiB.
 const MIB: u64 = 1024 * 1024;
@@ -15,7 +16,8 @@ const MIB: u64 = 1024 * 1024;
 /// mean fewer billed requests, and progress still moves every few seconds.
 pub(crate) const MIN_PART_SIZE: u64 = 64 * MIB;
 
-/// A last part smaller than this joins the part before it.
+/// A last part smaller than this joins the part before it under
+/// [`ShortTail::Fold`].
 const MIN_TAIL: u64 = 5 * MIB;
 
 /// S3's ceiling on parts per upload, on every provider we know.
@@ -23,6 +25,17 @@ pub(crate) const MAX_PARTS: u64 = 10_000;
 
 /// S3's ceiling on one part.
 pub(crate) const MAX_PART_SIZE: u64 = 5 * 1024 * MIB;
+
+/// What a tail under 5 MiB does, per provider (`ProviderProfile::short_tail`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ShortTail {
+    /// Joins the part before it, making that last part up to 5 MiB larger:
+    /// for a server that refuses a small `UploadPartCopy` source (Garage).
+    Fold,
+    /// Stays its own, smaller last part: S3's rule, and the only shape R2
+    /// takes.
+    Keep,
+}
 
 /// An upload's parts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,13 +58,14 @@ pub(crate) struct TooLarge;
 /// this unless a Docker cell lowered it.
 #[cfg(test)]
 pub(crate) fn plan_parts(total: u64) -> Result<PartPlan, TooLarge> {
-    plan_parts_with_floor(total, MIN_PART_SIZE)
+    plan_parts_with_floor(total, MIN_PART_SIZE, ShortTail::Fold)
 }
 
-/// The test-only `plan_parts` with a smaller floor than 64 MiB, for a Docker cell that
-/// wants several parts without uploading hundreds of megabytes. ❗ Production
-/// always plans with [`MIN_PART_SIZE`]; `floor` is clamped to S3's 5 MiB.
-pub(crate) fn plan_parts_with_floor(total: u64, floor: u64) -> Result<PartPlan, TooLarge> {
+/// The plan for `total` bytes with parts of at least `floor` and the
+/// provider's `tail` rule. ❗ Production always plans with
+/// [`MIN_PART_SIZE`]; a Docker or live cell lowers it to see several parts
+/// without uploading hundreds of megabytes. `floor` is clamped to S3's 5 MiB.
+pub(crate) fn plan_parts_with_floor(total: u64, floor: u64, tail_rule: ShortTail) -> Result<PartPlan, TooLarge> {
     if total > MAX_PARTS * MAX_PART_SIZE {
         return Err(TooLarge);
     }
@@ -60,7 +74,12 @@ pub(crate) fn plan_parts_with_floor(total: u64, floor: u64) -> Result<PartPlan, 
     let part_size = needed.max(floor.max(MIN_TAIL));
     let mut part_count = total.div_ceil(part_size).max(1);
     let tail = total % part_size;
-    if part_count > 1 && tail > 0 && tail < MIN_TAIL && part_size + tail <= MAX_PART_SIZE {
+    if tail_rule == ShortTail::Fold
+        && part_count > 1
+        && tail > 0
+        && tail < MIN_TAIL
+        && part_size + tail <= MAX_PART_SIZE
+    {
         part_count -= 1;
     }
     Ok(PartPlan {

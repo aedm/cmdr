@@ -13,12 +13,13 @@
 //! session, logged once.
 
 use std::borrow::Cow;
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering};
 
 use unicode_normalization::{UnicodeNormalization, is_nfc};
 use url::Url;
 
 use crate::encoding::{KeyError, encode_component, encode_key};
+use crate::multipart::ShortTail;
 use crate::request::S3Request;
 
 /// The connect form's choice, with what each preset asks for.
@@ -41,6 +42,13 @@ pub(crate) enum Preset {
     Hetzner {
         location: String,
     },
+    /// Google Cloud Storage through its XML API, with HMAC keys: one global
+    /// endpoint, whatever the bucket's location.
+    Gcs,
+    /// DigitalOcean Spaces, in one region (`fra1`).
+    DigitalOcean {
+        region: String,
+    },
     /// Any other S3-compatible server: a raw endpoint, an optional region
     /// (`us-east-1` when absent), and whether to address buckets by path.
     Other {
@@ -58,6 +66,8 @@ pub(crate) enum ProviderKind {
     B2,
     Wasabi,
     Hetzner,
+    Gcs,
+    DigitalOcean,
     Other,
 }
 
@@ -74,7 +84,7 @@ pub(crate) enum Addressing {
 }
 
 /// The three writes that can refuse to overwrite.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum ConditionalOp {
     Put,
     CompleteMultipart,
@@ -176,10 +186,11 @@ pub(crate) struct ProviderProfile {
     pub region: String,
     pub addressing: Addressing,
     /// Whether `CopyObject` / `UploadPartCopy` may name a source in another
-    /// bucket. Hetzner copies within one bucket only; a cross-bucket move
-    /// there streams through the Mac. Atomic only so a Docker cell can make a
-    /// fixture behave like Hetzner ([`Self::forbid_cross_bucket_copy`]); read
-    /// through [`Self::cross_bucket_copy`].
+    /// bucket. Not on Spaces, which documents no cross-cluster copy; a
+    /// cross-bucket move there streams through the Mac. Atomic only so a
+    /// Docker cell can make a fixture behave that way
+    /// ([`Self::forbid_cross_bucket_copy`]); read through
+    /// [`Self::cross_bucket_copy`].
     cross_bucket_copy: AtomicBool,
     /// Whether the provider refuses a PUT whose body ends before its
     /// `Content-Length` and keeps the old object, as S3's contract says. An
@@ -193,6 +204,19 @@ pub(crate) struct ProviderProfile {
     /// R2 stores keys NFC, so an NFD key and its NFC twin are one object
     /// there. Composing before sending keeps our own comparisons honest.
     pub nfc_keys: bool,
+    /// What a multipart plan does with a tail under 5 MiB: R2 refuses a last
+    /// part larger than the rest, Garage a small `UploadPartCopy` source.
+    pub short_tail: ShortTail,
+    /// Whether the provider has `UploadPartCopy`. GCS answers `400
+    /// NotImplemented`, so a server-side copy there is one `CopyObject`
+    /// whatever its size, up to S3's 5 GiB ceiling.
+    pub copies_in_parts: bool,
+    /// Parts a server-side copy keeps in flight at most (the AIMD window's
+    /// ceiling). Atomic only so a live cell can measure other widths
+    /// ([`Self::set_concurrency`]); read through [`Self::copy_concurrency`].
+    copy_concurrency: AtomicUsize,
+    /// Parts one upload keeps in flight, each one buffered whole in memory.
+    upload_concurrency: AtomicUsize,
     put: ConditionalCell,
     complete: ConditionalCell,
     copy: ConditionalCell,
@@ -220,7 +244,7 @@ impl ProviderProfile {
                     format!("{}.r2.cloudflarestorage.com", host_part(account_id)?),
                     "auto",
                     Addressing::Path,
-                    [IfNoneMatch, CheckThenWrite, CloudflareCopyHeader],
+                    [IfNoneMatch, IfNoneMatch, CloudflareCopyHeader],
                 );
                 r2.nfc_keys = true;
                 r2.refuses_short_body = true;
@@ -250,10 +274,38 @@ impl ProviderProfile {
                     format!("{}.your-objectstorage.com", host_part(location)?),
                     location,
                     Addressing::Path,
+                    [IfNoneMatch, CheckThenWrite, CheckThenWrite],
+                );
+                hetzner.refuses_short_body = true;
+                hetzner
+            }
+            // Path style: a GCS bucket name may hold dots (and underscores),
+            // which a virtual host's TLS wildcard can't carry.
+            Preset::Gcs => {
+                let mut gcs = Self::https(
+                    ProviderKind::Gcs,
+                    "storage.googleapis.com".to_string(),
+                    "auto",
+                    Addressing::Path,
                     [CheckThenWrite; 3],
                 );
-                hetzner.cross_bucket_copy = AtomicBool::new(false);
-                hetzner
+                gcs.refuses_short_body = true;
+                gcs.copies_in_parts = false;
+                gcs
+            }
+            Preset::DigitalOcean { region } => {
+                let mut spaces = Self::https(
+                    ProviderKind::DigitalOcean,
+                    format!("{}.digitaloceanspaces.com", host_part(region)?),
+                    region,
+                    Addressing::Path,
+                    [IfNoneMatch, CheckThenWrite, CheckThenWrite],
+                );
+                spaces.refuses_short_body = true;
+                // Spaces documents no cross-cluster copy, and two buckets of
+                // one region may sit on two clusters.
+                spaces.cross_bucket_copy = AtomicBool::new(false);
+                spaces
             }
             Preset::Other {
                 endpoint,
@@ -274,6 +326,9 @@ impl ProviderProfile {
                 };
                 let mut other = Self::https(ProviderKind::Other, host, region, addressing, [CheckThenWrite; 3]);
                 other.scheme = scheme;
+                // Garage refuses an `UploadPartCopy` source under 5 MiB even
+                // as the last part, and "Other" may be Garage.
+                other.short_tail = ShortTail::Fold;
                 other
             }
         };
@@ -296,6 +351,10 @@ impl ProviderProfile {
             cross_bucket_copy: AtomicBool::new(true),
             refuses_short_body: false,
             nfc_keys: false,
+            short_tail: ShortTail::Keep,
+            copies_in_parts: true,
+            copy_concurrency: AtomicUsize::new(DEFAULT_COPY_CONCURRENCY),
+            upload_concurrency: AtomicUsize::new(DEFAULT_UPLOAD_CONCURRENCY),
             put: ConditionalCell::new(put),
             complete: ConditionalCell::new(complete),
             copy: ConditionalCell::new(copy),
@@ -323,16 +382,34 @@ impl ProviderProfile {
     }
 
     /// Whether a server-side copy may read from another bucket than it writes
-    /// to (not on Hetzner).
+    /// to (not on Spaces).
     pub(crate) fn cross_bucket_copy(&self) -> bool {
         self.cross_bucket_copy.load(Ordering::Relaxed)
     }
 
-    /// Makes this profile copy within one bucket only, the way Hetzner's does,
+    /// Makes this profile copy within one bucket only, the way Spaces' does,
     /// for a Docker cell proving that a cross-bucket copy streams instead.
     #[cfg(any(test, feature = "testing"))]
     pub(crate) fn forbid_cross_bucket_copy(&self) {
         self.cross_bucket_copy.store(false, Ordering::Relaxed);
+    }
+
+    /// The most parts a server-side copy keeps in flight.
+    pub(crate) fn copy_concurrency(&self) -> usize {
+        self.copy_concurrency.load(Ordering::Relaxed)
+    }
+
+    /// The parts one upload keeps in flight (and so in memory).
+    pub(crate) fn upload_concurrency(&self) -> usize {
+        self.upload_concurrency.load(Ordering::Relaxed)
+    }
+
+    /// Runs copies and uploads at other widths, for a live cell measuring
+    /// throughput. Each is at least one.
+    #[cfg(any(test, feature = "testing"))]
+    pub(crate) fn set_concurrency(&self, copy: usize, upload: usize) {
+        self.copy_concurrency.store(copy.max(1), Ordering::Relaxed);
+        self.upload_concurrency.store(upload.max(1), Ordering::Relaxed);
     }
 
     /// The key as this provider stores it: NFC on R2, untouched elsewhere.
@@ -412,6 +489,14 @@ impl ProviderProfile {
         }
     }
 }
+
+/// Parts a server-side copy keeps in flight, unless a provider's measurements
+/// say otherwise.
+const DEFAULT_COPY_CONCURRENCY: usize = 16;
+
+/// Parts an upload keeps in flight, unless a provider's measurements say
+/// otherwise. Each is a whole part (64 MiB at the floor) in memory.
+const DEFAULT_UPLOAD_CONCURRENCY: usize = 4;
 
 /// AWS's endpoint for `region`, which must already be a valid host part.
 fn aws_endpoint(region: &str) -> String {
