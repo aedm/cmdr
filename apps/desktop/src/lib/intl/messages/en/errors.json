@@ -738,7 +738,9 @@
   "errors.listing.objectStoreRefused.explanation": "`{path}` is in cloud storage, and the provider turned the request down. Either the access key doesn’t have permission here, or the provider has paused access to the account, for example after a usage cap or a billing issue.",
   "errors.listing.objectStoreRefused.suggestion": "Check the access key’s permissions, or your provider’s console for a usage cap or a billing notice.",
   "@errors.listing.objectStoreRefused.title": {
-    "description": "Title of the listing error panel when cloud object storage (Amazon S3, Cloudflare R2, Backblaze B2, Wasabi, and similar) refuses a folder or file. The refusal can mean either missing permissions or a paused account, and Cmdr can't tell which. Plain text."
+    "description": "Title of the listing error panel when cloud object storage (Amazon S3, Cloudflare R2, Backblaze B2, Wasabi, and similar) refuses a folder or file. The refusal can mean either missing permissions or a paused account, and Cmdr can't tell which. Plain text.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "@errors.listing.objectStoreRefused.explanation": {
     "description": "Body of the listing error panel when cloud object storage refuses a path. Markdown. Names both possible causes because the provider's answer is the same for both: the access key lacks permission, or the provider paused the account (a usage cap or a billing problem). \"Access key\" is the credential the user entered when connecting.",
@@ -746,10 +748,14 @@
       "path": {
         "description": "The path that was refused, inserted verbatim inside backticks. Do not translate or reformat it."
       }
-    }
+    },
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "@errors.listing.objectStoreRefused.suggestion": {
-    "description": "Recovery suggestion when cloud object storage refuses a path. Plain text, one sentence. \"Console\" is the provider's web dashboard where usage caps and billing live."
+    "description": "Recovery suggestion when cloud object storage refuses a path. Plain text, one sentence. \"Console\" is the provider's web dashboard where usage caps and billing live.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "errors.listing.remotePermissionDenied.title": "The server won’t open this folder",
   "errors.listing.remotePermissionDenied.explanation": "`{path}` lives on a network share, and the account you connected with doesn’t have permission to open it. The server turns the request down before macOS is involved, so this isn’t a privacy setting on your Mac.",
@@ -2233,7 +2239,9 @@
   "errors.write.permissionDenied.message.named": "Your macOS user can’t change {folder}.",
   "errors.write.permissionDenied.suggestion.objectStoreAccount": "The provider refused, and that can mean two things. Check the access key’s permissions, or your provider’s console for a usage cap or a billing notice.",
   "@errors.write.permissionDenied.suggestion.objectStoreAccount": {
-    "description": "Recovery suggestion in the copy/move/delete dialog when cloud object storage (Amazon S3, Cloudflare R2, Backblaze B2, Wasabi, and similar) refuses. The provider gives the same answer for missing permissions and for a paused account (a usage cap or a billing problem), so the sentence names both. Plain text. \"Access key\" is the credential the user entered when connecting; \"console\" is the provider's web dashboard."
+    "description": "Recovery suggestion in the copy/move/delete dialog when cloud object storage (Amazon S3, Cloudflare R2, Backblaze B2, Wasabi, and similar) refuses. The provider gives the same answer for missing permissions and for a paused account (a usage cap or a billing problem), so the sentence names both. Plain text. \"Access key\" is the credential the user entered when connecting; \"console\" is the provider's web dashboard.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "errors.write.permissionDenied.suggestion.needsAdminMac": "Changing it needs administrator rights. To give your own account access, select the folder in Finder, choose Get Info, and look under Sharing & Permissions.",
   "errors.write.permissionDenied.suggestion.needsAdminOther": "Changing it needs administrator rights. To give your own account access, adjust the folder’s permissions (for example with chmod) and try again.",
@@ -2882,7 +2890,9 @@
     "description": "Shown when the drive, server, or cloud storage rejects the name the user typed in Rename, New folder, or New file (a character it can't store, like a tab or a line break, a reserved name, or a name that's too long). The fix is always a different name, never a retry, so keep that clear. Inline under the name field or in a brief toast after a rename, which is why it repeats the name. Plain text, one sentence, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",
     "placeholders": {
       "name": "the name the user typed (uncontrolled user text, may hold a tab; keep it verbatim in quotes)"
-    }
+    },
+    "screenshot": "mkdir-confirmation-too-long.png",
+    "screenshotNote": "This one is NOT the error panel. Your string is the single red line under the name field in the Rename / New folder / New file box, exactly where the validation message sits in this screenshot (which shows a DIFFERENT message). One sentence, plain text, no markdown, and it has to fit a narrow dialog."
   },
   "errors.volume.invalidName": "The destination can’t hold that name. Pick a different one.",
   "@errors.volume.invalidName": {
