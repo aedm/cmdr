@@ -356,10 +356,10 @@
     "sources": "macOS Finder, MS terminology (Avbryt)"
   },
   "case-sensitive": {
-    "accept": ["stora och små bokstäver"],
+    "accept": ["stora och små bokstäver", "små bokstäver"],
     "chosen": "skiftlägeskänslig",
     "confidence": "high",
-    "forms": "the search toggle Skiftlägeskänslig; in an explanatory sentence stora och små bokstäver (Finder)",
+    "forms": "the search toggle Skiftlägeskänslig; in an explanatory sentence stora och små bokstäver (Finder); lowercase only → bara små bokstäver (servers.refusal.s3FieldMalformed)",
     "sources": "standard Swedish IT; macOS Finder (skiljer inte på stora och små bokstäver)"
   },
   "certificate": {
@@ -491,6 +491,10 @@
     "accept": ["moln", "synkapp"],
     "chosen": "molnleverantör",
     "confidence": "high",
+    "exceptions": {
+      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim; not a sync-app provider.",
+      "servers.sheet.s3GcsKeyHelp": "Product name Cloud Storage (Google’s), kept verbatim; not a sync-app provider."
+    },
     "forms": "molnmappar, molnmontering, molntjänst",
     "sources": "MS terminology (provider → leverantör)"
   },
@@ -726,6 +730,13 @@
     "forms": "USB-enhet, MTP-enhet; when English says phone, Swedish says telefon",
     "sources": "macOS, MS terminology"
   },
+  "dialog": {
+    "accept": ["dialogruta"],
+    "chosen": "dialog",
+    "confidence": "high",
+    "forms": "dialogen, dialoger; a named Cmdr dialog → dialogen Markera filer, or hyphenated Flytta-dialog like Hjälp-menyn; dialogruta for a generic window",
+    "sources": "catalog (dialog/dialogen, commands.selectionSelectFiles.description; dialogruta in fileExplorer.pane.dialogRenderFailedToast); MS terminology (dialog box → dialogruta)"
+  },
   "disable": {
     "accept": ["avstängd", "avstängt", "avstängda", "stänger av", "stängs av", "inaktiv", "stängt av", "stänga av"],
     "chosen": "stäng av",
@@ -922,6 +933,13 @@
     "confidence": "high",
     "forms": "uppskattad kostnad, (uppskattat); about {amount} → cirka",
     "sources": "catalog"
+  },
+  "example": {
+    "accept": ["t.ex.", "till exempel"],
+    "chosen": "Exempel",
+    "confidence": "high",
+    "forms": "placeholder prefix → Exempel: {value}; in running prose → till exempel; a terse hint → t.ex.",
+    "sources": "catalog (servers.sheet.usernamePlaceholder, ai.cloud.modelPlaceholderExample, onboarding.cloudSetup.step.endpointPlaceholder)"
   },
   "exclude": {
     "accept": ["uteslut", "ingår inte"],
@@ -1136,6 +1154,12 @@
     "confidence": "high",
     "forms": "the whole-run time-left label → Totalt: {eta}",
     "sources": "GN totalt; catalog Totalt (errorReporter.dialog.totalLines)"
+  },
+  "owner": {
+    "chosen": "ägare",
+    "confidence": "high",
+    "forms": "ägaren; file ownership → ägare och behörigheter",
+    "sources": "MS terminology (owner → ägare); catalog (errors.listing.noPermissionErrno.suggestion, notPermitted.suggestion)"
   },
   "repository": {
     "accept": ["repository"],
@@ -1638,7 +1662,8 @@
     "chosen": "namn",
     "confidence": "high",
     "exceptions": {
-      "errors.write.duplicateSourceNames.title": "Have the same name is the idiom heter likadant."
+      "errors.write.duplicateSourceNames.title": "Have the same name is the idiom heter likadant.",
+      "servers.sheet.identityLockedS3": "English-sense: \"what name this place\" is the verb, rendered identifierar like the shipped sibling servers.sheet.identityLocked (decision \"Server hub: connect sheet\")."
     },
     "forms": "column Namn; Det här filnamnet kan inte användas",
     "sources": "macOS"
@@ -2236,6 +2261,14 @@
     "forms": "noun omstart",
     "sources": "macOS AppKit Menus (Restart → Starta om)"
   },
+  "restore": {
+    "accept": ["återställd", "återställts", "återställning", "återställ"],
+    "chosen": "återställa",
+    "confidence": "high",
+    "forms": "a file in cloud cold storage → filen är arkiverad … förrän filen har återställts; button/imperative Återställ filen; noun en återställning",
+    "note": "Not rollback (ångra): återställa only where something really comes back.",
+    "sources": "MS terminology (restore → återställa, the backup and deleted-item senses); catalog (askCmdr.renameUndo.* återställdes)"
+  },
   "resume": {
     "chosen": "återuppta",
     "confidence": "high",
@@ -2527,6 +2560,25 @@
     "forms": "Stoppa servern; stopping a rollback → Stoppa, never Avbryt (that button keeps the finished files)",
     "sources": "macOS Finder (Stoppa)"
   },
+  "storage": {
+    "accept": ["lagringsutrymme", "lagringsleverantör"],
+    "chosen": "lagring",
+    "confidence": "high",
+    "exceptions": {
+      "servers.sheet.s3ProviderGcs": "Product name Google Cloud Storage, kept verbatim.",
+      "servers.sheet.s3GcsKeyHelp": "Product name Cloud Storage (Google’s), kept verbatim.",
+      "servers.sheet.s3ProviderHetzner": "Product name Hetzner Object Storage, kept verbatim."
+    },
+    "forms": "cloud storage → molnlagring; cold storage → kall lagring; S3 storage → S3-lagring; storage provider → lagringsleverantör; free space keeps lagringsutrymme",
+    "sources": "MS terminology (storage → lagring; cold storage → kall lagring; cloud storage → molnlagring); catalog (iCloud-lagring, telefonlagring)"
+  },
+  "store": {
+    "accept": ["lagras", "lagrad", "lagrar", "molnlagrad", "spara", "sparar", "ligger"],
+    "chosen": "lagra",
+    "confidence": "high",
+    "forms": "a destination or filesystem that can’t store a name or file → kan inte lagra; a secret in the keychain → spara … i nyckelringen (the shipped siblings); stored only on your Mac → lagras bara på din Mac",
+    "sources": "catalog (errors.write.invalidName.message, errors.write.filesTooLargeForFilesystem.*, servers.refusal.secretNotStored); MS terminology (store → lagra)"
+  },
   "streaming": {
     "chosen": "ström",
     "confidence": "tentative",
@@ -2673,6 +2725,13 @@
     "forms": "Anslutningen nådde tidsgränsen; didn't answer in time → svarade inte i tid",
     "sources": "MS terminology (time-out → tidsgräns); macOS (slutfördes inte i tid)"
   },
+  "tint": {
+    "accept": ["tona", "bakgrundston", "paneltoner", "tonfärg", "tonfärger", "tonfärgen"],
+    "chosen": "ton",
+    "confidence": "high",
+    "forms": "setting label Tona …-paneler; the color → Bakgrundston; the palette → Tonfärger; none → Ingen ton",
+    "sources": "MS terminology (tint → ton); catalog (settings.appearance.tint*.label/description)"
+  },
   "title-bar": {
     "chosen": "namnlist",
     "confidence": "high",
@@ -2778,6 +2837,9 @@
     "accept": ["nå"],
     "chosen": "går inte att nå",
     "confidence": "tentative",
+    "exceptions": {
+      "servers.refusal.accessDenied": "English-sense: a key that \"can’t reach\" a bucket lacks access, so kommer inte åt (the access concept); nothing is unreachable on the network."
+    },
     "forms": "Det går inte att nå {path}; Kan fortfarande inte nås",
     "sources": "composed"
   },

@@ -36,6 +36,17 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
   `under arbete`**: no first-party source.
 - **viewer → `förhandsvisning`**: macOS uses `granskare` for the inspector; that's the fallback if the viewer ever
   becomes a distinct inspector surface.
+- **S3 bucket → `bucket`, en-word, `bucketen` / `bucketar` / `bucketarna`** (`servers.*`, `commands.handler.*`): MS
+  keeps `bucket`; the plural is Swedish tech usage, no first-party source. No shared concept exists yet, so it has no
+  `terms.json` ruling.
+- **share link → `delningslänk`** (`commands.fileCopyShareLink*`, `menu.context.*ShareLink*`): composed from `dela` +
+  `länk`; MS has `delningsbar länk` / `Alla-länk` for OneDrive's anonymous link.
+- **secret access key → `hemlig åtkomstnyckel`**, **access key ID → `Åtkomstnyckel-ID`**: MS `hemlig nyckel` +
+  `åtkomstnyckel`; AWS has no Swedish console to quote.
+- **cold storage → `kall lagring`** (MS), **archived (cold-storage tier) → `arkiverad`**, **restore → `återställa`**:
+  check the pair reads as a storage tier and not as a zip archive.
+- **path-style addressing → `sökvägsbaserad adressering (path-style)`** and **Google's Interoperability tab →
+  `fliken Interoperabilitet`** (`servers.sheet.s3GcsKeyHelp`): unverified against Google Cloud's Swedish console.
 
 ## Phrasing and tone
 

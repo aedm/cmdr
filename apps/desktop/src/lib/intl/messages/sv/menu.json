@@ -473,19 +473,19 @@
   "@menu.context.copyGoogleDriveLink": {
     "sourceHash": "070b383"
   },
-  "menu.context.copyShareLink": "Copy share link",
+  "menu.context.copyShareLink": "Kopiera delningslänk",
   "@menu.context.copyShareLink": {
     "sourceHash": "d31483e"
   },
-  "menu.context.shareLinkSevenDays": "Expires in seven days",
+  "menu.context.shareLinkSevenDays": "Går ut om sju dagar",
   "@menu.context.shareLinkSevenDays": {
     "sourceHash": "06949d8"
   },
-  "menu.context.shareLinkOneDay": "Expires in one day",
+  "menu.context.shareLinkOneDay": "Går ut om en dag",
   "@menu.context.shareLinkOneDay": {
     "sourceHash": "5ff3dbc"
   },
-  "menu.context.shareLinkOneHour": "Expires in one hour",
+  "menu.context.shareLinkOneHour": "Går ut om en timme",
   "@menu.context.shareLinkOneHour": {
     "sourceHash": "faf9c50"
   },
