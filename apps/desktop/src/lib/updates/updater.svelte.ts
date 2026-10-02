@@ -7,6 +7,8 @@ import {
   updateWriteBlocker,
 } from '$lib/tauri-commands'
 import type { BundleWriteBlocker } from '$lib/tauri-commands'
+import { failureOf } from '$lib/ipc/typed-failure'
+import { UpdateDownloadFailure } from './update-download-failure'
 import type { ServerRequestError } from '$lib/ipc/bindings'
 import { getVersion } from '@tauri-apps/api/app'
 import { forceSave, getSetting, setSetting } from '$lib/settings/settings-store'
@@ -428,8 +430,10 @@ function finishCheckWithNoUpdate(trigger: UpdateCheckTrigger, currentVersion: st
  *   warn, so a background tick on a flaky network doesn't trip the auto error reporter, and only a manifest Cmdr's own
  *   server refused or served unreadable logs at error. The plugin's check elsewhere isn't typed, and its failures are
  *   the network's as often as not, so it stays at warn.
- * - `'download-install'` failures (signature mismatch, FS errors, partial writes) reach a code
- *   path the user already opted into, so log at error so they DO trip auto-report.
+ * - `'download-install'` failures follow the same rule where they're typed (`downloadInstallLogLevel`): a macOS
+ *   download that the network or the host's bad moment stopped logs at warn. A signature mismatch, a disk failure, a
+ *   404 for the tarball, an install that broke, and the plugin's untyped failures log at error, so they DO trip
+ *   auto-report: they mean something is wrong with the release or this machine.
  *
  * Both reach the UI as `updateState.failure`, a typed value the toast and Settings word from the catalog. See
  * `apps/desktop/src-tauri/src/error_reporter/CLAUDE.md` § convention.
@@ -461,7 +465,11 @@ function finishCheckWithFailure(
     logCheckFailure(request, message)
   } else {
     standing = { phase: failure === 'install' ? 'install' : 'download' }
-    log.error('Download/install failed: {error}', { error: message })
+    if (downloadInstallLogLevel(error) === 'error') {
+      log.error('Download/install failed: {error}', { error: message })
+    } else {
+      log.warn('Download/install failed: {error}', { error: message })
+    }
   }
 
   if (staged !== null) {
@@ -474,6 +482,15 @@ function finishCheckWithFailure(
   updateState.status = 'idle'
   updateState.nextVersion = null
   updateState.failure = standing
+}
+
+/**
+ * A download the network or the tarball host's bad moment stopped follows the check's rule (`serverRequestLogLevel`).
+ * Everything else stays at error: a signature mismatch, a disk failure, an install, and the plugin's untyped failures.
+ */
+function downloadInstallLogLevel(error: unknown): 'warn' | 'error' {
+  const download = failureOf(UpdateDownloadFailure, error)
+  return download?.type === 'request' ? serverRequestLogLevel(download.failure) : 'error'
 }
 
 /** One line per failing condition until a check gets an answer, at the level the failure earns. */

@@ -8,7 +8,6 @@ vi.mock('$lib/tauri-commands', async () => {
   const { getMtpDeviceDisplayName } = await import('$lib/tauri-commands/mtp')
   return {
     getMtpDeviceDisplayName,
-    listMtpDevices: vi.fn(),
     connectMtpDevice: vi.fn(),
     disconnectMtpDevice: vi.fn(),
     onMtpDeviceConnected: vi.fn(),
@@ -20,7 +19,6 @@ vi.mock('$lib/tauri-commands', async () => {
 
 import type { MtpDeviceInfo, MtpStorageInfo, ConnectedMtpDeviceInfo } from '$lib/tauri-commands'
 import {
-  listMtpDevices,
   connectMtpDevice,
   disconnectMtpDevice,
   onMtpDeviceConnected,
@@ -37,13 +35,10 @@ import {
   getConnectedDevices,
   hasConnectedDevices,
   isInitialized,
-  isScanning,
-  scanDevices,
   connect,
   disconnect,
   initialize,
   cleanup,
-  getMtpVolumes,
   resetForTesting,
 } from './mtp-store.svelte'
 
@@ -70,6 +65,20 @@ const mockConnectedInfo: ConnectedMtpDeviceInfo = {
   storages: [mockStorage],
 }
 
+/**
+ * Puts `mockDevice` in the store the way the backend can: an access problem reported before a connect, which leaves
+ * it in `error` and so open to a manual `connect`.
+ */
+async function seedErroredDevice(): Promise<void> {
+  let exclusiveCallback: ((event: MtpExclusiveAccessErrorEvent) => void) | undefined
+  vi.mocked(onMtpExclusiveAccessError).mockImplementation((callback) => {
+    exclusiveCallback = callback
+    return Promise.resolve(vi.fn())
+  })
+  await initialize()
+  exclusiveCallback?.({ deviceId: mockDevice.id, blockingProcess: 'ptpcamerad' })
+}
+
 describe('mtp-store', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -94,104 +103,19 @@ describe('mtp-store', () => {
     })
   })
 
-  describe('scanDevices', () => {
-    it('scans and adds new devices, then auto-connects', async () => {
-      vi.mocked(listMtpDevices).mockResolvedValue([mockDevice])
-      vi.mocked(connectMtpDevice).mockResolvedValue(mockConnectedInfo)
-
-      await scanDevices()
-      // Wait for auto-connect to complete (it runs asynchronously)
-      await vi.waitFor(() => {
-        expect(getDevice('mtp-336592896')?.connectionState).toBe('connected')
-      })
-
-      const devices = getDevices()
-      expect(devices).toHaveLength(1)
-      expect(devices[0].device.id).toBe('mtp-336592896')
-      expect(devices[0].connectionState).toBe('connected')
-      expect(devices[0].displayName).toBe('Pixel 8')
-
-      const device = getDevice('mtp-336592896')
-      expect(device).toBeDefined()
-      expect(device?.device.product).toBe('Pixel 8')
-    })
-
-    it('preserves connection state for known devices', async () => {
-      vi.mocked(listMtpDevices).mockResolvedValue([mockDevice])
-      vi.mocked(connectMtpDevice).mockResolvedValue(mockConnectedInfo)
-
-      await scanDevices()
-      await connect('mtp-336592896')
-
-      // Scan again
-      await scanDevices()
-
-      const device = getDevice('mtp-336592896')
-      expect(device?.connectionState).toBe('connected')
-      expect(device?.storages).toHaveLength(1)
-    })
-
-    it('skips scan if already scanning', async () => {
-      vi.mocked(listMtpDevices).mockImplementation(
-        () =>
-          new Promise((resolve) => {
-            setTimeout(() => {
-              resolve([mockDevice])
-            }, 100)
-          }),
-      )
-
-      const promise1 = scanDevices()
-      expect(isScanning()).toBe(true)
-
-      const promise2 = scanDevices()
-      await Promise.all([promise1, promise2])
-
-      // Should only have called listMtpDevices once
-      expect(listMtpDevices).toHaveBeenCalledTimes(1)
-    })
-
-    it('handles scan errors gracefully', async () => {
-      vi.mocked(listMtpDevices).mockRejectedValue(new Error('USB error'))
-
-      await scanDevices()
-
-      expect(getDevices()).toEqual([])
-      expect(isScanning()).toBe(false)
-    })
-
-    it('removes devices no longer present after scan', async () => {
-      vi.mocked(listMtpDevices).mockResolvedValueOnce([mockDevice])
-
-      await scanDevices()
-      expect(getDevices()).toHaveLength(1)
-
-      // Device was unplugged
-      vi.mocked(listMtpDevices).mockResolvedValueOnce([])
-      await scanDevices()
-
-      expect(getDevices()).toHaveLength(0)
-    })
-  })
-
   describe('connect', () => {
-    it('auto-connects devices after scan and updates state', async () => {
-      vi.mocked(listMtpDevices).mockResolvedValue([mockDevice])
+    it('connects a known device and updates state', async () => {
       vi.mocked(connectMtpDevice).mockResolvedValue(mockConnectedInfo)
+      await seedErroredDevice()
 
-      await scanDevices()
-      // Wait for auto-connect to complete
-      await vi.waitFor(() => {
-        expect(getDevice('mtp-336592896')?.connectionState).toBe('connected')
-      })
+      await connect('mtp-336592896')
 
       const device = getDevice('mtp-336592896')
       expect(device?.connectionState).toBe('connected')
       expect(device?.storages).toEqual([mockStorage])
-
+      expect(device?.displayName).toBe('Pixel 8')
       expect(hasConnectedDevices()).toBe(true)
       expect(getConnectedDevices()).toHaveLength(1)
-      expect(connectMtpDevice).toHaveBeenCalledTimes(1)
     })
 
     it('returns undefined for unknown device', async () => {
@@ -201,28 +125,21 @@ describe('mtp-store', () => {
     })
 
     it('returns existing info for already connected device', async () => {
-      vi.mocked(listMtpDevices).mockResolvedValue([mockDevice])
       vi.mocked(connectMtpDevice).mockResolvedValue(mockConnectedInfo)
-
-      await scanDevices()
+      await seedErroredDevice()
       await connect('mtp-336592896')
 
-      // Try to connect again
       const result = await connect('mtp-336592896')
 
       expect(result).toBeDefined()
       expect(connectMtpDevice).toHaveBeenCalledTimes(1) // Should not call again
     })
 
-    it('sets error state on auto-connect failure', async () => {
-      vi.mocked(listMtpDevices).mockResolvedValue([mockDevice])
+    it('sets error state on connect failure', async () => {
       vi.mocked(connectMtpDevice).mockRejectedValue(new Error('Exclusive access error'))
+      await seedErroredDevice()
 
-      await scanDevices()
-      // Wait for auto-connect to fail
-      await vi.waitFor(() => {
-        expect(getDevice('mtp-336592896')?.connectionState).toBe('error')
-      })
+      await expect(connect('mtp-336592896')).rejects.toThrow('Exclusive access error')
 
       const device = getDevice('mtp-336592896')
       expect(device?.connectionState).toBe('error')
@@ -232,11 +149,9 @@ describe('mtp-store', () => {
 
   describe('disconnect', () => {
     it('disconnects from a device and clears storages', async () => {
-      vi.mocked(listMtpDevices).mockResolvedValue([mockDevice])
       vi.mocked(connectMtpDevice).mockResolvedValue(mockConnectedInfo)
       vi.mocked(disconnectMtpDevice).mockResolvedValue(undefined)
-
-      await scanDevices()
+      await seedErroredDevice()
       await connect('mtp-336592896')
       expect(hasConnectedDevices()).toBe(true)
 
@@ -254,17 +169,11 @@ describe('mtp-store', () => {
     })
 
     it('handles double disconnect gracefully (only calls backend once)', async () => {
-      vi.mocked(listMtpDevices).mockResolvedValue([mockDevice])
       vi.mocked(connectMtpDevice).mockResolvedValue(mockConnectedInfo)
       vi.mocked(disconnectMtpDevice).mockResolvedValue(undefined)
+      await seedErroredDevice()
+      await connect('mtp-336592896')
 
-      await scanDevices()
-      // Wait for auto-connect to complete
-      await vi.waitFor(() => {
-        expect(getDevice('mtp-336592896')?.connectionState).toBe('connected')
-      })
-
-      // First disconnect
       await disconnect('mtp-336592896')
       expect(disconnectMtpDevice).toHaveBeenCalledTimes(1)
 
@@ -322,102 +231,6 @@ describe('mtp-store', () => {
     })
   })
 
-  describe('getMtpVolumes', () => {
-    it('returns empty array when no devices', () => {
-      expect(getMtpVolumes()).toEqual([])
-    })
-
-    it('returns single volume for disconnected device', async () => {
-      vi.mocked(listMtpDevices).mockResolvedValue([mockDevice])
-
-      await scanDevices()
-
-      const volumes = getMtpVolumes()
-      expect(volumes).toHaveLength(1)
-      expect(volumes[0].id).toBe('mtp-336592896')
-      expect(volumes[0].deviceId).toBe('mtp-336592896')
-      expect(volumes[0].storageId).toBe(0)
-      expect(volumes[0].name).toBe('Pixel 8')
-      expect(volumes[0].isConnected).toBe(false)
-      expect(volumes[0].totalBytes).toBeUndefined()
-      expect(volumes[0].availableBytes).toBeUndefined()
-    })
-
-    it('returns one volume per storage for connected device', async () => {
-      const multiStorageInfo: ConnectedMtpDeviceInfo = {
-        device: mockDevice,
-        storages: [
-          mockStorage,
-          {
-            id: 65538,
-            name: 'SD Card',
-            totalBytes: 64_000_000_000,
-            availableBytes: 32_000_000_000,
-            storageType: 'RemovableRAM',
-            isReadOnly: false,
-          },
-        ],
-      }
-      vi.mocked(listMtpDevices).mockResolvedValue([mockDevice])
-      vi.mocked(connectMtpDevice).mockResolvedValue(multiStorageInfo)
-
-      await scanDevices()
-      await connect('mtp-336592896')
-
-      const volumes = getMtpVolumes()
-      expect(volumes).toHaveLength(2)
-      expect(volumes[0].id).toBe('mtp-336592896:65537')
-      expect(volumes[0].name).toBe('Pixel 8 - Internal shared storage')
-      expect(volumes[0].storageId).toBe(65537)
-      expect(volumes[0].isConnected).toBe(true)
-      expect(volumes[0].totalBytes).toBe(128_000_000_000)
-      expect(volumes[0].availableBytes).toBe(64_000_000_000)
-      expect(volumes[1].id).toBe('mtp-336592896:65538')
-      expect(volumes[1].name).toBe('Pixel 8 - SD Card')
-      expect(volumes[1].storageId).toBe(65538)
-      expect(volumes[1].totalBytes).toBe(64_000_000_000)
-      expect(volumes[1].availableBytes).toBe(32_000_000_000)
-    })
-
-    it('propagates isReadOnly flag from storage to volume', async () => {
-      const readOnlyStorageInfo: ConnectedMtpDeviceInfo = {
-        device: mockDevice,
-        storages: [
-          {
-            id: 65537,
-            name: 'Camera Storage',
-            totalBytes: 32_000_000_000,
-            availableBytes: 16_000_000_000,
-            storageType: 'FixedRAM',
-            isReadOnly: true,
-          },
-        ],
-      }
-      vi.mocked(listMtpDevices).mockResolvedValue([mockDevice])
-      vi.mocked(connectMtpDevice).mockResolvedValue(readOnlyStorageInfo)
-
-      await scanDevices()
-      await connect('mtp-336592896')
-
-      const volumes = getMtpVolumes()
-      expect(volumes).toHaveLength(1)
-      expect(volumes[0].isReadOnly).toBe(true)
-    })
-
-    it('uses device name for single storage device', async () => {
-      vi.mocked(listMtpDevices).mockResolvedValue([mockDevice])
-      vi.mocked(connectMtpDevice).mockResolvedValue(mockConnectedInfo)
-
-      await scanDevices()
-      await connect('mtp-336592896')
-
-      const volumes = getMtpVolumes()
-      expect(volumes).toHaveLength(1)
-      // Single storage: use device name, not storage name
-      expect(volumes[0].name).toBe('Pixel 8')
-    })
-  })
-
   describe('event handling', () => {
     it('updates state on mtp-device-connected event', async () => {
       let connectedCallback: ((event: MtpDeviceConnectedEvent) => void) | undefined
@@ -425,7 +238,6 @@ describe('mtp-store', () => {
         connectedCallback = callback
         return Promise.resolve(vi.fn())
       })
-      vi.mocked(listMtpDevices).mockResolvedValue([mockDevice])
 
       await initialize()
 
@@ -469,7 +281,6 @@ describe('mtp-store', () => {
         exclusiveCallback = callback
         return Promise.resolve(vi.fn())
       })
-      vi.mocked(listMtpDevices).mockResolvedValue([mockDevice])
 
       await initialize()
 
@@ -484,44 +295,5 @@ describe('mtp-store', () => {
     // Note: mtp-device-detected and mtp-device-removed events are no longer
     // handled by the frontend store; the backend auto-connects/disconnects
     // and emits mtp-device-connected/mtp-device-disconnected instead.
-  })
-
-  describe('display name generation', () => {
-    it('uses product name when available', async () => {
-      vi.mocked(listMtpDevices).mockResolvedValue([mockDevice])
-
-      await scanDevices()
-
-      expect(getDevice('mtp-336592896')?.displayName).toBe('Pixel 8')
-    })
-
-    it('uses manufacturer name when product is missing', async () => {
-      const deviceWithoutProduct: MtpDeviceInfo = {
-        id: 'mtp-336592897',
-        locationId: 336592897,
-        vendorId: 0x04e8,
-        productId: 0x6860,
-        manufacturer: 'Samsung',
-      }
-      vi.mocked(listMtpDevices).mockResolvedValue([deviceWithoutProduct])
-
-      await scanDevices()
-
-      expect(getDevice('mtp-336592897')?.displayName).toBe('Samsung device')
-    })
-
-    it('uses vendor:product format as fallback', async () => {
-      const deviceWithoutNames: MtpDeviceInfo = {
-        id: 'mtp-336592898',
-        locationId: 336592898,
-        vendorId: 0x1234,
-        productId: 0x5678,
-      }
-      vi.mocked(listMtpDevices).mockResolvedValue([deviceWithoutNames])
-
-      await scanDevices()
-
-      expect(getDevice('mtp-336592898')?.displayName).toBe('MTP device (1234:5678)')
-    })
   })
 })

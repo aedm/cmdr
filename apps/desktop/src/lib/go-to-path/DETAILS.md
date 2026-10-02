@@ -32,6 +32,9 @@ focused pane):
   box).
 
 On any successful jump (directory/file/ancestor) the RESOLVED target is recorded into recents, never the raw input.
+"Successful" means the pane accepted the navigation: both navigation primitives return `false` on a refusal, and a
+refused jump records nothing (and the ancestor jump shows no "landed on" toast), so recents never offer a path that
+didn't work.
 
 While typing, a debounced (`RESOLVE_DEBOUNCE_MS`, wrapped in `withTimeout`) resolve drives the live inline warning below
 the box for the `nearestAncestor` case only. The same `resolve_go_to_path` command serves both the live preview and the

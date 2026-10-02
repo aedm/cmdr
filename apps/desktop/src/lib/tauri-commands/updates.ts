@@ -5,6 +5,7 @@
 
 import { commands, type BundleWriteBlocker } from '$lib/ipc/bindings'
 import { throwServerRequestError } from '$lib/error-messages/server-request'
+import { UpdateDownloadFailure } from '$lib/updates/update-download-failure'
 import { throwIpcError } from './ipc-types'
 
 export type { BundleWriteBlocker }
@@ -37,10 +38,13 @@ export async function checkForUpdate(): Promise<UpdateCheckResult | null> {
   return res.data
 }
 
-/** Downloads the update tarball and verifies its minisign signature. */
+/**
+ * Downloads the update tarball and verifies its minisign signature. A download that doesn't land throws an
+ * `UpdateDownloadFailure`, which the updater logs at the level it earns.
+ */
 export async function downloadUpdate(url: string, signature: string): Promise<void> {
   const res = await commands.downloadUpdate(url, signature)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throw new UpdateDownloadFailure(res.error)
 }
 
 /** Installs a previously downloaded update by syncing files into the running `.app` bundle. */

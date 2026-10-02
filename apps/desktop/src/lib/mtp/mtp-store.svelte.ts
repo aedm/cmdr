@@ -12,7 +12,6 @@ import {
   connectMtpDevice,
   disconnectMtpDevice,
   getMtpDeviceDisplayName,
-  listMtpDevices,
   onMtpDeviceConnected,
   onMtpDeviceDisconnected,
   onMtpExclusiveAccessError,
@@ -44,15 +43,12 @@ interface MtpStoreState {
   devices: SvelteMap<string, MtpDeviceState>
   /** Whether the store has been initialized. */
   initialized: boolean
-  /** Whether a device scan is in progress. */
-  scanning: boolean
 }
 
 // Reactive state using Svelte 5 runes
 let state = $state<MtpStoreState>({
   devices: new SvelteMap(),
   initialized: false,
-  scanning: false,
 })
 
 // Event listeners
@@ -94,82 +90,6 @@ export function hasConnectedDevices(): boolean {
  */
 export function isInitialized(): boolean {
   return state.initialized
-}
-
-/**
- * Checks if a scan is in progress.
- */
-export function isScanning(): boolean {
-  return state.scanning
-}
-
-/**
- * Scans for connected MTP devices and updates the store.
- * Preserves connection state for already-known devices.
- * After scanning, automatically connects to all disconnected devices.
- */
-export async function scanDevices(): Promise<void> {
-  if (state.scanning) return
-
-  state.scanning = true
-  try {
-    const devices = await listMtpDevices()
-    const newDevices = new SvelteMap<string, MtpDeviceState>()
-
-    for (const device of devices) {
-      const existing = state.devices.get(device.id)
-      if (existing) {
-        // Preserve connection state and storages for known devices
-        newDevices.set(device.id, {
-          ...existing,
-          device, // Update device info in case it changed
-          displayName: getMtpDeviceDisplayName(device),
-        })
-      } else {
-        // New device, start disconnected
-        newDevices.set(device.id, {
-          device,
-          connectionState: 'disconnected',
-          storages: [],
-          displayName: getMtpDeviceDisplayName(device),
-        })
-      }
-    }
-
-    state.devices = newDevices
-    logger.debug('Scanned {count} MTP device(s)', { count: devices.length })
-
-    // Auto-connect to all disconnected devices
-    void connectAllDisconnected()
-  } catch (error) {
-    logger.error('Failed to scan MTP devices: {error}', { error: String(error) })
-  } finally {
-    state.scanning = false
-  }
-}
-
-/**
- * Connects to all disconnected MTP devices.
- * Runs connections in parallel for faster startup.
- * Errors are logged but don't prevent other devices from connecting.
- */
-async function connectAllDisconnected(): Promise<void> {
-  const disconnectedDevices = Array.from(state.devices.values()).filter((d) => d.connectionState === 'disconnected')
-
-  if (disconnectedDevices.length === 0) return
-
-  logger.info('Auto-connecting to {count} MTP device(s)', { count: disconnectedDevices.length })
-
-  // Connect in parallel - each connect() handles its own errors
-  await Promise.allSettled(
-    disconnectedDevices.map(async (deviceState) => {
-      try {
-        await connect(deviceState.device.id)
-      } catch {
-        // Error already logged by connect(), just continue with other devices
-      }
-    }),
-  )
 }
 
 /**
@@ -364,7 +284,6 @@ export function resetForTesting(): void {
   state = {
     devices: new SvelteMap(),
     initialized: false,
-    scanning: false,
   }
   unlistenConnected = undefined
   unlistenDisconnected = undefined
@@ -385,77 +304,5 @@ export function cleanup(): void {
   state = {
     devices: new SvelteMap(),
     initialized: false,
-    scanning: false,
   }
-}
-
-/**
- * Represents a single MTP volume (one storage on a device).
- * This is used to show each storage as a separate entry in the volume picker.
- */
-export interface MtpVolume {
-  /** Unique ID for this volume: "mtp-{deviceId}-{storageId}" */
-  id: string
-  /** Device ID */
-  deviceId: string
-  /** Storage ID */
-  storageId: number
-  /** Display name: "{DeviceName} - {StorageName}" for multi-storage, or just device name for single storage */
-  name: string
-  /** Virtual path: "mtp://{deviceId}/{storageId}" */
-  path: string
-  /** Whether the device is connected */
-  isConnected: boolean
-  /** Whether this storage is read-only (for example, PTP cameras) */
-  isReadOnly: boolean
-  /** Total storage capacity in bytes (only available when connected) */
-  totalBytes?: number
-  /** Available space in bytes (only available when connected) */
-  availableBytes?: number
-}
-
-/**
- * Gets all MTP volumes (one per storage on each connected device).
- * For connected devices with multiple storages, each storage is a separate volume.
- * For disconnected devices, returns a single volume representing the device.
- */
-export function getMtpVolumes(): MtpVolume[] {
-  const volumes: MtpVolume[] = []
-
-  for (const deviceState of state.devices.values()) {
-    if (deviceState.connectionState === 'connected' && deviceState.storages.length > 0) {
-      // Connected device with storages: create one volume per storage
-      const hasMultipleStorages = deviceState.storages.length > 1
-      for (const storage of deviceState.storages) {
-        const volumeName = hasMultipleStorages
-          ? `${deviceState.displayName} - ${storage.name}`
-          : deviceState.displayName || storage.name
-
-        volumes.push({
-          id: `${deviceState.device.id}:${String(storage.id)}`,
-          deviceId: deviceState.device.id,
-          storageId: storage.id,
-          name: volumeName,
-          path: `mtp://${deviceState.device.id}/${String(storage.id)}`,
-          isConnected: true,
-          isReadOnly: storage.isReadOnly,
-          totalBytes: storage.totalBytes,
-          availableBytes: storage.availableBytes,
-        })
-      }
-    } else {
-      // Disconnected or connecting device: show as single entry
-      volumes.push({
-        id: deviceState.device.id,
-        deviceId: deviceState.device.id,
-        storageId: 0,
-        name: deviceState.displayName,
-        path: `mtp://${deviceState.device.id}`,
-        isConnected: deviceState.connectionState === 'connected',
-        isReadOnly: false, // Unknown until connected
-      })
-    }
-  }
-
-  return volumes
 }

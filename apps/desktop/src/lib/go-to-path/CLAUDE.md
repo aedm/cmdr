@@ -27,8 +27,9 @@ folder…" (Finder's name); internals stay `goToPath`, and ❌ never rename `nav
   copy: that wording is user-facing only.
 - **`file` selects, never opens**: navigate to the parent, then move the cursor onto the file.
 - **Recents hold the RESOLVED target, written only by manual jumps in this dialog** (not `nav_to_path` MCP calls, not
-  app-wide navigation). The backend owns dedup, order, and the cap of 10; the `$state` mirror re-reads the authoritative
-  list after each write rather than guessing the new order.
+  app-wide navigation), and only once the pane ACCEPTED the navigation: a refused one records nothing. The backend owns
+  dedup, order, and the cap of 10; the `$state` mirror re-reads the authoritative list after each write rather than
+  guessing the new order.
 - **The digit→recent jump is guarded by the EMPTY box, not a modifier.** No valid path starts with a digit, so digits
   are ordinary input once anything is typed. Confirmed with David; don't switch it to a modifier.
 - **Keep the `if (show && showGoToPathDialog) return` guard in `routes/(main)/+page.svelte`.** The native

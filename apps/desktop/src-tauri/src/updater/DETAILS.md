@@ -33,6 +33,10 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
   `ServerRequestError::Refused { status }`, and only a 2xx that doesn't parse is `BadResponse`: the one failure the
   frontend logs at error, since it means Cmdr's server and this build disagree. The frontend owns the log line, once
   per condition (`apps/desktop/src/lib/updates/DETAILS.md`), so the command logs nothing of its own on a failure.
+- **The tarball download is typed too (`UpdateDownloadError`).** `fetch_verified_tarball` also goes through
+  `crate::server_request`, so a 5xx maintenance page is a `Request { Refused }` rather than bytes that fail their
+  signature. `SignatureMismatch` and `Disk` stay separate variants: the frontend logs those at error and a network
+  `Request` failure at warn. `install_update` stays a bare `String`: every install failure is local and logs at error.
 - **Walk `reqwest::Error::source()` for log-friendly messages (`crate::server_request::describe_error_chain`).** `reqwest::Error`'s `Display`
   only prints the outermost layer, hiding the real cause (DNS, TCP connect timeout, TLS). Walking the source chain
   surfaces the underlying class without pulling in `anyhow`.

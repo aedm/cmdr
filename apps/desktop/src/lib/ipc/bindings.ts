@@ -4861,7 +4861,7 @@ export const commands = {
    *  On success, stores the tarball path in `UpdateState` for `install_update` to consume.
    */
   downloadUpdate: (url: string, signature: string) =>
-    typedError<null, string>(__TAURI_INVOKE('download_update', { url, signature })),
+    typedError<null, UpdateDownloadError>(__TAURI_INVOKE('download_update', { url, signature })),
   /**
    *  Installs a previously downloaded update by syncing files into the running `.app` bundle.
    *
@@ -15126,6 +15126,22 @@ export type UnwritableReason =
    *  filesystem or a permission is the reason.
    */
   | 'unexplained'
+
+/**
+ *  Why a tarball download didn't leave a verified file behind. The frontend picks the log level
+ *  off the variant: a `Request` failure follows the api-server rule (no network, a timeout, or a
+ *  5xx is the person's network or the host's bad moment, so warn), while a signature mismatch or a
+ *  disk failure means something is wrong with the release or this machine, so error.
+ *
+ *  ❌ `detail` is for logs only, never a sentence a person reads.
+ */
+export type UpdateDownloadError =
+  // The tarball request didn't come back with the bytes.
+  | { type: 'request'; failure: ServerRequestError }
+  // The bytes arrived but don't verify against the manifest's signature.
+  | { type: 'signatureMismatch'; detail: string }
+  // The verified tarball couldn't be written to the temp dir.
+  | { type: 'disk'; detail: string }
 
 // Update metadata returned to the frontend when a newer version is available.
 export type UpdateInfo = {

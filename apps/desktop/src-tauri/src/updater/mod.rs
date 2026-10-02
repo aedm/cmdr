@@ -37,6 +37,7 @@ const MANIFEST_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const DOWNLOAD_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const DOWNLOAD_READ_TIMEOUT: Duration = Duration::from_secs(30);
 
+use crate::ignore_poison::IgnorePoison as _;
 use crate::server_request::describe_error_chain;
 
 /// Shared state between `download_update` and `install_update`.
@@ -171,46 +172,89 @@ pub async fn update_write_blocker() -> Result<Option<BundleWriteBlocker>, String
     Ok(blocker)
 }
 
+/// Why a tarball download didn't leave a verified file behind. The frontend picks the log level
+/// off the variant: a `Request` failure follows the api-server rule (no network, a timeout, or a
+/// 5xx is the person's network or the host's bad moment, so warn), while a signature mismatch or a
+/// disk failure means something is wrong with the release or this machine, so error.
+///
+/// ❌ `detail` is for logs only, never a sentence a person reads.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, specta::Type)]
+#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum UpdateDownloadError {
+    /// The tarball request didn't come back with the bytes.
+    Request {
+        failure: crate::server_request::ServerRequestError,
+    },
+    /// The bytes arrived but don't verify against the manifest's signature.
+    SignatureMismatch { detail: String },
+    /// The verified tarball couldn't be written to the temp dir.
+    Disk { detail: String },
+}
+
+impl From<crate::server_request::ServerRequestError> for UpdateDownloadError {
+    fn from(failure: crate::server_request::ServerRequestError) -> Self {
+        Self::Request { failure }
+    }
+}
+
+/// Downloads the tarball at `url` and verifies it against `signature`. Split from the command so a
+/// test can point it at a mock server.
+///
+/// The status is checked before the bytes are trusted (`server_request::send`), so a 5xx
+/// maintenance page reads as the host's bad moment rather than as a tarball that fails its
+/// signature.
+async fn fetch_verified_tarball(url: &str, signature: &str) -> Result<Vec<u8>, UpdateDownloadError> {
+    let client = reqwest::Client::builder()
+        .connect_timeout(DOWNLOAD_CONNECT_TIMEOUT)
+        .read_timeout(DOWNLOAD_READ_TIMEOUT)
+        .build()
+        .map_err(|e| {
+            crate::server_request::ServerRequestError::unexpected(format!(
+                "update HTTP client: {}",
+                describe_error_chain(&e)
+            ))
+        })?;
+
+    let response = crate::server_request::send(client.get(url)).await?;
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| crate::server_request::ServerRequestError::from_transport(&e))?;
+
+    log::info!("Downloaded {} bytes, verifying signature", bytes.len());
+    signature::verify(&bytes, signature).map_err(|detail| UpdateDownloadError::SignatureMismatch { detail })?;
+    log::info!("Signature verified");
+    // Zero-copy when the buffer is uniquely owned, which a freshly read body is.
+    Ok(Vec::from(bytes))
+}
+
 /// Downloads the update tarball and verifies its minisign signature.
 ///
 /// On success, stores the tarball path in `UpdateState` for `install_update` to consume.
 #[tauri::command]
 #[specta::specta]
-pub async fn download_update(url: String, signature: String, state: State<'_, UpdateState>) -> Result<(), String> {
+pub async fn download_update(
+    url: String,
+    signature: String,
+    state: State<'_, UpdateState>,
+) -> Result<(), UpdateDownloadError> {
     log::info!("Downloading update from {url}");
 
-    let client = reqwest::Client::builder()
-        .connect_timeout(DOWNLOAD_CONNECT_TIMEOUT)
-        .read_timeout(DOWNLOAD_READ_TIMEOUT)
-        .build()
-        .map_err(|e| format!("Couldn't build update HTTP client: {}", describe_error_chain(&e)))?;
-
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("Couldn't download update: {}", describe_error_chain(&e)))?;
-
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| format!("Couldn't read update response: {}", describe_error_chain(&e)))?;
-
-    log::info!("Downloaded {} bytes, verifying signature", bytes.len());
-    signature::verify(&bytes, &signature)?;
-    log::info!("Signature verified");
+    let bytes = fetch_verified_tarball(&url, &signature).await?;
 
     let temp_dir = std::env::temp_dir().join("cmdr-update");
-    std::fs::create_dir_all(&temp_dir).map_err(|e| format!("Couldn't create temp dir: {e}"))?;
+    std::fs::create_dir_all(&temp_dir).map_err(|e| UpdateDownloadError::Disk {
+        detail: format!("couldn't create temp dir: {e}"),
+    })?;
 
     let tarball_path = temp_dir.join("Cmdr.app.tar.gz");
-    std::fs::write(&tarball_path, &bytes).map_err(|e| format!("Couldn't write tarball: {e}"))?;
+    std::fs::write(&tarball_path, &bytes).map_err(|e| UpdateDownloadError::Disk {
+        detail: format!("couldn't write tarball: {e}"),
+    })?;
 
-    let mut guard = state
-        .downloaded_tarball
-        .lock()
-        .map_err(|e| format!("Couldn't lock update state: {e}"))?;
-    *guard = Some(tarball_path);
+    // A poisoned lock only means an earlier download panicked mid-write; the slot is plain data,
+    // and this download is the one to keep.
+    *state.downloaded_tarball.lock_ignore_poison() = Some(tarball_path);
 
     Ok(())
 }
@@ -354,6 +398,56 @@ mod tests {
         assert!(
             matches!(err, ServerRequestError::BadResponse { .. }),
             "expected BadResponse, got {err:?}"
+        );
+    }
+
+    /// A host having a bad moment is a request failure the frontend logs at warn. It used to read the
+    /// maintenance page as tarball bytes and report a signature mismatch.
+    #[tokio::test]
+    async fn a_tarball_host_answering_503_is_a_request_failure_not_a_bad_signature() {
+        let (_server, url) = manifest_at(ResponseTemplate::new(503).set_body_string("<html>maintenance</html>")).await;
+        let err = fetch_verified_tarball(&url, "sig")
+            .await
+            .expect_err("a 503 brings no tarball");
+        assert!(
+            matches!(
+                err,
+                UpdateDownloadError::Request {
+                    failure: ServerRequestError::Refused { status: 503, .. }
+                }
+            ),
+            "expected a 503 request failure, got {err:?}"
+        );
+    }
+
+    /// Bytes that don't match the signature stay their own kind, which the frontend logs at error.
+    #[tokio::test]
+    async fn a_tarball_that_fails_its_signature_is_a_signature_mismatch() {
+        let (_server, url) =
+            manifest_at(ResponseTemplate::new(200).set_body_bytes(b"not the real tarball".to_vec())).await;
+        let err = fetch_verified_tarball(&url, "not-a-signature")
+            .await
+            .expect_err("garbage doesn't verify");
+        assert!(
+            matches!(err, UpdateDownloadError::SignatureMismatch { .. }),
+            "expected SignatureMismatch, got {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn an_unreachable_tarball_host_is_a_request_failure() {
+        // Port 9 (discard) on loopback refuses the connection.
+        let err = fetch_verified_tarball("http://127.0.0.1:9/Cmdr.app.tar.gz", "sig")
+            .await
+            .expect_err("nothing listens there");
+        assert!(
+            matches!(
+                err,
+                UpdateDownloadError::Request {
+                    failure: ServerRequestError::Unreachable { .. }
+                }
+            ),
+            "expected an unreachable request failure, got {err:?}"
         );
     }
 

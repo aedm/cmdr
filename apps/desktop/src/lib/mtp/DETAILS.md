@@ -28,6 +28,10 @@ The backend (`mtp-rs`) holds storage IDs as `u32`; Tauri may surface them as a h
 - `onMtpExclusiveAccessError`: marks `error`, records the blocking process if known (the ptpcamerad case on macOS).
 - `onMtpPermissionError`: marks `error` with a "USB permission denied, install udev rules" message (the Linux case).
 
+These events are the only way a device enters the store: there's no frontend scan and no store-built volume list. The
+backend lists only connected devices' storages as volumes and auto-connects on hotplug, so a device-only volume id never
+reaches the volume picker.
+
 The store never initiates a connection; the backend watcher auto-connects on USB hotplug and emits these events.
 
 ## ptpcamerad (macOS)

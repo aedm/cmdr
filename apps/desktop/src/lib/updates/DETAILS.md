@@ -239,6 +239,13 @@ When a gate opens, the helper re-attempts the toast; if the download finished du
   gets an answer, so an offline laptop writes one line, not one per tick, and a broken manifest can't auto-report every
   hour. `updater.check-failure.test.ts` pins both. Settings and the toast read the failure from `updateState.failure`.
   The convention itself is documented in `src-tauri/src/error_reporter/DETAILS.md` § convention.
+- **A failed download or install follows the same rule where it's typed.** The macOS download throws an
+  `UpdateDownloadFailure` (`update-download-failure.ts`, outside the `$lib/tauri-commands` barrel so tests that mock the
+  barrel still get the real class). Its `request` variant goes through `serverRequestLogLevel`, so a download the
+  network or the host's 5xx stopped stays at `warn`; a 404 for the tarball, a signature mismatch, a disk failure, any
+  install failure, and the plugin's untyped `downloadAndInstall` failures stay at `error`, since they mean something is
+  wrong with the release or this machine. `downloadInstallLogLevel` holds the rule; `updater.check-failure.test.ts` pins
+  it.
 - `_resetUpdaterStateForTest` / `_setUpdateStatusForTest` exist for `updater.test.ts` and the toast tests. Don't reach
   for them from app code: they write the singleton without going through the state machine.
 - `startUpdateChecker()` returns a teardown fn that `+layout.svelte` must call in `onDestroy`, or the poll loop leaks

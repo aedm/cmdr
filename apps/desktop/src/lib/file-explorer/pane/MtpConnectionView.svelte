@@ -12,7 +12,7 @@
 
     interface Props {
         volumeId: string
-        onVolumeChange?: (change: VolumeChangePayload) => void
+        onVolumeChange: (change: VolumeChangePayload) => void
     }
 
     const { volumeId, onVolumeChange }: Props = $props()
@@ -88,23 +88,14 @@
                         const storage = result.storages[0]
                         const newVolumeId = `${deviceId}:${String(storage.id)}`
                         const newPath = constructMtpPath(deviceId, storage.id)
-                        log.info(
-                            'MTP connected, switching to storage: {storageId}, newVolumeId: {newVolumeId}, hasOnVolumeChange: {hasCallback}',
-                            {
-                                storageId: storage.id,
-                                newVolumeId,
-                                hasCallback: !!onVolumeChange,
-                            },
-                        )
+                        log.info('MTP connected, switching to storage: {storageId}, newVolumeId: {newVolumeId}', {
+                            storageId: storage.id,
+                            newVolumeId,
+                        })
                         // Mark device as connected to prevent auto-connect re-triggering
                         // while waiting for the parent to update volumeId
                         mtpConnectedDeviceId = deviceId
-                        if (onVolumeChange) {
-                            onVolumeChange({ volumeId: newVolumeId, volumePath: newPath, targetPath: newPath })
-                            log.info('onVolumeChange called successfully')
-                        } else {
-                            log.warn('onVolumeChange callback not provided!')
-                        }
+                        onVolumeChange({ volumeId: newVolumeId, volumePath: newPath, targetPath: newPath })
                     } else {
                         mtpConnectionError = tString('fileExplorer.mtp.noStorage')
                         log.warn('Device has no storages')

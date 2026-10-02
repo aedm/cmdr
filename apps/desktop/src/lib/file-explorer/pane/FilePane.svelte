@@ -2037,7 +2037,7 @@
                 onVisibleRangeChange={handleVisibleRangeChange}
             />
         {:else if paneViewKind === 'mtp-connect'}
-            <MtpConnectionView {volumeId} {onVolumeChange} />
+            <MtpConnectionView {volumeId} onVolumeChange={(change: VolumeChangePayload) => onVolumeChange?.(change)} />
         {:else if loading && stalled !== null}
             <ListingStalledView
                 folderPath={currentPath}

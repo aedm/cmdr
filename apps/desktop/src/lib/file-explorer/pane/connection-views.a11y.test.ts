@@ -188,7 +188,7 @@ describe('MtpConnectionView a11y', () => {
     const target = container()
     mount(MtpConnectionView, {
       target,
-      props: { volumeId: 'mtp-336592896' },
+      props: { volumeId: 'mtp-336592896', onVolumeChange: () => {} },
     })
     await tick()
     await expectNoA11yViolations(target)
@@ -198,7 +198,7 @@ describe('MtpConnectionView a11y', () => {
     const target = container()
     mount(MtpConnectionView, {
       target,
-      props: { volumeId: 'root' },
+      props: { volumeId: 'root', onVolumeChange: () => {} },
     })
     await tick()
     await expectNoA11yViolations(target)

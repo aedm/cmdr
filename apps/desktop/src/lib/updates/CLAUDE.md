@@ -9,6 +9,7 @@ Frontend auto-update checker, restart toast, and the manual "Check for updates" 
 - `update-state.svelte.ts`: the `updateState` `$state` singleton, re-exported from `updater.svelte.ts`.
 - `update-status-text.ts`: pure `formatUpdateStatus()`, shared by Settings and both toasts.
 - `update-analytics.ts`: the `update_check` event's vocabulary and its one emitter.
+- `update-download-failure.ts`: the typed download failure that picks its log level (`DETAILS.md`).
 - `UpdateToastContent.svelte` (`id: 'update'`, persistent) is the restart prompt; `UpdateCheckToastContent.svelte`
   (`id: 'update-check'`, 10 s) the menu-triggered phase status; `MoveToApplicationsDialog.svelte` the nudge for a bundle
   that can't be written.
