@@ -186,24 +186,52 @@ impl Live {
         self.client_with(&self.secret)
     }
 
-    fn host(&self) -> VolumeHost {
+    fn host(&self, state_root: Option<&std::path::Path>) -> VolumeHost {
         let credentials = InMemoryCredentials::new().with_entry(
             &self.params(None).credential_service(),
             Some(&self.key_id),
             &self.key_id,
             &self.secret,
         );
-        VolumeHost::builder()
+        let builder = VolumeHost::builder()
             .credentials(Arc::new(credentials))
-            .events(Arc::new(RecordingVolumeEvents::new()) as Arc<dyn VolumeEventSink>)
-            .build()
+            .events(Arc::new(RecordingVolumeEvents::new()) as Arc<dyn VolumeEventSink>);
+        match state_root {
+            Some(dir) => builder.state_root(dir).build(),
+            None => builder.build(),
+        }
     }
 
     /// Connects to one place the way the app does.
     pub(super) async fn connect(&self, bucket: Option<&str>) -> Result<S3Volume, crate::S3ConnectError> {
+        self.connect_to(bucket, None).await
+    }
+
+    /// [`Self::connect`] with the backend's durable state (the unfinished-
+    /// upload record) under `dir`, for the crash-recovery cells.
+    pub(super) async fn connect_with_state(
+        &self,
+        bucket: Option<&str>,
+        dir: &std::path::Path,
+    ) -> Result<S3Volume, crate::S3ConnectError> {
+        self.connect_to(bucket, Some(dir)).await
+    }
+
+    async fn connect_to(
+        &self,
+        bucket: Option<&str>,
+        state_root: Option<&std::path::Path>,
+    ) -> Result<S3Volume, crate::S3ConnectError> {
         let params = self.params(bucket);
         let volume_id = cmdr_fs::volume::s3_volume_id(params.host(), params.port(), &self.key_id, bucket);
-        connect_s3_volume(self.name, &volume_id, params, self.host(), CancellationToken::new()).await
+        connect_s3_volume(
+            self.name,
+            &volume_id,
+            params,
+            self.host(state_root),
+            CancellationToken::new(),
+        )
+        .await
     }
 
     /// Sends `request` (held in memory) and answers what came back.

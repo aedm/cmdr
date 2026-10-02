@@ -365,11 +365,17 @@ mod copy_test;
 #[cfg(test)]
 mod integration_test;
 #[cfg(test)]
+mod late_cancel_test;
+#[cfg(test)]
 mod live_connect_test;
 #[cfg(test)]
 mod live_flow_test;
 #[cfg(test)]
-mod late_cancel_test;
+mod live_hostile_failure_test;
+#[cfg(test)]
+mod live_hostile_support;
+#[cfg(test)]
+mod live_hostile_test;
 #[cfg(test)]
 mod live_protocol_test;
 #[cfg(test)]
