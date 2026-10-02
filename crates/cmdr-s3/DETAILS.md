@@ -41,14 +41,15 @@ because its error BODY is the only thing that can tell a wrong secret from a key
 table (`refusal.rs`, one cell per row in `refusal_test.rs`):
 
 - `ListBuckets` 2xx with a `ListAllMyBucketsResult`: the keys work; a bucket place goes on to `HeadBucket`.
-- `SignatureDoesNotMatch` / `InvalidAccessKeyId`: `KeysRejected`, whatever the place.
+- `SignatureDoesNotMatch` / `InvalidAccessKeyId`, or any 401: `KeysRejected`, whatever the place. R2 answers a key id it
+  doesn't know with `401` `<Code>Unauthorized</Code>`, bodyless on a HEAD (verified on R2, live.sh, 2026-10-02).
 - `RequestTimeTooSkewed`: `ClockSkewed` (this Mac's clock is off by more than 15 minutes).
 - 5xx or a throttle: `Transport`.
 - No S3 `<Error>` body (an HTML page, a bare 404): `NotAnS3Endpoint`.
 - `AccessDenied` (or any other S3 error) on the account root: `BucketListRefused`; on a bucket place: fall back to
   `HeadBucket`, which a bucket-scoped key passes.
-- `HeadBucket` 404: `NoSuchBucket`. 403: `AccessDenied` (can't tell a wrong key from no rights). A redirect, or any
-  answer carrying `x-amz-bucket-region`: `WrongRegion { region }`.
+- `HeadBucket` 404: `NoSuchBucket`. 401: `KeysRejected`. 403: `AccessDenied` (can't tell a wrong key from no rights). A
+  redirect, or any answer carrying `x-amz-bucket-region`: `WrongRegion { region }`.
 - Transport failures: `TimedOut`, `CertificateUntrusted` (an `InvalidData` `io::Error` in the source chain), or
   `Unreachable`.
 
@@ -85,9 +86,9 @@ keys and the rights. `integration_test.rs` pins both servers' answers.
   and a HEAD per child to fetch it would cost a request per file. So a file Cmdr or rclone uploaded shows its upload
   time in the pane and its own mtime in Get info. Decision: cost over consistency, because every request is billed.
 - **Errors** (`src/volume/errors.rs`): not found (`NoSuchKey`, `NoSuchBucket`, a bodyless 404) is `NotFound(path)`; a
-  refusal (`AccessDenied`, keys that stopped working, a bodyless 403) is `PermissionDenied { path }`; an archived object
-  (`InvalidObjectState`) is `ColdStorage(path)`; `NotImplemented` / 405 is `NotSupported`; the rest is `IoError`
-  carrying `<Code> (HTTP nnn)` for the logs.
+  refusal (`AccessDenied`, keys that stopped working, a bodyless 403, any 401) is `PermissionDenied { path }`; an
+  archived object (`InvalidObjectState`) is `ColdStorage(path)`; `NotImplemented` / 405 is `NotSupported`; the rest is
+  `IoError` carrying `<Code> (HTTP nnn)` for the logs.
 - **Space**: `NotSupported`, and no poll interval. S3 has no capacity, and "bytes used" is a listing of every key.
 
 ## Reading

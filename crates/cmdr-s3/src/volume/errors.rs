@@ -41,11 +41,13 @@ pub(crate) fn map_s3_error(error: &S3Error, path: &str) -> VolumeError {
     if error.is_not_implemented() || error.status == http::StatusCode::METHOD_NOT_ALLOWED {
         return VolumeError::NotSupported;
     }
-    let refused = match error.code {
-        S3ErrorCode::AccessDenied | S3ErrorCode::SignatureDoesNotMatch | S3ErrorCode::InvalidAccessKeyId => true,
-        S3ErrorCode::NoBody => error.status == http::StatusCode::FORBIDDEN,
-        _ => false,
-    };
+    // R2 answers keys it doesn't know with `401 Unauthorized`, bodyless on a HEAD.
+    let refused = error.status == http::StatusCode::UNAUTHORIZED
+        || match error.code {
+            S3ErrorCode::AccessDenied | S3ErrorCode::SignatureDoesNotMatch | S3ErrorCode::InvalidAccessKeyId => true,
+            S3ErrorCode::NoBody => error.status == http::StatusCode::FORBIDDEN,
+            _ => false,
+        };
     if refused {
         debug!("S3 path={path:?}: backend=s3, error_kind=permission_denied, code={error}");
         return VolumeError::PermissionDenied {

@@ -24,6 +24,22 @@ fn a_missing_key_or_bucket_is_not_found_and_names_the_path() {
     }
 }
 
+/// R2 answers keys it doesn't know with `401` (`<Code>Unauthorized</Code>`,
+/// bodyless on a HEAD): keys that stopped working mid-session are a refusal
+/// there too, not an I/O failure.
+#[test]
+fn a_401_is_permission_denied_on_the_path() {
+    for error in [
+        from_code(StatusCode::UNAUTHORIZED, "Unauthorized"),
+        S3Error::from_status(StatusCode::UNAUTHORIZED),
+    ] {
+        assert!(
+            matches!(map_s3_error(&error, "/b/a.txt"), VolumeError::PermissionDenied { path, .. } if path == "/b/a.txt"),
+            "{error}"
+        );
+    }
+}
+
 /// The only precondition Cmdr sends is a no-overwrite one (`If-None-Match: *`
 /// or R2's copy header), so a 412 means the name is taken and what's there
 /// stayed: the same refusal every other backend gives a `CreateNew`.

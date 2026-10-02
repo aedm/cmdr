@@ -42,6 +42,27 @@ fn an_unknown_key_id_is_the_keys() {
     );
 }
 
+/// R2's answer to a well-formed key id it doesn't know: `401` with
+/// `<Code>Unauthorized</Code>` on a GET, a bodyless `401` on a HEAD (live,
+/// 2026-10-02). Without this row a mistyped key id there read as "not an S3
+/// endpoint" on a bucket and as transport trouble on the account root.
+#[test]
+fn a_401_is_the_keys_whatever_the_place() {
+    for wants_bucket in [false, true] {
+        for body in [error_body("Unauthorized"), String::new()] {
+            assert_eq!(
+                judge_list_buckets(StatusCode::UNAUTHORIZED, &body, wants_bucket),
+                BucketList::Refused(S3ConnectError::KeysRejected),
+                "{body:?}"
+            );
+        }
+    }
+    assert_eq!(
+        judge_head_bucket(StatusCode::UNAUTHORIZED, None),
+        BucketCheck::Refused(S3ConnectError::KeysRejected)
+    );
+}
+
 #[test]
 fn access_denied_on_the_account_root_says_the_list_was_refused() {
     // ❗ Ambiguous by nature: Garage answers a WRONG secret this way, and AWS a

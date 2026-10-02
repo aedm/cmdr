@@ -81,8 +81,8 @@ pub(crate) enum BucketCheck {
 /// The table, in order:
 ///
 /// - **2xx with a `ListAllMyBucketsResult`**: the keys work.
-/// - **`SignatureDoesNotMatch` / `InvalidAccessKeyId`**: the keys, whatever
-///   the place.
+/// - **`SignatureDoesNotMatch` / `InvalidAccessKeyId`, or any 401** (R2's
+///   answer to an unknown key id): the keys, whatever the place.
 /// - **`RequestTimeTooSkewed`**: this Mac's clock.
 /// - **5xx, or a throttle**: the server's trouble, not the keys'.
 /// - **`AccessDenied`, or any other S3 error**: the account root can't go on
@@ -96,6 +96,10 @@ pub(crate) fn judge_list_buckets(status: StatusCode, body: &str, wants_bucket: b
             Ok(_) => BucketList::Listed,
             Err(_) => BucketList::Refused(S3ConnectError::NotAnS3Endpoint),
         };
+    }
+    // R2 answers a key id it doesn't know with `401 Unauthorized`.
+    if status == StatusCode::UNAUTHORIZED {
+        return BucketList::Refused(S3ConnectError::KeysRejected);
     }
     let error = S3Error::from_response(status, body);
     match error.code {
@@ -117,8 +121,8 @@ pub(crate) fn judge_list_buckets(status: StatusCode, body: &str, wants_bucket: b
 /// `x-amz-bucket-region` header, when there was one.
 ///
 /// A HEAD carries no body, so this is status and header alone: 404 is a
-/// missing bucket, a redirect is a bucket in another region (AWS names it in
-/// the header), and 403 is [`S3ConnectError::AccessDenied`], which can't tell a
+/// missing bucket, 401 the keys (R2), a redirect is a bucket in another region
+/// (AWS names it in the header), and 403 is [`S3ConnectError::AccessDenied`], which can't tell a
 /// wrong key from a key without rights here.
 pub(crate) fn judge_head_bucket(status: StatusCode, region: Option<&str>) -> BucketCheck {
     if status.is_success() {
@@ -126,6 +130,7 @@ pub(crate) fn judge_head_bucket(status: StatusCode, region: Option<&str>) -> Buc
     }
     BucketCheck::Refused(match status {
         StatusCode::NOT_FOUND => S3ConnectError::NoSuchBucket,
+        StatusCode::UNAUTHORIZED => S3ConnectError::KeysRejected,
         StatusCode::FORBIDDEN => S3ConnectError::AccessDenied,
         s if s.is_redirection() || region.is_some() => S3ConnectError::WrongRegion {
             region: region.map(str::to_string),

@@ -24,7 +24,7 @@ Decisions and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
   the liveness detector.
 - ❗ **Every request costs the user money.** ❌ No HEAD per child, no watcher, no space poll, no index.
 - ❗ **A wrong secret is ambiguous**: Garage answers `AccessDenied`, so only `SignatureDoesNotMatch` /
-  `InvalidAccessKeyId` are `KeysRejected`.
+  `InvalidAccessKeyId` (or R2's 401) are `KeysRejected`.
 - ❌ **No `.timeout()` on a GET or an upload, never a buffered body** beyond one part. A 200 to a ranged GET is skipped
   locally.
 - ❗ **Parse every success body**: Complete, CopyObject, UploadPartCopy, DeleteObjects can fail inside `200 OK`.
