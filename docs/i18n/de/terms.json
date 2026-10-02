@@ -540,7 +540,11 @@
     "chosen": "Cloud-Dienst",
     "confidence": "high",
     "forms": "cloud provider → Cloud-Anbieter; cloud mount → Cloud-Mount; cloud folder → Cloud-Ordner; a second mention shortens to der Dienst",
-    "sources": "macOS Finder Localizable (Choose a cloud service → Cloud-Dienst wählen), live pile 2026-09-17"
+    "sources": "macOS Finder Localizable (Choose a cloud service → Cloud-Dienst wählen), live pile 2026-09-17",
+    "exceptions": {
+      "servers.sheet.s3ProviderGcs": "Google Cloud Storage is a product name, kept verbatim (an S3 provider, not a sync service)",
+      "servers.sheet.s3GcsKeyHelp": "Cloud Storage is Google’s product name for the console section, kept verbatim (Cloud-Storage-Einstellungen)"
+    }
   },
   "coming-soon": {
     "avoid": [
@@ -1742,7 +1746,8 @@
     "chosen": "Name",
     "confidence": "high",
     "exceptions": {
-      "errors.write.duplicateSourceNames.title": "have the same name → heißen gleich"
+      "errors.write.duplicateSourceNames.title": "have the same name → heißen gleich",
+      "servers.sheet.identityLockedS3": "are what name this place → machen diesen Ort aus, the verb sense of name, like servers.sheet.identityLocked"
     },
     "sources": "macOS Finder (N220 Name); NetAuthAgent (Name:)"
   },
@@ -2419,11 +2424,12 @@
     "sources": "MS terminology"
   },
   "restore": {
-    "accept": ["wiederhergestellt"],
+    "accept": ["wiederhergestellt", "wieder her", "Wiederherstellung"],
     "chosen": "wiederherstellen",
     "confidence": "high",
     "note": "Put back from the trash stays zurücklegen.",
-    "sources": "macOS AppKit Revisions/Document (Restore → Wiederherstellen, Restore a Copy → Eine Kopie wiederherstellen)"
+    "sources": "macOS AppKit Revisions/Document (Restore → Wiederherstellen, Restore a Copy → Eine Kopie wiederherstellen)",
+    "forms": "separable in prose: Stelle die Datei … wieder her; the act → Wiederherstellung (a cold-storage restore)"
   },
   "resume": {
     "accept": ["fortgesetzt", "Fortsetzen"],
@@ -3334,5 +3340,35 @@
     "chosen": "lokal",
     "confidence": "high",
     "sources": "MS terminology (local → lokal); catalog (ai.*, settings.*)"
+  },
+  "example": {
+    "accept": ["etwa", "zum Beispiel", "z. B."],
+    "chosen": "Beispiel",
+    "confidence": "high",
+    "forms": "placeholder prefix → Beispiel: {example}; inline in prose → etwa",
+    "sources": "catalog (servers.sheet.usernamePlaceholder Beispiel: barry, onboarding.cloudSetup.step.endpointPlaceholder); MS terminology (example → Beispiel)"
+  },
+  "expired": {
+    "accept": ["läuft", "ab", "Ablauf"],
+    "chosen": "abgelaufen",
+    "confidence": "high",
+    "forms": "expires in seven days → Läuft in sieben Tagen ab (menu.context.shareLink*)",
+    "sources": "MS terminology (expire → ablaufen); catalog (Diese Prüfung ist abgelaufen.)"
+  },
+  "storage": {
+    "accept": [
+      "Speicherplatz",
+      "Speicheranbieter",
+      "Cloud-Speicher",
+      "S3-Speicher",
+      "Cold Storage",
+      "Object Storage",
+      "Cloud Storage",
+      "Cloud-Storage"
+    ],
+    "chosen": "Speicher",
+    "confidence": "high",
+    "forms": "cloud storage → Cloud-Speicher; S3 storage → S3-Speicher; storage provider → Speicheranbieter; cold storage → Cold Storage (MS terminology); product names (Hetzner Object Storage, Google Cloud Storage) verbatim",
+    "sources": "MS terminology (storage provider → Speicheranbieter, cold storage → Cold Storage); catalog (iCloud-Speicher, freier Speicher)"
   }
 }

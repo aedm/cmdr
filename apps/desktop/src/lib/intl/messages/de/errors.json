@@ -623,15 +623,15 @@
   "@errors.listing.deletePending.suggestion": {
     "sourceHash": "0531cd8"
   },
-  "errors.listing.coldStorage.title": "This file is archived",
+  "errors.listing.coldStorage.title": "Diese Datei ist archiviert",
   "@errors.listing.coldStorage.title": {
     "sourceHash": "73da082"
   },
-  "errors.listing.coldStorage.explanation": "`{path}` is archived, so its contents can’t be read until it’s restored.",
+  "errors.listing.coldStorage.explanation": "`{path}` ist archiviert, deshalb lässt sich der Inhalt erst lesen, wenn die Datei wiederhergestellt ist.",
   "@errors.listing.coldStorage.explanation": {
     "sourceHash": "78f52d7"
   },
-  "errors.listing.coldStorage.suggestion": "Here’s what to try:\n- Restore it in your storage provider’s console, then open it again\n- A restore can take anywhere from minutes to two days",
+  "errors.listing.coldStorage.suggestion": "Das kannst du versuchen:\n- Stelle die Datei in der Konsole deines Speicheranbieters wieder her und öffne sie dann erneut\n- Eine Wiederherstellung kann ein paar Minuten bis zwei Tage dauern",
   "@errors.listing.coldStorage.suggestion": {
     "sourceHash": "0becf43"
   },
@@ -1689,27 +1689,27 @@
   "@errors.write.deletePending.suggestion": {
     "sourceHash": "39e64a9"
   },
-  "errors.write.sourceInColdStorage.title": "This file is archived",
+  "errors.write.sourceInColdStorage.title": "Diese Datei ist archiviert",
   "@errors.write.sourceInColdStorage.title": {
     "sourceHash": "73da082"
   },
-  "errors.write.sourceInColdStorage.message": "The file at {path} is archived, so it can’t be read until it’s restored.",
+  "errors.write.sourceInColdStorage.message": "Die Datei unter {path} ist archiviert, deshalb lässt sie sich erst lesen, wenn sie wiederhergestellt ist.",
   "@errors.write.sourceInColdStorage.message": {
     "sourceHash": "1015fe5"
   },
-  "errors.write.sourceInColdStorage.suggestion": "Restore it in your storage provider’s console, then try again. A restore can take anywhere from minutes to two days.",
+  "errors.write.sourceInColdStorage.suggestion": "Stelle die Datei in der Konsole deines Speicheranbieters wieder her und versuche es dann erneut. Eine Wiederherstellung kann ein paar Minuten bis zwei Tage dauern.",
   "@errors.write.sourceInColdStorage.suggestion": {
     "sourceHash": "f279603"
   },
-  "errors.write.sourceChanged.title": "This file changed during the copy",
+  "errors.write.sourceChanged.title": "Diese Datei hat sich beim Kopieren geändert",
   "@errors.write.sourceChanged.title": {
     "sourceHash": "1c63c8b"
   },
-  "errors.write.sourceChanged.message": "The file at {path} changed while Cmdr was copying it, so Cmdr saved nothing. The file stays where it was.",
+  "errors.write.sourceChanged.message": "Die Datei unter {path} hat sich geändert, während Cmdr sie kopiert hat, deshalb hat Cmdr nichts gespeichert. Die Datei bleibt, wo sie war.",
   "@errors.write.sourceChanged.message": {
     "sourceHash": "4c404e0"
   },
-  "errors.write.sourceChanged.suggestion": "Try again to copy the version that’s there now.",
+  "errors.write.sourceChanged.suggestion": "Versuche es erneut, um die Version zu kopieren, die jetzt dort liegt.",
   "@errors.write.sourceChanged.suggestion": {
     "sourceHash": "97fc945"
   },
@@ -1909,11 +1909,11 @@
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
   },
-  "errors.volume.coldStorage": "“{path}” is archived. Restore it in your storage provider’s console first.",
+  "errors.volume.coldStorage": "„{path}“ ist archiviert. Stelle die Datei zuerst in der Konsole deines Speicheranbieters wieder her.",
   "@errors.volume.coldStorage": {
     "sourceHash": "c742f7c"
   },
-  "errors.volume.sourceChanged": "“{path}” changed while Cmdr was copying it, so Cmdr saved nothing. Try again to copy the new version.",
+  "errors.volume.sourceChanged": "„{path}“ hat sich geändert, während Cmdr die Datei kopiert hat, deshalb hat Cmdr nichts gespeichert. Versuche es erneut, um die neue Version zu kopieren.",
   "@errors.volume.sourceChanged": {
     "sourceHash": "18062cb"
   },

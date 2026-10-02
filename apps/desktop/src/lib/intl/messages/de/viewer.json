@@ -43,7 +43,7 @@
   "@viewer.error.archiveUnreadable": {
     "sourceHash": "e0b8f4e"
   },
-  "viewer.error.coldStorage": "This file is archived, so there’s nothing to show until it’s restored. Restore it in your storage provider’s console, then open it again.",
+  "viewer.error.coldStorage": "Diese Datei ist archiviert, deshalb gibt es nichts anzuzeigen, bis sie wiederhergestellt ist. Stelle die Datei in der Konsole deines Speicheranbieters wieder her und öffne sie dann erneut.",
   "@viewer.error.coldStorage": {
     "sourceHash": "236cd1b"
   },
