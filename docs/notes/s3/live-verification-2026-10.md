@@ -239,3 +239,27 @@ in three), losing one writer's bytes: check-then-write's blind window. GCS close
   `AlreadyExists` and the winner's bytes in six of six rounds. The flow cell is green, and the date is kept.
 - **Accepted risk, documented in `DETAILS.md`**: B2 and Wasabi have no enforced precondition (B2 answers 501, Wasabi
   ignores `If-None-Match`), so they stay check-then-write, and so does every multipart completion except AWS's and R2's.
+
+## Outcome: compressed objects copy as stored
+
+The `gzip` open question above, reproduced and fixed (`508c777a7` for S3, `68cac12d8` for WebDAV).
+
+- **Reproduced** (`live_encoded_objects_read_back_verbatim`: 33 B of text stored as gzip 51 B, br 35 B, zstd 46 B, and
+  deflate 39 B, each with its `Content-Encoding`, on R2, GCS, Spaces, AWS, Wasabi, and Hetzner; B2 skipped for its cap):
+  - The crate as `live.sh` built it (no decoders): every object verbatim, except ❗ GCS gzip: 33 B back and no size,
+    because GCS decompresses server-side for a client that doesn't send `Accept-Encoding: gzip` (its "decompressive
+    transcoding", which also ignores `Range`).
+  - The client the app ships (the crate with the app's decoders on): every object on every provider came back as the 33
+    decoded bytes, and the stat had no size (reqwest drops `Content-Length` when it decodes, on a HEAD too). The app has
+    `gzip` today, so any gzip-stored object downloaded decompressed in the app.
+- **Fixed**:
+  - Both clients turn every decoder off (`no_gzip`, `no_brotli`, `no_deflate`, `no_zstd`), and both crates' test builds
+    turn every decoder on through a dev-dependency, so the fake-server tests (red first) and the live cell read through
+    the app's client.
+  - GCS: every GET and HEAD sends `Accept-Encoding: gzip`, added after signing because GCS's front end rewrites it
+    before checking the signature (`SignatureDoesNotMatch` when signed, curl). A HEAD there still has no
+    `Content-Length` for such an object, only `x-goog-stored-content-length`, which every size read now falls back to.
+  - After: 24 of 24 objects verbatim with the right stat size on six providers; GCS's flow and sizes cells (ranged reads
+    included) green.
+- **WebDAV** had the same decoder gap and the same missing `http2`; both fixed with a fake-server test, red first. Its
+  Docker fixture suites weren't rerun (the change only removes decoding, which the crate-alone build never had).
