@@ -228,6 +228,11 @@ pub(crate) struct ProviderProfile {
     /// ignore the pin (live, `DETAILS.md` § "Verified providers"), so off it a copy in
     /// parts HEADs its source before completing (`volume/server_copy.rs`).
     pub enforces_copy_source_pin: bool,
+    /// GCS answers `400 InvalidArgument` to a `CopyObject` pinned to a
+    /// multipart ETag (`"…-2"`), quoted or not, and honours a single-part one
+    /// (live, `live_copy_object_etags`, 2026-10-02), so such a copy goes
+    /// unpinned there (`ops::copy_object`).
+    pub refuses_multipart_copy_pin: bool,
     /// R2 stores keys NFC, so an NFD key and its NFC twin are one object
     /// there. Composing before sending keeps our own comparisons honest.
     pub nfc_keys: bool,
@@ -348,6 +353,7 @@ impl ProviderProfile {
                     [GoogGenerationMatch, CheckThenWrite, GoogGenerationMatch],
                 );
                 gcs.refuses_short_body = true;
+                gcs.refuses_multipart_copy_pin = true;
                 gcs.copies_in_parts = false;
                 gcs.refused_key_chars = KeyChars::LineBreaks;
                 gcs.transcodes_gzip = true;
@@ -411,6 +417,7 @@ impl ProviderProfile {
             cross_bucket_copy: AtomicBool::new(true),
             refuses_short_body: false,
             enforces_copy_source_pin: false,
+            refuses_multipart_copy_pin: false,
             nfc_keys: false,
             refused_key_chars: KeyChars::Any,
             transcodes_gzip: false,

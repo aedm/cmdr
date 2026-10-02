@@ -618,6 +618,57 @@ async fn live_copy_object_etags() {
             );
         }
         report(&live, "CopyObject ETag, the multipart source's upload", said);
+        // GCS refuses a pinned copy of a multipart source: unpinned, and with
+        // the pin unquoted, to tell the pin from the copy.
+        let head = ops::head_object(client.profile(), &live.bucket, &multi).expect("builds");
+        let multi_etag = live
+            .send(&client, head)
+            .await
+            .header("etag")
+            .unwrap_or_default()
+            .to_string();
+        let unquoted = multi_etag.trim_matches('"').to_string();
+        for (label, extra) in [
+            ("unpinned", Vec::new()),
+            (
+                "pinned unquoted",
+                vec![("x-amz-copy-source-if-match", unquoted.as_str())],
+            ),
+        ] {
+            let to = format!("{multi}.{}", label.replace(' ', "-"));
+            let answer = live
+                .send(
+                    &client,
+                    copy_request(&client, (&live.bucket, &multi), (&live.bucket, &to), &extra),
+                )
+                .await;
+            report(
+                &live,
+                &format!("CopyObject of a multipart source, {label}"),
+                verdict(&answer),
+            );
+        }
+        // What the backend sends: its builder pins where the profile lets it.
+        let to = format!("{multi}.built");
+        let built = ops::copy_object(
+            client.profile(),
+            ops::CopySource {
+                bucket: &live.bucket,
+                key: &multi,
+            },
+            Some(&multi_etag),
+            &live.bucket,
+            &to,
+            ops::Overwrite::Replace,
+        )
+        .expect("builds");
+        let answer = live.send(&client, built.request).await;
+        report(&live, "CopyObject of a multipart source, as built", verdict(&answer));
+        assert!(
+            answer.status.is_success(),
+            "[{}] the backend's copy of a multipart source is refused",
+            live.name
+        );
         let to = format!("{single}.wrong-pin");
         let refused = live
             .send(
