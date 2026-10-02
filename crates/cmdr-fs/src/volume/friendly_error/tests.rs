@@ -19,7 +19,7 @@ use crate::volume::friendly_error::git::{FriendlyGitError, FriendlyGitErrorKind}
 // Build an `IoError { raw_os_error: Some(_) }` so the macOS arms in `errno`
 // get exercised end-to-end via `listing_error_from_volume_error`.
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn make_io_error(errno: i32) -> VolumeError {
     VolumeError::IoError {
         message: format!("test error {}", errno),
@@ -634,4 +634,22 @@ fn restricted_empty_root_unknown_volume_returns_none() {
     let path = Path::new("/some/other/path");
     assert!(listing_error_for_restricted_empty_root("root", path).is_none());
     assert!(listing_error_for_restricted_empty_root("cloud-dropbox", path).is_none());
+}
+
+/// Off macOS, the connection-class errnos still classify as transient (read through
+/// `std`'s `ErrorKind`), which is what lets a stalled listing retry them there.
+#[cfg(target_os = "linux")]
+#[test]
+fn linux_timeouts_and_resets_are_transient_and_the_rest_stays_unknown() {
+    let path = Path::new("/mnt/nas");
+    // ETIMEDOUT and ECONNRESET as Linux numbers them.
+    let timed_out = listing_error_from_volume_error(&make_io_error(110), path);
+    assert_eq!(timed_out.category, ErrorCategory::Transient);
+    assert!(matches!(timed_out.reason, ListingErrorReason::ConnectionTimedOutErrno));
+    let reset = listing_error_from_volume_error(&make_io_error(104), path);
+    assert!(matches!(reset.reason, ListingErrorReason::ConnectionReset));
+
+    let unknown = listing_error_from_volume_error(&make_io_error(9999), path);
+    assert_eq!(unknown.category, ErrorCategory::Serious);
+    assert!(matches!(unknown.reason, ListingErrorReason::CouldntReadUnknown { .. }));
 }

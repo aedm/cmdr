@@ -138,12 +138,12 @@ impl Volume for SilentServerVolume {
             match step.answer {
                 Answer::Entries(n) => Ok((0..n).map(entry).collect()),
                 Answer::NotConnected => Err(VolumeError::IoError {
-                    message: "Socket is not connected (os error 57)".to_string(),
-                    raw_os_error: Some(57),
+                    message: "Socket is not connected".to_string(),
+                    raw_os_error: Some(libc::ENOTCONN),
                 }),
                 Answer::TimedOut => Err(VolumeError::IoError {
-                    message: "Operation timed out (os error 60)".to_string(),
-                    raw_os_error: Some(60),
+                    message: "Operation timed out".to_string(),
+                    raw_os_error: Some(libc::ETIMEDOUT),
                 }),
                 Answer::NotFound => Err(VolumeError::NotFound("/".to_string())),
             }
