@@ -511,7 +511,7 @@ const cases: Case[] = [
       // template text around it is the migrated copy this pins.
       message: `This needs up to ${requiredSize}, and the destination has ${availableSize} free.`,
       suggestion:
-        'Files already at the destination may mean it needs less, and if the destination fills up, Cmdr stops and tells you. To be safe, free up some space or choose a different location.',
+        'Files already at the destination may mean the copy needs less space. If the destination fills up, Cmdr stops and tells you. To be safe, free up some space or choose a different location.',
     },
   },
   {
@@ -953,7 +953,7 @@ const cases: Case[] = [
       title: 'Your file is under a new name',
       message: `Folders took the names of 2 of your files, so those files are now under new names. Nothing was thrown away; the technical details below list every one. This needs up to ${requiredSize}, and the destination has ${availableSize} free.`,
       suggestion:
-        'Check the details below for where each file is. Once you’ve moved the folders out of the way, you can rename them back. Files already at the destination may mean it needs less, and if the destination fills up, Cmdr stops and tells you. To be safe, free up some space or choose a different location.',
+        'Check the details below for where each file is. Once you’ve moved the folders out of the way, you can rename them back. Files already at the destination may mean the copy needs less space. If the destination fills up, Cmdr stops and tells you. To be safe, free up some space or choose a different location.',
     },
   },
   {
