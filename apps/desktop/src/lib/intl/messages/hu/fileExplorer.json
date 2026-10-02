@@ -641,6 +641,14 @@
   "@fileExplorer.listingStalled.detail": {
     "sourceHash": "3d5ca69"
   },
+  "fileExplorer.listingStalled.detailServer": "Nem válaszol a szerver, amelyen ez a mappa van. A Cmdr a háttérben tovább próbálkozik, és megnyitja a mappát, amint válasz érkezik.",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "Nem válaszol a meghajtó, amelyen ez a mappa van. A Cmdr a háttérben tovább próbálkozik, és megnyitja a mappát, amint válasz érkezik.",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
   "fileExplorer.listingStalled.tryAgain": "Próbáld újra",
   "@fileExplorer.listingStalled.tryAgain": {
     "sourceHash": "d8b8392"

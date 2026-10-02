@@ -642,6 +642,14 @@
   "@fileExplorer.listingStalled.detail": {
     "sourceHash": "3d5ca69"
   },
+  "fileExplorer.listingStalled.detailServer": "De server waarop deze map staat reageert niet. Cmdr blijft het op de achtergrond proberen en opent de map zodra er antwoord komt.",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "De schijf waarop deze map staat reageert niet. Cmdr blijft het op de achtergrond proberen en opent de map zodra er antwoord komt.",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
   "fileExplorer.listingStalled.tryAgain": "Probeer opnieuw",
   "@fileExplorer.listingStalled.tryAgain": {
     "sourceHash": "d8b8392"

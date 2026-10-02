@@ -639,6 +639,14 @@
   "@fileExplorer.listingStalled.detail": {
     "sourceHash": "3d5ca69"
   },
+  "fileExplorer.listingStalled.detailServer": "這個資料夾所在的伺服器沒有回應。Cmdr 會在背景繼續嘗試，一有回應就開啟這個資料夾。",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "這個資料夾所在的磁碟機沒有回應。Cmdr 會在背景繼續嘗試，一有回應就開啟這個資料夾。",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
   "fileExplorer.listingStalled.tryAgain": "再試一次",
   "@fileExplorer.listingStalled.tryAgain": {
     "sourceHash": "d8b8392"

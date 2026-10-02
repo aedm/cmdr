@@ -145,6 +145,10 @@
   "@indexing.eta.almostDone": {
     "sourceHash": "506f162"
   },
+  "indexing.eta.almostDoneMidSentence": "快好了",
+  "@indexing.eta.almostDoneMidSentence": {
+    "sourceHash": "1d2fb48"
+  },
   "indexing.eta.secondsLeft": "剩餘 {secondsText} 秒",
   "@indexing.eta.secondsLeft": {
     "sourceHash": "3a67288"

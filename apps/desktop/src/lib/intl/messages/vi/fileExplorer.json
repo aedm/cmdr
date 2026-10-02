@@ -641,6 +641,14 @@
   "@fileExplorer.listingStalled.detail": {
     "sourceHash": "3d5ca69"
   },
+  "fileExplorer.listingStalled.detailServer": "Máy chủ chứa thư mục này không phản hồi. Cmdr vẫn tiếp tục thử ở chế độ nền và sẽ mở thư mục ngay khi có phản hồi.",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "Ổ đĩa chứa thư mục này không phản hồi. Cmdr vẫn tiếp tục thử ở chế độ nền và sẽ mở thư mục ngay khi có phản hồi.",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
   "fileExplorer.listingStalled.tryAgain": "Thử lại",
   "@fileExplorer.listingStalled.tryAgain": {
     "sourceHash": "d8b8392"

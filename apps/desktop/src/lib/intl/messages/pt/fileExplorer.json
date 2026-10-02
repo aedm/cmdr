@@ -641,6 +641,14 @@
   "@fileExplorer.listingStalled.detail": {
     "sourceHash": "3d5ca69"
   },
+  "fileExplorer.listingStalled.detailServer": "O servidor desta pasta não está respondendo. O Cmdr continua tentando em segundo plano e abre a pasta assim que houver resposta.",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "O disco desta pasta não está respondendo. O Cmdr continua tentando em segundo plano e abre a pasta assim que houver resposta.",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
   "fileExplorer.listingStalled.tryAgain": "Tentar novamente",
   "@fileExplorer.listingStalled.tryAgain": {
     "sourceHash": "d8b8392"

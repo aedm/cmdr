@@ -641,6 +641,14 @@
   "@fileExplorer.listingStalled.detail": {
     "sourceHash": "3d5ca69"
   },
+  "fileExplorer.listingStalled.detailServer": "Servern som mappen ligger på svarar inte. Cmdr fortsätter att försöka i bakgrunden och öppnar mappen så snart det kommer ett svar.",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "Enheten som mappen ligger på svarar inte. Cmdr fortsätter att försöka i bakgrunden och öppnar mappen så snart det kommer ett svar.",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
   "fileExplorer.listingStalled.tryAgain": "Försök igen",
   "@fileExplorer.listingStalled.tryAgain": {
     "sourceHash": "d8b8392"

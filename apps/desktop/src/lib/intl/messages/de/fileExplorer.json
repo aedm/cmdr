@@ -641,6 +641,14 @@
   "@fileExplorer.listingStalled.detail": {
     "sourceHash": "3d5ca69"
   },
+  "fileExplorer.listingStalled.detailServer": "Der Server mit diesem Ordner antwortet nicht. Cmdr versucht es im Hintergrund weiter und öffnet den Ordner, sobald eine Antwort kommt.",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "Das Laufwerk mit diesem Ordner antwortet nicht. Cmdr versucht es im Hintergrund weiter und öffnet den Ordner, sobald eine Antwort kommt.",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
   "fileExplorer.listingStalled.tryAgain": "Erneut versuchen",
   "@fileExplorer.listingStalled.tryAgain": {
     "sourceHash": "d8b8392"

@@ -146,6 +146,10 @@
   "@indexing.eta.almostDone": {
     "sourceHash": "506f162"
   },
+  "indexing.eta.almostDoneMidSentence": "quase pronto",
+  "@indexing.eta.almostDoneMidSentence": {
+    "sourceHash": "1d2fb48"
+  },
   "indexing.eta.secondsLeft": "{secondsText}s restantes",
   "@indexing.eta.secondsLeft": {
     "sourceHash": "3a67288"

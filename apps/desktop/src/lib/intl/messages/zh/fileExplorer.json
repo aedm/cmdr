@@ -639,6 +639,14 @@
   "@fileExplorer.listingStalled.detail": {
     "sourceHash": "3d5ca69"
   },
+  "fileExplorer.listingStalled.detailServer": "这个文件夹所在的服务器没有响应。Cmdr 会在后台继续尝试，一有响应就打开这个文件夹。",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "这个文件夹所在的驱动器没有响应。Cmdr 会在后台继续尝试，一有响应就打开这个文件夹。",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
   "fileExplorer.listingStalled.tryAgain": "重试",
   "@fileExplorer.listingStalled.tryAgain": {
     "sourceHash": "d8b8392"

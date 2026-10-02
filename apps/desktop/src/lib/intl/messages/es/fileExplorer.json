@@ -641,6 +641,14 @@
   "@fileExplorer.listingStalled.detail": {
     "sourceHash": "3d5ca69"
   },
+  "fileExplorer.listingStalled.detailServer": "El servidor de esta carpeta no responde. Cmdr sigue intentándolo en segundo plano y abrirá la carpeta en cuanto responda.",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "La unidad de esta carpeta no responde. Cmdr sigue intentándolo en segundo plano y abrirá la carpeta en cuanto responda.",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
   "fileExplorer.listingStalled.tryAgain": "Reintentar",
   "@fileExplorer.listingStalled.tryAgain": {
     "sourceHash": "d8b8392"

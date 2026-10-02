@@ -641,6 +641,14 @@
   "@fileExplorer.listingStalled.detail": {
     "sourceHash": "3d5ca69"
   },
+  "fileExplorer.listingStalled.detailServer": "Le serveur qui contient ce dossier ne répond pas. Cmdr continue d’essayer en arrière-plan et ouvre le dossier dès qu’une réponse arrive.",
+  "@fileExplorer.listingStalled.detailServer": {
+    "sourceHash": "f8f8837"
+  },
+  "fileExplorer.listingStalled.detailDrive": "Le disque qui contient ce dossier ne répond pas. Cmdr continue d’essayer en arrière-plan et ouvre le dossier dès qu’une réponse arrive.",
+  "@fileExplorer.listingStalled.detailDrive": {
+    "sourceHash": "e2f3046"
+  },
   "fileExplorer.listingStalled.tryAgain": "Réessayer",
   "@fileExplorer.listingStalled.tryAgain": {
     "sourceHash": "d8b8392"
