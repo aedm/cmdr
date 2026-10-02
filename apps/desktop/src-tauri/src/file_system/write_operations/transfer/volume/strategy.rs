@@ -20,7 +20,8 @@ use super::super::staged_write::StagedWrite;
 use super::super::recovered_name::FinalizeFailure;
 use super::super::retry;
 pub(super) use super::super::staged_write::{
-    LandingName, Replaces, WriteStaging, failed_write_leaves_ours_at, resolve_staging, staging_for,
+    LandingName, Replaces, WriteStaging, failed_write_leaves_ours_at, note_pending_for_local_dest, resolve_staging,
+    staging_for,
 };
 use super::super::transfer_driver::{LeafProgressLedger, SourceProgress};
 use super::super::transfer_probe::{
@@ -30,7 +31,7 @@ use super::merge::copy_directory_streaming;
 use super::merge_ctx::{CreatedPaths, MergeCtx};
 use super::preflight::SourceFileFacts;
 use super::server_side_copy::try_server_side_copy;
-use super::transfer_error::{AtPath, PathedVolumeError};
+use super::transfer_error::{AtPath, PathedVolumeError, hard_abort_error};
 use crate::file_system::volume::{Volume, VolumeError, VolumeReadStream};
 
 /// Debounce window for the foreground auto-yield: after foreground work drains,
@@ -619,17 +620,6 @@ async fn cancelled_or_never(token: Option<&tokio_util::sync::CancellationToken>)
     }
 }
 
-/// What tier 2 reports when it ends a wait.
-///
-/// A `Cancelled`, deliberately, and it decides three things at once: `retry.rs`
-/// never re-runs a cancel, the post-loop keys `write-cancelled` off a
-/// `Cancelled`-shaped error (so an abort closes the dialog instead of logging a
-/// failed transfer), and no caller mistakes it for a transport fault worth
-/// reporting to the user.
-pub(super) fn hard_abort_error(path: &Path) -> VolumeError {
-    VolumeError::Cancelled(format!("stopped waiting for {} so the app can quit", path.display()))
-}
-
 /// How one attempt at a file's write ended.
 enum WriteAttemptOutcome {
     /// The destination's `write_from_stream` returned, one way or the other.
@@ -638,21 +628,6 @@ enum WriteAttemptOutcome {
     /// backend ran none of its own cleanup. ❌ Nothing may go back through that
     /// connection now; the staged partial is left to the sweep.
     HardAborted,
-}
-
-/// Resolve `dest_path` against `dest_volume.local_path()` and register it
-/// with the downloads watcher's ignore set. Skips silently when
-/// `dest_volume` isn't local-FS-backed (MTP, SMB, in-memory): those paths
-/// would never trigger the watcher anyway, and synthesizing a non-local
-/// path into the ignore set would just churn the map for no benefit.
-pub(super) fn note_pending_for_local_dest(dest_volume: &Arc<dyn Volume>, dest_path: &Path) {
-    let Some(root) = dest_volume.local_path() else {
-        return;
-    };
-    // The same anchoring `LocalPosixVolume::resolve` applies, so the path we
-    // register matches the one `write_from_stream` will hit.
-    let absolute = cmdr_fs::volume::root_anchored(&root, dest_path);
-    crate::downloads::note_pending_write_for_cmdr(&absolute);
 }
 
 #[cfg(test)]

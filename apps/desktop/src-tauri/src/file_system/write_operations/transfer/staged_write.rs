@@ -684,6 +684,21 @@ pub(super) fn resolve_staging(requested: WriteStaging, lands_whole: bool) -> Wri
     }
 }
 
+/// Resolve `dest_path` against `dest_volume.local_path()` and register it
+/// with the downloads watcher's ignore set. Skips silently when
+/// `dest_volume` isn't local-FS-backed (MTP, SMB, in-memory): those paths
+/// would never trigger the watcher anyway, and synthesizing a non-local
+/// path into the ignore set would just churn the map for no benefit.
+pub(super) fn note_pending_for_local_dest(dest_volume: &Arc<dyn Volume>, dest_path: &Path) {
+    let Some(root) = dest_volume.local_path() else {
+        return;
+    };
+    // The same anchoring `LocalPosixVolume::resolve` applies, so the path we
+    // register matches the one `write_from_stream` will hit.
+    let absolute = cmdr_fs::volume::root_anchored(&root, dest_path);
+    crate::downloads::note_pending_write_for_cmdr(&absolute);
+}
+
 #[cfg(test)]
 #[path = "staged_write_tests.rs"]
 mod tests;

@@ -421,6 +421,17 @@ pub(in crate::file_system::write_operations) fn map_volume_error(
     }
 }
 
+/// What tier 2 reports when it ends a wait.
+///
+/// A `Cancelled`, deliberately, and it decides three things at once: `retry.rs`
+/// never re-runs a cancel, the post-loop keys `write-cancelled` off a
+/// `Cancelled`-shaped error (so an abort closes the dialog instead of logging a
+/// failed transfer), and no caller mistakes it for a transport fault worth
+/// reporting to the user.
+pub(super) fn hard_abort_error(path: &Path) -> VolumeError {
+    VolumeError::Cancelled(format!("stopped waiting for {} so the app can quit", path.display()))
+}
+
 #[cfg(test)]
 #[path = "transfer_error_tests.rs"]
 mod tests;
