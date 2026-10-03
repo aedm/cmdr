@@ -58,7 +58,7 @@ All three are fixed: the AI key in `0397ad6a2`, focus-settings in `df944874e`, a
   reachable at all. The open media issues (#223–#226) cover faces and captions, not these. Decide whether a "Find
   duplicate photos" view is planned. Tracked in #360.
 - **`greet`**: the Tauri template's command, kept alive only by `lib/ipc/test-helpers.test.ts`, the mock harness's own
-  smoke test. Deleted in `f9be052bf`; that test now drives `has_font_metrics`.
+  smoke test. Deleted in `7265cacc5`; that test now drives `has_font_metrics`.
 
 ## DEAD (deleted in `128e9f10b`)
 
