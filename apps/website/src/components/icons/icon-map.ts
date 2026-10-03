@@ -12,6 +12,7 @@ import Bell from '~icons/lucide/bell'
 import Brain from '~icons/lucide/brain'
 import ChartPie from '~icons/lucide/chart-pie'
 import Cloud from '~icons/lucide/cloud'
+import Container from '~icons/lucide/container'
 import Copy from '~icons/lucide/copy'
 import Database from '~icons/lucide/database'
 import Eye from '~icons/lucide/eye'
@@ -49,6 +50,7 @@ export const ICONS = {
   brain: Brain,
   'chart-pie': ChartPie,
   cloud: Cloud,
+  container: Container,
   copy: Copy,
   database: Database,
   eye: Eye,

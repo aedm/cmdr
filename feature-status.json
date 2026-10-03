@@ -74,6 +74,12 @@
       "note": "Open Nextcloud, ownCloud, Synology, and other WebDAV servers like folders, with a root and start folder and passwords in your Keychain. Not yet tested against many real-world servers."
     },
     {
+      "id": "s3",
+      "name": "S3 storage",
+      "status": "alpha",
+      "note": "Browse, copy, move, rename, and delete in buckets on AWS, R2, B2, Wasabi, Hetzner, Google Cloud Storage, Spaces, or any S3-compatible server, with cost estimates at list prices and share links. Tested live on all seven providers, but brand new."
+    },
+    {
       "id": "git-browser",
       "name": "Git browser",
       "status": "beta",
@@ -161,7 +167,7 @@
       "id": "more-file-systems",
       "name": "More file systems",
       "status": "planned",
-      "note": "S3 buckets, NFS, and more."
+      "note": "NFS, SCP, Google Drive, Dropbox, OneDrive, and more."
     },
     {
       "id": "ai-tell-me",
