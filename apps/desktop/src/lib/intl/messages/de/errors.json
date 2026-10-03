@@ -1589,9 +1589,9 @@
   "@errors.write.insufficientSpace.message": {
     "sourceHash": "931f1e0"
   },
-  "errors.write.insufficientSpace.suggestion": "Wenn am Ziel schon Dateien liegen, braucht der Vorgang vielleicht weniger. Wird das Ziel voll, stoppt Cmdr und sagt dir Bescheid. Zur Sicherheit gib etwas Speicherplatz frei oder wähle einen anderen Ort.",
+  "errors.write.insufficientSpace.suggestion": "Wenn am Ziel schon Dateien liegen, braucht das Kopieren vielleicht weniger Speicherplatz. Wird das Ziel voll, stoppt Cmdr und sagt dir Bescheid. Zur Sicherheit gib etwas Speicherplatz frei oder wähle einen anderen Ort.",
   "@errors.write.insufficientSpace.suggestion": {
-    "sourceHash": "a5308c8"
+    "sourceHash": "91fafd3"
   },
   "errors.write.destinationFull.title": "Ziel ist voll",
   "@errors.write.destinationFull.title": {

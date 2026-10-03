@@ -1589,9 +1589,9 @@
   "@errors.write.insufficientSpace.message": {
     "sourceHash": "931f1e0"
   },
-  "errors.write.insufficientSpace.suggestion": "Если часть файлов уже есть в целевом месте, понадобится меньше, а если место все же закончится, Cmdr остановится и сообщит об этом. Для надежности освободите немного места или выберите другое место назначения.",
+  "errors.write.insufficientSpace.suggestion": "Если часть файлов уже есть в целевом месте, для копирования может понадобиться меньше места. Если место назначения все же заполнится, Cmdr остановится и сообщит об этом. Для надежности освободите немного места или выберите другое место назначения.",
   "@errors.write.insufficientSpace.suggestion": {
-    "sourceHash": "a5308c8"
+    "sourceHash": "91fafd3"
   },
   "errors.write.destinationFull.title": "Целевое место заполнено",
   "@errors.write.destinationFull.title": {

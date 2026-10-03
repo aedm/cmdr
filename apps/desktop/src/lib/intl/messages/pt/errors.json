@@ -1589,9 +1589,9 @@
   "@errors.write.insufficientSpace.message": {
     "sourceHash": "931f1e0"
   },
-  "errors.write.insufficientSpace.suggestion": "Arquivos que já estão no destino podem reduzir o espaço necessário, e se o destino encher, o Cmdr interrompe a cópia e avisa você. Por segurança, libere algum espaço ou escolha um local diferente.",
+  "errors.write.insufficientSpace.suggestion": "Se já houver arquivos no destino, a cópia pode precisar de menos espaço. Se o destino encher, o Cmdr interrompe a cópia e avisa você. Por segurança, libere algum espaço ou escolha um local diferente.",
   "@errors.write.insufficientSpace.suggestion": {
-    "sourceHash": "a5308c8"
+    "sourceHash": "91fafd3"
   },
   "errors.write.destinationFull.title": "O destino está cheio",
   "@errors.write.destinationFull.title": {

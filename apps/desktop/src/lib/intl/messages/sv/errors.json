@@ -1589,9 +1589,9 @@
   "@errors.write.insufficientSpace.message": {
     "sourceHash": "931f1e0"
   },
-  "errors.write.insufficientSpace.suggestion": "Filer som redan finns på målet kan göra att det behövs mindre, och om målet blir fullt stoppar Cmdr och säger till. Säkrast är att frigöra utrymme eller välja en annan plats.",
+  "errors.write.insufficientSpace.suggestion": "Filer som redan finns på målet kan göra att kopieringen behöver mindre utrymme. Om målet blir fullt stoppar Cmdr och säger till. Säkrast är att frigöra utrymme eller välja en annan plats.",
   "@errors.write.insufficientSpace.suggestion": {
-    "sourceHash": "a5308c8"
+    "sourceHash": "91fafd3"
   },
   "errors.write.destinationFull.title": "Målet är fullt",
   "@errors.write.destinationFull.title": {

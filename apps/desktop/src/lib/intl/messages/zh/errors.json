@@ -1588,9 +1588,9 @@
   "@errors.write.insufficientSpace.message": {
     "sourceHash": "931f1e0"
   },
-  "errors.write.insufficientSpace.suggestion": "如果目标位置已有部分文件，实际需要的空间可能更少；如果目标位置被占满，Cmdr 会停止并告诉你。稳妥起见，可以腾出一些空间，或者换一个位置。",
+  "errors.write.insufficientSpace.suggestion": "如果目标位置已有部分文件，拷贝实际需要的空间可能更少。如果目标位置被占满，Cmdr 会停止并告诉你。稳妥起见，可以腾出一些空间，或者换一个位置。",
   "@errors.write.insufficientSpace.suggestion": {
-    "sourceHash": "a5308c8"
+    "sourceHash": "91fafd3"
   },
   "errors.write.destinationFull.title": "目标位置已满",
   "@errors.write.destinationFull.title": {

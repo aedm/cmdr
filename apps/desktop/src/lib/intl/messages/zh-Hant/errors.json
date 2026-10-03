@@ -1589,9 +1589,9 @@
   "@errors.write.insufficientSpace.message": {
     "sourceHash": "931f1e0"
   },
-  "errors.write.insufficientSpace.suggestion": "如果目標位置上已經有部分檔案，實際需要的空間可能比較少。如果目標位置滿了，Cmdr 會停下來並告訴你。保險起見，先騰出一些空間，或者換一個位置。",
+  "errors.write.insufficientSpace.suggestion": "如果目標位置上已經有部分檔案，複製實際需要的空間可能比較少。如果目標位置滿了，Cmdr 會停下來並告訴你。保險起見，先騰出一些空間，或者換一個位置。",
   "@errors.write.insufficientSpace.suggestion": {
-    "sourceHash": "a5308c8"
+    "sourceHash": "91fafd3"
   },
   "errors.write.destinationFull.title": "目標位置已滿",
   "@errors.write.destinationFull.title": {

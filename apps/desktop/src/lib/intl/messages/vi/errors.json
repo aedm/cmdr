@@ -1589,9 +1589,9 @@
   "@errors.write.insufficientSpace.message": {
     "sourceHash": "931f1e0"
   },
-  "errors.write.insufficientSpace.suggestion": "Các tệp đã có sẵn tại đích có thể khiến cần ít dung lượng hơn, và nếu đích bị đầy, Cmdr sẽ dừng lại và báo cho bạn. Để an toàn, hãy giải phóng dung lượng hoặc chọn một vị trí khác.",
+  "errors.write.insufficientSpace.suggestion": "Các tệp đã có sẵn tại đích có thể khiến việc sao chép cần ít dung lượng hơn. Nếu đích bị đầy, Cmdr sẽ dừng lại và báo cho bạn. Để an toàn, hãy giải phóng dung lượng hoặc chọn một vị trí khác.",
   "@errors.write.insufficientSpace.suggestion": {
-    "sourceHash": "a5308c8"
+    "sourceHash": "91fafd3"
   },
   "errors.write.destinationFull.title": "Đích đã đầy",
   "@errors.write.destinationFull.title": {

@@ -1589,9 +1589,9 @@
   "@errors.write.insufficientSpace.message": {
     "sourceHash": "931f1e0"
   },
-  "errors.write.insufficientSpace.suggestion": "Ha a célhelyen már vannak fájlok, lehet, hogy kevesebb hely is elég. Ha pedig a célhely megtelik, a Cmdr leáll és szól. A biztonság kedvéért szabadíts fel helyet, vagy válassz másik helyet.",
+  "errors.write.insufficientSpace.suggestion": "Ha a célhelyen már vannak fájlok, lehet, hogy a másoláshoz kevesebb hely is elég. Ha a célhely megtelik, a Cmdr leáll és szól. A biztonság kedvéért szabadíts fel helyet, vagy válassz másik helyet.",
   "@errors.write.insufficientSpace.suggestion": {
-    "sourceHash": "a5308c8"
+    "sourceHash": "91fafd3"
   },
   "errors.write.destinationFull.title": "A célhely megtelt",
   "@errors.write.destinationFull.title": {
