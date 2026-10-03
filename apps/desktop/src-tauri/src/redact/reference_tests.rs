@@ -92,6 +92,47 @@ fn a_space_containing_url_never_hides_the_path_after_it() {
     }
 }
 
+/// A production Svelte build throws `Error("https://svelte.dev/e/<code>")` and nothing else, so
+/// tokenizing that URL erased the only clue an uncaught frontend error carries (ERR-DAN3Q's
+/// `each_key_duplicate` took a rebuild and a stack-offset lookup to name). Only the exact public
+/// shape survives: any userinfo, port, query, fragment, extra segment, or other host is redacted.
+#[test]
+fn svelte_error_code_urls_survive_but_only_in_their_exact_shape() {
+    let kept = [
+        r#"ERROR FE:uncaught  Uncaught error at tauri://localhost/_app/immutable/chunks/D6pBjj6a.js:1:14434: detail="Error: https://svelte.dev/e/each_key_duplicate""#,
+        "Error: https://svelte.dev/e/effect_update_depth_exceeded.",
+        "https://svelte.dev/e/state_unsafe_mutation",
+    ];
+    for input in kept {
+        assert!(r(input).contains("https://svelte.dev/e/"), "unsalted: {:?}", r(input));
+        assert_eq!(r(input), report_shape(input), "the two policies split for {input:?}");
+        let code = input
+            .split("svelte.dev/e/")
+            .nth(1)
+            .expect("code")
+            .trim_end_matches(['"', '.']);
+        assert!(context().redact_line(input).contains(code), "report lost {code:?}");
+    }
+
+    let redacted = [
+        ("https://svelte.dev/e/Alice", "https://<host>/<dir>/<dir>"),
+        ("https://svelte.dev/e/code/secret", "https://<host>/<dir>/<dir>/<dir>"),
+        (
+            "https://svelte.dev/e/code?owner=ada",
+            "https://<host>/<dir>/<dir>?<query>=<query>",
+        ),
+        ("https://svelte.dev/e/code#ada", "https://<host>/<dir>/<dir>#<fragment>"),
+        ("https://ada@svelte.dev/e/code", "https://<user>@<host>/<dir>/<dir>"),
+        ("https://svelte.dev:8443/e/code", "https://<host>:8443/<dir>/<dir>"),
+        ("https://svelte.dev.evil.test/e/code", "https://<host>/<dir>/<dir>"),
+        ("http://svelte.dev/e/code", "http://<host>/<dir>/<dir>"),
+        ("https://svelte.dev/docs/code", "https://<host>/<dir>/<dir>"),
+    ];
+    for (input, expected) in redacted {
+        assert_eq!(report_shape(input), expected, "input: {input:?}");
+    }
+}
+
 fn token(output: &str, kind: &str) -> String {
     let prefix = format!("<{kind}:");
     output

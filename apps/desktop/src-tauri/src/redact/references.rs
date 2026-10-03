@@ -10,6 +10,9 @@ use super::paths::{has_extension_like_suffix, redact_leaf};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 pub(super) fn redact_remote_url(reference: &str, context: Option<&RedactionContext>) -> String {
+    if is_svelte_error_url(reference) {
+        return reference.to_string();
+    }
     let Some((scheme, remainder)) = reference.split_once("://") else {
         return reference.to_string();
     };
@@ -35,6 +38,19 @@ pub(super) fn redact_remote_url(reference: &str, context: Option<&RedactionConte
         context,
     ));
     out
+}
+
+/// A production Svelte error, `https://svelte.dev/e/<snake_case_code>`, is the whole message an
+/// uncaught frontend error carries, and it names a public error code rather than anyone's data.
+/// Only that exact shape passes: a port, userinfo, query, fragment, or extra segment means it
+/// isn't one Svelte built, and it gets the full remote-URL treatment.
+fn is_svelte_error_url(reference: &str) -> bool {
+    reference.strip_prefix("https://svelte.dev/e/").is_some_and(|code| {
+        code.starts_with(|c: char| c.is_ascii_lowercase())
+            && code
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+    })
 }
 
 pub(super) fn redact_scheme_less(reference: &str, context: Option<&RedactionContext>) -> String {

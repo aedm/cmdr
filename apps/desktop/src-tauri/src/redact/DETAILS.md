@@ -52,6 +52,12 @@ public). It tokenizes username, password, hostname/address, SMB share, every pat
 fragment. A `.local` suffix survives because it describes discovery scope, not the host label. Remote `Downloads` and
 other local-folder allowlist words do not survive.
 
+The one URL that survives whole is a production Svelte error, `https://svelte.dev/e/<snake_case_code>`
+(`is_svelte_error_url`). It's the entire message of an uncaught frontend error and names a public error code, so
+tokenizing it left reports saying only "some Svelte error" (ERR-DAN3Q needed a rebuild and a stack-offset lookup to
+read `each_key_duplicate`). The match is exact: any userinfo, port, query, fragment, uppercase, or extra segment fails
+it and the URL gets the normal treatment. Pinned by `svelte_error_code_urls_survive_but_only_in_their_exact_shape`.
+
 `url::Url` handles valid authorities. Logs also contain malformed-but-recognizable values, so a lexical splitter covers
 the same bounded `scheme://authority/path?query#fragment` shape when standards parsing rejects it. Percent-decoding is
 for token identity and extension recognition only; decoded source text is never emitted. This keeps NFC/NFD and encoded
