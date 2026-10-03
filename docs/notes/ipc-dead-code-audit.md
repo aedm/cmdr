@@ -50,15 +50,15 @@ All three are fixed: the AI key in `0397ad6a2`, focus-settings in `df944874e`, a
 
 - **`clearRecentSearches`, `clearRecentSelections`, and `clear_recent_paths` (no wrapper)**: "clear all" for the three
   recents stores (Search ⌘H, Selection, Go to folder). Built with the stores (`1f03ff49e` 2026-05-22, `7ce90bb35`
-  2026-05-23) and never wired; each list removes entries one at a time. No issue. A "Clear history" row in each popover
-  would use them; otherwise delete all three.
+  2026-05-23) and never wired; each list removes entries one at a time. A "Clear history" row in each popover would use
+  them; otherwise delete all three. Tracked in a GitHub issue.
 - **`media_index_dedup_clusters` and `media_index_search_tag` (no wrappers)**: the M2 media-index backend (`3a43ff32e`,
   2026-07-13) grew near-duplicate grouping and a tag-score filter, and neither ever got a surface. Tag search is
   reachable through MCP `search_photos` (it calls the crate's `images_with_tag` directly); duplicate finding isn't
   reachable at all. The open media issues (#223–#226) cover faces and captions, not these. Decide whether a "Find
-  duplicate photos" view is planned.
+  duplicate photos" view is planned. Tracked in a GitHub issue.
 - **`greet`**: the Tauri template's command, kept alive only by `lib/ipc/test-helpers.test.ts`, the mock harness's own
-  smoke test. Deleting it means pointing that test at another trivial command.
+  smoke test. Deleted in `f9be052bf`; that test now drives `has_font_metrics`.
 
 ## DEAD (deleted in `128e9f10b`)
 
