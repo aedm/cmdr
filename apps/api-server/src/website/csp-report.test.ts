@@ -141,6 +141,19 @@ describe('isActionableViolation', () => {
       isActionableViolation({ ...font, sourceFile: 'https://getcmdr.com/ph/static/1.435.3/posthog-recorder.js' }),
     ).toBe(false)
   })
+
+  it("ignores Paddle.js loading Retain's script, which we block on purpose", () => {
+    const retain = {
+      ...base,
+      directive: 'script-src-elem',
+      blockedUrl: 'https://public.profitwell.com/js/profitwell.js',
+    }
+    expect(isActionableViolation(retain)).toBe(false)
+    expect(isActionableViolation({ ...retain, directive: 'script-src' })).toBe(false)
+    // Only that script: anything else from the origin still alerts.
+    expect(isActionableViolation({ ...retain, directive: 'connect-src' })).toBe(true)
+    expect(isActionableViolation({ ...retain, blockedUrl: 'https://public.profitwell.com/js/other.js' })).toBe(true)
+  })
 })
 
 describe('POST /csp-report', () => {

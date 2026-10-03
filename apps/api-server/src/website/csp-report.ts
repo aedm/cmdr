@@ -23,6 +23,7 @@ const alertDedupeSeconds = 24 * 60 * 60
 
 const ourPageHosts = new Set(['getcmdr.com', 'www.getcmdr.com'])
 const reportAllowedOrigins = new Set(['https://getcmdr.com', 'https://www.getcmdr.com'])
+const paddleRetainScriptUrl = 'https://public.profitwell.com/js/profitwell.js'
 
 export interface CspViolation {
   documentUrl: string
@@ -86,9 +87,14 @@ function parseHttpUrl(value: string | undefined): URL | null {
  * `font-src` never alerts: the site self-hosts every font, so a blocked font is always an
  * extension's or a browser's, and some arrive attributed to our own scripts (PostHog's recorder
  * re-applies injected styles), which the source-file test can't catch.
+ *
+ * Paddle Retain's script is blocked on purpose: Paddle.js on a live account loads it on every page
+ * that initializes checkout, with no setting to stop it, and we pass no `pwCustomer`, so Retain has
+ * nothing to do there. Allowing it would add a tracker the privacy policy doesn't cover.
  */
 export function isActionableViolation(v: CspViolation): boolean {
   if (v.directive === 'font-src') return false
+  if (v.directive.startsWith('script-src') && withoutQuery(v.blockedUrl) === paddleRetainScriptUrl) return false
   const page = parseHttpUrl(v.documentUrl)
   if (!page || page.protocol !== 'https:' || !ourPageHosts.has(page.hostname)) return false
   if (!parseHttpUrl(v.blockedUrl)) return false

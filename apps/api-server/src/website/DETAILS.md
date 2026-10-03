@@ -87,9 +87,12 @@ volume is extensions injecting scripts and styles. `isActionableViolation` keeps
 getcmdr.com (`https`), the blocked value is an `http(s)` URL (not `inline`, `eval`, `data`, `blob`, or an extension
 resource), and the source file, when given, is an `http(s)` URL (not extension code). `font-src` never alerts: every
 font is self-hosted, so a blocked one is always an extension's or a browser's (Perplexity's, scite's, Google Fonts), and
-some arrive attributed to our own PostHog recorder, which re-applies injected styles. The Discord alert then fires once
-per `(directive, blocked origin)` a day, deduped in `CSP_ALERTS`. Every actionable report also goes to the Workers log
-(`console.warn`), so the count is there even when Discord stays quiet.
+some arrive attributed to our own PostHog recorder, which re-applies injected styles. Paddle Retain's `profitwell.js`
+never alerts either (only that script URL, only under `script-src*`): Paddle.js loads it on every live checkout page
+with no setting to stop it, we pass no `pwCustomer` so Retain has no work there, and allowing it would add a tracker the
+privacy policy doesn't cover. The Discord alert then fires once per `(directive, blocked origin)` a day, deduped in
+`CSP_ALERTS`. Every actionable report also goes to the Workers log (`console.warn`), so the count is there even when
+Discord stays quiet.
 
 **Privacy:** nothing about the visitor is stored. The KV key holds a directive and an origin, the IP only feeds the rate
 limiter, and page and blocked URLs lose their query strings before they reach the log or Discord.
