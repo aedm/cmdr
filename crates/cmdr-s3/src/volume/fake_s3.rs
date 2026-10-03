@@ -16,8 +16,8 @@
 //!   [`FakeS3::replace_after_head`] stands in for another writer replacing a
 //!   source between the copy's HEAD and the copy;
 //! - [`FakeS3::read_at`]: it reads request bodies at a set rate, a slow uplink
-//!   a pause can land in the middle of, and counts every body byte as it
-//!   arrives ([`FakeS3::body_bytes`]).
+//!   a pause can land in the middle of, until [`FakeS3::read_freely`], and
+//!   counts every body byte as it arrives ([`FakeS3::body_bytes`]).
 //!
 //! It speaks path style over plain HTTP, one request per connection, and
 //! knows HEAD, PUT, DELETE, `ListObjectsV2`, and the multipart calls. A cell
@@ -157,6 +157,12 @@ impl FakeS3 {
     /// connection.
     pub(super) fn read_at(&self, bytes_per_second: usize) {
         self.world.lock_ignore_poison().read_rate = Some(bytes_per_second);
+    }
+
+    /// From now on, every request body is read as fast as it comes, the
+    /// connections already reading included.
+    pub(super) fn read_freely(&self) {
+        self.world.lock_ignore_poison().read_rate = None;
     }
 
     /// Every request body byte that has arrived so far, cut-off bodies too.

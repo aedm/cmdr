@@ -15,6 +15,7 @@ use std::time::Duration;
 
 use cmdr_fs::volume::scan_stop::TestScanStop;
 use cmdr_fs::volume::{ScanStop, ScanStopSignal, StreamLength, Volume, VolumeError, VolumeReadStream, WriteMode};
+use tokio::sync::Notify;
 
 use super::S3Volume;
 use super::fake_s3::FakeS3;
@@ -77,28 +78,47 @@ fn pattern(len: usize) -> Vec<u8> {
     (0..len).map(|i| (i % 251) as u8).collect()
 }
 
-/// Starts a write of `source` to `key`, pausing the operation once progress
-/// passes `pause_past` bytes (`None`: the source pauses it, or nobody does),
-/// and Cancelling once `cancel` is set.
+/// Pauses the operation once progress passes `past` bytes, and says so on
+/// `raised`.
+struct PauseAt {
+    past: u64,
+    raised: Arc<Notify>,
+}
+
+impl PauseAt {
+    fn past(past: usize) -> Self {
+        Self {
+            past: past as u64,
+            raised: Arc::default(),
+        }
+    }
+}
+
+/// Starts a write of `source` to `key`, pausing the operation at `pause_at`
+/// (`None`: the source pauses it, or nobody does), and Cancelling once
+/// `cancel` is set.
 fn start_write(
     volume: &Arc<S3Volume>,
     key: &str,
     source: PausableSource,
-    pause_past: Option<u64>,
+    pause_at: Option<&PauseAt>,
     cancel: Arc<std::sync::atomic::AtomicBool>,
 ) -> tokio::task::JoinHandle<Result<u64, VolumeError>> {
     let volume = Arc::clone(volume);
     let path = volume.root().join(key);
     let signal = Arc::clone(&source.signal);
+    let pause_at = pause_at.map(|at| (at.past, Arc::clone(&at.raised)));
     let paused_once = std::sync::atomic::AtomicBool::new(false);
     tokio::spawn(async move {
         let length = source.total_size();
         volume
             .write_from_stream(&path, WriteMode::CreateNew, length, Box::new(source), &|progress| {
-                if pause_past.is_some_and(|past| progress.bytes_written > past)
+                if let Some((past, raised)) = &pause_at
+                    && progress.bytes_written > *past
                     && !paused_once.swap(true, std::sync::atomic::Ordering::SeqCst)
                 {
                     signal.pause();
+                    raised.notify_one();
                 }
                 if cancel.load(std::sync::atomic::Ordering::SeqCst) {
                     ControlFlow::Break(())
@@ -169,13 +189,22 @@ async fn parts_paused_mid_body_are_set_aside_and_sent_again_on_resume() {
     let bytes = pattern(64 * MIB);
     let signal = TestScanStop::new();
     let source = PausableSource::new(bytes.clone(), &signal, false);
-    let write = start_write(&volume, "parts.bin", source, Some(2 * MIB as u64), Arc::default());
+    let pause_at = PauseAt::past(2 * MIB);
+    let write = start_write(&volume, "parts.bin", source, Some(&pause_at), Arc::default());
 
+    // Once the pause is up, drain what already sits in the socket buffers at
+    // once (Linux's hold many MiB): it's the client that must stop sending,
+    // and a fast reader shows any byte it still sends sooner.
+    pause_at.raised.notified().await;
+    s3.read_freely();
     assert_stands_still(&s3, &write, "parts paused mid-body").await;
+    assert_eq!(
+        s3.puts(),
+        0,
+        "no part the pause caught mid-body went on to arrive whole"
+    );
     assert!(s3.object("parts.bin").is_none(), "nothing is published while paused");
 
-    // The resend at full speed: the pause is what this cell is about.
-    s3.read_at(1 << 30);
     signal.resume();
     let written = write.await.expect("the write task ends");
     assert!(matches!(written, Ok(n) if n == bytes.len() as u64), "{written:?}");
@@ -209,9 +238,7 @@ async fn a_put_waits_while_paused_and_lands_on_resume() {
 /// The PUT a pause outlasted is set aside, and Resume sends the whole body
 /// again. ❗ What a VersityGW-like server kept of the cut-off body carries our
 /// token and is removed before the resend: left there, it would make the
-/// resend's own `If-None-Match: *` refuse the name as taken. (The fake drains
-/// its loopback socket at the slow rate, so it may store that body well into
-/// the pause.)
+/// resend's own `If-None-Match: *` refuse the name as taken.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_put_paused_mid_body_is_set_aside_and_sent_again_whole() {
     let s3 = FakeS3::start(Duration::ZERO).await;
@@ -223,15 +250,18 @@ async fn a_put_paused_mid_body_is_set_aside_and_sent_again_whole() {
     let bytes = pattern(40 * MIB);
     let signal = TestScanStop::new();
     let source = PausableSource::new(bytes.clone(), &signal, false);
-    let write = start_write(&volume, "one.bin", source, Some(2 * MIB as u64), Arc::default());
+    let pause_at = PauseAt::past(2 * MIB);
+    let write = start_write(&volume, "one.bin", source, Some(&pause_at), Arc::default());
 
+    // Fast from the pause on, as in the parts cell.
+    pause_at.raised.notified().await;
+    s3.read_freely();
     assert_stands_still(&s3, &write, "one PUT paused mid-body").await;
     assert!(
         s3.object("one.bin").is_none_or(|stored| stored.len < bytes.len()),
         "nothing whole is published while paused"
     );
 
-    s3.read_at(1 << 30);
     signal.resume();
     let written = write.await.expect("the write task ends");
     assert!(matches!(written, Ok(n) if n == bytes.len() as u64), "{written:?}");
