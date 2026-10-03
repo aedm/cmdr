@@ -56,7 +56,7 @@ All three are fixed: the AI key in `0397ad6a2`, focus-settings in `df944874e`, a
   2026-07-13) grew near-duplicate grouping and a tag-score filter, and neither ever got a surface. Tag search is
   reachable through MCP `search_photos` (it calls the crate's `images_with_tag` directly); duplicate finding isn't
   reachable at all. The open media issues (#223–#226) cover faces and captions, not these. Decide whether a "Find
-  duplicate photos" view is planned. Tracked in #360.
+  duplicate photos" view is planned. Duplicates are tracked in #360, the tag filter in #361.
 - **`greet`**: the Tauri template's command, kept alive only by `lib/ipc/test-helpers.test.ts`, the mock harness's own
   smoke test. Deleted in `7265cacc5`; that test now drives `has_font_metrics`.
 

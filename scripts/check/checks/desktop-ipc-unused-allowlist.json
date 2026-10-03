@@ -8,6 +8,6 @@
     "clear_recent_paths": "UI tracked in #359: a 'Clear history' row in the Go to folder recents popover, or delete it; see docs/notes/ipc-dead-code-audit.md",
     "get_memory_diagnostics": "agent tooling: called over IPC by hand when debugging memory, see docs/tooling/memory-debugging.md",
     "media_index_dedup_clusters": "UI tracked in #360: near-duplicate photo grouping with no surface yet, see docs/notes/ipc-dead-code-audit.md",
-    "media_index_search_tag": "decided with #360: tag-score photo filter with no surface yet (MCP reaches the crate directly), see docs/notes/ipc-dead-code-audit.md"
+    "media_index_search_tag": "UI tracked in #361: tag-score photo filter with no surface yet (MCP reaches the crate directly), see docs/notes/ipc-dead-code-audit.md"
   }
 }
