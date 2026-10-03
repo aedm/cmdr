@@ -8,11 +8,6 @@ import * as __TAURI_EVENT from '@tauri-apps/api/event'
 /** Commands */
 export const commands = {
   /**
-   *  Public greeting used by the example webview surface; kept here as the
-   *  foundational smoke test for the specta wiring.
-   */
-  greet: (name: string) => __TAURI_INVOKE<string>('greet', { name }),
-  /**
    *  Returns immediately; reads in background.
    *  Emits listing-progress, listing-complete, listing-error, listing-cancelled.
    */

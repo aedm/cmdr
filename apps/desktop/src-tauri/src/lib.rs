@@ -184,7 +184,7 @@ mod stubs;
 
 use tauri::Manager;
 
-// `greet` and the rest of the Tauri command surface live in `ipc.rs`, which
+// The Tauri command surface lives in `ipc.rs`, which
 // exposes them through a typed `tauri_specta::Builder`. See `ipc.rs` for the
 // migration recipe.
 

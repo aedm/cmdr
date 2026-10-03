@@ -30,7 +30,7 @@ fails on drift with a "Run `pnpm bindings:regen`" hint. CI never modifies the wo
 ```typescript
 import { commands } from '$lib/ipc/bindings'
 
-const result = await commands.greet('world')
+const hasMetrics = await commands.hasFontMetrics(fontId)
 ```
 
 For commands that return `Result<T, E>` on the Rust side, the TS wrapper returns

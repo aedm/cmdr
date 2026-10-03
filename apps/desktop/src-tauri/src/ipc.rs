@@ -110,14 +110,6 @@ use crate::system_events::{
     ReduceTransparencyChanged, SessionCompleteEvent, SessionStartedEvent, SystemTextSizeChanged,
 };
 
-/// Public greeting used by the example webview surface; kept here as the
-/// foundational smoke test for the specta wiring.
-#[tauri::command]
-#[specta::specta]
-pub fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
 /// Every IPC command the app exposes, written once, grouped by the `#[cfg]` predicate that
 /// decides whether that group compiles. Hands the whole list to a consumer macro; see the
 /// module docs for why both consumers have to read the same list.
@@ -139,7 +131,6 @@ macro_rules! ipc_command_manifest {
             // Every target.
             cfg(all()) {
                 typed: [
-                    crate::ipc::greet,
                     crate::commands::file_system::list_directory_start_streaming,
                     crate::commands::file_system::cancel_listing,
                     crate::commands::file_system::list_directory_end,

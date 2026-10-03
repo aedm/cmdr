@@ -7,7 +7,6 @@
   "commands": {
     "clear_recent_paths": "awaiting David's call: a 'Clear history' row in the Go to folder recents popover, or delete it; see docs/notes/ipc-dead-code-audit.md",
     "get_memory_diagnostics": "agent tooling: called over IPC by hand when debugging memory, see docs/tooling/memory-debugging.md",
-    "greet": "awaiting David's call: only the IPC mock harness's smoke test calls it; delete it and repoint that test, see docs/notes/ipc-dead-code-audit.md",
     "media_index_dedup_clusters": "awaiting David's call: near-duplicate photo grouping with no surface yet, see docs/notes/ipc-dead-code-audit.md",
     "media_index_search_tag": "awaiting David's call: tag-score photo filter with no surface yet (MCP reaches the crate directly), see docs/notes/ipc-dead-code-audit.md"
   }
