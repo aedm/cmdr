@@ -283,3 +283,30 @@ check would misjudge Cmdr's own write as another writer's, and the cut-off clean
 - **Pinned**: `sigv4_test.rs::metadata_written_gcs_s_way_is_spelled_x_goog_and_read_back_as_x_amz` pins both spellings
   (out as `x-goog-meta-*`, read as `MTIME_HEADER` / `WRITE_TOKEN_HEADER`). No reader change was needed. A listing
   carries no user metadata on any provider, so it isn't involved.
+
+## Outcome: B2 rerun within its free caps
+
+The B2 cells the daily cap stopped (§ "Outcome: the crate speaks HTTP/2 like the app"), rerun on 2026-10-03 from just
+after 00:00 UTC, one cell at a time, against a budget of about 2,000 Class B requests (every GET and HEAD) and 700 MB
+downloaded, under B2's free 2,500 and 1 GB a day. Class C (every LIST, `ListMultipartUploads`, `HeadBucket`) is free up
+to 2,500 a day too, so it was counted alongside. Counts from the request tally (`RUST_LOG=s3_sent=trace`), seeding and
+cleanup included; the hostile cell has no logger, so its numbers are estimated from its shape.
+
+- **`live_hostile_sizes`**: passed (`live-hostile-2026-10.md` § "B2's daily cap"). ~80 Class B, ~20 Class C, ~300 MiB
+  down, with B2's big object cut to 200 MiB (`c8ce363e4`).
+- **Renames**, run twice: 5 of 5 on the second run. 1,115 Class B, 183 Class C, ~98 MiB down over both.
+- **Merges and moves**: 14 of 15, then the failed flow passed alone. 820 Class B, 970 Class C, ~31 MiB down.
+- **Safety**: five flows, 5 of 5, the new upload pause path among them. 45 Class B, 84 Class C, ~20 MiB down.
+- **Dropped for the budget**: the other seven safety flows and the cross-provider streams (`live-engine-2026-10.md`).
+- **Totals**: about 2,060 Class B (estimated 1,820 beforehand; the merges cost 656, not 400), about 1,260 Class C, and
+  about 450 MiB downloaded. No cap was reached, and no object stayed under `cmdr-live/` in either bucket.
+
+Found on the way, both B2 answering a PUT `500 InternalError` ("internal incident"), twice in about 1,200 PUTs:
+
+- **The live seeder retried only a 503** (`5d72f86f1`): it now sends anything `S3Error::is_retryable` calls transient
+  again.
+- **A one-PUT write failed its file on a fault** (`551303ee4`): parts, server-side copies, and batch deletes already
+  went again on a throttle or fault, a single PUT didn't. It now goes again after 1 s and 2 s, and before each resend
+  `landed_whole` checks whether the fault published ours anyway. Red first in `put_retry_test.rs`.
+- **The engine runner can rerun single flows** (`450f869da`, `CMDR_S3_LIVE_FLOWS`), so a capped account pays about 100
+  Class B for one flow's rerun instead of a whole cell's 650.

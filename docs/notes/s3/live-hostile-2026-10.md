@@ -43,7 +43,7 @@ the evidence.
 ## Outcome per cell
 
 "All six" means R2, Hetzner, GCS, Spaces, AWS, and Wasabi; B2 is listed where it differs. Every cell passed on every
-provider after the fixes, except `live_hostile_sizes` on B2: unverified, cap hit (§ "B2's daily cap").
+provider after the fixes; `live_hostile_sizes` on B2 passed on the 2026-10-03 rerun (§ "B2's daily cap").
 
 - **`live_hostile_names_round_trip`**: 28 names (NFC and NFD `café`, emoji with a ZWJ sequence, Hebrew, Arabic, double
   spaces, leading space, trailing space, trailing dot, `...`, `100% sure`, a literal `%2e%2e` and `%20`, `+`, `#`, `?`,
@@ -62,10 +62,10 @@ provider after the fixes, except `live_hostile_sizes` on B2: unverified, cap hit
 - **`live_hostile_sizes`**: 0, 1, 5 MiB ± 1, 10 MiB ± 1, and 15 MiB + 1 (a one-byte last part) at a 5 MiB part floor,
   the 0 / floor + 1 / 2 × floor ones also of unknown length, each read back byte for byte and stat-sized; ranged reads
   across a part edge, from the last byte, and from the end (empty); a download released mid-way then read whole; then 1
-  GiB (300 MiB on Wasabi) in production 64 MiB parts, generated and verified without holding it. Passed on all six.
-  Big-object rates (shared link, skewed): R2 20.5 up / 33.4 down MiB/s, Spaces 15.8 / 46.3, AWS 25.7 / 48.1, GCS 15.4 /
-  23.2, Wasabi 22.9 / 48.8, Hetzner 4.6 / 31.1 (Hetzner's upload overlapped a sibling's big run). B2: unverified, cap
-  hit (§ "B2's daily cap"); the other cells covered its multipart and single-PUT paths before the cap.
+  GiB (300 MiB on Wasabi, 200 MiB on B2) in production 64 MiB parts, generated and verified without holding it. Passed
+  on all seven (B2 on 2026-10-03). Big-object rates (shared link, skewed): R2 20.5 up / 33.4 down MiB/s, Spaces 15.8 /
+  46.3, AWS 25.7 / 48.1, GCS 15.4 / 23.2, Wasabi 22.9 / 48.8, Hetzner 4.6 / 31.1 (Hetzner's upload overlapped a
+  sibling's big run), B2 22.7 / 32.4 (alone on the link).
 - **`live_hostile_cancel_uploads`**: a Cancel before the first part, mid second part, and right before the completion of
   a 16 MiB multipart upload, and mid-body and at the last piece of a 2 MiB PUT, each to a free key and over an original.
   All cancelled cases left nothing published, the original byte for byte, no upload on the server, and no open ledger
@@ -127,9 +127,12 @@ It resets around 00:00 UTC, or when the cap is raised on B2's Caps & Alerts page
   as a permissions problem, which sends the user to their keys rather than their B2 caps. The code can't tell them
   apart: the HEAD has no body, and the GET's `AccessDenied` code is the same as a real refusal; only the message text
   differs, and classifying by message is off the table.
-- **Unverified on B2, cap hit**: `live_hostile_sizes` (the edge sizes and the ~1 GiB read-back). Every other hostile
-  cell ran on B2 before the cap and passed.
-- Rerun `live.sh b2 live_hostile_sizes` once it resets.
+- **Rerun on 2026-10-03, within the caps**: `live.sh b2 live_hostile_sizes` passed every check (the size ladder, no
+  upload left, the three ranged reads, the released download, and the big object). The ~1 GiB read-back alone would use
+  B2's 1 GB daily download cap, so B2's big object is now 200 MiB (three 64 MiB parts and an 8 MiB tail; `big_size`,
+  `c8ce363e4`). Cost, estimated from the cell's shape: about 80 Class B requests (a no-overwrite HEAD, a verifying HEAD,
+  a stat, and a GET per size) and about 300 MiB downloaded (80 MiB of ladder read-backs, ~20 MiB of ranged and re-reads,
+  200 MiB big). The whole B2 rerun's totals: `live-verification-2026-10.md` § "Outcome: B2 rerun within its free caps".
 
 ## Open questions for the lead
 
@@ -149,8 +152,8 @@ It resets around 00:00 UTC, or when the cap is raised on B2's Caps & Alerts page
 
 ## Follow-up: the lead's decisions, and what landed
 
-1. **B2's cap**: confirmed as B2's free daily Class B cap. `live_hostile_sizes` on B2 stays unverified, cap hit; the
-   lead reruns it.
+1. **B2's cap**: confirmed as B2's free daily Class B cap. `live_hostile_sizes` on B2 passed on the 2026-10-03 rerun (§
+   "B2's daily cap").
 2. **Typed refusal for names** (`745c7777e`, `1b325ae93`): `cmdr_fs` already had `VolumeError::InvalidName` (SMB's
    reserved names), so it's reused. The volume can't map B2 by code (`InvalidRequest` is its catch-all) or GCS's
    no-overwrite HEAD (bodyless 400), so the refusal happens up front: `ProviderProfile::refused_key_chars` (GCS CR/LF,

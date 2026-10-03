@@ -40,13 +40,18 @@ cleanup.
   - R2: ok; the 1,005-object rename takes 168 s, past the suite's old 120 s wait (now stretched on live runs).
   - Hetzner: ok in five of six runs; once the 1,005-object rename failed with `DestinationExists` on a fresh destination
     key (`renamed/f0053.txt`). Diagnosed and fixed: § "The lead's decisions", item 4.
-  - B2: unverified, cap hit. Four of five failed with `PermissionDenied` on the source once the account's daily Class B
-    cap was used up (§ "Still open", item 6); pause then cancel passed before the cap was reached.
+  - B2 (2026-10-03, within the caps): 5 of 5 on the second run. The first lost the 1,005-object flow to B2 answering one
+    seeding PUT `500 InternalError`; the seeder now sends a faulted PUT again (`5d72f86f1`). The 1,005-object rename
+    took 383 s, the slowest of any provider. Measured per run: 1,060 HEAD and 3 GET (Class B), 81 LIST plus 22 other
+    Class C, ~49 MiB down.
 - **Merges and moves** (merge under Skip, Overwrite, Rename (keep both), OverwriteSmaller; a move-merge onto that spares
   what it skipped; a folder moved onto and off; a file saved over or added mid-move off; same-bucket move-merge, folder
   move, and tree copy; a missing nested destination; a 6 MiB odd-length file; 40 files at full concurrency): 15 of 15 on
   R2, AWS, Spaces, Wasabi, Hetzner, and GCS (GCS's first run lost the network mid-cell, open question 3; the rerun was
-  clean). B2: unverified, cap hit.
+  clean). B2 (2026-10-03): 14 of 15, about 50 s a flow; "same-bucket folder move" failed when B2 answered a scenario's
+  seeding write (a one-PUT upload through the volume) `500 InternalError`, the single-PUT gap fixed in `551303ee4`, and
+  passed rerun alone (`CMDR_S3_LIVE_FLOWS`). Measured: 512 HEAD and 144 GET, 753 LIST plus 60 other Class C, ~30 MiB
+  down; the one-flow rerun 116 HEAD and 48 GET.
 - **Safety, cancel, rollback, delete** (a failed merge copy or move onto the user's folder, a delete bound to a
   local-shaped preview, a recursive delete that takes exactly the selection, an unknown source type, cancel
   mid-download, cancel between multipart parts, a cut-off Overwrite keeps the original, pause and resume between parts,
@@ -55,7 +60,11 @@ cleanup.
   - Wasabi: 12 of 12 on the rerun; the first run's 1,005-object delete stopped at `f0530.txt` with `DeviceDisconnected`
     (one transport blip ended the whole delete; now retried, § "The lead's decisions", item 1).
   - GCS: 11 of 11; the 1,005-object delete didn't finish inside the remaining seven minutes (614 objects gone).
-  - B2: unverified, cap hit.
+  - B2 (2026-10-03): 5 of 5 run, chosen for the budget: cancel between multipart parts, a cut-off Overwrite, pause and
+    resume between parts (the new pause path, `9eacb516a`), roll back a finished copy, and delete a folder of 1,005
+    objects (246 s, nearly all of it seeding). Measured: 40 HEAD and 5 GET, 60 LIST plus 24 other Class C. Not run on
+    B2, for the Class B budget: the failed merge copy and move, the two delete-scope flows, the unknown source type,
+    cancel mid-download, and cancel with rollback mid-tree.
   - After every cancel: no object at the name, no unfinished upload on the server, no open record in the upload ledger.
     After every rollback: nothing left but the destination folder the copy itself made.
 - **A name taken mid-upload** (informational, the documented blind window): another writer's file survived on R2, AWS,
@@ -63,7 +72,8 @@ cleanup.
   check-then-write window `crates/cmdr-s3/DETAILS.md` § "No-overwrite writes" accepts. Whether Wasabi honours
   `If-None-Match` on PUT (which would close it) is for the profile owner to verify.
 - **Between providers** (a 50 MiB file plus a nested tree, streamed): ok for R2 → GCS, GCS → Spaces, Spaces → AWS, AWS →
-  Wasabi, Wasabi → R2, Hetzner → AWS, and AWS → Hetzner. B2: unverified, cap hit.
+  Wasabi, Wasabi → R2, Hetzner → AWS, and AWS → Hetzner. B2: not run on 2026-10-03, dropped for the Class B budget (the
+  stream through the Mac is the same upload and download path B2's byte-path flows cover).
 - **Archived objects** (AWS, `GLACIER` and `DEEP_ARCHIVE`, uploaded with the storage class): ok. The listing marks each
   `in_cold_storage`, a read answers `VolumeError::ColdStorage`, and a copy stops at once with
   `WriteOperationError::SourceInColdStorage`, nothing landing locally.
@@ -159,7 +169,7 @@ whose "Other" profile is check-then-write everywhere, then rerun live on the six
 
 Live reruns after item 5, on R2, GCS, Spaces, AWS, Wasabi, and Hetzner: renames 30 of 30, safety all ok (two Hetzner
 cells timed out connecting once and passed on rerun), merges and moves 90 of 90, cross-bucket 9 of 9 (where a second
-bucket exists), requests against the estimate 6 of 6. B2 stays unverified (cap hit).
+bucket exists), requests against the estimate 6 of 6. B2 was rerun separately on 2026-10-03 (§ "Outcomes").
 
 ## Still open for the lead
 
@@ -174,11 +184,12 @@ bucket exists), requests against the estimate 6 of 6. B2 stays unverified (cap h
    nextest's `s3-fixture` group with a 30 s cap; at full parallelism the whole lane went from every cell killed at 8 s
    to 191 of 191 green in 174 s. If that wall time matters more than headroom, `max-threads` is the knob.
 5. **Second buckets** on R2, GCS, and Spaces would let the cross-bucket flows run there too.
-6. **B2's daily Class B cap** needs a rerun of B2's read flows after it resets (or a raised cap). Once the cap was used
-   up (by the 1,005-object cells' HEADs), every B2 GET answered `403` with `<Code>AccessDenied</Code>` ("Cannot download
-   file, download bandwidth or transaction (Class B) cap exceeded", read with the AWS CLI) and every HEAD a bodyless
-   `403`; LIST, PUT, and `DeleteObjects` kept working. Cmdr maps both to `VolumeError::PermissionDenied` (a stat, a
-   read, a delete's fallback HEAD); in a transfer that's `WriteOperationError::PermissionDenied` with
+6. **B2's daily Class B cap**: rerun on 2026-10-03 within the caps (renames, merges and moves, and five safety flows;
+   above), the totals in `live-verification-2026-10.md` § "Outcome: B2 rerun within its free caps". Once the cap was
+   used up (by the 1,005-object cells' HEADs), every B2 GET answered `403` with `<Code>AccessDenied</Code>` ("Cannot
+   download file, download bandwidth or transaction (Class B) cap exceeded", read with the AWS CLI) and every HEAD a
+   bodyless `403`; LIST, PUT, and `DeleteObjects` kept working. Cmdr maps both to `VolumeError::PermissionDenied` (a
+   stat, a read, a delete's fallback HEAD); in a transfer that's `WriteOperationError::PermissionDenied` with
    `refusal: Unclassified` and `side: Source`, which the dialog words as a permission problem, now adding that it may be
    a usage cap (a sibling's `16ee8a3b8`). With items 1, 2, and 5 the 1,005-object delete sends 2 HEADs instead of 1,007
    and the rename about 1,005 instead of 3,021.
