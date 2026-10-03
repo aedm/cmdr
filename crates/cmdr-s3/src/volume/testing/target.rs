@@ -169,7 +169,8 @@ impl S3Target {
 
     /// Puts objects in `bucket`, panicking on the first that doesn't land: up
     /// to 32 at a time on a fixture, eight on a live account (Hetzner answers
-    /// 32 with `SlowDown`), where a throttled PUT goes again after a pause.
+    /// 32 with `SlowDown`), where a throttled or faulted PUT goes again after
+    /// a pause.
     pub async fn seed(&self, bucket: &str, seeds: &[Seed<'_>]) {
         self.seed_with(bucket, seeds, &[]).await;
     }
@@ -213,7 +214,11 @@ impl S3Target {
                             .exchange(request.clone(), QUERY_BUDGET)
                             .await
                             .unwrap_or_else(|e| panic!("seeding {key:?}: {}", chain(&e)));
-                        if answer.status != http::StatusCode::SERVICE_UNAVAILABLE || pause > Duration::from_secs(8) {
+                        // A throttle, or a transient fault: B2 answered one PUT
+                        // of a 1,005-object seeding with `500 InternalError`.
+                        let transient = !answer.status.is_success()
+                            && crate::error::S3Error::from_response(answer.status, &answer.text()).is_retryable();
+                        if !transient || pause > Duration::from_secs(8) {
                             break answer;
                         }
                         tokio::time::sleep(pause).await;
