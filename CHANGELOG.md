@@ -5,6 +5,95 @@ This file holds all notable changes to Cmdr over time.
 The format is based on [keep a changelog](https://keepachangelog.com/en/1.1.0/), and we use
 [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
+## [0.50.0] - 2026-10-03
+
+The highlights:
+
+1. S3 support! See your buckets on Amazon S3, Cloudflare R2, Backblaze B2, Wasabi, Hetzner, Google Cloud Storage,
+   DigitalOcean Spaces, or any S3-compatible storage like any folder. Two additional cool things about it: 1. Cmdr shows
+   what each copy, move, or delete costs, and 2. you can right-click and copy share links with 1h, 1d, and 7d expiration
+   times.
+2. Russian! Thank you, [Mikhail Larionov](https://github.com/HeisPovedim), for adding this!
+
+Also a ton of small fixes and improvements, a "Don't show folders first" setting, "Open with" for files inside archives,
+and a live debug log by [Gábor Gyebnár](https://github.com/aedm) in the Help menu (thanks!).
+
+### Added
+
+- Add S3 support (alpha): connect to AWS, R2, B2, Wasabi, Hetzner, GCS, Spaces, or any S3-compatible server, then
+  browse, copy, move, rename, and delete with pause and cancel, copies inside an account running on the server, and
+  buckets in every region under one account (373af47b4, c8e3fb987, a5435e9c8, 48ee83fe3, 3055c150e, b4fc10358,
+  e13632464, 87ff81db1, 9fcdca084, b29899cd1, 673fa5a5e, 2c81eea3a, 8150b0fcd, 2b1618c41, ce5793eb0, 1043e1420,
+  d4cf0bbf6, 8a1abb7c9, 8fa08ee2d, de2c6f186, 9eacb516a, 69f984cec, 2e7d3777a, 899cb0bca, b28cbd925)
+- Show what an S3 copy, move, delete, or rename costs at the provider's list prices, right in the dialog (42143e550,
+  feecb9335, e6c55cd6e, 450844296, 5d2b38111, 088682c7c)
+- Copy a share link to any S3 file, valid for seven days, one day, or one hour (446d43f33)
+- Mark archived (Glacier) S3 files in the file list, and say they need a restore before reading (bc8714965)
+- Add Russian, contributed by Mikhail Larionov (fe38e5fd5, 04d48627a, 6a65cc190, 6adb1f948, e1753c961)
+- Open the debug log live in the viewer from Help or the command palette, contributed by Gábor Gyebnár (23cdaed57,
+  535519632, ea700e6d7)
+- Say when a folder on a server or drive stops answering, with Try again and Go back, and land it once it answers
+  (b38d9c6e5, 7370f7c3c, ea29c1db7, b1804255d, cd64c5811)
+- Add a "Show folders first" setting: turn it off to sort folders and files as one list (b01160762, 38c65e5ad)
+- Open a file inside an archive or a repo's history in another app with Open with (28a0728f8, 13c5d13b1, 6bff2fb91)
+- Show how long a drive's whole indexing run has left, not just the current step (ef8e557b5, 8ba5cc4ae)
+- Remove a saved cloud AI key from Settings or onboarding (0397ad6a2)
+- Add Share to the right-click menu of search results (d53bd33d2)
+- Warn when a typed server path would land in a doubled folder, with a button for the shorter path (fb94f9e03)
+
+### Changed
+
+- Rename ⌘G to "Go to folder…", matching Finder (398a8e861)
+- Name the processes holding a drive when an eject is refused, even without an app name (b2b1d5d90,
+  5163d9ab8, 304891891)
+- Warn in red when a folder is about to replace a file, too (ef7905b8f)
+- Disable Confirm in the copy and move dialog while the destination folder refuses new files (ce378e10a)
+- Wait to list saved SMB servers' shares until you open the Servers view (c18a10904)
+- Name an unreachable saved server by the name you gave it (e59fc2f5b)
+- Show a warning when the memory safety limit stops indexing (a18c3d84e)
+- Show "Saved in Keychain" in a server's edit form when its password is stored (7be63669f)
+- Keep the "Connected directly" label for SMB, the only place it means something (9e9b09ec9, f183b04d8)
+- Use a native macOS menu for the viewer's right-click menu (5634e9a49)
+- Offer Retry when the viewer can't read a file (ac159d64f)
+- Make one-letter searches 1.7x faster, and indexing faster in folders with 100k+ files (4a59bb181, b0a4ecbfb)
+- Say "folders" in scan counts, the indexing counter, and Listing settings (68c57d630, 0a8a28e12)
+
+### Fixed
+
+- Fix copies onto a nearly full drive being refused for space they didn't need: Cmdr counts only what a re-sync adds,
+  and offers "Copy anyway" (954741a84, e070cf0d5)
+- Fix Back and Forward losing each location's cursor position (9167f7919)
+- Fix a favorite at `/` or a drive's root hiding that drive and breaking every favorite on it (ec7d3a614)
+- Fix a restored tab on an unmounted pinned SMB share landing on the boot disk (cb1bc5f56)
+- Fix zips from Windows and macOS Archive Utility listing times hours off (b1d026bf0)
+- Fix the column header blinking out while a slow folder loads (706ce2b41)
+- Fix a jump straight into a nested folder briefly shifting the old rows (8ca98ce31)
+- Fix viewer tail mode ignoring new lines in files under 1 MB (c04d1c0f4)
+- Fix tag colors showing in the right-click menu on phones, servers, and archives, where they did nothing (8a0c55dd9)
+- Fix image index settings and cleanup claiming success when they couldn't delete, or undoing a newer toggle (f1aa29c4f)
+- Fix the viewer tying up threads on slow network drives after a timeout (6c56c9d00)
+- Fix long paths and keys running off the edge of notifications (94376a122)
+- Fix agents reading the previous folder right after navigating, and the focus-settings tool doing nothing (24308873e,
+  df944874e)
+
+### Security
+
+- Update SFTP's SSH library to close a key-exchange downgrade and two other advisories (b2a9f9e24)
+- Apply the full error-report redaction to what Cmdr's MCP server shows agents (7f0f1d7ad)
+
+### Non-app
+
+- Test S3 against seven real providers and two Docker fixtures, which caught provider quirks on GCS, R2, B2, Wasabi, and
+  Hetzner before release (5a90a48f5, ca7faaa3f, 8295cb3cc, 835a63b05, af660a86e, 7b3eccfda)
+- Serve the S3 price table from api.getcmdr.com, with a monthly watcher for provider price changes (02421184b,
+  1c867a693)
+- Drop 37 unused backend commands, and add a check that keeps dead IPC from piling up again (227ed0a1f, e04fb7596)
+- Keep error reports to real problems, and keep Svelte's error code in uncaught frontend errors (8e5cd8220, 058ce4d7f)
+- Quiet the website's CSP alerts: fix https redirects for slash-less links, and ignore blocks visitors' extensions cause
+  (434170fb0, a598a1220, 1c85d2d13)
+- Keep unit tests out of the real app data folder, and stop file-operation tests deleting each other's temp files
+  (5a6efd3e8, 16836bb4c)
+
 ## [0.49.0] - 2026-10-01
 
 The highlights:

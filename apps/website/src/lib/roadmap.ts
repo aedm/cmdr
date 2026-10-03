@@ -660,6 +660,24 @@ export const roadmapSections: RoadmapSection[] = [
           },
         ],
       },
+      {
+        heading: 'Oct 2026',
+        milestones: [
+          {
+            date: '(Oct 2)',
+            title: 'Russian',
+            description: 'A community translation. With es-419 recently added, 15 languages now.',
+            done: true,
+          },
+          {
+            date: '(Oct 3)',
+            title: 'S3 buckets',
+            description: 'AWS, GCS, R2, B2, Hetzner, Wasabi, etc. With cost estimates and share links.',
+            icon: 'server',
+            done: true,
+          },
+        ],
+      },
     ],
   },
   {
@@ -677,7 +695,7 @@ export const roadmapSections: RoadmapSection[] = [
           {
             date: '(this fall?)',
             title: 'Support more file systems',
-            description: 'S3 buckets, SCP, NFS, Google Drive, Dropbox, and OneDrive',
+            description: 'SCP, NFS, Google Drive, Dropbox, and OneDrive',
             done: false,
           },
         ],
