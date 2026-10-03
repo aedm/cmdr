@@ -100,6 +100,19 @@ fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
         .unwrap_or_else(|| "a panic without a message".to_string())
 }
 
+/// Whether `CMDR_S3_LIVE_FLOWS` (comma-separated pieces of flow names) lets
+/// `name` run: every flow when it's unset. A provider with a daily request
+/// cap (B2) reruns one flow without paying for the rest of its cell.
+fn flow_wanted(name: &str) -> bool {
+    match std::env::var("CMDR_S3_LIVE_FLOWS") {
+        Ok(pieces) if !pieces.trim().is_empty() => pieces
+            .split(',')
+            .map(str::trim)
+            .any(|piece| !piece.is_empty() && name.contains(piece)),
+        _ => true,
+    }
+}
+
 /// The flows of one cell, run on every live account; fails once at the end
 /// with every pair that failed.
 struct Matrix {
@@ -121,6 +134,9 @@ impl Matrix {
         F: FnOnce(S3Target) -> Fut,
         Fut: Future<Output = ()>,
     {
+        if !flow_wanted(name) {
+            return;
+        }
         if needs == Needs::SecondBucket && target.bucket_2().is_none() {
             report(target.name(), name, "skipped: no second bucket");
             return;

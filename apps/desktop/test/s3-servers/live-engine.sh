@@ -9,6 +9,8 @@
 #   ./live-engine.sh                          # every provider, every flow
 #   ./live-engine.sh r2,gcs                   # only these providers
 #   ./live-engine.sh all copies_between       # every provider, cells matching a filter
+#   CMDR_S3_LIVE_FLOWS="pause,1,005" ./live-engine.sh b2 keeps_the_users_data_safe
+#                                             # only the flows whose names hold a piece
 #
 # The cells live in `apps/desktop/src-tauri/src/file_system/write_operations/
 # backend_suites/s3_live_engine_test.rs` and are named `s3_live_engine_*`.

@@ -153,7 +153,8 @@ providers at a time or one cell at a time (`live_hostile_sizes`, `live_hostile_c
 `s3_integration_` Docker cells run (copy, move, merge under every policy, rename, delete, cancel, pause, rollback), plus
 copies between two providers, archived objects on AWS, and the requests each operation sends against the cost estimate.
 Same arguments (`./live-engine.sh r2,gcs`, `./live-engine.sh all copies_between`), `cargo test` one cell at a time, one
-`LIVE [provider] flow: ok` line per pair; `RUST_LOG=copy=debug,volume=info` explains a failure. A full pass is roughly
+`LIVE [provider] flow: ok` line per pair; `CMDR_S3_LIVE_FLOWS=pause,rollback` narrows a cell to the flows whose names
+hold one of the pieces (a capped B2 rerun); `RUST_LOG=copy=debug,volume=info` explains a failure. A full pass is roughly
 5–15 minutes per provider (GCS and R2 the slowest), so run a few providers at a time. ❗ The 1,005-object rename sends
 about 1,005 HEADs (a source one per object) plus its seeding and the other cells' reads: on a B2 account with a daily
 Class B cap (2,500 free) a full run can still use it up, and every B2 read then answers 403 until midnight GMT.
