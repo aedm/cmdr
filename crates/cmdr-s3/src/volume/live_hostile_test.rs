@@ -395,12 +395,14 @@ async fn live_hostile_folders() {
 }
 
 /// The size a big object gets on `live`: Wasabi bills 90 days of whatever
-/// it stored, so it gets less.
+/// it stored, so it gets less. B2's free tier caps downloads at 1 GB a day,
+/// and the read-back is a download, so it gets three production parts and a
+/// short tail: 1 GiB alone would use the day's cap.
 fn big_size(live: &Live) -> u64 {
-    if live.name == "wasabi" {
-        300 * MIB as u64
-    } else {
-        1024 * MIB as u64
+    match live.name {
+        "wasabi" => 300 * MIB as u64,
+        "b2" => 200 * MIB as u64,
+        _ => 1024 * MIB as u64,
     }
 }
 
@@ -508,7 +510,7 @@ async fn live_hostile_sizes() {
             format!("{again:?}"),
         );
 
-        // ~1 GiB (300 MiB on Wasabi) in production parts, never held whole.
+        // ~1 GiB (300 MiB on Wasabi, 200 MiB on B2) in production parts, never held whole.
         volume.set_part_floor(crate::multipart::MIN_PART_SIZE);
         let big = big_size(&live);
         let key = format!("{prefix}big.bin");

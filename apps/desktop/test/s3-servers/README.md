@@ -145,9 +145,9 @@ source ./live-env.sh           # the variables alone, for another runner
 ```
 
 The hostile cells (`cmdr-s3`'s `live_hostile_test.rs` and `live_hostile_failure_test.rs`) take 2–5 minutes per provider
-(the ~1 GiB read-back dominates; 300 MiB on Wasabi), so run them a few providers at a time or one cell at a time
-(`live_hostile_sizes`, `live_hostile_cancel`, `live_hostile_crash`, `live_hostile_races`, …). Findings:
-`docs/notes/s3/live-hostile-2026-10.md`.
+(the ~1 GiB read-back dominates; 300 MiB on Wasabi, 200 MiB on B2 for its 1 GB daily download cap), so run them a few
+providers at a time or one cell at a time (`live_hostile_sizes`, `live_hostile_cancel`, `live_hostile_crash`,
+`live_hostile_races`, …). Findings: `docs/notes/s3/live-hostile-2026-10.md`.
 
 `live-engine.sh` runs the app's transfer-engine flows against the same accounts: the scenarios the app crate's
 `s3_integration_` Docker cells run (copy, move, merge under every policy, rename, delete, cancel, pause, rollback), plus
