@@ -17,7 +17,9 @@
 //!   source between the copy's HEAD and the copy;
 //! - [`FakeS3::read_at`]: it reads request bodies at a set rate, a slow uplink
 //!   a pause can land in the middle of, until [`FakeS3::read_freely`], and
-//!   counts every body byte as it arrives ([`FakeS3::body_bytes`]).
+//!   counts every body byte as it arrives ([`FakeS3::body_bytes`]);
+//! - [`FakeS3::fault_puts`]: it answers a PUT `500 InternalError`, the way B2
+//!   answers about one in several hundred, before or after storing it.
 //!
 //! It speaks path style over plain HTTP, one request per connection, and
 //! knows HEAD, PUT, DELETE, `ListObjectsV2`, and the multipart calls. A cell
@@ -87,6 +89,10 @@ struct World {
     body_bytes: usize,
     /// Every body-carrying PUT (a PUT or a part) that arrived whole.
     puts: usize,
+    /// How many more whole `PutObject`s answer `500 InternalError`.
+    fault_puts: usize,
+    /// Whether a faulted `PutObject` stores the object before it answers.
+    fault_puts_after_commit: bool,
 }
 
 pub(super) struct FakeS3 {
@@ -139,6 +145,20 @@ impl FakeS3 {
     /// deleting nothing.
     pub(super) fn throttle_batch_deletes(&self, count: usize) {
         self.world.lock_ignore_poison().throttle_batch_deletes = count;
+    }
+
+    /// The next `count` whole `PutObject`s answer `500 InternalError` (B2's
+    /// "internal incident"), storing nothing.
+    pub(super) fn fault_puts(&self, count: usize) {
+        self.world.lock_ignore_poison().fault_puts = count;
+    }
+
+    /// The next whole `PutObject` stores the object and still answers `500
+    /// InternalError`: a fault after the publish.
+    pub(super) fn fault_a_put_after_commit(&self) {
+        let mut world = self.world.lock_ignore_poison();
+        world.fault_puts = 1;
+        world.fault_puts_after_commit = true;
     }
 
     /// How many `DeleteObjects` requests reached the store (throttled ones
@@ -398,6 +418,14 @@ async fn answer(
                 if header(head, "if-none-match") == Some("*") && world.objects.contains_key(&key) {
                     return Some(error("412 Precondition Failed", "PreconditionFailed"));
                 }
+                let fault = world.fault_puts > 0;
+                if fault {
+                    world.fault_puts -= 1;
+                    if !world.fault_puts_after_commit {
+                        return Some(error("500 Internal Server Error", "InternalError"));
+                    }
+                    world.fault_puts_after_commit = false;
+                }
                 world.writes += 1;
                 let etag = format!("\"v{}\"", world.writes);
                 world.objects.insert(
@@ -408,6 +436,9 @@ async fn answer(
                         meta: meta_lines(head),
                     },
                 );
+                if fault {
+                    return Some(error("500 Internal Server Error", "InternalError"));
+                }
                 (etag, world.hang_up_after_commit)
             };
             if hang {

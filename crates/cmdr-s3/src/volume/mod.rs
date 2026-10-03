@@ -413,6 +413,8 @@ mod long_key_test;
 #[cfg(test)]
 mod pause_test;
 #[cfg(test)]
+mod put_retry_test;
+#[cfg(test)]
 mod put_source_test;
 #[cfg(test)]
 mod read_test;

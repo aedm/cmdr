@@ -485,9 +485,11 @@ stays `false`: the server holds nothing until the request's last byte, yet a mul
   what the write answered. It costs one cheap request per file and feeds the pane patch that follows (`take_written`),
   so `notify_mutation` doesn't pay a second one. ETags aren't compared with an MD5 of the bytes: under SSE-KMS and for
   multipart they aren't one.
-- **Throttling on a single PUT isn't retried here**, though its body is in memory now; the engine's per-file retry runs
-  only on transport errors. A typed "busy, try again" `VolumeError` the engine retries is a candidate for M8's friendly
-  errors.
+- **A throttled or faulted single PUT goes again** after 1 s, then 2 s (`MAX_PUT_RETRIES`), its body still in memory. B2
+  answered two of about 1,200 PUTs in one live run with `500 InternalError` ("internal incident"), each failing a file a
+  resend would have landed (verified on B2 `eu-central-003`, `live-engine.sh b2`, 2026-10-03). A fault can still have
+  published, and the resend's no-overwrite check would then refuse our own object, so before each resend `landed_whole`
+  asks whether ours is at the key whole (one HEAD, only on a fault). Pinned by `put_retry_test.rs`.
 
 ## Pause
 

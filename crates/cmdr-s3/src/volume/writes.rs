@@ -48,7 +48,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::S3Volume;
 use super::errors::map_s3_error;
-use super::multipart_upload::PartReader;
+use super::multipart_upload::{PartReader, retry_after};
 use super::paths::{Target, target_of};
 use super::upload_body::{BodyWatch, Halt, HaltSlot, PauseHold, buffered_body};
 use crate::error::S3Error;
@@ -59,6 +59,10 @@ use crate::transport::{Answer, QUERY_BUDGET, S3Client, map_transport_error};
 
 /// How often an upload reports progress while its body is in flight.
 pub(super) const PROGRESS_TICK: Duration = Duration::from_millis(200);
+
+/// How many times a throttled or faulted PUT goes again ([`retry_after`]'s
+/// first two waits, 3 s in all): a file of a copy waits that long at most.
+const MAX_PUT_RETRIES: u32 = 2;
 
 /// How long a paused upload holds a request open mid-body before setting it
 /// aside, to send it again whole once resumed. A short pause costs nothing;
@@ -382,6 +386,7 @@ impl S3Volume {
         let conditional = target.mode.refuses_occupied() && !built.check_first;
         let cancelled = || VolumeError::Cancelled(self.volume_id().to_string());
         let mut set_aside = false;
+        let mut faults = 0;
         loop {
             // ❌ No request is open across a pause: the server would drop it.
             if progress.pause.stopped().await {
@@ -478,6 +483,23 @@ impl S3Volume {
             };
             if !answer.status.is_success() {
                 let error = S3Error::from_response(answer.status, &answer.text());
+                // ❗ A throttle or a transient fault goes again after 1 s, then
+                // 2 s (B2 answers about one PUT in 600 with `500
+                // InternalError`). A fault may still have published, and the
+                // resend's no-overwrite check would then refuse our own object,
+                // so ours whole at the key is the write landing.
+                if error.is_retryable()
+                    && faults < MAX_PUT_RETRIES
+                    && let Some(wait) = retry_after(faults + 1)
+                {
+                    faults += 1;
+                    debug!(target: "volume", "s3: {} answered {error}; sending it again in {wait:?}", target.remote);
+                    tokio::time::sleep(wait).await;
+                    if let Some(head) = self.landed_whole(client, target, size).await {
+                        return Ok(self.published_after_all(target, &head, size, progress));
+                    }
+                    continue;
+                }
                 self.note_refused_condition(client, &error, crate::profile::ConditionalOp::Put, conditional);
                 return Err(map_s3_error(&error, target.remote));
             }
