@@ -100,6 +100,57 @@ export function readJsonIfPresent(path: string): unknown {
   }
 }
 
+/**
+ * Every key a JSON object names more than once, anywhere in the file. `JSON.parse` keeps the
+ * last one and drops the rest without a word, so a hand-added entry beside an existing one of
+ * the same name silently erases one of them (a second `"storage"` once hid in three termbases).
+ * Walks the raw text; assumes it parses, which `readJsonIfPresent` checks separately.
+ */
+export function duplicateKeyErrors(text: string, label: string): string[] {
+  interface Frame {
+    keys: Set<string> | undefined // `undefined` for an array
+    path: string
+    expectingKey: boolean
+    lastKey: string
+  }
+  const errors: string[] = []
+  const stack: Frame[] = []
+  const where = (path: string) => (path === '' ? 'at the top level' : `in "${path}"`)
+  const childPath = (frame: Frame | undefined) => {
+    if (!frame) return ''
+    const step = frame.keys ? frame.lastKey : '[]'
+    return frame.path === '' ? step : `${frame.path}.${step}`
+  }
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i]
+    const top = stack.at(-1)
+    if (char === '"') {
+      let end = i + 1
+      while (end < text.length && text[end] !== '"') end += text[end] === '\\' ? 2 : 1
+      if (top?.keys && top.expectingKey) {
+        const key = JSON.parse(text.slice(i, end + 1)) as string
+        if (top.keys.has(key)) {
+          errors.push(
+            `${label}: "${key}" appears twice ${where(top.path)}; JSON keeps only the last one, so merge them`,
+          )
+        }
+        top.keys.add(key)
+        top.lastKey = key
+        top.expectingKey = false
+      }
+      i = end
+    } else if (char === '{' || char === '[') {
+      stack.push({ keys: char === '{' ? new Set() : undefined, path: childPath(top), expectingKey: true, lastKey: '' })
+    } else if (char === '}' || char === ']') {
+      stack.pop()
+    } else if (char === ',' && top) {
+      top.expectingKey = true
+    }
+  }
+  return errors
+}
+
 /** Reads a text file, or `undefined` when it doesn't exist. */
 export function readTextIfPresent(path: string): string | undefined {
   return existsSync(path) ? readFileSync(path, 'utf8') : undefined
