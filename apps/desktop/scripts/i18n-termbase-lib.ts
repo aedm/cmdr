@@ -122,23 +122,21 @@ export function duplicateKeyErrors(text: string, label: string): string[] {
     return frame.path === '' ? step : `${frame.path}.${step}`
   }
 
+  const takeKey = (frame: Frame, key: string) => {
+    if (frame.keys?.has(key)) {
+      errors.push(`${label}: "${key}" appears twice ${where(frame.path)}; JSON keeps only the last one, so merge them`)
+    }
+    frame.keys?.add(key)
+    frame.lastKey = key
+    frame.expectingKey = false
+  }
+
   for (let i = 0; i < text.length; i++) {
     const char = text[i]
     const top = stack.at(-1)
     if (char === '"') {
-      let end = i + 1
-      while (end < text.length && text[end] !== '"') end += text[end] === '\\' ? 2 : 1
-      if (top?.keys && top.expectingKey) {
-        const key = JSON.parse(text.slice(i, end + 1)) as string
-        if (top.keys.has(key)) {
-          errors.push(
-            `${label}: "${key}" appears twice ${where(top.path)}; JSON keeps only the last one, so merge them`,
-          )
-        }
-        top.keys.add(key)
-        top.lastKey = key
-        top.expectingKey = false
-      }
+      const end = closingQuoteIndex(text, i)
+      if (top?.keys && top.expectingKey) takeKey(top, JSON.parse(text.slice(i, end + 1)) as string)
       i = end
     } else if (char === '{' || char === '[') {
       stack.push({ keys: char === '{' ? new Set() : undefined, path: childPath(top), expectingKey: true, lastKey: '' })
@@ -149,6 +147,13 @@ export function duplicateKeyErrors(text: string, label: string): string[] {
     }
   }
   return errors
+}
+
+/** The index of the quote closing the JSON string that opens at `start`, skipping escapes. */
+function closingQuoteIndex(text: string, start: number): number {
+  let end = start + 1
+  while (end < text.length && text[end] !== '"') end += text[end] === '\\' ? 2 : 1
+  return end
 }
 
 /** Reads a text file, or `undefined` when it doesn't exist. */
