@@ -132,6 +132,15 @@ describe('isActionableViolation', () => {
     expect(isActionableViolation({ ...base, sourceFile: 'chrome-extension://abc/content.js' })).toBe(false)
     expect(isActionableViolation({ ...base, sourceFile: 'safari-web-extension://abc/content.js' })).toBe(false)
   })
+
+  it('ignores blocked fonts, which only extensions and browsers request', () => {
+    const font = { ...base, directive: 'font-src', blockedUrl: 'https://fonts.gstatic.com/s/opensans/v44/x.woff2' }
+    expect(isActionableViolation(font)).toBe(false)
+    // Regression anchor: the scite extension's font arrived attributed to our own PostHog recorder script.
+    expect(
+      isActionableViolation({ ...font, sourceFile: 'https://getcmdr.com/ph/static/1.435.3/posthog-recorder.js' }),
+    ).toBe(false)
+  })
 })
 
 describe('POST /csp-report', () => {

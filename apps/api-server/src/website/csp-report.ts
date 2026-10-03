@@ -82,8 +82,13 @@ function parseHttpUrl(value: string | undefined): URL | null {
  * Whether a violation looks like our own site breaking: raised on one of our pages, for a real
  * network URL (not `inline`, `eval`, `data`, or an extension resource), by page code rather than a
  * browser extension. Extensions are most of the raw report volume, and none of it is actionable.
+ *
+ * `font-src` never alerts: the site self-hosts every font, so a blocked font is always an
+ * extension's or a browser's, and some arrive attributed to our own scripts (PostHog's recorder
+ * re-applies injected styles), which the source-file test can't catch.
  */
 export function isActionableViolation(v: CspViolation): boolean {
+  if (v.directive === 'font-src') return false
   const page = parseHttpUrl(v.documentUrl)
   if (!page || page.protocol !== 'https:' || !ourPageHosts.has(page.hostname)) return false
   if (!parseHttpUrl(v.blockedUrl)) return false

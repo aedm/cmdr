@@ -85,7 +85,9 @@ Safari: one `{"csp-report": {…}}` per violation) and its `report-to` endpoint 
 **Decision: alert only on violations that look like our own breakage.** Every visitor's browser reports, and most raw
 volume is extensions injecting scripts and styles. `isActionableViolation` keeps a report only when the page is
 getcmdr.com (`https`), the blocked value is an `http(s)` URL (not `inline`, `eval`, `data`, `blob`, or an extension
-resource), and the source file, when given, is an `http(s)` URL (not extension code). The Discord alert then fires once
+resource), and the source file, when given, is an `http(s)` URL (not extension code). `font-src` never alerts: every
+font is self-hosted, so a blocked one is always an extension's or a browser's (Perplexity's, scite's, Google Fonts), and
+some arrive attributed to our own PostHog recorder, which re-applies injected styles. The Discord alert then fires once
 per `(directive, blocked origin)` a day, deduped in `CSP_ALERTS`. Every actionable report also goes to the Workers log
 (`console.warn`), so the count is there even when Discord stays quiet.
 
