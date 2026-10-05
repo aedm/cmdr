@@ -1579,6 +1579,22 @@
     "description": "Help text for the type-to-jump-reset-delay setting (advanced). \"type-to-jump\" is the feature name; \"buffer\" = the accumulated typed characters.",
     "screenshot": "settings-advanced.png"
   },
+  "settings.fileExplorer.typeToJump.mode.label": "When you type in a pane",
+  "@settings.fileExplorer.typeToJump.mode.label": {
+    "description": "Settings > Appearance > Listing label for the choice of what typing letters in a file pane does: jump the cursor to a matching file, or filter the list down to matching files."
+  },
+  "settings.fileExplorer.typeToJump.mode.description": "Jump moves the cursor to the best match. Filter shows only the files and folders whose names contain what you type, like Total Commander’s quick filter; Backspace edits it and Esc clears it.",
+  "@settings.fileExplorer.typeToJump.mode.description": {
+    "description": "Help text for the type-in-pane mode setting. \"Total Commander\" is a product name (keep as-is). \"quick filter\" is Total Commander's name for the feature. Backspace and Esc are key names."
+  },
+  "settings.fileExplorer.typeToJump.mode.opt.jump": "Jump",
+  "@settings.fileExplorer.typeToJump.mode.opt.jump": {
+    "description": "Option in the type-in-pane mode toggle: typing moves the cursor to the best-matching file. Short verb."
+  },
+  "settings.fileExplorer.typeToJump.mode.opt.filter": "Filter",
+  "@settings.fileExplorer.typeToJump.mode.opt.filter": {
+    "description": "Option in the type-in-pane mode toggle: typing narrows the list to matching files. Short verb."
+  },
   "settings.fileOperations.maxConflictsToShow.label": "Maximum conflicts to show",
   "@settings.fileOperations.maxConflictsToShow.label": {
     "description": "Label for the picker limiting how many file conflicts are previewed before an operation. In Settings > Behavior > File operations (also in Advanced). \"conflicts\" = name clashes at the destination.",

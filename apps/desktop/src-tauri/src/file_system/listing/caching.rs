@@ -15,7 +15,6 @@ use crate::file_system::listing::diff::{DiffChange, PaneRows, compute_diff, list
 use crate::file_system::listing::diff_emitter::enqueue_diff;
 use crate::file_system::listing::metadata::{FileEntry, TagRef};
 use crate::file_system::listing::sorting::{DirectorySortMode, SortColumn, SortOrder, entry_comparator};
-use crate::file_system::listing::visible_rows::shows;
 use crate::file_system::volume::manager::RoutedKind;
 pub use cmdr_fs::volume::DirectoryChange;
 
@@ -164,7 +163,7 @@ pub fn insert_entry_sorted(listing_id: &str, entry: FileEntry) -> Option<PaneRow
         .entries()
         .partition_point(|existing| cmp(existing, &entry).is_lt());
     // The rows above `pos` are the same ones before and after the insert.
-    let after = shows(&entry, listing.include_hidden()).then(|| listing.pane_rows().rows_before(pos));
+    let after = listing.pane_shows(&entry).then(|| listing.pane_rows().rows_before(pos));
     listing.entries_mut().insert(pos, entry);
     Some(PaneRows { before: None, after })
 }
@@ -318,7 +317,7 @@ pub fn update_entry_sorted(listing_id: &str, new_entry: FileEntry) -> Option<Pan
         } else {
             (idx, pane.rows_before(idx))
         };
-        let after = shows(&new_entry, listing.include_hidden()).then_some(rows_above);
+        let after = listing.pane_shows(&new_entry).then_some(rows_above);
         (new_pos, PaneRows { before, after })
     };
 
@@ -680,7 +679,7 @@ pub(super) fn publish_replacement(listing_id: &str, entries: Vec<FileEntry>, ove
     use crate::file_system::listing::sorting::sort_entries;
 
     let mut sorted = entries;
-    let (old_entries, include_hidden) = {
+    let (old_entries, include_hidden, name_filter) = {
         let cache = match LISTING_CACHE.read() {
             Ok(c) => c,
             Err(_) => return,
@@ -696,14 +695,18 @@ pub(super) fn publish_replacement(listing_id: &str, entries: Vec<FileEntry>, ove
             listing.sort_order,
             listing.directory_sort_mode,
         );
-        (listing.entries().to_vec(), listing.include_hidden())
+        (
+            listing.entries().to_vec(),
+            listing.include_hidden(),
+            listing.name_filter().cloned(),
+        )
     };
 
     // The cache takes any change, hidden entries' included; the pane hears only its rows.
     if !listing_changed(&old_entries, &sorted) {
         return;
     }
-    let changes = compute_diff(&old_entries, &sorted, include_hidden);
+    let changes = compute_diff(&old_entries, &sorted, include_hidden, name_filter.as_ref());
 
     // Entries and count under ONE lock acquisition: a walker asking the
     // fresh-listing oracle between the two writes would see six contributed

@@ -25,6 +25,7 @@
     const fnKeyBarDef = getSettingDefinition('appearance.showFunctionKeyBar') ?? { label: '', description: '' }
     const foldersFirstDef = getSettingDefinition('listing.foldersFirst') ?? { label: '', description: '' }
     const dirSortDef = getSettingDefinition('listing.directorySortMode') ?? { label: '', description: '' }
+    const typeModeDef = getSettingDefinition('fileExplorer.typeToJump.mode') ?? { label: '', description: '' }
     const showExtInNameDef = getSettingDefinition('listing.showExtensionInName') ?? { label: '', description: '' }
     const showTagsDef = getSettingDefinition('listing.showTags') ?? { label: '', description: '' }
     const briefWidthModeDef = getSettingDefinition('listing.briefColumnWidthMode') ?? { label: '', description: '' }
@@ -51,7 +52,7 @@
 </script>
 
 <SettingsSection title={tString('settings.section.listing')}>
-    {#if anyVisible(shouldShow, 'listing.showHiddenFiles', 'appearance.useAppIconsForDocuments', 'appearance.showFunctionKeyBar', 'listing.foldersFirst', 'listing.directorySortMode', 'listing.showExtensionInName', 'listing.showTags')}
+    {#if anyVisible(shouldShow, 'listing.showHiddenFiles', 'appearance.useAppIconsForDocuments', 'appearance.showFunctionKeyBar', 'listing.foldersFirst', 'listing.directorySortMode', 'fileExplorer.typeToJump.mode', 'listing.showExtensionInName', 'listing.showTags')}
         <SectionCard label={tString('settings.appearance.card.namesAndIcons')}>
             {#if shouldShow('listing.showHiddenFiles')}
                 <SettingRow
@@ -107,6 +108,16 @@
                         disabled={!foldersFirst}
                         ariaDescribedBy={foldersFirst ? undefined : disabledNoteId('listing.directorySortMode')}
                     />
+                </SettingRow>
+            {/if}
+            {#if shouldShow('fileExplorer.typeToJump.mode')}
+                <SettingRow
+                    id="fileExplorer.typeToJump.mode"
+                    label={typeModeDef.label}
+                    description={typeModeDef.description}
+                    {searchQuery}
+                >
+                    <SettingToggleGroup id="fileExplorer.typeToJump.mode" />
                 </SettingRow>
             {/if}
             {#if shouldShow('listing.showExtensionInName')}

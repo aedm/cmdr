@@ -8,6 +8,7 @@ export type {
   AppColor,
   DateTimeFormat,
   DirectorySortMode,
+  TypeToJumpMode,
   ListingDirectorySortMode,
   SizeDisplayMode,
   BriefColumnWidthMode,

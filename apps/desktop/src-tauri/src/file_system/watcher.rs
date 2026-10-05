@@ -563,22 +563,26 @@ pub async fn handle_directory_change(listing_id: &str) {
 
     let mut new_entries = new_entries;
 
-    // The listing's sort params and its pane's hidden-files setting, taken once: the
-    // overlay pass between the enrich and the sort is `async`, and the cache guard
-    // can't be held across it.
-    let (sort_params, include_hidden) = {
+    // The listing's sort params and its pane's hidden-files setting and quick
+    // filter, taken once: the overlay pass between the enrich and the sort is
+    // `async`, and the cache guard can't be held across it.
+    let (sort_params, include_hidden, name_filter) = {
         use crate::file_system::listing::cached_listing::LISTING_CACHE;
 
         let listing_view = LISTING_CACHE.read().ok().and_then(|cache| {
-            cache
-                .get(listing_id)
-                .map(|l| ((l.sort_by, l.sort_order, l.directory_sort_mode), l.include_hidden()))
+            cache.get(listing_id).map(|l| {
+                (
+                    (l.sort_by, l.sort_order, l.directory_sort_mode),
+                    l.include_hidden(),
+                    l.name_filter().cloned(),
+                )
+            })
         });
         // A listing gone by now takes no update below either, so the setting is moot.
-        (
-            listing_view.map(|(sort, _)| sort),
-            listing_view.is_none_or(|(_, hidden)| hidden),
-        )
+        match listing_view {
+            Some((sort, hidden, filter)) => (Some(sort), hidden, filter),
+            None => (None, true, None),
+        }
     };
 
     // Enrich with index data so diff entries have recursive_size etc. Skipped for
@@ -613,7 +617,7 @@ pub async fn handle_directory_change(listing_id: &str) {
     if !listing_changed(&old_entries, &new_entries) {
         return; // No actual changes
     }
-    let changes = compute_diff(&old_entries, &new_entries, include_hidden);
+    let changes = compute_diff(&old_entries, &new_entries, include_hidden, name_filter.as_ref());
 
     // Update the unified LISTING_CACHE with new entries.
     update_listing_entries(listing_id, new_entries, overlay_rows);

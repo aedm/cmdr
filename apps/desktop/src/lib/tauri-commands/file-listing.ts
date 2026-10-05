@@ -1,7 +1,7 @@
 // On-demand virtual scrolling API (listing-based), sync status, font metrics
 
 import { type UnlistenFn } from '@tauri-apps/api/event'
-import { commands, events, type Initiator, type RowBeside } from '$lib/ipc/bindings'
+import { commands, events, type Initiator, type NameFilterResult, type RowBeside } from '$lib/ipc/bindings'
 import type {
   FileEntry,
   ListingStats,
@@ -292,6 +292,36 @@ export async function keepListingsAlive(listingIds: string[]): Promise<string[]>
 export async function setListingIncludeHidden(listingId: string, includeHidden: boolean): Promise<void> {
   const res = await commands.setListingIncludeHidden(listingId, includeHidden)
   if (res.status === 'error') throwListingLookupError(res.error)
+}
+
+/**
+ * Sets the quick filter of the pane showing this listing (`null` or `''` clears
+ * it), carrying the cursor's file and the selection into the filtered rows.
+ * @param listingId - The listing ID from listDirectoryStart.
+ * @param pattern - What the user typed; `*` and `?` are wildcards.
+ * @param includeHidden - The pane's hidden-files setting.
+ * @param cursorFilename - The file under the cursor, to find in the new rows.
+ * @param selectedIndices - Backend indices of the selected files.
+ * @param refuseEmpty - Refuse a pattern that matches nothing (`accepted: false`), keeping the old filter.
+ */
+export async function setListingNameFilter(
+  listingId: string,
+  pattern: string | null,
+  includeHidden: boolean,
+  cursorFilename: string | undefined,
+  selectedIndices: number[],
+  refuseEmpty: boolean,
+): Promise<NameFilterResult> {
+  const res = await commands.setListingNameFilter(
+    listingId,
+    pattern,
+    includeHidden,
+    cursorFilename ?? null,
+    selectedIndices,
+    refuseEmpty,
+  )
+  if (res.status === 'error') throwListingLookupError(res.error)
+  return res.data
 }
 
 /**

@@ -19,6 +19,7 @@
     } from '$lib/tauri-commands'
     import { createTypeToJumpController } from './type-to-jump-controller.svelte'
     import TypeToJumpIndicator from './TypeToJumpIndicator.svelte'
+    import { createQuickFilterController } from './quick-filter-controller.svelte'
     import type { ViewMode } from '$lib/app-status-store'
     import type { CommandId } from '$lib/commands'
     import { tooltip } from '$lib/tooltip/tooltip'
@@ -99,7 +100,7 @@
     import { getVolumes as getStoreVolumes } from '$lib/stores/volume-store.svelte'
     import type { UnreachableState } from '../tabs/tab-types'
     import { getUsageBar, formatBarTooltip } from '../disk-space-utils'
-    import { getFileSizeFormat, getTypeToJumpResetDelay } from '$lib/settings/reactive-settings.svelte'
+    import { getFileSizeFormat, getTypeToJumpMode, getTypeToJumpResetDelay } from '$lib/settings/reactive-settings.svelte'
     import { createRowOverlays } from './row-overlays.svelte'
     import { createSelectionInfoFeed } from './selection-info-feed.svelte'
     import { createPaneKeyRouter } from './pane-key-router'
@@ -288,6 +289,27 @@
         getHasParent: () => hasParent,
         setCursorIndex: (index: number) => void setCursorIndex(index),
         onSyncMcp: () => { debouncedSyncMcp.call(); },
+    })
+
+    // Quick filter (the `filter` typing mode): the pattern + one-at-a-time IPC
+    // runner, in `quick-filter-controller.svelte.ts`. The backend owns the
+    // filtering; this applies its answer (count, cursor, selection) here.
+    const quickFilter = createQuickFilterController({
+        getListingId: () => listingId,
+        getLoading: () => loading,
+        getHasBackendListing: () => caps.hasBackendListing,
+        getIncludeHidden: () => includeHidden,
+        getHasParent: () => hasParent,
+        getCursorFilename: () => selectionInfo.entry?.name,
+        getSelectedIndices: () => selection.getSelectedIndices(),
+        apply: ({ totalCount: count, cursorIndex: cursor, selectedIndices }) => {
+            totalCount = count
+            selection.setSelectedIndices(selectedIndices)
+            cacheGeneration++
+            void setCursorIndex(cursor)
+            void selectionInfo.fetchStats()
+            debouncedSyncMcp.call()
+        },
     })
 
     // Rename state (inline rename editor)
@@ -907,6 +929,29 @@
     export function clearJumpState(): void {
         jump.clearJumpState()
     }
+
+    // Quick filter delegates (`FilePaneAPI`), driven by `routeTypingKey`.
+    export function isQuickFilterMode(): boolean {
+        return getTypeToJumpMode() === 'filter'
+    }
+    export function isQuickFilterActive(): boolean {
+        return quickFilter.isActive()
+    }
+    export function appendQuickFilter(char: string): void {
+        quickFilter.append(char)
+    }
+    export function backspaceQuickFilter(): void {
+        quickFilter.backspace()
+    }
+    export function clearQuickFilter(): void {
+        quickFilter.clear()
+    }
+
+    // A pattern belongs to its listing; a new one starts unfiltered on the backend.
+    $effect(() => {
+        dependOn(listingId)
+        untrack(() => { quickFilter.reset(); })
+    })
 
     /** Find an item by name in network views. Returns index or -1. */
     export function findNetworkItemIndex(name: string): number {
@@ -1973,6 +2018,7 @@
             visible={jump.indicatorVisible}
             stale={jump.indicatorStale}
         />
+        <TypeToJumpIndicator buffer={quickFilter.pattern} visible={quickFilter.isActive()} stale={false} kind="filter" />
         {#if unreachable}
             <VolumeUnreachableBanner
                 originalPath={unreachable.originalPath}

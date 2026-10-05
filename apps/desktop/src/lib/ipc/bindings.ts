@@ -61,6 +61,30 @@ export const commands = {
   setListingIncludeHidden: (listingId: string, includeHidden: boolean) =>
     typedError<null, ListingLookupError>(__TAURI_INVOKE('set_listing_include_hidden', { listingId, includeHidden })),
   /**
+   *  Sets the quick filter of the pane showing `listing_id` (an empty or `null`
+   *  pattern clears it), and returns the new row count plus where the cursor's
+   *  file and the selected files landed in the filtered rows. With
+   *  `refuse_empty`, a pattern that matches nothing is refused (`accepted: false`).
+   */
+  setListingNameFilter: (
+    listingId: string,
+    pattern: string | null,
+    includeHidden: boolean,
+    cursorFilename: string | null,
+    selectedIndices: number[],
+    refuseEmpty: boolean,
+  ) =>
+    typedError<NameFilterResult, ListingLookupError>(
+      __TAURI_INVOKE('set_listing_name_filter', {
+        listingId,
+        pattern,
+        includeHidden,
+        cursorFilename,
+        selectedIndices,
+        refuseEmpty,
+      }),
+    ),
+  /**
    *  Re-reads a directory listing, emitting any diff.
    *
    *  `force` says whose idea the refresh was. `true` is an explicit "re-read this
@@ -10833,6 +10857,32 @@ export type MutationError =
       // What the layer below reported, for the log and the details disclosure.
       detail: string
     }
+
+/**
+ *  Where the pane's cursor and selection land after a quick-filter change, in
+ *  the new row space.
+ */
+export type NameFilterResult = {
+  /**
+   *  Whether the listing took the new pattern. `false` only when the caller
+   *  asked to refuse a pattern nothing matches: the listing then keeps its
+   *  previous filter, and the rest of this answer describes that one.
+   */
+  accepted: boolean
+  // How many rows the pane shows under the new filter.
+  totalCount: number
+  /**
+   *  The row of the file that was under the cursor, or `None` when the new
+   *  filter leaves it out (or no file was given).
+   */
+  newCursorIndex: number | null
+  /**
+   *  The rows of the previously selected files the new filter still shows. A
+   *  selected file the filter leaves out drops out of the selection, so no
+   *  operation ever acts on a row the user can't see.
+   */
+  newSelectedIndices: number[]
+}
 
 export type NegotiatedSummaryDto = {
   dialect: string

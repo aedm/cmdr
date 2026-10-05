@@ -4,9 +4,9 @@ use crate::file_system::get_files_at_indices as ops_get_files_at_indices;
 use crate::file_system::get_paths_at_indices as ops_get_paths_at_indices;
 use crate::file_system::{
     BriefColumnWidths, BriefColumnsIpcError, DirectorySortMode, FileEntry, ListingLookupError, ListingStats,
-    ResortResult, RowBeside, SortColumn, SortOrder, StreamingListingStartResult, cancel_listing as ops_cancel_listing,
-    compute_brief_column_text_widths as ops_compute_brief_column_text_widths, find_file_index as ops_find_file_index,
-    find_file_indices as ops_find_file_indices,
+    NameFilterResult, ResortResult, RowBeside, SortColumn, SortOrder, StreamingListingStartResult,
+    cancel_listing as ops_cancel_listing, compute_brief_column_text_widths as ops_compute_brief_column_text_widths,
+    find_file_index as ops_find_file_index, find_file_indices as ops_find_file_indices,
     fuzzy_find_first_match_in_listing as ops_fuzzy_find_first_match_in_listing, get_file_at as ops_get_file_at,
     get_file_beside as ops_get_file_beside, get_file_range as ops_get_file_range,
     get_listing_stats as ops_get_listing_stats, get_total_count as ops_get_total_count,
@@ -14,6 +14,7 @@ use crate::file_system::{
     list_directory_start_streaming as ops_list_directory_start_streaming,
     refresh_listing_index_sizes as ops_refresh_listing_index_sizes, resort_listing as ops_resort_listing,
     set_listing_include_hidden as ops_set_listing_include_hidden,
+    set_listing_name_filter as ops_set_listing_name_filter,
 };
 use std::path::{Path, PathBuf};
 use tokio::time::Duration;
@@ -510,6 +511,30 @@ pub async fn keep_listings_alive(listing_ids: Vec<String>) -> Vec<String> {
 #[specta::specta]
 pub async fn set_listing_include_hidden(listing_id: String, include_hidden: bool) -> Result<(), ListingLookupError> {
     ops_set_listing_include_hidden(&listing_id, include_hidden)
+}
+
+/// Sets the quick filter of the pane showing `listing_id` (an empty or `null`
+/// pattern clears it), and returns the new row count plus where the cursor's
+/// file and the selected files landed in the filtered rows. With
+/// `refuse_empty`, a pattern that matches nothing is refused (`accepted: false`).
+#[tauri::command]
+#[specta::specta]
+pub async fn set_listing_name_filter(
+    listing_id: String,
+    pattern: Option<String>,
+    include_hidden: bool,
+    cursor_filename: Option<String>,
+    selected_indices: Vec<usize>,
+    refuse_empty: bool,
+) -> Result<NameFilterResult, ListingLookupError> {
+    ops_set_listing_name_filter(
+        &listing_id,
+        pattern.as_deref(),
+        include_hidden,
+        cursor_filename.as_deref(),
+        &selected_indices,
+        refuse_empty,
+    )
 }
 
 /// The listing's path when a non-local volume's own watcher claims to see every

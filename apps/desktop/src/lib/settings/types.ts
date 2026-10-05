@@ -263,6 +263,8 @@ export type ExtensionChangePolicy = 'yes' | 'no' | 'ask'
 /** What ⌘V does in a pane when the clipboard holds no file URLs but has pasteable content (text, image, PDF). */
 export type PasteClipboardAsFileMode = 'doNothing' | 'createFile' | 'createFileAndRename'
 export type DirectorySortMode = 'likeFiles' | 'alwaysByName'
+/** What typing a letter in a pane does: jump the cursor, or narrow the list (quick filter). */
+export type TypeToJumpMode = 'jump' | 'filter'
 /**
  * What a listing's comparator is told (the Rust `DirectorySortMode`): the "Sort folders"
  * choice while "Show folders first" is on, else `mixedWithFiles`. `getDirectorySortMode()` folds
@@ -375,6 +377,7 @@ export interface SettingsValues {
   'fileExplorer.git.showVirtualGitPortal': boolean
 
   // Type-to-jump
+  'fileExplorer.typeToJump.mode': TypeToJumpMode
   'fileExplorer.typeToJump.resetDelay': number
 
   // Quick Look

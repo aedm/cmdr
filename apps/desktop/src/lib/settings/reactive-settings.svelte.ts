@@ -12,6 +12,7 @@ import {
   type FileSizeFormat,
   type FileSizeUnit,
   type DirectorySortMode,
+  type TypeToJumpMode,
   type ListingDirectorySortMode,
   type SizeDisplayMode,
   type BriefColumnWidthMode,
@@ -48,6 +49,7 @@ let briefColumnWidthMaxPx = $state<number>(400)
 let networkEnabled = $state<boolean>(true)
 let nearbyServersGroup = $state<NearbyServersGroupChoice>('auto')
 let typeToJumpResetDelay = $state<number>(1000)
+let typeToJumpMode = $state<TypeToJumpMode>('jump')
 let driveIndexingEnabled = $state<boolean>(true)
 let mediaIndexEnabled = $state<boolean>(false)
 let mediaIndexShowFileStatusIcons = $state<boolean>(true)
@@ -107,6 +109,7 @@ async function runInit(options?: { restrictedWindow?: boolean }): Promise<void> 
     networkEnabled = getSetting('network.enabled')
     nearbyServersGroup = nearbyServersGroupChoiceOf(getSetting('network.nearbyServersGroup'))
     typeToJumpResetDelay = getSetting('fileExplorer.typeToJump.resetDelay')
+    typeToJumpMode = getSetting('fileExplorer.typeToJump.mode')
     driveIndexingEnabled = getSetting('indexing.enabled')
     mediaIndexEnabled = getSetting('mediaIndex.enabled')
     mediaIndexShowFileStatusIcons = getSetting('mediaIndex.showFileStatusIcons')
@@ -201,6 +204,9 @@ function applySettingChange(id: string, value: unknown): void {
       break
     case 'fileExplorer.typeToJump.resetDelay':
       typeToJumpResetDelay = value as number
+      break
+    case 'fileExplorer.typeToJump.mode':
+      typeToJumpMode = value as TypeToJumpMode
       break
     case 'indexing.enabled':
       driveIndexingEnabled = value as boolean
@@ -384,6 +390,15 @@ function nearbyServersGroupChoiceOf(value: unknown): NearbyServersGroupChoice {
  */
 export function getTypeToJumpResetDelay(): number {
   return typeToJumpResetDelay
+}
+
+/**
+ * What typing a letter in a pane does: jump the cursor to the best match
+ * (`jump`), or narrow the pane to the matching rows (`filter`). Read on every
+ * keystroke, so a change takes effect on the next one.
+ */
+export function getTypeToJumpMode(): TypeToJumpMode {
+  return typeToJumpMode
 }
 
 /**

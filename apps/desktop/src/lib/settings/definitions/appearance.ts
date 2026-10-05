@@ -486,6 +486,25 @@ export const appearanceSettings: SettingDefinitionSource[] = [
     },
   },
   {
+    // What typing a letter in a pane does. `filter` is Total Commander's quick
+    // filter (`file-explorer/pane/quick-filter-controller.svelte.ts`).
+    id: 'fileExplorer.typeToJump.mode',
+    section: ['Appearance', 'Listing'],
+    cardKey: 'settings.appearance.card.namesAndIcons',
+    labelKey: 'settings.fileExplorer.typeToJump.mode.label',
+    descriptionKey: 'settings.fileExplorer.typeToJump.mode.description',
+    keywords: ['type', 'jump', 'filter', 'quick filter', 'quick search', 'narrow', 'total commander', 'keystroke'],
+    type: 'enum',
+    default: 'jump',
+    component: 'toggle-group',
+    constraints: {
+      options: [
+        { value: 'jump', labelKey: 'settings.fileExplorer.typeToJump.mode.opt.jump' },
+        { value: 'filter', labelKey: 'settings.fileExplorer.typeToJump.mode.opt.filter' },
+      ],
+    },
+  },
+  {
     id: 'listing.briefColumnWidthMode',
     section: ['Appearance', 'Listing'],
     labelKey: 'settings.listing.briefColumnWidthMode.label',

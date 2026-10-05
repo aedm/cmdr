@@ -219,6 +219,27 @@ caller that reads a single shallow row per mutation and nothing else is the shap
 accident. `find_file_indices` is the batch form of the first, and `get_file_beside` exists so a caller wanting a
 neighbour doesn't compose two calls; reach for those instead of a loop.
 
+## Quick filter (name_filter.rs)
+
+The pane's "type to narrow" mode (Total Commander's quick filter). The pattern lives on the `CachedListing`
+(`set_name_filter`) and is one more input to the row predicate (`visible_rows::shows`), so it is NOT a second filter
+point: counts, ranges, selection, type-to-jump, and `directory-diff` rows all speak the filtered row space.
+
+- **Decision: the filter is the listing's, not a per-call argument like `include_hidden`.** Why: every pane-index IPC
+  already carries `include_hidden`; threading a pattern through all of them would touch every caller for no gain, since
+  only the pane showing the listing ever filters it. The cost: the filter is not a slot key of `VisibleRowsCache`, so a
+  change drops both slots.
+- **`set_listing_name_filter` swaps the row space under ONE write lock** and answers with the new count plus where the
+  cursor's file and the selected files landed (the `resort_listing` shape). A selected file the filter hides drops out
+  of the selection, so no operation acts on a row the user can't see. A change drops the queued diffs, like a hidden
+  toggle.
+- **Typing narrows down to the last match, never past it.** A growing pattern is sent with `refuse_empty`; one that
+  matches no entry is refused under the same lock (`accepted: false`, old filter kept) and the frontend drops the
+  keystroke. The check walks every entry, not the current rows: an edited pattern needn't narrow the old one.
+- Matching: substring anywhere in the name, folded by `cmdr_fs::name_fold` (case and Unicode form), `*` / `?` as
+  wildcards with an implied `*` on both ends. A new listing starts unfiltered; the frontend side is
+  `apps/desktop/src/lib/file-explorer/pane/quick-filter-controller.svelte.ts`.
+
 ## Diffs speak the pane's rows
 
 A `directory-diff` index is a row of the pane showing the listing, the same space `get_file_range` reads, ❌ never an

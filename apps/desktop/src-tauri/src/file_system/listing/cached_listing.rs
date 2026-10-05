@@ -13,9 +13,10 @@ use std::sync::{LazyLock, RwLock};
 use std::time::Instant;
 
 use crate::file_system::listing::metadata::{FileEntry, TagRef};
+use crate::file_system::listing::name_filter::NameFilter;
 use crate::file_system::listing::path_index::PathIndexCache;
 use crate::file_system::listing::sorting::{DirectorySortMode, SortColumn, SortOrder};
-use crate::file_system::listing::visible_rows::{VisibleRows, VisibleRowsCache};
+use crate::file_system::listing::visible_rows::{self, VisibleRows, VisibleRowsCache};
 
 /// Cache for directory listings (on-demand virtual scrolling).
 /// Key: listing_id, Value: cached listing with all entries.
@@ -79,6 +80,10 @@ pub(crate) struct CachedListing {
     /// row space every `directory-diff` for this listing speaks, and so which
     /// changes reach the pane at all. See [`Self::pane_rows`].
     include_hidden: bool,
+    /// The pane's quick filter, if the user is typing one. Like
+    /// `include_hidden`, it picks the row space every reader and every
+    /// `directory-diff` speaks. See `name_filter.rs`.
+    name_filter: Option<NameFilter>,
     /// Row numbers over the visible subset of `entries`, per `include_hidden`.
     /// Rebuilt lazily after any mutation; see `visible_rows.rs`.
     visible_rows: VisibleRowsCache,
@@ -156,6 +161,7 @@ impl CachedListing {
             volume_id,
             entries,
             include_hidden,
+            name_filter: None,
             visible_rows: VisibleRowsCache::new(),
             path_index: PathIndexCache::new(),
             sort_by,
@@ -287,7 +293,31 @@ impl CachedListing {
     /// ranges, stats, selection indices, and type-to-jump can never disagree
     /// about what the pane is showing.
     pub(crate) fn rows(&self, include_hidden: bool) -> VisibleRows<'_> {
-        self.visible_rows.rows(&self.entries, include_hidden)
+        self.visible_rows
+            .rows(&self.entries, include_hidden, self.name_filter.as_ref())
+    }
+
+    /// The pane's quick filter, if any.
+    pub(crate) fn name_filter(&self) -> Option<&NameFilter> {
+        self.name_filter.as_ref()
+    }
+
+    /// Records the pane's quick filter. Reports whether it changed. A change
+    /// drops the row map: unlike `include_hidden`, the filter isn't a slot key.
+    pub(crate) fn set_name_filter(&mut self, name_filter: Option<NameFilter>) -> bool {
+        let changed = self.name_filter != name_filter;
+        if changed {
+            self.name_filter = name_filter;
+            self.visible_rows.invalidate();
+        }
+        changed
+    }
+
+    /// Whether the pane showing this listing shows `entry`: [`visible_rows::shows`]
+    /// at the pane's own setting and filter. For a patch deciding which rows a
+    /// `directory-diff` names.
+    pub(crate) fn pane_shows(&self, entry: &FileEntry) -> bool {
+        visible_rows::shows(entry, self.include_hidden, self.name_filter.as_ref())
     }
 
     /// Whether the pane showing this listing shows hidden entries.

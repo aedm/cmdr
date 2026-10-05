@@ -6,6 +6,7 @@ export {
   listDirectoryStart,
   cancelListing,
   resortListing,
+  setListingNameFilter,
   getFileRange,
   getTotalCount,
   findFileIndex,

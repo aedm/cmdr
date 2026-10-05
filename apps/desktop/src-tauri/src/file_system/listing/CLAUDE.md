@@ -9,17 +9,17 @@ Backend directory reading, caching, sorting, and streaming: 100k+ entries, non-b
   **orphan_reaper.rs** the 6 h backstop, **mutation.rs**, **foreign_path.rs** stored spellings.
 - Derive and emit: **diff.rs** `compute_diff`, **diff_emitter.rs** 50 ms coalescing, **visible_rows.rs** /
   **path_index.rs** the row and path maps, **sorting.rs** the one comparator, **collation.rs** the one name order, plus
-  **listing_host.rs**, **brief_columns.rs**, **fuzzy_jump.rs**. `FileEntry` is `cmdr-fs`'s, as `listing::metadata`.
+  **listing_host.rs**, **brief_columns.rs**, **fuzzy_jump.rs**, **name_filter.rs**. `FileEntry` is `cmdr-fs`'s, as `listing::metadata`.
 
 ## Invariants and gotchas
 
-- **Neither a row number nor a path indexes `entries`.** Rows drop hidden entries and in-flight scratch, so
+- **Neither a row number nor a path indexes `entries`.** Rows drop hidden, filtered-out, and scratch entries, so
   `CachedListing::rows` is the ONLY filter point, on READ; by-path callers go through `index_of_path` /
   `indices_of_paths`. ❗ A MUTATING caller resolves BEFORE `entries_mut`, which drops both maps. `entries` stays
   private: accessors that grew their own filter were each a row off.
 - **A watcher diff updates the cache, then emits what the PANE shows** via `diff_emitter::enqueue_diff` (❌ never
   `app.emit`: no coalescing, flicker). Its index is a pane row (`CachedListing::pane_rows`), ❌ never an entry index:
-  build with `DiffChange::for_pane` or `compute_diff(.., include_hidden)`. `DETAILS.md` § "Diffs speak the pane's
+  build with `DiffChange::for_pane` or `compute_diff(.., include_hidden, name_filter)`. `DETAILS.md` § "Diffs speak the pane's
   rows".
 - **Refreshes of ONE directory stay serialized** (`notify_full_refresh`), or an older read lands last.
 - **`listing_overlays::decorate` folds in rows no volume holds**, between enrich and the sort, in all THREE read paths

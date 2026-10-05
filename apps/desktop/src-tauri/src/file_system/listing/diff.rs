@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
 use super::FileEntry;
+use super::name_filter::NameFilter;
 use super::visible_rows::shows;
 
 /// What happened to one row of a listing.
@@ -119,8 +120,8 @@ pub struct DirectoryDiff {
     pub changes: Vec<DiffChange>,
 }
 
-/// Computes the diff a pane with this `include_hidden` sees between two sorted
-/// readings of its directory.
+/// Computes the diff a pane with this `include_hidden` and quick filter sees
+/// between two sorted readings of its directory.
 ///
 /// It diffs the rows the pane shows on each side (`visible_rows::shows`), so the
 /// indices are rows, an entry hidden on both sides is left out, and one that turns
@@ -132,9 +133,14 @@ pub struct DirectoryDiff {
 /// queue, ❌ never for the index shift every row below an add or a remove takes.
 /// The rows that kept their relative order are the longest increasing run of old
 /// positions read in new order, so the smallest possible set is called moved.
-pub fn compute_diff(old: &[FileEntry], new: &[FileEntry], include_hidden: bool) -> Vec<DiffChange> {
-    let old: Vec<&FileEntry> = old.iter().filter(|e| shows(e, include_hidden)).collect();
-    let new: Vec<&FileEntry> = new.iter().filter(|e| shows(e, include_hidden)).collect();
+pub fn compute_diff(
+    old: &[FileEntry],
+    new: &[FileEntry],
+    include_hidden: bool,
+    name_filter: Option<&NameFilter>,
+) -> Vec<DiffChange> {
+    let old: Vec<&FileEntry> = old.iter().filter(|e| shows(e, include_hidden, name_filter)).collect();
+    let new: Vec<&FileEntry> = new.iter().filter(|e| shows(e, include_hidden, name_filter)).collect();
     diff_rows(&old, &new)
 }
 
