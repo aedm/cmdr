@@ -410,7 +410,9 @@ pub async fn chat_completion(
         .ok_or(AiError::EmptyResponse)?
         .to_owned();
 
-    log::trace!("AI chat_completion: extracted content: {text}");
+    // Length only: a reply restates the user's words. The full exchange lives in the opt-in,
+    // local-only LLM call log (`llm_log`).
+    log::trace!("AI chat_completion: extracted content ({} chars)", text.chars().count());
     Ok(text)
 }
 
