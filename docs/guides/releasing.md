@@ -66,9 +66,10 @@ the variable alone.
    read from sops (`CMDR_TAURI_SIGNING_PRIVATE_KEY`, `CMDR_TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) into the signer's
    environment only, verifies each new signature against the pubkey in `tauri.conf.json` with its own minisign verifier
    (the check the app runs), uploads the `.sig` files, reads them back, and dispatches `release.yml` on the tag.
-4. **The dispatched run** finishes it: `guard` (it also refuses a dispatch on a branch), then `publish`, which publishes
-   the draft and then runs exactly the `ci` mode steps (`latest.json` from the `.sig` assets, checksums, release notes,
-   the commit to `main`, the website deploy), then `attest` and `bump-tap`. `ci-gate`, `build`, and `sbom` skip.
+4. **The dispatched run** finishes it: `guard` (it also refuses a dispatch on a branch), then `publish`, which verifies
+   every archive's `.sig` against the app's public key, publishes the draft, and then runs exactly the `ci` mode steps
+   (`latest.json` from the `.sig` assets, checksums, release notes, the commit to `main`, the website deploy), then
+   `attest` and `bump-tap`. `ci-gate`, `build`, and `sbom` skip.
 
 `release-finish.sh` is resumable: re-run it after anything (a closed laptop, a red job). It holds no state of its own
 and reads where the release stands on GitHub. A build still running gets waited for, a draft gets signed (re-signing a
@@ -496,8 +497,10 @@ Fix the cause, then run it again; it picks up where the release stands.
   that check is the whole point of signing locally.
 - **"the build run ended failure"**: re-run its failed jobs, `gh run rerun <id> --failed`, then run this again.
 - **"has N releases on GitHub"**: duplicate drafts on one tag. Keep the one with the assets, delete the rest.
-- **"the signature just made … doesn't verify"**: the key in sops isn't the app's (key ID `A2601F36BB168C0A`). Compare
-  with the Bitwarden copy (vault note `projects/Cmdr/workflow/Cmdr signing keys.md`).
+- **"the signature for … doesn't verify against the app's public key"**: the key in sops isn't the app's (key ID
+  `A2601F36BB168C0A`). Compare with the Bitwarden copy (vault note `projects/Cmdr/workflow/Cmdr signing keys.md`). The
+  finishing run's `publish` job runs the same check (`release-finish.sh -verify-dir`) before it publishes the draft, so
+  a dispatch with missing, empty, or foreign signatures fails there and nothing goes public.
 - **"the finishing run failed again"**: it already re-ran the failed jobs once. Read the run; § Publish job failed but
   builds succeeded applies, as does § The attest or sbom job failed. ❌ Don't dispatch a fresh run by hand once
   `publish` has committed the manifest: the guard refuses it. Re-run the failed jobs instead.

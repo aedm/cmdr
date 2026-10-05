@@ -25,6 +25,9 @@
 //	./scripts/release-finish.sh 0.51.0
 //	./scripts/release-finish.sh -dry-run -out /tmp/sigs 0.51.0
 //
+// `-verify-dir DIR` only verifies the archives and `.sig` files in DIR against the app's public key,
+// with no gh or sops; the `publish` job gates a dispatch on it.
+//
 // `-dry-run` stops after step 5: it uploads, dispatches, and publishes nothing, and works on an
 // already published release. `-signer-workflow` (dry runs only) checks a release from before the
 // reusable workflow, whose provenance `release.yml` signed.
@@ -73,6 +76,7 @@ func main() {
 	dryRun := flag.Bool("dry-run", false, "verify and sign into -out, then stop: upload, dispatch, and publish nothing")
 	out := flag.String("out", "", "where to put the downloaded archives and signatures (default: a fresh temp dir)")
 	signer := flag.String("signer-workflow", pipelineSigner, "dry runs only: the workflow whose provenance must cover the archives")
+	verifyDir := flag.String("verify-dir", "", "only verify the three archives in DIR against their .sig files and the app's public key (the publish job's gate)")
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "Usage: ./scripts/release-finish.sh [-dry-run] [-out DIR] [-signer-workflow WORKFLOW] <version>")
 		flag.PrintDefaults()
@@ -92,6 +96,12 @@ func main() {
 	}
 	if err := checkVersion(cfg.version); err != nil {
 		fail(err)
+	}
+	if *verifyDir != "" {
+		if err := verifyOnly(cfg, *verifyDir); err != nil {
+			fail(err)
+		}
+		return
 	}
 	if cfg.signerWorkflow != pipelineSigner && !cfg.dryRun {
 		fail(errors.New("-signer-workflow is for dry runs only: a real release is signed only on release-pipeline.yml's provenance"))
@@ -172,6 +182,16 @@ func run(cfg config) error {
 		return err
 	}
 	return finish(cfg)
+}
+
+// verifyOnly is `-verify-dir`: the `publish` job runs it before publishing a draft, so a
+// dispatch can't ship a manifest built from missing, empty, or foreign signatures.
+func verifyOnly(cfg config, dir string) error {
+	pubkey, err := readPubkey(cfg.root)
+	if err != nil {
+		return err
+	}
+	return verifySignatures(pubkey, dir, updateArchiveNames(cfg.version))
 }
 
 // waitUntilSignable reports a release that's already published (signing is behind it), and
@@ -274,7 +294,7 @@ func verifySignatures(pubkey, dir string, names []string) error {
 	step("Verifying the signatures against the app's public key")
 	for _, name := range names {
 		if err := verifyFile(pubkey, filepath.Join(dir, name), filepath.Join(dir, name+".sig")); err != nil {
-			return fmt.Errorf("the signature just made for %s doesn't verify, so the wrong key may be in sops: %w", name, err)
+			return fmt.Errorf("the signature for %s doesn't verify against the app's public key (made with the wrong key?): %w", name, err)
 		}
 		fmt.Printf("    %s.sig verifies\n", name)
 	}

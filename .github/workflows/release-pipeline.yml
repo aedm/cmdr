@@ -628,7 +628,32 @@ jobs:
 
           printf '%s\n' "$NOTES" > /tmp/notes.txt
 
-      # `local` mode's draft goes public here, after the step above proved all three signatures
+      # A dispatch publishes signatures made off CI, so it proves them before anything goes public:
+      # each archive needs a `.sig` that verifies against the app's public key (an empty or foreign
+      # one would otherwise land in `latest.json` and strand every install). The same verifier
+      # `release-finish.sh` ran before uploading. `ci` mode's signatures come from its own build.
+      - name: Install Go to verify the signatures
+        if: github.event_name == 'workflow_dispatch'
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+        with:
+          install_args: go
+
+      - name: Verify the signatures against the app's public key
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          mkdir -p /tmp/verify
+          cp /tmp/signatures/*.app.tar.gz.sig /tmp/verify/
+          for arch in aarch64 x64 universal; do
+              gh release download "$TAG" -p "Cmdr_${VERSION}_${arch}.app.tar.gz" -D /tmp/verify
+          done
+          ./scripts/release-finish.sh -verify-dir /tmp/verify "$VERSION"
+
+      # `local` mode's draft goes public here, after the steps above proved all three signatures
       # are on it and before anything reads the release by tag (the tags API can't see a draft).
       # `--latest` is safe because the guard proved this is the newest version. Idempotent on a
       # re-run.
