@@ -101,12 +101,15 @@ carry it, so the transaction id is the unit of fulfillment. `event_id` is stored
 consequence is here: an unchecked `await` marks the purchase delivered and stops Paddle retrying, so the buyer pays and
 gets nothing.
 
-**Known gap: no webhook timestamp tolerance.** `verifyPaddleWebhook` signs over `ts:body` but doesn't reject an old
-`ts`, so a captured webhook stays replayable forever. The fulfillment row is what actually blocks the damage (a replay
-finds `emailed_at` and does nothing). Paddle recommends a five-second window, but their docs don't say whether a retry
-is re-signed with a fresh `ts` or replays the original signature, and rejecting legitimate retries would lose a
-delivery, which is worse than the replay. So: log the observed `now - ts` on live deliveries first (including one forced
-retry), then enable rejection with a tolerance the data supports.
+**Decision: a webhook's `ts` must sit within `PADDLE_TIMESTAMP_TOLERANCE_SECONDS` (300 s) of now, either way.** The
+timestamp is inside the HMAC, so a captured webhook can't be freshened. Paddle defines `ts` as when the webhook was
+SENT, and its SDKs default to a five-second window on every delivery of a three-day retry schedule, which only works if
+each retry is re-signed (https://developer.paddle.com/webhooks/about/signature-verification, checked 2026-10-05). Five
+minutes leaves room for clock skew and a slow hop. The fulfillment row still backs it: a replay inside the window finds
+`emailed_at` and does nothing. If a live delivery is ever refused for its age, Paddle retries it, and the dashboard's
+notification log shows it.
+
+**`/activate` is rate-limited per IP** (`ACTIVATE_LIMITER`, 10/min): a short code is all it takes to fetch a full key.
 
 ## Manual licenses
 

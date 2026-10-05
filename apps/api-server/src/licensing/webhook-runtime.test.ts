@@ -144,7 +144,7 @@ function holdEmail(): { release: () => void } {
   }
 }
 
-async function sign(body: string, timestamp = '1704700000'): Promise<string> {
+async function sign(body: string, timestamp = String(Math.floor(Date.now() / 1000))): Promise<string> {
   const encoder = new TextEncoder()
   const key = await crypto.subtle.importKey(
     'raw',

@@ -42,5 +42,5 @@ leaves.
 - **`/admin/licenses` reports OUR records, ❌ never Paddle's truth.** `active` on a `paddle` row means we fulfilled the
   purchase; whether the subscription still runs only Paddle knows. DETAILS § The licenses listing.
 
-Fulfillment states, webhook verification, the replay-tolerance gap, price-ID mapping, device sets, and the sandbox
-runbooks: `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or advising.
+Fulfillment states, webhook verification and its replay window, price-ID mapping, device sets, and the sandbox runbooks:
+`DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or advising.
