@@ -48,7 +48,7 @@ drop-on-failure. It fires ONLY when a beta subscription was newly established (a
 path), NEVER on a Listmonk failure and NEVER on a plain already-on-list 409. The embed carries the signup time and a
 link to the Listmonk beta list, and states the honest consent status ("unconfirmed — Listmonk sent the confirmation
 email" for both paths). It carries no email and no install id, by construction: `BetaSignupNotification` has no field
-for either (root `DETAILS.md` § Discord webhooks).
+for either (`apps/api-server/DETAILS.md` § Discord webhooks).
 
 ## Blog likes
 

@@ -1,5 +1,8 @@
 # Security
 
+The whole-app threat model (assets, actors, trust boundaries, ranked residual risks) is `docs/threat-model.md`; this
+file holds the per-area mechanisms it points to. Update both when a change moves a trust boundary.
+
 The public vulnerability disclosure policy is `SECURITY.md` at the repo root;
 `apps/website/public/.well-known/security.txt` points its `Policy:` there. The reviewer-facing summary is the website's
 `/trust` page, whose list content lives in `apps/website/src/lib/trust.ts`. Keep all three consistent when something
