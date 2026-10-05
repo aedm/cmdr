@@ -47,8 +47,8 @@ Hostile cases, each deliberate:
 - **Leaked key**: works offline anywhere until revoked, and the revocation reaches only Macs that can reach the server.
   The fair-use device alert (`apps/api-server/src/licensing/DETAILS.md` § Device tracking) is how a leak gets noticed.
 - **Refund, then offline**: the Mac keeps Commercial until it reaches the server. Online, a refunded one-time Paddle
-  purchase also stays `active` today, because `/validate` doesn't look at refunds (`apps/api-server/src/licensing/
-  DETAILS.md` § Refunds).
+  purchase also stays `active` today, because `/validate` doesn't look at refunds
+  (`apps/api-server/src/licensing/DETAILS.md` § Refunds).
 - **Local tampering with `license.json`**: out of scope. The user owns the machine, and the license gates nothing
   (`docs/threat-model.md` § 7). The cache isn't re-verified on read for that reason.
 
