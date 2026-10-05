@@ -164,6 +164,10 @@ commands, and notable non-obvious placements.
   `addCmdrToDock`. Both turn an unreachable backend into a typed answer rather than a throw — `preferencesUnreadable`
   and `timedOut` — because their callers are a startup gate and a toast button, neither of which can hold an exception.
   `../../../src-tauri/src/dock/CLAUDE.md`.
+- **`notifications.ts`**: `getNotificationPermission` (whether macOS will show Cmdr's banners; an unreachable backend
+  reads as `unknown`) and `showNotification` (passes the typed `Result` through). Feature code calls
+  `sendMacosNotification` in `$lib/notifications/` instead, which combines the two and never throws. Why the permission
+  goes to `UNUserNotificationCenter`: the module doc of `../../../src-tauri/src/notifications.rs`.
 - **`crash-reporter.ts`**: next-launch crash preview, dismiss, and send. Send crosses IPC with the preview's report id
   and separately consented optional email only; the backend-owned pending file remains the payload authority.
 - **`error-reporter.ts`**: the error-report preview, send, and `saveErrorReportToDisk` (a command in every build: it's
@@ -192,6 +196,7 @@ commands, and notable non-obvious placements.
 - Drive indexing (status, enable/disable/rescan) → `indexing.ts`.
 - Git browser (repo info, live state subscription, per-path status) → `git.ts`.
 - Downloads watcher (status, go-to-latest, global hotkey) → `downloads.ts`.
+- Native system notifications (send, macOS permission) → `notifications.ts`.
 - "Reveal in Cmdr" (`NSFileViewer` registration, the cold-start drain) → `reveal.ts`.
 - ⌘G path resolution and recent paths → `go-to-path.ts`.
 - macOS Finder color tags → `tags.ts`.

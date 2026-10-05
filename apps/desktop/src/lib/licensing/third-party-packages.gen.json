@@ -2506,6 +2506,12 @@
       "url": "https://github.com/madsmtm/objc2"
     },
     {
+      "name": "objc2-user-notifications",
+      "version": "0.3.2",
+      "license": "Zlib OR Apache-2.0 OR MIT",
+      "url": "https://github.com/madsmtm/objc2"
+    },
+    {
       "name": "objc2-vision",
       "version": "0.3.2",
       "license": "Zlib OR Apache-2.0 OR MIT",
@@ -4472,12 +4478,6 @@
     {
       "name": "@tauri-apps/plugin-fs",
       "version": "2.5.1",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://github.com/tauri-apps/plugins-workspace#readme"
-    },
-    {
-      "name": "@tauri-apps/plugin-notification",
-      "version": "2.3.3",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/tauri-apps/plugins-workspace#readme"
     },

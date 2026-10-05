@@ -351,6 +351,8 @@ macro_rules! ipc_command_manifest {
                     crate::downloads::commands::downloads_watcher_status,
                     crate::downloads::commands::recheck_downloads_watcher_gate,
                     crate::downloads::commands::set_global_go_to_latest_shortcut,
+                    crate::notifications::get_notification_permission,
+                    crate::notifications::show_notification,
                     crate::commands::indexing::start_drive_index,
                     crate::commands::indexing::get_index_status,
                     crate::commands::indexing::get_dir_stats,

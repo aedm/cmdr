@@ -2283,6 +2283,17 @@ export const commands = {
     typedError<GlobalGoToLatestShortcutState, RegistrationError>(
       __TAURI_INVOKE('set_global_go_to_latest_shortcut', { enabled, binding }),
     ),
+  /**
+   *  Whether macOS will show Cmdr's notifications right now. Asked per send, so a
+   *  user who switches them back on doesn't have to restart Cmdr.
+   */
+  getNotificationPermission: () => __TAURI_INVOKE<NotificationPermission>('get_notification_permission'),
+  /**
+   *  Send a native notification. An `Err` carries the plugin's message for the
+   *  log only; nobody reads it.
+   */
+  showNotification: (title: string, body: string) =>
+    typedError<null, string>(__TAURI_INVOKE('show_notification', { title, body })),
   startDriveIndex: () => typedError<null, string>(__TAURI_INVOKE('start_drive_index')),
   getIndexStatus: () => typedError<IndexStatusResponse, string>(__TAURI_INVOKE('get_index_status')),
   getDirStats: (path: string) =>
@@ -10957,6 +10968,17 @@ export type NotRollbackableReason =
    *  recorded destinations aren't where the files landed.
    */
   | 'stagedConflictResolved'
+
+// Whether macOS will show Cmdr's notifications.
+export type NotificationPermission =
+  // The user allowed them (including macOS's quiet "provisional" delivery).
+  | 'allowed'
+  // The user switched them off, or hasn't answered macOS's first-post prompt yet.
+  | 'denied'
+  // Cmdr hasn't posted yet. The first post makes macOS ask.
+  | 'notDetermined'
+  // No way to tell: not macOS, a dev build, or macOS didn't answer.
+  | 'unknown'
 
 /**
  *  One OCR search hit: the matched image's path and a highlighted snippet of the

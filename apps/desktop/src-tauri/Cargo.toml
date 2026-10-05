@@ -392,6 +392,13 @@ objc2-quick-look-ui = { version = "0.3.2", default-features = false, features = 
     "std", "QLPreviewPanel", "QLPreviewItem", "objc2-app-kit",
 ] }
 block2 = "0.6"
+# Whether the user turned Cmdr's notifications off (`notifications.rs`): the notification plugin
+# posts through `NSUserNotificationCenter`, which can't say, so we ask `UNUserNotificationCenter`.
+# Already in the lockfile through the objc2 family (published 2025-10-04). UserNotifications
+# arrived in macOS 10.14, under the 10.15 floor.
+objc2-user-notifications = { version = "0.3.2", default-features = false, features = [
+    "std", "block2", "UNUserNotificationCenter", "UNNotificationSettings",
+] }
 security-framework = "3.2"
 # Raw `SecItemCopyMatching` + keychain query constants, for reading SMB passwords that
 # Finder/macOS saved (internet-password items the high-level crate can't filter by

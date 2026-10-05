@@ -562,6 +562,9 @@ export {
   onGlobalShortcutFired,
 } from './downloads'
 
+// Native system notifications
+export { getNotificationPermission, showNotification } from './notifications'
+
 // "Reveal in Cmdr" (macOS)
 export { drainPendingReveals, getRevealHandlerState, onRevealDelivered, setRevealHandlerEnabled } from './reveal'
 

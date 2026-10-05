@@ -112,6 +112,7 @@ mod native_drag;
 mod net;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod network;
+mod notifications;
 #[cfg(feature = "playwright-e2e")]
 mod open_mock;
 pub mod operation_log;
