@@ -38,6 +38,12 @@ window shows the backend's answer.
   refuses a ruled-out write with `refusal: 'managedByOrganization'` (the backend's own refusal comes first,
   `src-tauri/src/mcp/DETAILS.md`).
 
+- AI: `AiSection`'s provider radios disable what `lockAllowsWrite` rules out; a narrowed lock adds a visible line under
+  the row (`settings-ai-provider-managed`). The consent switch locks from `CloudAiConsentStatus.managed`, the service
+  pickers from `cloud_ai_hosts_allowed` (`$lib/ai-provider-setup/DETAILS.md`), onboarding skips step 2 when the lock
+  leaves only "no AI" (`$lib/onboarding/DETAILS.md`), and Ask Cmdr's provider hint reads `ai.mode === 'off'` (a feature
+  state, not a lock). Every refusal sentence comes from `ai-refusal.ts`.
+
 ## Decisions
 
 - **The fetch lives in `initializeSettings`, not `initWindowSettings`.** The main window's layout reaches the store

@@ -618,6 +618,24 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
   policy (including Intel + `LocalOnly`); translate-toast tests for each `ManagedAiRefusal`; one Playwright spec with an
   `AllowedCloudAIHosts` file override.
 - **DONE**: each AI key is visible and explained in Settings, onboarding, and the error toasts.
+- **Implementation notes** (M7 as built):
+  - One copy map, `managedAiRefusalMessage` (`src/lib/managed-policy/ai-refusal.ts`), words every AI refusal; the
+    translate toast keeps its generic title and names the rule from `err.managed` in the body.
+  - `cloud_ai_hosts_allowed` stays `Vec<bool>`: the picker flow only renders while `ai.provider` can read `cloud`, so a
+    refused URL there is always `hostNotAllowed`. `PresetHostVerdicts` asks about every fixed-endpoint preset and
+    re-asks on policy change; custom and Azure are judged only once the person's URL is entered.
+  - `ProviderSetupController` asks the policy before every connection check (on open too), so a refused preset says so
+    with no key and a refused typed endpoint is never probed. A refusal is the new `managed` status, never "can't
+    connect".
+  - `Select` items gained `disabled` (Ark already honoured it; the type, style, and catalog example were missing).
+  - The provider radios and the onboarding step read the `ai.provider` lock through `lockAllowsWrite`, not `ai.mode`.
+    Onboarding skips step 2 via `aiStepSkippedFor` (lock + local AI support), never without a lock. Under on-device
+    only, onboarding keeps Cloud listed but disabled with the reason, rather than removing it.
+  - Ask Cmdr's section shows "Your organization turned off AI in Cmdr." from `ai.mode === 'off'` in place of the "turn
+    on a provider" hint.
+  - The Playwright spec (`managed-policy-ai.spec.ts`, helpers in `managed-policy-helpers.ts`) is written and typechecked
+    but not yet run against a live app: it skips until the per-shard `CMDR_MANAGED_PREFS_FILE` wiring lands. Close-out
+    runs it.
 
 ### M8. Sample profile, `/trust`, and the drift guard
 

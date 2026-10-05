@@ -285,6 +285,20 @@ Three pieces stacked top to bottom:
    `input[value=…]` inside it. Ark fires no `change` event to dispatch, its generated ids are an implementation detail,
    and matching on the label text breaks on the next copy edit.
 
+### Under the organization's AI policy
+
+- **Skipped when nothing but "no AI" is left**: `aiStepSkippedFor({ lock, localAiSupported })` over the `ai.provider`
+  lock (AI off, or on-device only on a Mac that can't run local AI). The wizard sets it on mount from the lock and
+  `getAiRuntimeStatus` (support counts as yes until it answers); `nextStep` / `previousStep` then walk 1 → 3 and back,
+  Linux's first step becomes 3, and a skip landing while step 2 is up moves on at once. Nothing is persisted: the
+  overlay already reads `ai.provider` as `off`.
+- **Never skipped without a lock**: an Intel Mac with no policy still has cloud AI to pick.
+- **On-device only (Apple Silicon)**: Cloud stays listed but disabled, the reason (`ai.managed.cloudAiOff`) as its help
+  text in place of the Recommended badge, the same visible-reason rule as the Intel local option.
+- **A host list**: `CloudProviderPicker` disables refused services (`isRefused`, from `followPresetHostVerdicts`), and
+  the shared controller says a refused endpoint is refused (`$lib/ai-provider-setup/DETAILS.md` § The organization's
+  policy).
+
 ### Forward footer (single "Next" button)
 
 Step 2 owns its own footer via `setFooterOverride([...])` with a single primary **Next** button: it persists the AI

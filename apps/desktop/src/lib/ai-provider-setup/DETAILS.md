@@ -47,6 +47,22 @@ one file. What the two actually share is the state machine and the numbered list
 locales' translations plus stored `@key.sourceHash` values; renaming them would be pure churn for a nicer prefix. A
 later i18n pass is welcome to rename them across all catalogs at once.
 
+## The organization's policy
+
+- **Asked, never derived.** `cloud_ai_hosts_allowed` judges each URL as the backend would send to it; nothing here reads
+  `AllowedCloudAIHosts`.
+- **The pickers**: `PresetHostVerdicts` (`preset-hosts.svelte.ts`) asks about every fixed-endpoint preset and re-asks
+  whenever the policy view changes (`followPresetHostVerdicts`). Settings' dropdown and the onboarding list keep a
+  refused service visible, disabled, with "not allowed by your organization" beside its name. Custom and Azure aren't
+  judged by their placeholder (Azure's doesn't parse as a host).
+- **The controller asks before every connection check** (`#refusedByPolicy`): on open, so a refused preset says so with
+  no key, and before each debounced check, so a typed custom or Azure URL is judged once entered and never probed. A
+  check the backend refused anyway (`result.managed`) lands the same way. Either sets `status: 'managed'` plus
+  `managedRefusal`; each surface words it through `managedAiRefusalMessage`.
+- **Decision / a refused URL reads as `hostNotAllowed`.** The batch command answers yes/no, and this flow only renders
+  while cloud AI is allowed at all (`ai.provider` can't read `cloud` otherwise), so the only rule that can refuse a URL
+  here is the host list. A failed ask reads as allowed: the backend still refuses the request.
+
 ## What each surface kept
 
 The merge had to preserve behaviour that existed in only one of the two. Where each landed:

@@ -8,6 +8,7 @@ The organization's MDM policy as this window shows it. The backend reads, decide
 - `managed-policy.svelte.ts`: the reactive view, fetched once per window and followed through `managed-policy-changed`
   (`initManagedPolicy`), plus `getSettingLock` / `isSettingLocked` (pinned) / `isSettingManaged` (any lock).
 - `overlay.ts`: `lockedValue` and `lockAllowsWrite`, the pure twins of Rust `overlay` / `refuses_write`.
+- `ai-refusal.ts`: `managedAiRefusalMessage`, the ONE copy map for `ManagedAiRefusal`; every AI surface words it here.
 
 ## Must-knows
 

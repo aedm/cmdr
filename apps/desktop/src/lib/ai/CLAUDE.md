@@ -12,7 +12,7 @@ llama-server process, inference client with provider routing).
   handlers directly from `ai-state.svelte.ts`.
 - **`translate-error-toast.ts`**: pure `aiTranslateErrorToast(kind)` + `isAiTranslateError` guard +
   `showAiTranslateErrorToast(err)` (the one impure wrapper); `noCloudConsent` renders `CloudAiOffToastContent.svelte`,
-  and `managed` (the organization's MDM policy, refusal in `err.managed`) gets one calm, generic line for now.
+  and `managed` (the organization's MDM policy) names the rule `err.managed` carries.
 - **`cloud-consent.svelte.ts`** + **`AiCloudConsentToggle.svelte`**: the "Allow cloud AI" state and switch. `DETAILS.md`
   § Cloud AI consent.
 
