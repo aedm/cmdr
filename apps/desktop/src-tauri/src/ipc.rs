@@ -137,6 +137,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::file_system::list_directory_end,
                     crate::commands::file_system::keep_listings_alive,
                     crate::commands::file_system::set_listing_include_hidden,
+                    crate::commands::file_system::set_listing_name_filter,
                     crate::commands::file_system::refresh_listing,
                     crate::commands::file_system::get_file_range,
                     crate::commands::file_system::get_file_at,

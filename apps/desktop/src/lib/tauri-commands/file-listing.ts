@@ -8,6 +8,7 @@ import {
   type CompareDirectoriesResult,
   type FolderSizeCountOutcome,
   type Initiator,
+  type NameFilterResult,
   type RowBeside,
 } from '$lib/ipc/bindings'
 import type {
@@ -363,6 +364,36 @@ export async function getSelectionSnapshot(
   expectedSequence: number,
 ) {
   const res = await commands.getSelectionSnapshot(listingId, includeHidden, selectedIndices, expectedSequence)
+  if (res.status === 'error') throwListingLookupError(res.error)
+  return res.data
+}
+
+/**
+ * Sets the quick filter of the pane showing this listing (`null` or `''` clears
+ * it), carrying the cursor's file and the selection into the filtered rows.
+ * @param listingId - The listing ID from listDirectoryStart.
+ * @param pattern - What the user typed; `*` and `?` are wildcards.
+ * @param includeHidden - The pane's hidden-files setting.
+ * @param cursorFilename - The file under the cursor, to find in the new rows.
+ * @param selectedIndices - Backend indices of the selected files.
+ * @param refuseEmpty - Refuse a pattern that matches nothing (`accepted: false`), keeping the old filter.
+ */
+export async function setListingNameFilter(
+  listingId: string,
+  pattern: string | null,
+  includeHidden: boolean,
+  cursorFilename: string | undefined,
+  selectedIndices: number[],
+  refuseEmpty: boolean,
+): Promise<NameFilterResult> {
+  const res = await commands.setListingNameFilter(
+    listingId,
+    pattern,
+    includeHidden,
+    cursorFilename ?? null,
+    selectedIndices,
+    refuseEmpty,
+  )
   if (res.status === 'error') throwListingLookupError(res.error)
   return res.data
 }

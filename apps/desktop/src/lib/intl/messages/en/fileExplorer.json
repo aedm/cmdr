@@ -433,6 +433,17 @@
   "@fileExplorer.typeToJump.prefix": {
     "description": "Visible label before the typed characters in the type-to-jump indicator (the typed text follows in its own styled span). Keep the trailing space."
   },
+  "fileExplorer.quickFilter.prefix": "Filter: ",
+  "@fileExplorer.quickFilter.prefix": {
+    "description": "Visible label before the typed characters in the quick-filter indicator, shown while typing narrows the file list to matching names (the typed text follows in its own styled span). Keep the trailing space."
+  },
+  "fileExplorer.quickFilter.ariaLabel": "Showing names that contain {pattern}",
+  "@fileExplorer.quickFilter.ariaLabel": {
+    "description": "Accessibility label for the quick-filter indicator. {pattern} is the text the user typed; the file list now shows only names containing it.",
+    "placeholders": {
+      "pattern": "the characters the user typed to filter the file list"
+    }
+  },
   "fileExplorer.searchResults.unavailableTitle": "Search results no longer available",
   "@fileExplorer.searchResults.unavailableTitle": {
     "description": "Title of an empty-state message shown when a saved search-results view can no longer be displayed because its data was cleared."

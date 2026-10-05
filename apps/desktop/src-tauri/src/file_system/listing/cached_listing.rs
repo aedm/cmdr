@@ -13,6 +13,7 @@ use std::sync::{LazyLock, RwLock};
 use std::time::Instant;
 
 use crate::file_system::listing::metadata::{FileEntry, TagRef};
+use crate::file_system::listing::name_filter::NameFilter;
 use crate::file_system::listing::path_index::PathIndexCache;
 use crate::file_system::listing::sorting::{DirectorySortMode, SortColumn, SortOrder};
 use crate::file_system::listing::visible_rows::{ScratchProjection, VisibleRows, VisibleRowsCache};
@@ -102,6 +103,10 @@ pub(crate) struct CachedListing {
     /// changes reach the pane at all. See [`Self::pane_rows`].
     include_hidden: bool,
     scratch_projection: ScratchProjection,
+    /// The pane's quick filter, if the user is typing one. Like
+    /// `include_hidden`, it picks the row space every reader and every
+    /// `directory-diff` speaks. See `name_filter.rs`.
+    name_filter: Option<NameFilter>,
     /// Row numbers over the visible subset of `entries`, per `include_hidden`.
     /// Rebuilt lazily after any mutation; see `visible_rows.rs`.
     visible_rows: VisibleRowsCache,
@@ -181,6 +186,7 @@ impl CachedListing {
             entries,
             include_hidden,
             scratch_projection,
+            name_filter: None,
             visible_rows: VisibleRowsCache::new(),
             path_index: PathIndexCache::new(),
             sort_by,
@@ -308,8 +314,25 @@ impl CachedListing {
     /// about what the pane is showing.
     pub(crate) fn rows(&self, include_hidden: bool) -> VisibleRows<'_> {
         self.visible_rows
-            .rows(&self.entries, include_hidden, &self.scratch_projection)
+            .rows(&self.entries, include_hidden, self.name_filter.as_ref(), &self.scratch_projection)
     }
+
+    /// The pane's quick filter, if any.
+    pub(crate) fn name_filter(&self) -> Option<&NameFilter> {
+        self.name_filter.as_ref()
+    }
+
+    /// Records the pane's quick filter. Reports whether it changed. A change
+    /// drops the row map: unlike `include_hidden`, the filter isn't a slot key.
+    pub(crate) fn set_name_filter(&mut self, name_filter: Option<NameFilter>) -> bool {
+        let changed = self.name_filter != name_filter;
+        if changed {
+            self.name_filter = name_filter;
+            self.visible_rows.invalidate();
+        }
+        changed
+    }
+
 
     /// Whether the pane showing this listing shows hidden entries.
     pub(crate) fn include_hidden(&self) -> bool {
@@ -344,6 +367,7 @@ impl CachedListing {
 
     pub(crate) fn shows(&self, entry: &FileEntry) -> bool {
         self.scratch_projection.shows(entry, self.include_hidden)
+            && self.name_filter.as_ref().is_none_or(|filter| filter.matches(&entry.name))
     }
 
     /// Commit projection drift BEFORE any consumer interprets old row indices.
@@ -358,7 +382,7 @@ impl CachedListing {
             let new: Vec<_> = self
                 .entries
                 .iter()
-                .filter(|e| next.shows(e, self.include_hidden))
+                .filter(|e| next.shows(e, self.include_hidden) && self.name_filter.as_ref().is_none_or(|filter| filter.matches(&e.name)))
                 .collect();
             super::diff::diff_rows(&old, &new)
         };
@@ -371,7 +395,7 @@ impl CachedListing {
         let next = ScratchProjection::for_entries(&entries, &self.scratch_projection);
         let changes = {
             let old: Vec<_> = self.pane_rows().iter().collect();
-            let new: Vec<_> = entries.iter().filter(|e| next.shows(e, self.include_hidden)).collect();
+            let new: Vec<_> = entries.iter().filter(|e| next.shows(e, self.include_hidden) && self.name_filter.as_ref().is_none_or(|filter| filter.matches(&e.name))).collect();
             super::diff::diff_rows(&old, &new)
         };
         self.scratch_projection = next;

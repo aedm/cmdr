@@ -9,15 +9,19 @@
      * The stale state (italic + reduced opacity) signals that the buffer reset
      * fired but the indicator hasn't hidden yet. The next keystroke will start a
      * fresh buffer.
+     *
+     * `kind="filter"` shows the quick filter's pattern instead ("Filter: …"),
+     * which stays up for as long as the filter narrows the list.
      */
 
     interface Props {
         buffer: string
         visible: boolean
         stale: boolean
+        kind?: 'jump' | 'filter'
     }
 
-    const { buffer, visible, stale }: Props = $props()
+    const { buffer, visible, stale, kind = 'jump' }: Props = $props()
 </script>
 
 {#if visible}
@@ -26,9 +30,13 @@
         class:is-stale={stale}
         role="status"
         aria-live="polite"
-        aria-label={tString('fileExplorer.typeToJump.ariaLabel', { buffer })}
+        aria-label={kind === 'filter'
+            ? tString('fileExplorer.quickFilter.ariaLabel', { pattern: buffer })
+            : tString('fileExplorer.typeToJump.ariaLabel', { buffer })}
     >
-        {tString('fileExplorer.typeToJump.prefix')}<span class="buffer">{buffer}</span>
+        {kind === 'filter'
+            ? tString('fileExplorer.quickFilter.prefix')
+            : tString('fileExplorer.typeToJump.prefix')}<span class="buffer">{buffer}</span>
     </div>
 {/if}
 

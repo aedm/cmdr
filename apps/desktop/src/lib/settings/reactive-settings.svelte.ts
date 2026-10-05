@@ -12,6 +12,7 @@ import {
   type FileSizeFormat,
   type FileSizeUnit,
   type DirectorySortMode,
+  type TypeToJumpMode,
   type ListingDirectorySortMode,
   type SizeDisplayMode,
   type BriefColumnWidthMode,
@@ -49,6 +50,7 @@ let networkEnabled = $state<boolean>(true)
 let nearbyServersGroup = $state<NearbyServersGroupChoice>('auto')
 let typeToJumpResetDelay = $state<number>(1000)
 let spaceCalculatesFolderSize = $state<boolean>(true)
+let typeToJumpMode = $state<TypeToJumpMode>('jump')
 let driveIndexingEnabled = $state<boolean>(true)
 let mediaIndexEnabled = $state<boolean>(false)
 let mediaIndexShowFileStatusIcons = $state<boolean>(true)
@@ -109,6 +111,7 @@ async function runInit(options?: { restrictedWindow?: boolean }): Promise<void> 
     nearbyServersGroup = nearbyServersGroupChoiceOf(getSetting('network.nearbyServersGroup'))
     typeToJumpResetDelay = getSetting('fileExplorer.typeToJump.resetDelay')
     spaceCalculatesFolderSize = getSetting('listing.spaceCalculatesFolderSize')
+    typeToJumpMode = getSetting('fileExplorer.typeToJump.mode')
     driveIndexingEnabled = getSetting('indexing.enabled')
     mediaIndexEnabled = getSetting('mediaIndex.enabled')
     mediaIndexShowFileStatusIcons = getSetting('mediaIndex.showFileStatusIcons')
@@ -206,6 +209,9 @@ function applySettingChange(id: string, value: unknown): void {
       break
     case 'listing.spaceCalculatesFolderSize':
       spaceCalculatesFolderSize = value as boolean
+      break
+    case 'fileExplorer.typeToJump.mode':
+      typeToJumpMode = value as TypeToJumpMode
       break
     case 'indexing.enabled':
       driveIndexingEnabled = value as boolean
@@ -394,6 +400,15 @@ export function getTypeToJumpResetDelay(): number {
 /** Whether Space on a folder also calculates its size (`listing.spaceCalculatesFolderSize`). */
 export function getSpaceCalculatesFolderSize(): boolean {
   return spaceCalculatesFolderSize
+}
+
+/**
+ * What typing a letter in a pane does: jump the cursor to the best match
+ * (`jump`), or narrow the pane to the matching rows (`filter`). Read on every
+ * keystroke, so a change takes effect on the next one.
+ */
+export function getTypeToJumpMode(): TypeToJumpMode {
+  return typeToJumpMode
 }
 
 /**
