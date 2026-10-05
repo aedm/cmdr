@@ -92,8 +92,11 @@ other. Feedback is NOT covered (see Decisions).
     prerelease through a `"0.52"` ceiling. `"0.52.3"` means core `<= 0.52.3`.
 
 Why "ceiling" and not "pin to exactly X": the updater only knows `latest.json`, which names the newest release. It can't
-fetch an older one, so "pin" can only mean "don't go past". A ceiling also lets IT allow patch releases within a minor
-(the security fixes) while holding the next minor for testing, which is what Chrome's `TargetVersionPrefix` is used for.
+fetch an older one, so "pin" can only mean "don't go past". ❗ The same fact limits the ceiling: `"0.52"` delivers
+0.52.x patches only while the NEWEST release is still a 0.52.x. Once 0.53.0 ships, a Mac held at `"0.52"` gets nothing
+more (Cmdr doesn't backport, and the updater can't see an older patch). So it's a "hold here until IT moves the ceiling"
+switch, not Chrome's `TargetVersionPrefix` (Chrome serves older channels). `/trust` and the key catalog say exactly
+that, so no admin expects patch releases to keep coming.
 
 ### AI
 
@@ -106,8 +109,11 @@ fetch an older one, so "pin" can only mean "don't go past". A ceiling also lets 
   hostname (`api.openai.com`, matched case-insensitively and exactly) or a `*.` suffix pattern (`*.openai.azure.com`,
   matches any subdomain, not the bare domain). An empty array means no host is allowed, which equals `DisableCloudAI`.
   Loopback endpoints (Ollama, LM Studio) are `cloud` providers in Cmdr, so they need `localhost` / `127.0.0.1` listed
-  like any other host. Malformed entries are dropped with a warn; a non-array value reads as an empty list (rule 4).
-  Normalization, identical on both sides (entry and request URL):
+  like any other host. Under `DisableCloudAI` they stay blocked (decided: `localhost` can be an SSH tunnel to anywhere,
+  so "on-device" can't be proven). The recipe for "local Ollama only" is: leave `DisableCloudAI` off and set
+  `AllowedCloudAIHosts` to `localhost` and `127.0.0.1`. `/trust` documents that recipe (M8). Malformed entries are
+  dropped with a warn; a non-array value reads as an empty list (rule 4). Normalization, identical on both sides (entry
+  and request URL):
   - An entry may be a bare host, `host:port`, or a pasted URL (`https://api.openai.com/v1`): admins paste URLs, and
     dropping those would silently block the provider they meant to allow. Only host and an explicit port are used.
   - Hosts go through `url::Host::parse` (IDNA to punycode, lowercase, IPv4/IPv6 parsed), and one trailing dot is
@@ -159,13 +165,25 @@ Verified at `5c8f7cec6`; line numbers drift, names don't.
   `error_reporter::upload` (`error_reporter/mod.rs` :532, called from all three report paths: auto-dispatcher :289, Flow
   A :166, crash log :298) and `error_reporter/auto_sent.rs` `send_amend` (:173, its own `reqwest` client).
 - Shared api-server error type: `server_request.rs` `ServerRequestError` (crash, error, amend, update check), mapped to
-  copy in `src/lib/error-messages/server-request.ts`.
+  copy in `src/lib/error-messages/server-request.ts`. `server_request::send(request)` is ALREADY the one function six
+  senders go through: `post_crash_report`, `error_reporter::upload`, `auto_sent::send_amend`, the updater's
+  `fetch_manifest` and `fetch_verified_tarball`, and `s3_costs/price_source.rs`. The heartbeat (`analytics/heartbeat.rs`
+  `send_payload`, its own `reqwest` client and `BeatOutcome::from_status`) and license validation
+  (`licensing/validation_client.rs`) don't use it.
+- Settings the backend reads straight from `settings.json` (no frontend in the loop): `analytics.enabled`
+  (`send_permission` via `settings::load_settings`), `askCmdr.enabled` (`settings/ai_gates.rs` `load_ask_cmdr_enabled`,
+  read per send and by wake readiness), and the whole raw map for the heartbeat's config shape
+  (`analytics::read_raw_settings` → `config_shape::build_config_shape`). `ai.provider` reaches the backend only through
+  the frontend's `configure_ai` push. The api-server stores the heartbeat `config` blob verbatim
+  (`telemetry/heartbeat.ts` `validateConfig`: any plain object under the size cap), so a new bool in it needs no Worker
+  change.
 - Updates: `updater/mod.rs` (`skip_reason` :89, `check_for_update` :109 → `Result<Option<UpdateInfo>, …>`,
-  `download_update` :236, `install_update` :267), `updater/manifest.rs:47` (semver compare). ❗ `download_update` takes
-  `url` and `signature` FROM THE FRONTEND and `UpdateState` stores only the tarball path, so today the backend doesn't
-  know which version it staged (see M3). On Linux the frontend calls `@tauri-apps/plugin-updater` `check` directly
-  (`tauri_builder.rs` `register_updater`), which bypasses all of this; frontend loop and `updates.autoCheck` in
-  `src/lib/updates/updater.svelte.ts`; menu "Check for updates" → `runMenuTriggeredCheck()`.
+  `download_update` :236, `install_update` :267 → `Result<(), String>`, so its new refusal needs a typed error),
+  `updater/manifest.rs:47` (semver compare). ❗ `download_update` takes `url` and `signature` FROM THE FRONTEND and
+  `UpdateState` stores only the tarball path, so today the backend doesn't know which version it staged (see M3). On
+  Linux the frontend calls `@tauri-apps/plugin-updater` `check` directly (`tauri_builder.rs` `register_updater`), which
+  bypasses all of this; frontend loop and `updates.autoCheck` in `src/lib/updates/updater.svelte.ts`; menu "Check for
+  updates" → `runMenuTriggeredCheck()`.
 - AI: `ai/manager.rs` (`resolve_backend` :179, `resolve_backend_inner` :299, `compute_ai_status` :114 with its `Offer`
   branch, `configure_ai` :404), `ai/server.rs:49` `start_ai_server`, `ai/install.rs:85` `start_ai_download`,
   `ai/cloud_consent.rs` (`has_current_cloud_consent` :65, already documented as "a future managed preference becomes one
@@ -176,17 +194,24 @@ Verified at `5c8f7cec6`; line numbers drift, names don't.
   (Ask Cmdr: resolved ONCE per turn, then many LLM calls in the tool loop), `agent/wake/snapshot.rs:104` (background
   wakes). Every remote request leaves through one of three functions in `ai/client.rs`: `exec_chat_stream_request` :136
   (Ask Cmdr via `agent/llm/genai_impl.rs`), `chat_completion` :365, `chat_completion_stream` :478. `AiBackend::remote`
-  is `pub(in crate::ai)`, so nothing outside `ai/` builds one. `ai/download.rs` fetches the local model. Provider
-  presets: `src/lib/settings/cloud-providers.ts` (Azure's placeholder
+  is `pub(in crate::ai)`, so nothing outside `ai/` builds one. ❗ `AiBackend` holds only `client`, `model`, and
+  `log_ctx`: it doesn't remember its base URL or whether it's the local server, and both `local()` and `remote()` build
+  their `genai::Client` with `Client::builder().with_service_target_resolver(..).build()` (no `with_reqwest` yet). Ask
+  Cmdr DOES run on the local provider (`definitions/ai.ts`: "On Local it starts a proactive loop"). `ai/download.rs`
+  fetches the local model. Provider presets: `src/lib/settings/cloud-providers.ts` (Azure's placeholder
   `https://{resource-name}.openai.azure.com/openai/v1` doesn't parse as a URL host).
 - MCP: `mcp/executor/search.rs:304` `execute_ai_search` (typed `data.reason: "cloudAiNotAllowed"` at :296),
   `mcp/executor/async_tools.rs:536` `execute_set_setting` (round-trips `mcp-set-setting` to the frontend, no backend
   check today); frontend half in `src/lib/settings/mcp-main-bridge.ts` (`mcp-get-all-settings`, `mcp-set-setting`).
 - Settings UI: `src/lib/settings/settings-store.ts` (`getSetting` :322, `setSetting` :378, `resetSetting` :473),
   `components/SettingRow.svelte` (already has `disabled` + `disabledNote` + `disabledNoteId`),
-  `components/boolean-setting.svelte.ts` (`useBooleanSetting`), sections `UpdatesSection.svelte`, `AiSection.svelte`,
-  `AiCloudSection.svelte`, `AskCmdrSection.svelte`; shared provider setup in `src/lib/ai-provider-setup/`;
-  `src/lib/ai/AiCloudConsentToggle.svelte`; onboarding `StepAi.svelte`, `StepBeta.svelte`.
+  `components/boolean-setting.svelte.ts` (`useBooleanSetting`), sections pass `disabled` / `disabledNote` to
+  `SettingRow` themselves today. The `ai.provider` row in `AiSection.svelte` is a bespoke segmented radiogroup that
+  already disables one option with a tooltip (`local` on Intel, `settings.ai.tooltipLocalDisabled`); `cloud` under
+  `LocalOnly` reuses that path. `askCmdr.enabled` is already `mcpSettable: false` (the bridge's `notSettableOverMcp`).
+  Sections `UpdatesSection.svelte`, `AiSection.svelte`, `AiCloudSection.svelte`, `AskCmdrSection.svelte`; shared
+  provider setup in `src/lib/ai-provider-setup/`; `src/lib/ai/AiCloudConsentToggle.svelte`; onboarding `StepAi.svelte`,
+  `StepBeta.svelte`.
 - Website: `apps/website/src/lib/trust.ts:242` (the "No central administration" gap) and :245 (the `.pkg`/PPPC gap,
   which stays), `src/pages/trust.astro:70` ("There's no central (MDM) control yet.").
 - Egress NO key covers (IT will ask what's left; `/trust` must say it, see M8): license validation
@@ -199,7 +224,19 @@ Verified at `5c8f7cec6`; line numbers drift, names don't.
 New backend module **`src-tauri/src/managed_policy/`** (named after the UI phrase "Managed by your organization"):
 
 - `mod.rs`: `ManagedPolicy` (typed, `Default` = no restriction), `current()` (cached), `refresh()` (fresh read; updates
-  the cache; returns whether it changed), `get_managed_policy` command, `ManagedPolicyChanged` event (tauri-specta).
+  the cache; returns whether it changed), `for_egress()` (async: the coalesced fresh read of rule 6, run in
+  `spawn_blocking` so a slow `cfprefsd` never stalls a tokio worker), `get_managed_policy` command,
+  `ManagedPolicyChanged` event (tauri-specta). The command and the event carry ONE payload,
+  `ManagedPolicyView { managed: bool, usageStatsDisabled, reportsDisabled, updates, ai, lockedSettings }`, so the
+  frontend gets the lock list from the same place as everything else and never derives it.
+- `egress.rs`:
+  `enum Egress { Heartbeat, CrashReport, ErrorReport, ErrorReportAmend, UpdateCheck, UpdateDownload, S3PriceList }` and
+  `ManagedPolicy::allows(Egress) -> bool`, one exhaustive `match`. The arms that are always `true` (`S3PriceList`) are
+  the code form of the "traffic no key turns off" list on `/trust`: adding a variant forces a decision.
+- `refusal.rs`: `enum ManagedAiRefusal { AiOff, CloudAiOff, HostNotAllowed }` (specta-exported, camelCase). The ONE AI
+  refusal type: `BackendResolution::Managed(_)`, `AiTranslateErrorKind::Managed` (with the refusal as a field),
+  `SlotRefusal::Managed(_)`, the MCP `data.reason`, `check_ai_connection`, and the client backstop all carry it, so the
+  frontend has one copy map (`managedAiRefusalMessage`) and a fourth surface can't spell it differently.
 - `keys.rs`: the key-name constants and the pure parse `ManagedPolicy::from_source(&dyn ManagedPrefsSource)`. The ONE
   place a key name is spelled in Rust.
 - `source.rs`: `trait ManagedPrefsSource { fn forced_value(&self, key: &str) -> Option<plist::Value>; }` with
@@ -209,9 +246,13 @@ New backend module **`src-tauri/src/managed_policy/`** (named after the UI phras
 - `locked.rs`: `locked_settings(&ManagedPolicy) -> Vec<LockedSetting>` where `LockedSetting { id, lock }` and `lock` is
   `Fixed(serde_json::Value)` or `DisallowedValues(Vec<serde_json::Value>)` (for `ai.provider` under `DisableCloudAI`:
   `cloud` disallowed). The ONE mapping from policy to registry setting ids; the frontend overlay and MCP `set_setting`
-  both read it.
+  both read it. Plus `overlay(&ManagedPolicy, &mut serde_json::Value)`, the Rust twin of the frontend overlay over a raw
+  `settings.json` map (pure, never writes). Every backend reader of a lockable id goes through it:
+  `analytics::read_raw_settings` (so the heartbeat's config shape reports EFFECTIVE values, decided), the consent read
+  in `send_permission`, and `settings::load_ask_cmdr_enabled` (so the wake loop goes quiet under `DisableAI` without a
+  policy check of its own).
 - `ceiling.rs`: `UpdateCeiling` parse and `allows(&semver::Version)`. `hosts.rs`: `HostPattern` parse and
-  `allows(base_url)`, using `url::Url::host_str()` (same parser `validate_ai_base_url` uses).
+  `allows(&url::Url)`, comparing `url::Host` values per § AI (❌ not `host_str()` strings, which keep IPv6 brackets).
 
 The CF↔`plist::Value` conversion in `dock/prefs.rs` moves to a shared crate-level helper (for example `cf_plist.rs`)
 that both `dock` and `managed_policy` use, rather than a second copy (jscpd would flag it anyway).
@@ -242,13 +283,24 @@ Egress gates sit in the LOWEST send function, not only in the commands. The comm
 outcome (good UX, no wasted bundle build), but the guarantee comes from the send function, so a new caller can't forget
 it:
 
-- api-server senders: `analytics` heartbeat send, `crash_reporter::post_crash_report`, `error_reporter::upload`,
-  `error_reporter::auto_sent::send_amend`, the update-check and tarball fetches. A `ServerRequestError::BlockedByPolicy`
-  variant fits all of them (they already share that type), mapped in `server-request.ts`.
-- LLM: the three `ai/client.rs` request functions check the fresh policy against the backend's own base URL right before
-  `exec_chat*`. This is what makes rule 6 hold for Ask Cmdr, whose backend is resolved once per turn and then reused
-  across the whole tool loop, and it closes the `resolve_backend_with_model` re-read of `get_cloud_config()`.
-  `resolve_backend` keeps its check too: it produces the typed, user-facing reason; the client check is the backstop.
+- api-server senders: **`server_request::send` takes a required `Egress` argument**
+  (`send(Egress::CrashReport, request)`) and refuses with a new `ServerRequestError::BlockedByPolicy` before the request
+  leaves, after `ManagedPolicy::for_egress()`. Six senders already funnel through it (§ Fresh grep), so the gate is
+  written once and a new caller can't compile without naming its pipeline. The heartbeat moves onto it too (`Ok` →
+  `Acknowledged`, `Refused { status }` → `BeatOutcome::from_status(status)`, transport errors → `Failed`,
+  `BlockedByPolicy` → the `OptedOut` arm's cleanup). This replaces five hand-placed checks in five low-level functions,
+  which is exactly the duplication that drifts. License validation stays on its own client (no key covers it).
+  `BlockedByPolicy` maps in `server-request.ts`; it's never logged at warn or error.
+- LLM: the three `ai/client.rs` request functions check `ManagedPolicy::for_egress()` against the backend's own
+  destination right before `exec_chat*`. That needs `AiBackend` to know where it points: it gains
+  `destination: AiDestination { LocalServer, Remote(url::Url) }`, set by `local()` / `remote()` (parsed once there, so
+  the check compares the exact URL `genai` will call). `LocalServer` is refused only under `DisableAI`; `Remote` is
+  refused under `DisableAI`, `DisableCloudAI`, or a host outside the list. This is what makes rule 6 hold for Ask Cmdr,
+  whose backend is resolved once per turn and reused across the tool loop, and it closes the
+  `resolve_backend_with_model` re-read of `get_cloud_config()`. `resolve_backend` keeps its check too: it produces the
+  typed, user-facing reason; the client check is the backstop. Both call the same
+  `ManagedPolicy::ai_destination(&AiDestination) -> Result<(), ManagedAiRefusal>`, so there's one decision with two call
+  sites, not two decisions.
 
 Test-build override: **`CMDR_MANAGED_PREFS_FILE=<path to a plist>`** replaces the CF source with `PlistFileSource`,
 honored ONLY under `cfg(debug_assertions)` or the `playwright-e2e` feature. ❌ Never honor it in a plain release build:
@@ -258,7 +310,10 @@ Frontend: **`src/lib/managed-policy/`** holds a reactive store fed by `get_manag
 refreshed on `ManagedPolicyChanged`. The settings store reads it: `getSetting(id)` returns the `Fixed` value for a
 locked id (and maps a disallowed stored value to the setting's safe value, `off` for `ai.provider`), `setSetting` and
 `resetSetting` refuse a locked id without writing, and `SettingRow` plus the row primitives render locked ids disabled
-with the managed note. Restricted windows (viewer, queue) don't render any of these settings, so they need nothing.
+with the managed note. A managed lock WINS over a reason the section passes (`disabled` / `disabledNote`, for example
+"Apple Silicon only"): one note per row, the managed one. Restricted windows (viewer, queue) don't render any of these
+settings, so they need nothing. Because `ai.provider` is overlaid before `pushConfigToBackend()` reads it, the backend's
+`configure_ai` receives the effective provider with no extra plumbing.
 
 ## Draft copy (David reviews; English only)
 
@@ -272,6 +327,17 @@ with the managed note. Restricted windows (viewer, queue) don't render any of th
 - Reports off (crash dialog never shows; Help › Send error report dialog): "Your organization turned off sending
   reports. You can still save one to disk and share it yourself."
 - Usage stats off (onboarding step): "Your organization turned off usage stats."
+- Section line (top of Updates & privacy, and of AI, when any row in it is managed): "Your organization manages some of
+  these settings." Plain text in reading order, so a keyboard or VoiceOver user meets the reason before reaching the
+  disabled controls (native `disabled` takes them out of the Tab order, so a per-row `aria-describedby` note alone is
+  only heard by someone who arrows through the page).
+- Cloud option under `LocalOnly` (shown as a visible line under the provider row, not only the option tooltip, since a
+  tooltip on a disabled radio isn't reliably announced): "Your organization allows only on-device AI."
+- `LocalOnly` on an Intel Mac (local AI needs Apple Silicon, so nothing is left): "Your organization allows only
+  on-device AI, and this Mac can't run it."
+- Held update, Settings status line and the result of a manual check only: the ceiling sentence above. A background
+  check that finds only a held update stays silent (no toast): the person can't act on it, and it would come back every
+  poll.
 - MCP refusal texts can be plain English (agent-facing), with the typed `data.reason`.
 
 ## Milestones
@@ -283,8 +349,9 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
 
 - **Scope**: `managed_policy/` as above, the shared CF↔plist helper (moved out of `dock/prefs.rs`), lazy first read,
   activation refresh, the `/Library/Managed Preferences` watch, `get_managed_policy` command + `ManagedPolicyChanged`
-  event + generated bindings, `PlistFileSource` override, `managed_policy/CLAUDE.md` + `DETAILS.md` (the canonical key
-  catalog, parse rules, precedence, manual test recipe), a line in `docs/architecture.md`. No gate changes yet.
+  event + generated bindings, `PlistFileSource` override, `egress.rs` and `refusal.rs` (types only, no callers yet),
+  `locked.rs` with `overlay`, `managed_policy/CLAUDE.md` + `DETAILS.md` (the canonical key catalog, parse rules,
+  precedence, manual test recipe), a line in `docs/architecture.md`. No gate changes yet.
 - **Intentions**: everything downstream asks `managed_policy::current()` / `refresh()` and never touches CFPreferences
   or key names itself. `ManagedPolicy` exposes typed answers (`usage_stats_disabled()`,
   `ai() -> AiPolicy { Allowed, LocalOnly, Off }`, `cloud_host_allowed(url)`, `updates() -> UpdatePolicy`), not raw
@@ -302,25 +369,27 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
   REFUSED), host patterns (exact, `*.` suffix, bare apex vs `*.`, case, trailing dot, entry with port vs URL with and
   without port, pasted-URL entry, IPv6 `::1` vs `[::1]`, userinfo trick `https://api.openai.com@evil.com`, look-alike
   `api.openai.com.evil.com`, IDN, `*` alone), precedence combos (ceiling + no automatic checks together),
-  `locked_settings` output, and that `current()` before any explicit load returns the real policy, not `Default`. A CF
-  integration test on a scratch domain (`com.getcmdr.policytest.<tag>`, torn down like the dock tests) proving a value
-  the USER layer holds is NOT reported. `PlistFileSource` round-trip. Then the manual recipe once on this Mac (see
-  "Testing without an MDM"), evidence dated in `DETAILS.md`.
-- **DONE**: `get_managed_policy` returns the right view with a real managed plist and with the file override; nothing
-  else in the app behaves differently yet; `pnpm check` green.
+  `locked_settings` and `overlay` output (overlay leaves unlocked keys and an absent file alone), the `Egress` table
+  (every variant, each policy), and that `current()` before any explicit load returns the real policy, not `Default`. A
+  CF integration test on a scratch domain (`com.getcmdr.policytest.<tag>`, torn down like the dock tests) proving a
+  value the USER layer holds is NOT reported. `PlistFileSource` round-trip. The real `/Library/Managed Preferences`
+  recipe needs `sudo`, so an agent can't run it: it moves to M9 (David).
+- **DONE**: `get_managed_policy` returns the right `ManagedPolicyView` under the file override (a Rust test through
+  `PlistFileSource`, plus one manual `pnpm dev` with `CMDR_MANAGED_PREFS_FILE`); nothing else in the app behaves
+  differently yet; `pnpm check` green.
 
 ### M2. Telemetry enforcement
 
-- **Scope**: `analytics::send_permission` gains a `ManagedOff` outcome (handled like `OptedOut`: capture drops, the
-  heartbeat deletes spool and unreported uptime; the heartbeat refreshes the policy before sending). Crash reports:
-  `check_pending_crash_report` discards the pending file and answers `None` when reports are disabled;
-  `send_crash_report`, `send_crash_log_report`, `send_error_report`, `amend_error_report` refuse with a typed
-  `ManagedOff` variant before any I/O; Flow B's dispatcher checks the policy at send time (in addition to its
-  `set_enabled` atomic) so a forced off wins over a stored on. The backstop: `post_crash_report`,
-  `error_reporter::upload`, and `auto_sent::send_amend` each refresh and refuse with
-  `ServerRequestError::BlockedByPolicy` themselves (§ Architecture, "lowest send function"), so the guarantee doesn't
-  depend on every command remembering. `save_error_report_to_disk` unchanged. Docs: `analytics/`, `crash_reporter/`,
-  `error_reporter/`, and `server_request.rs`'s frontend mapping.
+- **Scope**: first the shared gate: `server_request::send` takes `Egress` and refuses with
+  `ServerRequestError::BlockedByPolicy` (§ Architecture); update its six callers mechanically and move the heartbeat
+  onto it. That alone makes invariant 1 hold for every api-server path. Then the early, user-facing refusals:
+  `send_permission` reads consent through `locked::overlay`, so a managed off is an ordinary `OptedOut` (capture drops,
+  the heartbeat deletes spool and unreported uptime) with no new variant. Crash reports: `check_pending_crash_report`
+  discards the pending file (via `dismiss_pending_crash_report`) and answers `None` when reports are disabled;
+  `send_crash_report`, `send_crash_log_report`, `send_error_report`, `amend_error_report` return `BlockedByPolicy`
+  before building a bundle; Flow B's dispatcher checks `allows(Egress::ErrorReport)` at send time (in addition to its
+  `set_enabled` atomic) so a forced off wins over a stored on. `save_error_report_to_disk` unchanged. Docs:
+  `analytics/`, `crash_reporter/`, `error_reporter/`, `server_request.rs`'s module doc, and its frontend mapping.
 - **Intentions**: one predicate per pipeline, read where the send happens. A user's stored `true` in `settings.json` is
   irrelevant while the policy says off.
 - **Landmines**: the panic hook and signal handler must not touch the policy (allocation, locks, XPC): capture stays as
@@ -328,11 +397,14 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
   (`error_reporter/CLAUDE.md`). A refusal is not an error: log at `info`/`debug`, never via `log_error!` (that IS the
   auto-report path). The crash discard must use the existing claim/delete helpers, not a raw `remove_file` that races a
   newer crash.
-- **Test plan**: red-first unit tests for `send_permission` with each policy × consent combo; heartbeat test that a
-  managed-off beat sends nothing and clears the spool (existing localhost-Worker test harness); command-level tests that
-  each send command returns the typed refusal without calling `upload`; dispatcher test with `set_enabled(true)` and a
-  managed off; each low-level sender (`post_crash_report`, `upload`, `send_amend`) against a `wiremock` server
-  (`crash_reporter/tests.rs:910` is the template) asserting ZERO requests received under the policy.
+- **Test plan**: red first on `server_request::send` itself: a `wiremock` server (`crash_reporter/tests.rs:910` is the
+  template) receives ZERO requests for each gated `Egress` under the matching policy, and one for `S3PriceList` under
+  every key; `send_permission` with each policy × consent combo (through `overlay`); heartbeat test that a managed-off
+  beat sends nothing and clears the spool (existing localhost-Worker harness) and that the migrated status mapping keeps
+  `Acknowledged` / `Refused` / `Failed` as before; command-level tests that each send command returns `BlockedByPolicy`
+  without calling `upload`; dispatcher test with `set_enabled(true)` and a managed off; config-shape test that a stored
+  `analytics.enabled: true` under the policy reports `false` and that `managedByOrganization: true` appears (decided:
+  effective values plus that one coarse bool, never which keys are set).
 - **DONE**: with `DisableUsageStats` / `DisableCrashAndErrorReports` forced, no request reaches `api.getcmdr.com`
   `/heartbeat`, `/crash-report`, or `/error-report` from any path, verified by tests.
 
@@ -347,9 +419,12 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
   version and a bypassed frontend could stage anything. `check_for_update` stores the offered `UpdateInfo` (version,
   url, signature) in `UpdateState`; `download_update` takes no URL and downloads only what was offered (re-checking the
   ceiling against that version); the staged slot records the version; `install_update` refuses when the CURRENT policy
-  disallows it. The frontend background loop treats `DisableAutomaticUpdateChecks` as `updates.autoCheck = false` via
-  the overlay; the backend still refuses a background-triggered check if called anyway (the trigger is already passed
-  for analytics; pass it to the command). Docs: `updater/` and `src/lib/updates/` C+D.md.
+  disallows it, which needs a typed `UpdateInstallError { BlockedByPolicy, NothingStaged, Failed { detail } }` in place
+  of today's `Result<(), String>` (rule 7). A held update (newer than the ceiling) never toasts from a background check;
+  only the Settings status line and a manual check's result say it (§ Draft copy). The frontend background loop treats
+  `DisableAutomaticUpdateChecks` as `updates.autoCheck = false` via the overlay; the backend still refuses a
+  background-triggered check if called anyway (the trigger is already passed for analytics; pass it to the command).
+  Docs: `updater/` and `src/lib/updates/` C+D.md.
 - **Intentions**: the backend decides; the frontend renders the outcome. The `update_check` analytics event gets a phase
   for each new outcome (categorical, no versions in props).
 - **Landmines**: `checkForUpdates()` must never early-return on `ready` (`src/lib/updates/CLAUDE.md`); a managed outcome
@@ -365,31 +440,36 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
 
 ### M4. AI enforcement
 
-- **Scope**: `resolve_backend` reads the policy: `Off` → new `BackendResolution::ManagedOff`; `LocalOnly` with provider
-  `cloud` → `ManagedCloudOff`; a disallowed host → `ManagedHostBlocked`. Each maps to a new `AiTranslateErrorKind` (keep
-  `translate-error-toast.ts` in lockstep), a quiet empty for suggestions, a `SlotRefusal` for Ask Cmdr, and an MCP
-  `ai_search` `data.reason` (`aiManagedOff`, `cloudAiManagedOff`, `aiHostNotAllowed`). `has_current_cloud_consent` gains
-  the policy argument (as its doc anticipates) and `CloudAiConsentStatus` a `managed` field. `check_ai_connection`
-  refuses a blocked host or managed-off cloud without a request. `configure_ai` stores config as today but never spawns
-  `llama-server` under `Off`; `start_ai_server` and `start_ai_download` refuse under `Off`; `compute_ai_status` never
-  `Offer`s under `Off`. Wake readiness maps `Off` / cloud-blocked to a silent state. `apply_change` (from M1) cancels
-  in-flight cloud work and stops the server, reusing the `revoke_cloud_ai_consent` sequence. The per-request backstop in
-  the three `ai/client.rs` request functions (§ Architecture). Under `AllowedCloudAIHosts`, the remote client gets a
-  `reqwest::redirect::Policy::custom` that stops at any hop whose host the policy refuses (genai 0.6.5 takes our own
-  client via `ClientBuilder::with_reqwest`); without that, a 3xx from an allowed host reaches any host and invariant 3
-  is false. A batch command `cloud_ai_hosts_allowed(base_urls) -> Vec<bool>` for the frontend picker. Docs: `ai/` C+D.md
-  (§ Cloud AI consent and § Provider routing), `mcp/DETAILS.md`, agent wake docs.
-- **Intentions**: `resolve_backend` stays the one chokepoint; no caller adds its own policy check. Check whether Ask
-  Cmdr can run on a local provider: if not, `LocalOnly` locks `askCmdr.enabled` off too (update `locked.rs`).
+- **Scope**: `resolve_backend` reads the policy via `ManagedPolicy::ai_destination`: any refusal becomes ONE new
+  `BackendResolution::Managed(ManagedAiRefusal)` (`AiOff` / `CloudAiOff` / `HostNotAllowed`). It maps to one new
+  `AiTranslateErrorKind::Managed` carrying the refusal (keep `translate-error-toast.ts` in lockstep), a quiet empty for
+  suggestions, `SlotRefusal::Managed(_)` for Ask Cmdr, and an MCP `ai_search` `data.reason` that is the refusal's own
+  camelCase name (`aiOff`, `cloudAiOff`, `hostNotAllowed`). `AiBackend` gains `destination` (§ Architecture).
+  `has_current_cloud_consent` gains the policy argument (as its doc anticipates) and `CloudAiConsentStatus` a `managed`
+  field. `check_ai_connection` refuses a blocked host or managed-off cloud without a request. `configure_ai` stores
+  config as today but never spawns `llama-server` under `Off`; `start_ai_server` and `start_ai_download` refuse under
+  `Off`; `compute_ai_status` never `Offer`s under `Off`. Wake readiness maps `Off` / cloud-blocked to a silent state.
+  `apply_change` (from M1) cancels in-flight cloud work and stops the server, reusing the `revoke_cloud_ai_consent`
+  sequence. The per-request backstop in the three `ai/client.rs` request functions (§ Architecture). Under
+  `AllowedCloudAIHosts`, the remote client gets a `reqwest::redirect::Policy::custom` that stops at any hop whose host
+  the policy refuses (genai 0.6.5 takes our own client via `ClientBuilder::with_reqwest`); without that, a 3xx from an
+  allowed host reaches any host and invariant 3 is false. A batch command
+  `cloud_ai_hosts_allowed(base_urls) -> Vec<bool>` for the frontend picker. Docs: `ai/` C+D.md (§ Cloud AI consent and §
+  Provider routing), `mcp/DETAILS.md`, agent wake docs.
+- **Intentions**: `resolve_backend` stays the one chokepoint; no caller adds its own policy check. Ask Cmdr runs on the
+  local provider, so `LocalOnly` leaves `askCmdr.enabled` alone; only `Off` locks it. `apply_change` doesn't try to work
+  out which in-flight call talks to which host: ANY narrowing of the AI policy calls the existing
+  `stop_in_flight_cloud_calls()` (a rare event; the next request re-resolves and gets the typed reason).
 - **Landmines**: the policy check comes BEFORE consent, key, and endpoint checks, so the user sees the managed reason,
   not "add a key". The host check uses the same base URL `AiBackend::remote` will use (including Ask Cmdr's
   `resolve_backend_with_model`, which rebuilds the backend from a second `get_cloud_config()` read; the client-level
   backstop covers it structurally). An Ask Cmdr turn resolves its backend once and then makes many requests, so a policy
   arriving mid-turn is only caught by the client-level check or `apply_change`, never by `resolve_backend`.
   `configure_ai` must not block (existing must-know).
-- **Test plan**: `resolve_backend_inner` matrix with the policy as a parameter (pure, no lock); translate-kind mapping
-  tests on both sides; MCP `ai_search` tests asserting each typed `data.reason` (the existing `cloudAiNotAllowed` test
-  is the template); consent predicate tests; `start_ai_download` refusal; a test that a policy change to `Off` cancels
+- **Test plan**: `ManagedPolicy::ai_destination` matrix (`LocalServer` and `Remote` × every AI key);
+  `resolve_backend_inner` matrix with the policy as a parameter (pure, no lock); translate-kind mapping tests on both
+  sides; MCP `ai_search` tests asserting each typed `data.reason` (the existing `cloudAiNotAllowed` test is the
+  template); consent predicate tests; `start_ai_download` refusal; a test that a policy change to `Off` cancels
   registered streams; a client-level test that a backend built while allowed refuses its NEXT request after the policy
   flips (the mid-turn case); a `wiremock` redirect test (allowed host 302s to a disallowed one, the second server
   receives nothing).
@@ -407,14 +487,17 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
   `managed: true` marker. Docs: `src/lib/settings/` C+D.md, `components/` C+D.md, `docs/guides/adding-a-new-setting.md`
   (one line: a policy-lockable setting gets its lock in `managed_policy/locked.rs`).
 - **Intentions**: a locked row is visible and greyed with its reason, never hidden (the settings OS-backed-row
-  precedent). Search still finds it.
+  precedent). Search still finds it. The managed note replaces any section-passed `disabledNote` on the same row. Each
+  section that contains a locked row shows the section line (§ Draft copy) at its top, derived from `lockedSettings` (no
+  per-section list to maintain).
 - **Landmines**: sparse persistence: the overlay must never write (rule 5), and `isModified` must not report a locked
   row as modified because of the overlay. The settings window, main window, and onboarding all run
   `initWindowSettings()`; the policy fetch goes there, not per section. `onSpecificSettingChange` subscribers must see
   the overlay change exactly once.
 - **Test plan**: settings-store tests (locked get/set/reset, disallowed stored value, overlay change emits once, nothing
   persisted); `SettingRow` / primitive a11y tests for the locked state (the note is reachable through
-  `aria-describedby`); `mcp-main-bridge.test.ts` for the marker; Rust test for the `set_setting` refusal.
+  `aria-describedby`; a managed lock beats a section-passed note); a section-line test (present iff the section holds a
+  locked id); `mcp-main-bridge.test.ts` for the marker; Rust test for the `set_setting` refusal.
 - **DONE**: every setting `locked_settings` names renders locked with the note in Settings and can't be changed from the
   UI or MCP.
 
@@ -438,15 +521,18 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
 - **Scope**: `AiSection` / `AiCloudSection` (provider control with `cloud` disabled under `LocalOnly`, everything locked
   under `Off`), the provider picker in `src/lib/ai-provider-setup/` (presets whose host `cloud_ai_hosts_allowed` rejects
   render disabled with the reason; a custom or Azure URL is checked when entered), `AiCloudConsentToggle` (locked from
-  `CloudAiConsentStatus.managed`), `AskCmdrSection`, `StepAi.svelte` (onboarding skips the AI step under `Off` and
-  offers only local or off under `LocalOnly`), and the translate-error toasts for the new kinds.
+  `CloudAiConsentStatus.managed`), `AskCmdrSection`, `StepAi.svelte` (onboarding skips the AI step under `Off`, and
+  under `LocalOnly` on a Mac that can't run local AI, and offers only local or off under `LocalOnly` otherwise), and the
+  translate-error toast for `Managed`. The disabled `cloud` option reuses the provider row's existing per-option
+  disabled path, plus a visible line under the row (§ Draft copy).
 - **Intentions**: the shared provider-setup steps change once and both onboarding and Settings get it
   (`sections/CLAUDE.md`: those controls aren't the section's).
 - **Landmines**: a disallowed-host preset still needs its row visible with the reason, not removed. The Azure preset's
   placeholder URL has no real host until the user types one; check after entry. ❌ No API key crosses IPC for any of
   this (the host check takes a URL, never a key).
 - **Test plan**: picker tests with a mocked `cloud_ai_hosts_allowed`; consent-toggle locked test; `StepAi` tests per
-  policy; translate-toast tests for the three kinds; one Playwright spec with an `AllowedCloudAIHosts` file override.
+  policy (including Intel + `LocalOnly`); translate-toast tests for each `ManagedAiRefusal`; one Playwright spec with an
+  `AllowedCloudAIHosts` file override.
 - **DONE**: each AI key is visible and explained in Settings, onboarding, and the error toasts.
 
 ### M8. Sample profile, `/trust`, and the drift guard
@@ -457,12 +543,22 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
   `apps/website/public/mdm/com.veszelovszki.cmdr.plist` (the bare key dictionary, for Jamf "Application & Custom
   Settings" / Kandji "Custom Profile" / Intune "Preference file" uploads). `/trust`: a "Central management (MDM)"
   section listing every key (type, effect, precedence, the macOS-only note), linking both files, and replacing the "No
-  central administration" gap line in `trust.ts` (keep the `.pkg`/PPPC line) and the :70 sentence. A Rust test that
-  `include_str!`s both files and asserts their key set equals the key constants in `keys.rs` and that each example value
-  parses without warnings. Wire the files into whatever the website's link checks need. `/trust` also says plainly what
-  still talks to the network with every key set (the "Egress NO key covers" list in § Fresh grep): a security review
-  asks exactly that, and finding license validation or the CLIP download on their own would cost more trust than listing
-  them.
+  central administration" gap line in `trust.ts` (keep the `.pkg`/PPPC line) and the :70 sentence. The key list on
+  `/trust` renders from a typed `managedPreferenceKeys` array in `trust.ts` (`{ key, type, effect }`), so there's one
+  list to guard. A Rust test that `include_str!`s both files and `trust.ts` and asserts all three key sets equal the
+  constants in `keys.rs`, and that each example value parses without warnings. ❗ The checker caches each lane by its
+  declared `Inputs` (`scripts/check/DETAILS.md` § Input fingerprint cache): add `apps/website/public/mdm/**` and
+  `apps/website/src/lib/trust.ts` to the Rust test lane's inputs, or editing only the profile is a cached "pass"
+  locally. Wire the files into whatever the website's link checks need. `/trust` also carries (all decided):
+  - **The traffic no key turns off, each with why**: license validation (a paid license must be checkable; it sends the
+    key and nothing about files), the S3 price list (public prices for the cost estimate; no user data), the CLIP model
+    download from Hugging Face (the on-device image search model; a download, nothing uploaded), and feedback / beta
+    signup (only when the person sends them). Source of truth: the always-allowed `Egress` arms plus the non-api-server
+    list in § Fresh grep.
+  - **The local-Ollama recipe**: `DisableCloudAI` blocks `localhost` too, so to allow only a local Ollama or LM Studio,
+    leave it off and set `AllowedCloudAIHosts` to `localhost` and `127.0.0.1`.
+  - **What the ceiling can't do** (§ Updates): no patch releases arrive once the newest release passes it.
+  - **What the heartbeat says on a managed Mac**: effective settings plus one "managed" flag, never which keys are set.
 - **Intentions**: an admin can download one file, edit values, and upload it. The guard makes a new key impossible to
   forget in the public docs.
 - **Landmines**: coordinate with the `website-copy` agent (it edits `/trust` on this branch): stage only your files, and
@@ -478,8 +574,9 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
 
 - An adversarial conformance review against the invariants below (fresh agent), then a docs audit of every touched
   `CLAUDE.md` / `DETAILS.md`.
-- David installs the sample profile once on a real Mac (see below) and walks the three groups. Then tick the three #118
-  checkboxes and the `/trust` one.
+- David runs recipe 3 of "Testing without an MDM" once (records in `managed_policy/DETAILS.md` which of the `root:wheel`
+  / `cfprefsd` steps were needed, dated), then installs the sample profile (recipe 4) and walks the three groups. Then
+  tick the three #118 checkboxes and the `/trust` one.
 
 ## Testing without an MDM
 
@@ -487,7 +584,7 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
    test for the "user layer doesn't count" rule. No test needs root or a profile.
 2. **Dev and E2E runs**: `CMDR_MANAGED_PREFS_FILE=/path/to/policy.plist pnpm dev` (debug builds and the `playwright-e2e`
    feature only).
-3. **Real managed preferences, fast** (needs `sudo`, so David runs it; unverified until M1 records evidence):
+3. **Real managed preferences, fast** (needs `sudo`, so David runs it in M9; unverified until then):
    `sudo defaults write "/Library/Managed Preferences/com.veszelovszki.cmdr" DisableUsageStats -bool true`, then
    reactivate Cmdr (or rely on the folder watch). If `IsForced` doesn't see it, check the file is `root:wheel` `0644`
    like a profile-written one, then `sudo killall cfprefsd` and retry. Record which of these were needed. Undo with
@@ -508,16 +605,15 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
    Pro, and "force on" keys for pre-configuring a corporate AI gateway (`CloudAIBaseURL` plus pre-approved consent).
    Each is a clean add-on later.
 4. **Copy**: the draft lines in § Draft copy.
-5. **Loopback under `DisableCloudAI`.** The plan blocks Ollama / LM Studio on `localhost` too, because they're `cloud`
-   providers and `localhost` can be an SSH tunnel to a remote box. The alternative (allow loopback as "on-device") is
-   friendlier but unprovable. Recommendation: keep blocking, say so on `/trust`, and point admins at
-   `AllowedCloudAIHosts: [localhost]`.
-6. **Does the heartbeat say "managed"?** With usage stats still on, `analytics/config_shape.rs` reports STORED settings
-   (`ai.provider: cloud`) that the policy overrides, which skews the dashboard. Options: (a) report effective values,
-   (b) add a coarse `managed: true` flag (useful: how many installs are IT-managed), (c) leave it. Recommendation: (a) +
-   (b), no key names or values.
-7. **Remaining egress.** License validation, the S3 price list, and the CLIP model download stay on under every key (see
-   § Fresh grep). Fine for v1 if `/trust` lists them; a `DisableNonEssentialNetwork`-style key is a later add-on.
+5. **A "what your organization manages" summary for IT to verify.** #118 asks that IT can "see that the app honors it".
+   Today that's per-row notes plus `defaults read`. A short read-only list in Settings › Updates & privacy (or About)
+   rendered from `ManagedPolicyView` ("Usage stats: off. Updates: up to 0.52.") is a few lines on top of M5 and gives a
+   help-desk person one place to look. Recommendation: add it to M6; skip if you'd rather keep Settings quieter.
+
+Decided by the lead (2026-10-05), now baked into the plan: loopback stays blocked under `DisableCloudAI`, with the
+`AllowedCloudAIHosts` recipe on `/trust` (§ AI, M8); the heartbeat reports effective values plus one coarse
+`managedByOrganization` bool, never which keys are set (M2); `/trust` lists the traffic no key turns off, with why (M8).
+A `DisableNonEssentialNetwork`-style key for that remaining traffic stays a later add-on.
 
 ## Invariants (the close-out review checks each)
 
@@ -533,8 +629,10 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
 9. Every refusal is typed; no string matching on messages.
 10. The frontend never decides policy: it renders `get_managed_policy`, `locked_settings`, and typed outcomes.
 11. No caller can observe the "not loaded yet" policy; `current()` is never fail-open.
-12. Every egress gate lives in the lowest send function (api-server senders, the `ai/client.rs` request functions), not
-    only in the commands above it.
+12. Every egress gate lives in the lowest send function (`server_request::send` with its required `Egress`, the
+    `ai/client.rs` request functions against `AiBackend::destination`), not only in the commands above it.
+13. Each policy decision is made in one function (`ManagedPolicy::allows(Egress)`, `ManagedPolicy::ai_destination`,
+    `locked_settings`); every other site calls it and never re-derives the rule.
 
 ## Review round 1
 
@@ -566,3 +664,30 @@ Fresh-eyes review against the code at `f6ef6d051` (2026-10-05). Changes, ranked 
    no key covers (now also listed on `/trust` in M8).
 10. Smaller: explicit domain constant (not `kCFPreferencesCurrentApplication`), the override works on Linux E2E,
     `apply_change` cancels model downloads and newly-disallowed-host work, test-recipe permission hint, decisions 5–7.
+
+## Review round 2
+
+Implementer and user angle, against the code at `6b4bd4a2c` (2026-10-05). Changes, ranked:
+
+1. **The api-server gate had five copies; now it has one.** `server_request::send` already carries six of the senders,
+   so it takes a required `Egress` and makes the call. A new sender can't compile without naming its pipeline, and the
+   always-allowed arms are the code form of the `/trust` "no key turns this off" list. The heartbeat moves onto it.
+2. **The LLM backstop couldn't be built.** `AiBackend` doesn't know its URL, or whether it's the local server, so the
+   client check had nothing to compare. It gains `destination`, and one `ai_destination` decision serves both
+   `resolve_backend` and the backstop. Without that, `DisableAI` against a running local server had no backstop.
+3. **The ceiling promised patch releases it can't deliver.** `latest.json` only names the newest release, so a `"0.52"`
+   ceiling stops all updates once 0.53.0 ships. Text corrected, and `/trust` now says it.
+4. **Backend readers saw stored values.** `analytics.enabled`, `askCmdr.enabled`, and the heartbeat config shape read
+   `settings.json` directly. A Rust `locked::overlay` (the twin of the frontend one) feeds all three. That's how the
+   heartbeat reports effective values, and `ManagedOff` in `send_permission` isn't needed.
+5. **Four AI refusal spellings became one** `ManagedAiRefusal`, carried by every surface and given one frontend copy
+   map.
+6. **M1's DONE needed `sudo`**, so no agent could tick it. The real-plist recipe moves to M9 (David).
+7. **The drift guard would cache-pass locally.** The checker fingerprints declared inputs, so the website files join the
+   Rust lane's inputs. `trust.ts` gets a typed key list, which the guard also covers.
+8. **UX**: a section line so keyboard and VoiceOver users meet the reason before the disabled controls, a visible line
+   for the disabled `cloud` option (a tooltip alone isn't announced reliably), no toast for a held update, Intel plus
+   `LocalOnly` handled, managed note wins over a section's own note, `install_update` gets a typed error, and Ask Cmdr's
+   open question is closed (it runs on local AI).
+9. Lead decisions baked in (loopback, heartbeat, remaining traffic); decisions 5–7 are gone, and a new decision 5 asks
+   about a "what your organization manages" summary.
