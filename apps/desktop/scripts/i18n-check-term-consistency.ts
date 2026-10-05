@@ -150,7 +150,8 @@ export function normalizeForComparison(value: string, key: string): string {
  * each other, and every agreeing language would read as drift.
  */
 function agreesWith(source: Catalog, key: string): string | undefined {
-  const target = source.metadata[key]?.agreesWith
+  if (!(key in source.metadata)) return undefined
+  const target = source.metadata[key].agreesWith
   return typeof target === 'string' ? target : undefined
 }
 
