@@ -10,12 +10,20 @@ import { TypedFailure } from '$lib/ipc/typed-failure'
 /** An `Error` that still carries the backend's typed download failure, so the updater can pick its log level. */
 export class UpdateDownloadFailure extends TypedFailure<UpdateDownloadError> {
   constructor(failure: UpdateDownloadError) {
-    super(
-      failure,
-      failure.type === 'request'
-        ? `update download: ${serverRequestDiagnostic(failure.failure)}`
-        : `update download ${failure.type}: ${failure.detail}`,
-    )
+    super(failure, `update download: ${downloadDiagnostic(failure)}`)
     this.name = 'UpdateDownloadFailure'
+  }
+}
+
+function downloadDiagnostic(failure: UpdateDownloadError): string {
+  switch (failure.type) {
+    case 'request':
+      return serverRequestDiagnostic(failure.failure)
+    case 'signatureMismatch':
+    case 'disk':
+      return `${failure.type}: ${failure.detail}`
+    case 'nothingOffered':
+    case 'blockedByPolicy':
+      return failure.type
   }
 }

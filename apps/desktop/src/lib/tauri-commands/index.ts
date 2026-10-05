@@ -906,7 +906,7 @@ export {
   updateCheckDueIn,
   updateWriteBlocker,
 } from './updates'
-export type { BundleWriteBlocker, UpdateCheckResult } from './updates'
+export type { BundleWriteBlocker, UpdateCheckOutcome, UpdateCheckTrigger } from './updates'
 
 // Dev/benchmark IPC
 export { benchmarkLog } from './debug'

@@ -10,6 +10,8 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use super::UpdateInstallError;
+
 /// Error type for the sync pipeline (`sync_bundle` + its inner helpers).
 ///
 /// Carries both a formatted user-facing `message` and the original
@@ -86,16 +88,17 @@ pub fn is_running_from_app_bundle() -> bool {
 /// Extracts the tarball at `tarball_path` and syncs its contents into the running app bundle.
 ///
 /// The tarball is expected to contain a `Cmdr.app/` root directory (as produced by `tauri-action`).
-pub fn install(tarball_path: &Path) -> Result<(), String> {
+/// `may_install` is the managed policy's answer for the version the extracted bundle names.
+pub fn install(tarball_path: &Path, may_install: &dyn Fn(&semver::Version) -> bool) -> Result<(), UpdateInstallError> {
     // Resolved (and vetted) before extraction: unpacking ~63 MB into staging only to find the
     // destination unwritable is work nobody gets anything for. The frontend gates on the same
     // classification one step earlier; this arm is what keeps a direct caller honest.
     let bundle_path = running_bundle()?;
     if let Some(blocker) = super::bundle_location::classify(&bundle_path) {
-        return Err(format!(
+        return Err(UpdateInstallError::from(format!(
             "Cmdr is {blocker}, so it can't write the update into {}. It needs to be moved to Applications.",
             bundle_path.display()
-        ));
+        )));
     }
 
     let staging_owned = staging_dir();
@@ -111,13 +114,13 @@ pub fn install(tarball_path: &Path) -> Result<(), String> {
     extract_tarball(tarball_path, staging)?;
 
     if !staged_app.exists() {
-        return Err(format!(
+        return Err(UpdateInstallError::from(format!(
             "Extracted tarball doesn't contain Cmdr.app/ at {}",
             staged_app.display()
-        ));
+        )));
     }
 
-    refuse_unless_newer(&staged_app, env!("CARGO_PKG_VERSION"))?;
+    vet_staged_bundle(&staged_app, env!("CARGO_PKG_VERSION"), may_install)?;
 
     log::info!("Installing update into bundle: {}", bundle_path.display());
 
@@ -125,7 +128,7 @@ pub fn install(tarball_path: &Path) -> Result<(), String> {
     let bundle_contents = bundle_path.join("Contents");
 
     if !staged_contents.exists() {
-        return Err("Staged app missing Contents/ directory".to_string());
+        return Err("Staged app missing Contents/ directory".to_string().into());
     }
 
     // Try direct sync first; escalate to admin privileges if permission denied
@@ -134,16 +137,16 @@ pub fn install(tarball_path: &Path) -> Result<(), String> {
         Err(e) if e.is_read_only() => {
             // The pre-flight classification missed it (a read-only mount nested inside the bundle,
             // say). Escalating would only cost the user an admin prompt they can't win.
-            return Err(format!(
+            return Err(UpdateInstallError::from(format!(
                 "Cmdr is running from a read-only spot, so it can't write the update into {}. It needs to be moved to Applications. ({e})",
                 bundle_path.display()
-            ));
+            )));
         }
         Err(e) if e.is_permission_denied() => {
             log::info!("Direct write denied, escalating with admin privileges");
             sync_with_admin_privileges(&staged_contents, &bundle_contents)?;
         }
-        Err(e) => return Err(e.to_string()),
+        Err(e) => return Err(e.to_string().into()),
     }
 
     // Touch the .app bundle to trigger LaunchServices refresh
@@ -158,14 +161,32 @@ pub fn install(tarball_path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Refuses a staged bundle whose own version isn't newer than `current`.
+/// Refuses a staged bundle whose own version isn't newer than `current`, or that the managed
+/// policy doesn't allow (`may_install`).
+///
+/// The policy is asked about the version the bundle NAMES, not the one the check offered: an
+/// unsigned manifest could offer a version under the ceiling and serve a signed release above it.
+fn vet_staged_bundle(
+    staged_app: &Path,
+    current: &str,
+    may_install: &dyn Fn(&semver::Version) -> bool,
+) -> Result<(), UpdateInstallError> {
+    let version = refuse_unless_newer(staged_app, current)?;
+    if !may_install(&version) {
+        log::info!(target: "managed_policy", "Not installing update {version}: the organization's policy refuses it");
+        return Err(UpdateInstallError::BlockedByPolicy);
+    }
+    Ok(())
+}
+
+/// Refuses a staged bundle whose own version isn't newer than `current`, and answers that version.
 ///
 /// ❗ The minisign signature proves the archive is a real release, not WHICH one:
 /// its trusted comment names only `file:Cmdr.app.tar.gz`, and the manifest that
 /// names the version isn't signed. So an older signed archive served behind a
 /// manifest claiming a newer version would verify and roll the install back. The
 /// version inside the signed bytes (`Contents/Info.plist`) is what binds it.
-fn refuse_unless_newer(staged_app: &Path, current: &str) -> Result<(), String> {
+fn refuse_unless_newer(staged_app: &Path, current: &str) -> Result<semver::Version, String> {
     let info_path = staged_app.join("Contents/Info.plist");
     let info =
         plist::Value::from_file(&info_path).map_err(|e| format!("Couldn't read the update's Info.plist: {e}"))?;
@@ -183,7 +204,7 @@ fn refuse_unless_newer(staged_app: &Path, current: &str) -> Result<(), String> {
             "Refusing the update: it holds version {staged_version}, which isn't newer than {current_version}"
         ));
     }
-    Ok(())
+    Ok(staged_version)
 }
 
 /// Extracts a `.tar.gz` tarball into `dest_dir`.
@@ -591,7 +612,10 @@ mod tests {
     #[test]
     fn a_newer_staged_bundle_installs() {
         let dir = staged_app_with_version(Some("0.51.0"));
-        assert_eq!(refuse_unless_newer(&dir.path().join("Cmdr.app"), "0.50.0"), Ok(()));
+        assert_eq!(
+            refuse_unless_newer(&dir.path().join("Cmdr.app"), "0.50.0"),
+            Ok(semver::Version::new(0, 51, 0))
+        );
     }
 
     /// ❗ The signature proves an archive is a real release, not WHICH release:
@@ -606,6 +630,33 @@ mod tests {
                 "{staged} over 0.51.0 must be refused"
             );
         }
+    }
+
+    /// The policy is asked about the version the archive NAMES: an unsigned manifest could offer
+    /// 0.52.1 under a `"0.52"` ceiling and serve a genuine, signed 0.53.0.
+    #[test]
+    fn the_policy_judges_the_version_inside_the_archive() {
+        let dir = staged_app_with_version(Some("0.53.0"));
+        let ceiling = crate::managed_policy::UpdateCeiling::Minor(0, 52);
+        let held = |version: &semver::Version| ceiling.allows(version);
+        assert_eq!(
+            vet_staged_bundle(&dir.path().join("Cmdr.app"), "0.51.0", &held),
+            Err(UpdateInstallError::BlockedByPolicy)
+        );
+        assert_eq!(
+            vet_staged_bundle(&dir.path().join("Cmdr.app"), "0.51.0", &|_| true),
+            Ok(())
+        );
+    }
+
+    /// A rollback stays a failure even where the policy would allow it: the version check comes first.
+    #[test]
+    fn an_older_archive_is_a_failure_not_a_policy_refusal() {
+        let dir = staged_app_with_version(Some("0.50.0"));
+        assert!(matches!(
+            vet_staged_bundle(&dir.path().join("Cmdr.app"), "0.51.0", &|_| true),
+            Err(UpdateInstallError::Failed { .. })
+        ));
     }
 
     #[test]

@@ -77,7 +77,7 @@ describe('a failed update check', () => {
     await checkForUpdates('poll')
     expect(logger.warn).toHaveBeenCalledOnce()
 
-    checkForUpdateMock.mockResolvedValueOnce(null)
+    checkForUpdateMock.mockResolvedValueOnce({ kind: 'upToDate' })
     await checkForUpdates('poll')
     expect(updateState.failure).toBeNull()
 
@@ -104,7 +104,7 @@ describe('a failed update check', () => {
  * failure, or an install that broke stays at error.
  */
 describe('a failed update download or install', () => {
-  const anUpdate = { version: '0.29.0', url: 'https://example.invalid/Cmdr.app.tar.gz', signature: 'sig' }
+  const anUpdate = { kind: 'available', version: '0.29.0' } as const
 
   beforeEach(() => {
     _resetUpdaterStateForTest()

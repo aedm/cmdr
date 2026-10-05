@@ -49,6 +49,11 @@ pub mod testing {
         let entries: Vec<_> = forced.iter().map(|key| (*key, plist::Value::Boolean(true))).collect();
         parse(&FakeSource::with(&entries)).policy
     }
+
+    /// The policy a profile forcing exactly `entries` produces, for keys that take a value.
+    pub fn from_values(entries: &[(&str, plist::Value)]) -> ManagedPolicy {
+        parse(&FakeSource::with(entries)).policy
+    }
 }
 
 use serde::{Deserialize, Serialize};
@@ -80,6 +85,15 @@ pub enum UpdatePolicy {
         automatic_checks: bool,
         ceiling: Option<UpdateCeiling>,
     },
+}
+
+/// Why the policy refuses an update to a given version.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UpdateRefusal {
+    /// `DisableUpdates`: no version at all.
+    Disabled,
+    /// The version is past `MaxUpdateVersion`.
+    AboveCeiling(UpdateCeiling),
 }
 
 /// How much AI the organization allows.
@@ -116,6 +130,19 @@ impl ManagedPolicy {
         UpdatePolicy::Enabled {
             automatic_checks: !self.automatic_update_checks_disabled,
             ceiling: self.update_ceiling,
+        }
+    }
+
+    /// The one version decision: may this Mac download or install `version`? `DisableUpdates`
+    /// refuses every version; a ceiling refuses one past it, compared on the release core. The
+    /// updater asks it when a check finds a release, and again before the download and the install.
+    pub fn update_to(&self, version: &semver::Version) -> Result<(), UpdateRefusal> {
+        match self.updates() {
+            UpdatePolicy::Disabled => Err(UpdateRefusal::Disabled),
+            UpdatePolicy::Enabled {
+                ceiling: Some(ceiling), ..
+            } if !ceiling.allows(version) => Err(UpdateRefusal::AboveCeiling(ceiling)),
+            UpdatePolicy::Enabled { .. } => Ok(()),
         }
     }
 
@@ -220,6 +247,37 @@ mod tests {
         );
         assert_eq!(policy.ai_destination(&AiDestination::LocalServer), Ok(()));
         assert!(!policy.cloud_host_allowed(&url::Url::parse("https://api.openai.com/").expect("url")));
+    }
+
+    fn version(text: &str) -> semver::Version {
+        semver::Version::parse(text).expect("a valid test version")
+    }
+
+    #[test]
+    fn no_policy_allows_an_update_to_any_version() {
+        assert_eq!(ManagedPolicy::default().update_to(&version("99.0.0")), Ok(()));
+    }
+
+    #[test]
+    fn updates_off_allows_no_version() {
+        let policy = ManagedPolicy {
+            updates_disabled: true,
+            ..Default::default()
+        };
+        assert_eq!(policy.update_to(&version("0.0.1")), Err(UpdateRefusal::Disabled));
+    }
+
+    #[test]
+    fn a_ceiling_allows_up_to_itself_and_no_further() {
+        let policy = ManagedPolicy {
+            update_ceiling: Some(UpdateCeiling::Minor(0, 52)),
+            automatic_update_checks_disabled: true,
+            ..Default::default()
+        };
+        let held = Err(UpdateRefusal::AboveCeiling(UpdateCeiling::Minor(0, 52)));
+        assert_eq!(policy.update_to(&version("0.52.9")), Ok(()));
+        assert_eq!(policy.update_to(&version("0.53.0")), held);
+        assert_eq!(policy.update_to(&version("0.53.0-rc.1")), held);
     }
 
     #[test]

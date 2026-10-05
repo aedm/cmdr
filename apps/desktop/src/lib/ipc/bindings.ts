@@ -4574,28 +4574,18 @@ export const commands = {
    */
   drainPendingReveals: () => __TAURI_INVOKE<void>('drain_pending_reveals'),
   /**
-   *  Fetches `latest.json` (via the update check proxy for analytics) and returns update info
-   *  if a newer version is available.
+   *  Fetches `latest.json` (via the update check proxy for analytics) and says what it found, with
+   *  the organization's policy applied. An `Available` release is remembered for `download_update`.
    *
-   *  Returns `None` when:
-   *  - This isn't a real user's production install ([`skip_reason`]): the executable isn't inside a
-   *    `.app` bundle (dev builds: install can't possibly succeed, so there's no point checking and
-   *    no point letting the user click "Update"), or one of
-   *    [`crate::prod_instance::NON_PROD_ENV_VARS`] is set. Every check reaches
-   *    `api.getcmdr.com/update-check`, which writes an `update_checks` row that the dashboard counts
-   *    as an active install, so Cmdr's own runs must never call it.
-   *  - The remote version is not newer than the current version
-   *  - The manifest doesn't contain an entry for this platform
+   *  Answers `UpToDate` when this isn't a real user's production install ([`skip_reason`]): the
+   *  executable isn't inside a `.app` bundle (dev builds: install can't possibly succeed), or one of
+   *  [`crate::prod_instance::NON_PROD_ENV_VARS`] is set. Every check reaches
+   *  `api.getcmdr.com/update-check`, which writes an `update_checks` row that the dashboard counts as
+   *  an active install, so Cmdr's own runs must never call it. Also `UpToDate` when the remote version
+   *  isn't newer, or the manifest has no entry for this platform.
    */
-  checkForUpdate: () =>
-    typedError<
-      {
-        version: string
-        url: string
-        signature: string
-      } | null,
-      ServerRequestError
-    >(__TAURI_INVOKE('check_for_update')),
+  checkForUpdate: (trigger: UpdateCheckTrigger) =>
+    typedError<UpdateCheckOutcome, ServerRequestError>(__TAURI_INVOKE('check_for_update', { trigger })),
   /**
    *  Reports whether the running bundle sits somewhere an update can be written into, or `None`
    *  when nothing is in the way.
@@ -4622,18 +4612,19 @@ export const commands = {
       string
     >(__TAURI_INVOKE('update_write_blocker')),
   /**
-   *  Downloads the update tarball and verifies its minisign signature.
+   *  Downloads the update the last check offered and verifies its minisign signature. Takes no URL:
+   *  the backend fetches only what it offered, so a bypassed frontend can't stage anything else.
    *
-   *  On success, stores the tarball path in `UpdateState` for `install_update` to consume.
+   *  On success, records the tarball and its version in `UpdateState` for `install_update`.
    */
-  downloadUpdate: (url: string, signature: string) =>
-    typedError<null, UpdateDownloadError>(__TAURI_INVOKE('download_update', { url, signature })),
+  downloadUpdate: () => typedError<null, UpdateDownloadError>(__TAURI_INVOKE('download_update')),
   /**
    *  Installs a previously downloaded update by syncing files into the running `.app` bundle.
    *
-   *  Reads (and clears) the tarball path stored by `download_update`.
+   *  Takes the download `download_update` recorded, and refuses it when the CURRENT policy doesn't
+   *  allow its version: a download staged before a profile arrived must not install.
    */
-  installUpdate: () => typedError<null, string>(__TAURI_INVOKE('install_update')),
+  installUpdate: () => typedError<null, UpdateInstallError>(__TAURI_INVOKE('install_update')),
   // The organization's policy as the UI shows it. Reads the cache, never CFPreferences.
   getManagedPolicy: () => __TAURI_INVOKE<ManagedPolicyView>('get_managed_policy'),
   /**
@@ -15140,6 +15131,42 @@ export type UnwritableReason =
   | 'unexplained'
 
 /**
+ *  What one update check found. The managed outcomes are answers, not failures: the frontend
+ *  renders them and ❌ never logs them at warn or error.
+ */
+export type UpdateCheckOutcome =
+  // Nothing newer than what's running (or this isn't a production install, see `skip_reason`).
+  | { kind: 'upToDate' }
+  // A newer release this Mac may install. `download_update` fetches exactly this one.
+  | { kind: 'available'; version: string }
+  // A newer release is out, but `MaxUpdateVersion` holds this Mac at `ceiling` or earlier.
+  | { kind: 'heldByPolicy'; available: string; ceiling: string }
+  // `DisableUpdates`: no request was made.
+  | { kind: 'updatesDisabledByPolicy' }
+  /**
+   *  `DisableAutomaticUpdateChecks` refused a background check: no request was made. A check a
+   *  person asks for still runs.
+   */
+  | { kind: 'automaticChecksDisabledByPolicy' }
+
+/**
+ *  What set an update check going. The frontend's `update_check` analytics event carries the same
+ *  token, and the backend reads it to refuse a background check under
+ *  `DisableAutomaticUpdateChecks`.
+ */
+export type UpdateCheckTrigger =
+  // The first wake of the poll loop as the app comes up.
+  | 'startup'
+  // A background tick of the poll loop.
+  | 'poll'
+  // `updates.autoCheck` going from off to on.
+  | 'auto_check_on'
+  // The `app.checkForUpdates` command (menu, command palette, shortcut).
+  | 'command'
+  // The "Check for updates" button on Settings > Updates.
+  | 'settings'
+
+/**
  *  Why a tarball download didn't leave a verified file behind. The frontend picks the log level
  *  off the variant: a `Request` failure follows the api-server rule (no network, a timeout, or a
  *  5xx is the person's network or the host's bad moment, so warn), while a signature mismatch or a
@@ -15154,13 +15181,30 @@ export type UpdateDownloadError =
   | { type: 'signatureMismatch'; detail: string }
   // The verified tarball couldn't be written to the temp dir.
   | { type: 'disk'; detail: string }
+  // No check has offered an update since the last one: the frontend asked out of turn.
+  | { type: 'nothingOffered' }
+  /**
+   *  The organization's policy, read fresh, no longer allows the offered version (it arrived
+   *  after the check). Nothing was fetched. Not a failure: ❌ never log it at warn or error.
+   */
+  | { type: 'blockedByPolicy' }
 
-// Update metadata returned to the frontend when a newer version is available.
-export type UpdateInfo = {
-  version: string
-  url: string
-  signature: string
-}
+/**
+ *  Why `install_update` didn't install. `Failed` covers everything local (extraction, the version
+ *  check, the sync), which the frontend logs at error.
+ *
+ *  ❌ `detail` is for logs only, never a sentence a person reads.
+ */
+export type UpdateInstallError =
+  /**
+   *  The organization's policy, read fresh, doesn't allow the staged version. Nothing was
+   *  written. Not a failure: ❌ never log it at warn or error.
+   */
+  | { type: 'blockedByPolicy' }
+  // No verified download is waiting: the frontend asked out of turn.
+  | { type: 'nothingStaged' }
+  // The install ran and didn't finish.
+  | { type: 'failed'; detail: string }
 
 export type UpdatePolicyView =
   | { kind: 'disabled' }
