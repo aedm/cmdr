@@ -12002,15 +12002,6 @@ export type ReduceTransparencyChanged = {
 /**
  *  Typed errors from a registration attempt. The FE branches on `kind`;
  *  never match on the message string.
- *
- *  Two variants is deliberately the whole surface. `InvalidBinding` is the
- *  only failure we can disambiguate cheaply (via `Shortcut::from_str` BEFORE
- *  the plugin call). Every other plugin failure — including the "another app
- *  holds it" case — lands in `PluginError` carrying the underlying message.
- *  The Settings row renders the message tail when one is present; there's no
- *  user action that depends on distinguishing "in use by another app" from
- *  "allocation failure" (both mean "pick a different combo or move on"), so a
- *  single bucket keeps us off the brittle string-match path.
  */
 export type RegistrationError =
   /**
@@ -12028,9 +12019,16 @@ export type RegistrationError =
       binding: string
     }
   /**
-   *  Any plugin failure: conflict with another app, allocation, OS IO, etc.
-   *  Carries the underlying message for both the log line and the Settings
-   *  row's "Couldn't register: …" tail.
+   *  The OS refused the hotkey, most likely because another app holds the
+   *  combo. The plugin's `Error::GlobalHotkey` arm: it flattens
+   *  `global_hotkey`'s typed `AlreadyRegistered` / `FailedToRegister` into a
+   *  string, so the arm is the typed signal and the reason isn't knowable.
+   *  The row says "Another app may be using that combo".
+   */
+  | { kind: 'unavailable'; message: string }
+  /**
+   *  Any other plugin failure (its internal channel, the Tauri runtime).
+   *  Nothing the user can act on; the message is for the log only.
    */
   | { kind: 'pluginError'; message: string }
 

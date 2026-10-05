@@ -48,9 +48,9 @@ Full lifecycle, scope rationale, and v1 limits: `DETAILS.md`.
   `global-shortcut-fired`. The user fires it from another app, so without the raise the result stays hidden behind the
   active app. Don't drop the raise. `lib.rs` calls `refresh_global_go_to_latest_shortcut(app)` at the same three points
   as the watcher, plus the `set_global_go_to_latest_shortcut` IPC.
-- **`GlobalShortcutManager` register/unregister is idempotent**: re-registering the same binding is a no-op, swapping
-  unregisters the previous first, and a `Conflict` stays remembered until the next successful register so the Settings
-  row can surface "in use by another app" without re-attempting.
+- **`GlobalShortcutManager` register/unregister is idempotent**: re-registering the same binding is a no-op, and a swap
+  unregisters the previous first. A refused swap puts the previous binding back, so the user keeps a hotkey. Refusals
+  are typed by the plugin's error ARM (`Unavailable`), never its message.
 - **No `println!` / `eprintln!` / `dbg!`** (clippy denies crate-wide). Use `log::debug!(target: "downloads::watcher", …)`
   so `RUST_LOG=cmdr_lib::downloads=debug` filters this subsystem. See `logging/CLAUDE.md`.
 - **Tests run against a tempdir, not `~/Downloads`.** `DownloadsWatcher::start_at(path, sink)` is the test entry point;

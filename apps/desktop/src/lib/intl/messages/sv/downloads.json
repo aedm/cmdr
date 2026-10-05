@@ -128,10 +128,6 @@
   "@downloads.shortcutRow.invalidCombo": {
     "sourceHash": "d2601f3"
   },
-  "downloads.shortcutRow.registerFailed": "Det gick inte att registrera: {reason}",
-  "@downloads.shortcutRow.registerFailed": {
-    "sourceHash": "3b0841e"
-  },
   "downloads.shortcutRow.addModifier": "Lägg till en modifierare (⌘, ⌃, ⌥ eller ⇧)",
   "@downloads.shortcutRow.addModifier": {
     "sourceHash": "28a5ba2"

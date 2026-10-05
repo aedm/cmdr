@@ -58,11 +58,17 @@ user sees no extra prompt.
 `Meta` mapping makes the default `⌃⌥⌘J` fail to register at startup. Keep both adapters on `Super`.
 
 The `register`/`unregister` state machine in `GlobalShortcutManager` is idempotent: re-registering the same binding is a
-no-op, swapping to a new binding unregisters the previous first, and a `Conflict` error stays remembered until the next
-successful register so the Settings row can surface "Couldn't register: in use by another app." without re-attempting.
-`global_shortcut.rs` carries typed `RegistrationError` (`Conflict | InvalidBinding | PluginError`) and
-`RegistrationStatus` (`Registered | NotRegistered | Conflict`); production uses `TauriRegistrar` (owned `AppHandle`),
-tests use an in-memory `FakeRegistrar`.
+no-op, and swapping to a new binding unregisters the previous first. When the OS then refuses the new one, `register`
+re-registers the previous binding before returning the error, so a rebind onto a taken combo keeps the old hotkey
+working instead of leaving none. The Settings row saves the new binding only after the backend accepts it, so the saved
+binding and the registered one never disagree.
+
+`global_shortcut.rs` carries typed `RegistrationError` (`InvalidBinding | Unavailable | PluginError`) and
+`RegistrationStatus` (`Registered | NotRegistered`); production uses `TauriRegistrar` (owned `AppHandle`), tests use an
+in-memory `FakeRegistrar`. `Unavailable` is the plugin's `Error::GlobalHotkey` arm: `tauri-plugin-global-shortcut`
+2.3.2 flattens `global_hotkey`'s typed `AlreadyRegistered` / `FailedToRegister` into that one string-carrying arm, so
+the arm is the only typed signal and the row hedges ("Another app may be using that combo"). The message is for the log
+only. `register` warns once per refusal; the focus-driven refresh logs its copy at debug.
 
 ## Reading a rename on macOS
 

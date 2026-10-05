@@ -193,7 +193,8 @@ pub fn refresh_global_go_to_latest_shortcut(app: &AppHandle) {
         return;
     }
     if let Err(err) = apply_global_go_to_latest_shortcut(app, enabled, &binding) {
-        log::warn!(
+        // Debug, not warn: `GlobalShortcutManager::register` already warned about it.
+        log::debug!(
             target: "downloads::global_shortcut",
             "Focus-driven refresh of global shortcut failed: {err}",
         );

@@ -129,10 +129,6 @@
   "@downloads.shortcutRow.invalidCombo": {
     "sourceHash": "d2601f3"
   },
-  "downloads.shortcutRow.registerFailed": "Registrierung nicht möglich: {reason}",
-  "@downloads.shortcutRow.registerFailed": {
-    "sourceHash": "3b0841e"
-  },
   "downloads.shortcutRow.addModifier": "Füge eine Sondertaste hinzu (⌘, ⌃, ⌥ oder ⇧)",
   "@downloads.shortcutRow.addModifier": {
     "sourceHash": "28a5ba2"

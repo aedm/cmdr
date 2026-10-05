@@ -127,10 +127,6 @@
   "@downloads.shortcutRow.invalidCombo": {
     "sourceHash": "d2601f3"
   },
-  "downloads.shortcutRow.registerFailed": "Nem regisztrálható: {reason}",
-  "@downloads.shortcutRow.registerFailed": {
-    "sourceHash": "3b0841e"
-  },
   "downloads.shortcutRow.addModifier": "Adj hozzá egy módosítóbillentyűt (⌘, ⌃, ⌥ vagy ⇧)",
   "@downloads.shortcutRow.addModifier": {
     "sourceHash": "28a5ba2"
