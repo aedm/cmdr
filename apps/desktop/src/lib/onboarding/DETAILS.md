@@ -388,7 +388,11 @@ on the same edges however far any of them wraps.
 
 - **Send usage stats** — the tick IS `analytics.enabled` (via `useBooleanSetting`, the wiring `<SettingSwitch>` uses),
   so unticking it opts out exactly as the Settings switch does. Its info tip carries the whole disclosure in four
-  paragraphs: what the stats are, the registry description, the on-by-default note, and the crash-report note.
+  paragraphs: what the stats are, the registry description, the on-by-default note, and the crash-report note. Under an
+  organization's policy (`isSettingLocked`, `apps/desktop/src/lib/managed-policy/CLAUDE.md`): a pinned
+  `analytics.enabled` replaces the tick and title with `onboarding.stepBeta.analyticsManaged` (the tip keeps only
+  `crashReportsNoteAlone`), and a pinned `updates.crashReports` drops the crash-report sentence, since those reports
+  aren't on.
 - **Star the repo on GitHub** / **Like Cmdr on AlternativeTo** — the app can't see what happened in a browser, so the
   row ticks itself `CHECKLIST_TICK_DELAY_MS` (3 s) after the click: long enough not to land while the page is still
   opening. Both are real checkboxes too, so someone who starred it last week can just say so. The ticks live in

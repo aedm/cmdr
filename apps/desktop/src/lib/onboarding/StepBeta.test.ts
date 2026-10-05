@@ -74,9 +74,18 @@ vi.mock('$lib/settings/settings-store', () => ({
   resetSetting: () => {},
 }))
 
+// The ids the organization's policy pins. Empty unless a test adds one before mounting.
+const lockedIds = vi.hoisted(() => new Set<string>())
+vi.mock('$lib/managed-policy/managed-policy.svelte', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/managed-policy/managed-policy.svelte')>()),
+  isSettingLocked: (id: string) => lockedIds.has(id),
+  isSettingManaged: (id: string) => lockedIds.has(id),
+}))
+
 import StepBeta from './StepBeta.svelte'
 import { closeWizard, resetForTesting, openWizard, setCurrentStep, getOnboardingState } from './onboarding-state.svelte'
 import { TERMS_VERSION, TERMS_URL } from '$lib/legal/terms'
+import { expectNoA11yViolations } from '$lib/test-a11y'
 
 function mountStep(): { target: HTMLElement; instance: ReturnType<typeof mount> } {
   const target = document.createElement('div')
@@ -466,5 +475,71 @@ describe('StepBeta', () => {
     await waitForAsync()
 
     expect(betaSignupMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('StepBeta under an organization’s policy', () => {
+  let mounted: ReturnType<typeof mountStep> | undefined
+  const CRASH_NOTE_BESIDE_STATS = 'Crash reports are on too'
+  const CRASH_NOTE_ALONE = 'Crash reports are on: if Cmdr goes down'
+
+  function analyticsRow(target: HTMLElement): HTMLElement {
+    const row = target.querySelector<HTMLElement>('[data-checklist-item="analytics"]')
+    if (!row) throw new Error('usage-stats row missing')
+    return row
+  }
+
+  beforeEach(() => {
+    settingsMap['analytics.enabled'] = true
+    closeWizard()
+    resetForTesting()
+    openWizard('force')
+    setCurrentStep(3)
+  })
+
+  afterEach(async () => {
+    lockedIds.clear()
+    if (mounted) {
+      await unmount(mounted.instance)
+      mounted.target.remove()
+      mounted = undefined
+    }
+    closeWizard()
+    resetForTesting()
+  })
+
+  it('shows the managed line in place of the usage-stats tick, and still discloses crash reports', async () => {
+    lockedIds.add('analytics.enabled')
+    mounted = mountStep()
+    await waitForAsync()
+
+    const row = analyticsRow(mounted.target)
+    expect(row.querySelector('input[type="checkbox"]')).toBeNull()
+    expect(row.textContent).toContain('Your organization turned off usage stats.')
+    expect(row.textContent).toContain(CRASH_NOTE_ALONE)
+    expect(row.textContent).not.toContain(CRASH_NOTE_BESIDE_STATS)
+    await expectNoA11yViolations(mounted.target)
+  })
+
+  it('drops the crash-report disclosure when the organization turned reports off too', async () => {
+    lockedIds.add('analytics.enabled')
+    lockedIds.add('updates.crashReports')
+    mounted = mountStep()
+    await waitForAsync()
+
+    const row = analyticsRow(mounted.target)
+    expect(row.textContent).toContain('Your organization turned off usage stats.')
+    expect(row.querySelector('.info-tip')).toBeNull()
+  })
+
+  it('keeps the usage-stats tick but drops the crash-report sentence when only reports are off', async () => {
+    lockedIds.add('updates.crashReports')
+    mounted = mountStep()
+    await waitForAsync()
+
+    const row = analyticsRow(mounted.target)
+    expect(row.querySelector('input[type="checkbox"]')).not.toBeNull()
+    expect(row.textContent).not.toContain(CRASH_NOTE_BESIDE_STATS)
+    expect(row.textContent).not.toContain(CRASH_NOTE_ALONE)
   })
 })

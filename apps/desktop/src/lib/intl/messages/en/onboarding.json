@@ -518,6 +518,14 @@
     "description": "Caption on the open-beta onboarding step, right after the usage-stats disclosure, telling a new user that crash reports are also on by default and what one carries. Transparent and calm. \"Cmdr\" is the product name; \"macOS\" is the operating system; \"Settings\" is the app's settings screen.",
     "screenshot": "onboarding-beta.png"
   },
+  "onboarding.stepBeta.analyticsManaged": "Your organization turned off usage stats.",
+  "@onboarding.stepBeta.analyticsManaged": {
+    "description": "Shown on the open-beta onboarding step in place of the 'Send usage stats' checkbox, when the person's organization (their employer's or school's IT team, through a device management profile) turned usage statistics off, so there's nothing to choose. Calm, one short sentence."
+  },
+  "onboarding.stepBeta.crashReportsNoteAlone": "Crash reports are on: if Cmdr goes down, it sends the app version, your macOS version, and where the code stopped.\nNever your files.\nYou can turn them off in Settings whenever you like.",
+  "@onboarding.stepBeta.crashReportsNoteAlone": {
+    "description": "Info tip on the open-beta onboarding step, beside the line saying the person's organization turned off usage stats: crash reports are still on by default, and this says what one carries. The same facts as the usual crash-reports caption, without referring back to usage stats. Transparent and calm. \"Cmdr\" is the product name; \"macOS\" is the operating system; \"Settings\" is the app's settings screen."
+  },
   "onboarding.stepBeta.emailTitle": "Stay in touch (optional)",
   "@onboarding.stepBeta.emailTitle": {
     "description": "Heading above the optional email field, and also the field's accessible label. Makes clear giving an email is optional.",
