@@ -33,6 +33,10 @@ impl WebdavVolume {
                 message: "the server answered 207 without a multistatus body".to_string(),
                 raw_os_error: None,
             }),
+            PropfindOutcome::TooLarge { limit } => Err(VolumeError::IoError {
+                message: format!("the server's listing ran past {limit} bytes"),
+                raw_os_error: None,
+            }),
             PropfindOutcome::Status(status) => Err(map_status(status, remote, Attempted::Reaching)),
         }
     }

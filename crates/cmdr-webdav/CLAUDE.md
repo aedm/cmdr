@@ -28,6 +28,8 @@ The WebDAV backend: a `Volume` over one `reqwest` client with one account's Basi
   state once and starts the backoff. `DETAILS.md` § "Silent or slow".
 - ❗ **Every request goes out through `WebdavClient::send` or `propfind`**, and a body read counts its chunks as
   `heard`. A path that skips both looks silent to the watch however much it hears.
+- ❗ **A buffered body goes through `read_body` with a cap** (`MAX_LISTING_BODY`, `MAX_PROBE_BODY`), ❌ never `.text()`
+  / `.bytes()`: a hostile server can stream forever. Past the cap is a typed `PropfindOutcome::TooLarge`.
 - ❌ **No `read_timeout`, no `.timeout()` on the streaming PUT or GET, and never a timeout read as a lost server**: a
   long transfer or a slow listing would be cut or flicker `Disconnected`. `transport.rs` has why.
 - ❌ **One unattended authentication attempt, never a loop.** A 401 on the re-probe moves to `NeedsCredentials` and

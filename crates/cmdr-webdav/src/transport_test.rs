@@ -7,7 +7,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use url::Url;
 
-use super::WebdavClient;
+use super::{Depth, PropfindOutcome, WebdavClient};
 
 /// `cmdr stores these bytes verbatim\n` gzipped (`gzip -9n`): a file a server
 /// hands out with `Content-Encoding: gzip`, as one serving `.gz` files or
@@ -76,6 +76,72 @@ async fn an_encoded_file_reads_back_as_its_stored_bytes() {
         Some(STORED_GZIP.len().to_string().as_str()),
         "a HEAD keeps the length"
     );
+}
+
+/// A server answering one request with a 207 whose body is `size` bytes of a
+/// valid-looking `multistatus`, framed by `Content-Length` or chunked.
+async fn serving_a_207_of(size: usize, chunked: bool) -> (WebdavClient, Url) {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.unwrap();
+        let mut buffer = Vec::new();
+        let mut chunk = [0u8; 4096];
+        while !buffer.windows(4).any(|w| w == b"\r\n\r\n") {
+            let read = socket.read(&mut chunk).await.unwrap();
+            if read == 0 {
+                break;
+            }
+            buffer.extend_from_slice(&chunk[..read]);
+        }
+        let mut body = b"<?xml version=\"1.0\"?><d:multistatus xmlns:d=\"DAV:\"><!--".to_vec();
+        body.resize(size.saturating_sub(20), b'x');
+        body.extend_from_slice(b"--></d:multistatus>");
+        let framing = if chunked {
+            "transfer-encoding: chunked".to_string()
+        } else {
+            format!("content-length: {}", body.len())
+        };
+        let head = format!(
+            "HTTP/1.1 207 Multi-Status\r\ncontent-type: application/xml\r\n{framing}\r\nconnection: close\r\n\r\n"
+        );
+        let _ = socket.write_all(head.as_bytes()).await;
+        if chunked {
+            for piece in body.chunks(1024) {
+                let _ = socket.write_all(format!("{:x}\r\n", piece.len()).as_bytes()).await;
+                let _ = socket.write_all(piece).await;
+                let _ = socket.write_all(b"\r\n").await;
+            }
+            let _ = socket.write_all(b"0\r\n\r\n").await;
+        } else {
+            let _ = socket.write_all(&body).await;
+        }
+        let _ = socket.shutdown().await;
+    });
+    let base = Url::parse(&format!("http://{addr}/dav/")).unwrap();
+    (WebdavClient::new(base.clone(), "user", "secret").unwrap(), base)
+}
+
+/// ❗ A hostile or broken server can stream a listing forever: the body is
+/// capped, whether it announces its length or streams chunks, and a body over
+/// the cap is a typed `TooLarge`, never a growing buffer.
+#[tokio::test]
+async fn a_propfind_body_past_the_cap_is_refused() {
+    for chunked in [false, true] {
+        let (client, url) = serving_a_207_of(64 * 1024, chunked).await;
+        let outcome = client.propfind_within(url, Depth::One, 16 * 1024).await.unwrap();
+        assert!(
+            matches!(outcome, PropfindOutcome::TooLarge { limit: 16_384 }),
+            "chunked={chunked}: a 64 KiB body over a 16 KiB cap must be refused"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_propfind_body_under_the_cap_is_read() {
+    let (client, url) = serving_a_207_of(8 * 1024, true).await;
+    let outcome = client.propfind_within(url, Depth::One, 16 * 1024).await.unwrap();
+    assert!(!matches!(outcome, PropfindOutcome::TooLarge { .. }));
 }
 
 /// ❗ This crate builds reqwest with `http2` itself, so its own tests speak
