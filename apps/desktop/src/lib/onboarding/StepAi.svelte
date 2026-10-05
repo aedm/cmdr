@@ -20,7 +20,14 @@
         openPrivacySettings,
     } from '$lib/tauri-commands'
     import { systemStrings } from '$lib/system-strings.svelte'
-    import { getCloudProvider, getSetting, isExplicitlySet, setSetting, type AiProvider } from '$lib/settings'
+    import {
+        getCloudProvider,
+        getSetting,
+        isExplicitlySet,
+        isOverriddenByPolicy,
+        setSetting,
+        type AiProvider,
+    } from '$lib/settings'
     import { pushConfigToBackend } from '$lib/settings/ai-config'
     import { cloudAiBlocked, declineCloudConsent } from '$lib/ai/cloud-consent.svelte'
     import AiCloudConsentToggle from '$lib/ai/AiCloudConsentToggle.svelte'
@@ -99,6 +106,14 @@
     }
 
     let choice = $state<WizardChoice>(initialChoice())
+    /**
+     * The preselected answer came from the organization's policy, not the person: a stored `cloud`
+     * under on-device only reads as `off`. Until they pick something themselves, Next writes nothing,
+     * or the policy's display would land as their answer (and removing the profile wouldn't bring
+     * their cloud AI, Ask Cmdr, and consent back). Not reactive: only the first read counts.
+     */
+    const preselectedByPolicy = isOverriddenByPolicy('ai.provider')
+    let pickedByPerson = false
     let cloudProviderId = $state<string>(getSetting('ai.cloudProvider'))
     let localAiSupported = $state<boolean>(true)
     let didStartLocalDownload = $state(false)
@@ -273,6 +288,7 @@
         }
         previousChoice = next
         choice = next
+        pickedByPerson = true
         showResumeCue = false
         if (next === 'local' && localAiSupported) {
             startBackgroundDownload()
@@ -303,6 +319,10 @@
      * agent that starts conversations on its own.
      */
     async function persist(): Promise<void> {
+        if (preselectedByPolicy && !pickedByPerson) {
+            log.info('Keeping the stored AI choice: the preselected answer came from the organization’s policy')
+            return
+        }
         const provider: AiProvider = choice
         setSetting('ai.provider', provider)
         if (provider === 'cloud') {

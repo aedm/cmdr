@@ -45,6 +45,7 @@ export {
   initializeSettings,
   isModified,
   isExplicitlySet,
+  isOverriddenByPolicy,
   onSettingChange,
   onSpecificSettingChange,
   resetSetting,

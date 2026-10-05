@@ -111,6 +111,24 @@ describe('settings under a managed policy', () => {
     expect(reloaded.getSetting('ai.provider')).toBe('local')
   })
 
+  it('says when the policy, not the person, put a value on screen', async () => {
+    disk.set('ai.provider', 'cloud')
+    disk.set('analytics.enabled', false)
+    const store = await loadStore(policy([cloudDisallowed, usageStatsOff]))
+
+    // A stored `cloud` read as `off`: whatever shows came from the lock.
+    expect(store.isOverriddenByPolicy('ai.provider')).toBe(true)
+    // Pinned off, and the person had it off too: the read is theirs either way.
+    expect(store.isOverriddenByPolicy('analytics.enabled')).toBe(false)
+    // No lock at all.
+    expect(store.isOverriddenByPolicy('updates.crashReports')).toBe(false)
+
+    store.setSetting('ai.provider', 'local')
+    expect(store.isOverriddenByPolicy('ai.provider')).toBe(false)
+    // Don't leave the debounced save pending for the next test's fresh store.
+    await flushSaves(store)
+  })
+
   it('refuses a write the lock rules out, persisting nothing and notifying nobody', async () => {
     const store = await loadStore(policy([usageStatsOff, cloudDisallowed]))
     const listener = vi.fn()

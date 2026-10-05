@@ -32,6 +32,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, tick, unmount, flushSync } from 'svelte'
 import type { ConsentOutcome } from '$lib/ai/cloud-consent.svelte'
+import type { SettingLock } from '$lib/ipc/bindings'
+import { lockAllowsWrite, lockedValue } from '$lib/managed-policy/overlay'
 import StepAi from './StepAi.svelte'
 import {
   closeWizard,
@@ -125,8 +127,12 @@ vi.mock('$lib/settings', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>()
   return {
     ...actual,
-    getSetting: (id: string) => settingsMap[id] ?? '',
+    // Reads go through the policy overlay, as the real store's do.
+    getSetting: (id: string) => lockedValue(policyLocks.get(id) as SettingLock | undefined, settingsMap[id] ?? ''),
+    isOverriddenByPolicy: (id: string) =>
+      lockedValue(policyLocks.get(id) as SettingLock | undefined, settingsMap[id] ?? '') !== (settingsMap[id] ?? ''),
     setSetting: (id: string, value: unknown) => {
+      if (!lockAllowsWrite(policyLocks.get(id) as SettingLock | undefined, value)) return
       settingsMap[id] = value
       explicitlySet.add(id)
     },
@@ -436,6 +442,47 @@ describe('StepAi', () => {
     expect(mounted.target.textContent).toContain('Your organization allows only on-device AI.')
     // No "Recommended" steer toward an option nobody can pick.
     expect(mounted.target.querySelector('.choice-badge')).toBeNull()
+  })
+
+  it('a reopened wizard on an on-device-only Mac writes nothing the policy put on screen', async () => {
+    // The person chose cloud AI and Ask Cmdr; then IT ruled cloud out, and the wizard reopened (a
+    // revoked FDA grant, say). "No AI" is preselected only because the lock reads `cloud` as `off`.
+    policyLocks.set('ai.provider', { kind: 'disallowedValues', values: ['cloud'], fallback: 'off' })
+    settingsMap['ai.provider'] = 'cloud'
+    settingsMap['askCmdr.enabled'] = true
+    explicitlySet.add('ai.provider')
+    explicitlySet.add('askCmdr.enabled')
+    mounted = mountStep()
+    await waitForAsync()
+    expect(radioByValue(mounted.target, 'off')?.getAttribute('data-state')).toBe('checked')
+
+    getOnboardingState().footerOverride?.[0].onclick()
+    await waitForAsync()
+
+    // Removing the profile must bring every one of the person's own answers back.
+    expect(settingsMap['ai.provider']).toBe('cloud')
+    expect(settingsMap['askCmdr.enabled']).toBe(true)
+    expect(settingsMap['askCmdr.proactive']).toBe(true)
+    expect(declineConsent).not.toHaveBeenCalled()
+    expect(getOnboardingState().currentStep).toBe(3)
+  })
+
+  it('on an on-device-only Mac, a "no AI" the person picks themselves still lands', async () => {
+    policyLocks.set('ai.provider', { kind: 'disallowedValues', values: ['cloud'], fallback: 'off' })
+    settingsMap['ai.provider'] = 'cloud'
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'local')
+    await waitForAsync()
+    pickChoice(mounted.target, 'off')
+    await waitForAsync()
+
+    getOnboardingState().footerOverride?.[0].onclick()
+    await waitForAsync()
+
+    expect(settingsMap['ai.provider']).toBe('off')
+    expect(declineConsent).toHaveBeenCalledTimes(1)
+    expect(settingsMap['askCmdr.enabled']).toBe(false)
   })
 
   it('registers a single "Next" forward button via setFooterOverride', async () => {

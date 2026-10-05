@@ -24,6 +24,9 @@ window shows the backend's answer.
 - `resetSetting` refuses a `fixed` setting, so the person's stored choice survives for when the profile goes away. A
   narrowed setting resets normally.
 - `isModified` compares the STORED value with the default, so a lock never makes a row look modified.
+- `isOverriddenByPolicy(id)` says the lock changed what `id` reads. A flow that preselects from a read and writes the
+  answer back (onboarding's AI step) must skip the write unless the person picked the value, or the policy's display
+  lands in `settings.json` as their choice.
 - A cross-window `settings:changed` for a locked id notifies only when the effective value moved.
 
 ## The UI

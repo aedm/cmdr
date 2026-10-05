@@ -295,6 +295,10 @@ Three pieces stacked top to bottom:
 - **Never skipped without a lock**: an Intel Mac with no policy still has cloud AI to pick.
 - **On-device only (Apple Silicon)**: Cloud stays listed but disabled, the reason (`ai.managed.cloudAiOff`) as its help
   text in place of the Recommended badge, the same visible-reason rule as the Intel local option.
+- **A preselect the policy made isn't an answer**: a stored `cloud` under on-device only reads (and preselects) as
+  `off`. When `isOverriddenByPolicy('ai.provider')` held on mount and the person never picked anything, Next writes
+  nothing (no `ai.provider`, no Ask Cmdr switches, no consent decline), so removing the profile brings their cloud AI
+  back. A reopened wizard (FDA revoked later, a crash-resume) hits exactly this. A pick of their own persists as usual.
 - **A host list**: `CloudProviderPicker` disables refused services (`isRefused`, from `followPresetHostVerdicts`), and
   the shared controller says a refused endpoint is refused (`$lib/ai-provider-setup/DETAILS.md` § The organization's
   policy).

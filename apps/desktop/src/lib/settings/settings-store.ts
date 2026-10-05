@@ -362,6 +362,15 @@ function effectiveValue<K extends SettingId>(id: K): SettingsValues[K] {
   return lockedValue(getSettingLock(id), storedValue(id)) as SettingsValues[K]
 }
 
+/**
+ * Whether the organization's policy changed what `id` reads: `getSetting` returns a value the person
+ * (or the default) doesn't hold. A flow that preselects from a read and writes the answer back must
+ * not write such a value unless the person picked it, or the policy's display becomes their choice.
+ */
+export function isOverriddenByPolicy(id: SettingId): boolean {
+  return !isUnchanged(effectiveValue(id), storedValue(id))
+}
+
 /** What the store holds for `id`, or its registry default: the value before any managed lock. */
 function storedValue<K extends SettingId>(id: K): SettingsValues[K] {
   const cached = settingsCache.get(id)
