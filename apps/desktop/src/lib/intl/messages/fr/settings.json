@@ -231,21 +231,6 @@
   "@settings.listing.sizeUnit.opt.bytes": {
     "sourceHash": "4d80003"
   },
-  "settings.listing.sizeUnit.opt.kB": "kB",
-  "@settings.listing.sizeUnit.opt.kB": {
-    "sourceHash": "591e59c",
-    "sameAsSourceJustification": "Unit symbol ('kB'); kept verbatim, identical in French."
-  },
-  "settings.listing.sizeUnit.opt.mB": "MB",
-  "@settings.listing.sizeUnit.opt.mB": {
-    "sourceHash": "1d09f6f",
-    "sameAsSourceJustification": "Unit symbol ('MB'); kept verbatim, identical in French."
-  },
-  "settings.listing.sizeUnit.opt.gB": "GB",
-  "@settings.listing.sizeUnit.opt.gB": {
-    "sourceHash": "b4043b0",
-    "sameAsSourceJustification": "Unit symbol ('GB'); kept verbatim, identical in French."
-  },
   "settings.appearance.fileSizeFormat.label": "Format de taille de fichier",
   "@settings.appearance.fileSizeFormat.label": {
     "sourceHash": "355c89b"

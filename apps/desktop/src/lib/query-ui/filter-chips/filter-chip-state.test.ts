@@ -23,17 +23,17 @@ describe('deriveSizeChip', () => {
 
   it('treats a zero bound as a real value, not "off" (gte 0)', () => {
     // `0` is a valid bound (find empty files). Only an empty input (NaN) stays unconfigured.
-    expect(deriveSizeChip('gte', '0', 'B', '', 'B')).toEqual({ configured: true, summary: '> 0 B' })
+    expect(deriveSizeChip('gte', '0', 'B', '', 'B')).toEqual({ configured: true, summary: '> 0 bytes' })
   })
 
   it('treats a zero bound as a real value (lte 0)', () => {
-    expect(deriveSizeChip('lte', '0', 'B', '', 'B')).toEqual({ configured: true, summary: '< 0 B' })
+    expect(deriveSizeChip('lte', '0', 'B', '', 'B')).toEqual({ configured: true, summary: '< 0 bytes' })
   })
 
   it('treats a zero bound as a real value in a between range', () => {
     expect(deriveSizeChip('between', '0', 'B', '5', 'MB')).toEqual({
       configured: true,
-      summary: '0 B – 5 MB',
+      summary: '0 bytes – 5 MB',
     })
   })
 
@@ -83,7 +83,12 @@ describe('deriveSizeChip', () => {
   it('format only affects KB; MB / GB / B remain stable', () => {
     expect(deriveSizeChip('gte', '5', 'MB', '', 'MB', 'si').summary).toBe('> 5 MB')
     expect(deriveSizeChip('gte', '5', 'GB', '', 'GB', 'si').summary).toBe('> 5 GB')
-    expect(deriveSizeChip('gte', '500', 'B', '', 'B', 'si').summary).toBe('> 500 B')
+    expect(deriveSizeChip('gte', '500', 'B', '', 'B', 'si').summary).toBe('> 500 bytes')
+  })
+
+  it('words the byte unit for the count, in the UI language', () => {
+    expect(deriveSizeChip('eq', '1', 'B', '', 'B').summary).toBe('= 1 byte')
+    expect(deriveSizeChip('between', '1', 'B', '2', 'B').summary).toBe('1 byte – 2 bytes')
   })
 
   it('format defaults to binary when omitted (back-compat)', () => {
@@ -100,7 +105,7 @@ describe('deriveSizeChip', () => {
   it('formats "= 0 B" (find empty files, the headline eq use case)', () => {
     expect(deriveSizeChip('eq', '0', 'B', '', 'B')).toEqual({
       configured: true,
-      summary: '= 0 B',
+      summary: '= 0 bytes',
     })
   })
 

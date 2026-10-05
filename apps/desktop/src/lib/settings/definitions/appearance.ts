@@ -9,6 +9,17 @@ import { availableLocales, tString } from '$lib/intl/messages.svelte'
 import { localeDisplayName } from '$lib/intl/locale-display-names'
 import { pickUiLocale } from '$lib/intl/os-locales'
 import type { MessageKey } from '$lib/intl/keys.gen'
+import { unitLabel } from '$lib/units/byte-size'
+
+/** A fixed size-unit option, labelled with the unit symbol `$lib/units` renders. */
+function sizeUnitOption(unit: 'kB' | 'MB' | 'GB'): EnumOption {
+  return {
+    value: unit,
+    get label() {
+      return unitLabel(unit, 'si')
+    },
+  }
+}
 
 /**
  * The `'system'` option's label, naming what "System default" resolves to right
@@ -350,9 +361,11 @@ export const appearanceSettings: SettingDefinitionSource[] = [
       options: [
         { value: 'dynamic', labelKey: 'settings.listing.sizeUnit.opt.dynamic' },
         { value: 'bytes', labelKey: 'settings.listing.sizeUnit.opt.bytes' },
-        { value: 'kB', labelKey: 'settings.listing.sizeUnit.opt.kB' },
-        { value: 'MB', labelKey: 'settings.listing.sizeUnit.opt.mB' },
-        { value: 'GB', labelKey: 'settings.listing.sizeUnit.opt.gB' },
+        // The fixed units read as the sizes they produce ($lib/units, UI language). The live kilobyte casing follows
+        // `appearance.fileSizeFormat` through `AppearanceSizesSection`'s override; SI `kB` stands in here.
+        sizeUnitOption('kB'),
+        sizeUnitOption('MB'),
+        sizeUnitOption('GB'),
       ],
     },
   },

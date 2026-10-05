@@ -828,7 +828,7 @@
     "placeholders": {
       "prefix": "the comparison glyph: '>', '<', or '=', not translated",
       "valueText": "the size number the user entered, shown verbatim (for example 100)",
-      "unit": "the size unit symbol, already in your language (for example MB or kB; bytes show as B)"
+      "unit": "the size unit symbol, already in your language (for example MB, kB, or bytes)"
     },
     "screenshot": "search-dialog.png",
     "screenshotNote": "Cmdr’s search, select, and filter surfaces are one shared dialog: a mode row at the top, the query bar, the scope and filter controls under it, and results below. This shows that dialog; your string is one of those controls, one of the filter or date options, or a line in the results area."

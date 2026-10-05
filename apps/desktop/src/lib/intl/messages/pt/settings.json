@@ -231,21 +231,6 @@
     "sourceHash": "4d80003",
     "sameAsSourceJustification": "'Bytes' is identical in pt-BR. The unit word is unchanged in pt-BR (Microsoft pt-BR 'byte' to 'byte'; double-commander/total-commander pt-BR keep 'Bytes')."
   },
-  "settings.listing.sizeUnit.opt.kB": "kB",
-  "@settings.listing.sizeUnit.opt.kB": {
-    "sourceHash": "591e59c",
-    "sameAsSourceJustification": "'kB' is a unit symbol (kilobyte), kept as-is in pt-BR."
-  },
-  "settings.listing.sizeUnit.opt.mB": "MB",
-  "@settings.listing.sizeUnit.opt.mB": {
-    "sourceHash": "1d09f6f",
-    "sameAsSourceJustification": "'MB' is a unit symbol (megabyte), kept as-is in pt-BR."
-  },
-  "settings.listing.sizeUnit.opt.gB": "GB",
-  "@settings.listing.sizeUnit.opt.gB": {
-    "sourceHash": "b4043b0",
-    "sameAsSourceJustification": "'GB' is a unit symbol (gigabyte), kept as-is in pt-BR."
-  },
   "settings.appearance.fileSizeFormat.label": "Formato de tamanho de arquivo",
   "@settings.appearance.fileSizeFormat.label": {
     "sourceHash": "355c89b"

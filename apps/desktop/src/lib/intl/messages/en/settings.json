@@ -291,20 +291,6 @@
     "description": "Size-unit option: always show the exact byte count. Short toggle-button label.",
     "screenshot": "settings-appearance-sizes.png"
   },
-  "settings.listing.sizeUnit.opt.kB": "kB",
-  "@settings.listing.sizeUnit.opt.kB": {
-    "description": "Size-unit option: always show sizes in kilobytes. \"kB\" is a unit symbol; keep it as-is."
-  },
-  "settings.listing.sizeUnit.opt.mB": "MB",
-  "@settings.listing.sizeUnit.opt.mB": {
-    "description": "Size-unit option: always show sizes in megabytes. \"MB\" is a unit symbol; keep it as-is.",
-    "screenshot": "settings-appearance-sizes.png"
-  },
-  "settings.listing.sizeUnit.opt.gB": "GB",
-  "@settings.listing.sizeUnit.opt.gB": {
-    "description": "Size-unit option: always show sizes in gigabytes. \"GB\" is a unit symbol; keep it as-is.",
-    "screenshot": "settings-appearance-sizes.png"
-  },
   "settings.appearance.fileSizeFormat.label": "File size format",
   "@settings.appearance.fileSizeFormat.label": {
     "description": "Label for the binary-vs-decimal size-base picker in Settings > Appearance > File and folder sizes.",

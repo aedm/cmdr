@@ -54,8 +54,7 @@ So: one implementation per quantity, and a lint that keeps it that way.
   once recovered the tier by parsing the unit word off the end of the string, which broke the moment a translator wrote
   `Mo`.
 - **Every size-unit surface goes through here**: the file list, `<Size>`, tooltips (including the "(1,234 bytes)" line),
-  the Size filter popover and chips, and the Settings unit tiles. The popover's and chips' own `B` symbol is the one
-  exception left.
+  the Size filter popover and chips, and the Settings unit tiles.
 - **Time units need no catalog.** CLDR's narrow units are what `formatDuration` already speaks, and `formatMilliseconds`
   uses the same style through `formatNarrowMeasure` (`$lib/intl/duration-format`): unit from the UI language, digits
   from the formatting locale ("1,4 Sek." in German, "1.4 s" for French on a US-formatted Mac).

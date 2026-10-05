@@ -228,21 +228,6 @@
   "@settings.listing.sizeUnit.opt.bytes": {
     "sourceHash": "4d80003"
   },
-  "settings.listing.sizeUnit.opt.kB": "kB",
-  "@settings.listing.sizeUnit.opt.kB": {
-    "sourceHash": "591e59c",
-    "sameAsSourceJustification": "International standard or size unit symbol retained per Russian style guide and existing locale convention."
-  },
-  "settings.listing.sizeUnit.opt.mB": "MB",
-  "@settings.listing.sizeUnit.opt.mB": {
-    "sourceHash": "1d09f6f",
-    "sameAsSourceJustification": "International standard or size unit symbol retained per Russian style guide and existing locale convention."
-  },
-  "settings.listing.sizeUnit.opt.gB": "GB",
-  "@settings.listing.sizeUnit.opt.gB": {
-    "sourceHash": "b4043b0",
-    "sameAsSourceJustification": "International standard or size unit symbol retained per Russian style guide and existing locale convention."
-  },
   "settings.appearance.fileSizeFormat.label": "Формат размера файлов",
   "@settings.appearance.fileSizeFormat.label": {
     "sourceHash": "355c89b"

@@ -230,21 +230,6 @@
   "@settings.listing.sizeUnit.opt.bytes": {
     "sourceHash": "4d80003"
   },
-  "settings.listing.sizeUnit.opt.kB": "kB",
-  "@settings.listing.sizeUnit.opt.kB": {
-    "sourceHash": "591e59c",
-    "sameAsSourceJustification": "\"kB\" is an international unit symbol, kept verbatim. Chinese UI (Apple/Microsoft zh) shows storage units as \"kB\". Sibling size-unit options ARE translated (Dynamic→动态, Bytes→字节)."
-  },
-  "settings.listing.sizeUnit.opt.mB": "MB",
-  "@settings.listing.sizeUnit.opt.mB": {
-    "sourceHash": "1d09f6f",
-    "sameAsSourceJustification": "\"MB\" is an international unit symbol, kept verbatim. Chinese UI (Apple/Microsoft zh) shows storage units as \"MB\". Sibling size-unit options ARE translated (Dynamic→动态, Bytes→字节)."
-  },
-  "settings.listing.sizeUnit.opt.gB": "GB",
-  "@settings.listing.sizeUnit.opt.gB": {
-    "sourceHash": "b4043b0",
-    "sameAsSourceJustification": "\"GB\" is an international unit symbol, kept verbatim. Chinese UI (Apple/Microsoft zh) shows storage units as \"GB\". Sibling size-unit options ARE translated (Dynamic→动态, Bytes→字节)."
-  },
   "settings.appearance.fileSizeFormat.label": "文件大小格式",
   "@settings.appearance.fileSizeFormat.label": {
     "sourceHash": "355c89b"

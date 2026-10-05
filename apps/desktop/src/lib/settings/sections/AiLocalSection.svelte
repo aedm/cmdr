@@ -388,12 +388,10 @@
                     <span class="status-detail">&middot; {serverStatusDetail}</span>{/if}
             </span>
         </div>
-    {:else}
+    {:else if status && modelSizeText}
+        <!-- Waits for the status: the model's name and size come from the backend, never a guessed default. -->
         <p class="not-installed-text">
-            {t('ai.local.notInstalled', {
-                modelName: status?.modelName ?? 'Ministral 3B',
-                modelSize: modelSizeText ?? '2.0 GB',
-            })}
+            {t('ai.local.notInstalled', { modelName: status.modelName, modelSize: modelSizeText })}
         </p>
     {/if}
 </div>
@@ -536,7 +534,7 @@
 </div>
 
 <!-- Delete model confirmation dialog -->
-{#if showDeleteConfirm}
+{#if showDeleteConfirm && modelSizeText}
     <DeleteAiModelDialog
         modelSizeFormatted={modelSizeText}
         {isDeleting}

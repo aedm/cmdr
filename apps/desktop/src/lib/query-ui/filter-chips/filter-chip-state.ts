@@ -9,7 +9,7 @@
 import type { SizeFilter, SizeUnit, DateFilter } from '../query-filter-state.svelte'
 import type { FileSizeFormat } from '$lib/settings/types'
 import { tString } from '$lib/intl/messages.svelte'
-import { unitLabel } from '$lib/units/byte-size'
+import { bytesLabel, unitLabel } from '$lib/units/byte-size'
 
 /** Display state of a single filter chip. */
 export interface FilterChipState {
@@ -22,11 +22,10 @@ export interface FilterChipState {
  * Renders a `SizeUnit` for display: the kilobyte, megabyte, and gigabyte go
  * through `$lib/units` (the UI language's symbols, and `KB` / `kB` by the
  * user's `appearance.fileSizeFormat`), so the chip and the popover can't
- * disagree. The byte unit stays the compact `B` symbol.
- * Default is `'binary'` so callers that don't pass a format get `KB`.
+ * disagree. The byte word takes the plural form for `count` ("> 500 bytes").
  */
-function renderUnit(unit: SizeUnit, format: FileSizeFormat = 'binary'): string {
-  if (unit === 'B') return unit
+function renderUnit(unit: SizeUnit, format: FileSizeFormat, count: number): string {
+  if (unit === 'B') return bytesLabel(count)
   return unitLabel(unit === 'KB' ? 'kB' : unit, format)
 }
 
@@ -45,15 +44,15 @@ export function deriveSizeChip(
 ): FilterChipState {
   if (sizeFilter === 'any') return { configured: false, summary: '' }
 
-  const minUnitLabel = renderUnit(sizeUnit, format)
-  const unitMaxLabel = renderUnit(sizeUnitMax, format)
-
   // A configured filter requires at least the first value (or both, for "between"). The chip
   // stays unconfigured if the user changed the comparator to "gte" but hasn't typed a number yet.
   // `0` is a real bound (find empty files), so we accept `>= 0`; an empty input is `NaN` and
   // stays unconfigured.
   const minNumeric = parseFloat(sizeValue)
   const minOk = !isNaN(minNumeric) && minNumeric >= 0
+  const maxNumeric = parseFloat(sizeValueMax)
+  const minUnitLabel = renderUnit(sizeUnit, format, minNumeric)
+  const unitMaxLabel = renderUnit(sizeUnitMax, format, maxNumeric)
 
   // The three single-bound comparators differ only by their prefix glyph.
   const singleBoundPrefix: Partial<Record<SizeFilter, string>> = { gte: '>', lte: '<', eq: '=' }
@@ -71,7 +70,6 @@ export function deriveSizeChip(
   }
 
   // between
-  const maxNumeric = parseFloat(sizeValueMax)
   const maxOk = !isNaN(maxNumeric) && maxNumeric >= 0
   if (!minOk && !maxOk) return { configured: false, summary: '' }
   if (minOk && !maxOk)
