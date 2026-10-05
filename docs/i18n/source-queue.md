@@ -130,3 +130,22 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
 - `remove` concept: deleting a saved credential (`ai.secretError.removeTitle`, `onboarding.cloudSetup.removeKey`,
   `fileExplorer.network.share.forgetPasswordTooltip`) is a real deletion; consider a `notMatch` so vi stops needing
   exceptions. (vi)
+- `network-share` concept: matches the verb in "share it yourself" (`errorReporter.dialog.managedOff`); add a verb-sense
+  `notMatch` so locales drop their per-locale exceptions. (de, es, hu, nl, pt, ru, sv, vi, zh, zh-Hant)
+- `organization` concept: its sense says only "the company a commercial license is issued to"; widen it to the employer
+  or school that manages the Mac through MDM (`settings.managed.*`, `ai.managed.*`). (fr, hu, vi, zh, zh-Hant)
+- `settings.managed.summary.upTo`, `.upToManualChecksOnly`, `updates.status.heldByPolicy`: a bare `{ceiling}` forces
+  some locales to add "version", and "Up to" doesn't say it's inclusive. Say "Up to version {ceiling}" or "inclusive" in
+  the description. (fr, nl)
+- `errors.serverRequest.blockedByPolicy`: "turned this off" has no noun to translate; name it ("this feature") or say in
+  the description what "this" refers to. (fr, ru)
+- `ai.managed.cloudAiOff`, `.localOnlyUnsupported`, `settings.managed.summary.onDeviceOnly`: say "on-device AI" while
+  the provider option is "Local"; use one English name, or say in the descriptions both mean the same model, and relate
+  the `on-device` concept to it. (vi, zh, nl)
+- "IT team" (`ai.translateError.managed.body`, `ai.managed.hostNotAllowed`, `askCmdr.error.managedByOrganization`) and
+  MDM "manages" have no concepts, so locales split (team, department, staff). Register `it-team` and
+  `managed-by-organization`. (ru, zh-Hant)
+- `settings.managed.*`, `ai.managed.*`, `askCmdr.error.managedByOrganization`, `onboarding.stepBeta.analyticsManaged`:
+  no screenshot of the managed card or the locked rows, so value widths are guesses. Capture them under a policy. (ru)
+- `settings.managed.summary.off`: one value beside four labels of different gender and number pushes es to `No` and
+  zh-Hant to `已關閉`, each diverging from its "Off" option label. Consider a per-row value. (pt, es, zh-Hant)
