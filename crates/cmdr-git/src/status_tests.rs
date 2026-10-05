@@ -56,3 +56,37 @@ fn list_status_returns_one_per_status() {
     );
     cleanup(&dir);
 }
+
+/// ❗ A repo's own config can name a filter driver (`filter.<x>.clean`) that
+/// `.gitattributes` applies to every file, and gix runs it when status has to
+/// hash a file whose stat changed. A downloaded or unzipped repo is owned by the
+/// user, so gix trusts its config fully: showing the folder in a pane would run
+/// the repo author's command. Status must never run one.
+#[test]
+fn status_never_runs_a_repos_filter_driver() {
+    let dir = temp_dir("status", "filter-driver");
+    let mut f = Fixture::init(dir.clone());
+    f.commit_file("README.md", b"hello\n", "initial");
+
+    let marker = dir.join("driver-ran");
+    let config = dir.join(".git").join("config");
+    let mut text = std::fs::read_to_string(&config).unwrap();
+    text.push_str(&format!(
+        "[filter \"evil\"]\n\tclean = \"touch '{0}'; cat\"\n\tprocess = \"touch '{0}'\"\n",
+        marker.display()
+    ));
+    std::fs::write(&config, text).unwrap();
+    std::fs::write(dir.join(".gitattributes"), "* filter=evil\n").unwrap();
+    // Same size, new bytes and mtime: the stat can't settle it, so status has
+    // to hash the file, which is where a filter would run.
+    std::fs::write(dir.join("README.md"), "jello\n").unwrap();
+
+    let (handle, _root) = discover_repo(&dir).unwrap();
+    let _ = list_status(&handle, &dir);
+    assert!(!marker.exists(), "status ran the repo's filter driver");
+    // The chip's dirty check walks the same worktree.
+    let info = crate::repo::repo_info(&handle, &dir).unwrap();
+    assert!(info.is_dirty, "the changed README still counts as dirty");
+    assert!(!marker.exists(), "the dirty check ran the repo's filter driver");
+    cleanup(&dir);
+}

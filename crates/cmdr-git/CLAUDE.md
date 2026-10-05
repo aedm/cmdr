@@ -33,6 +33,9 @@ chip, and the read-only `Volume` that turns `.git/branches/`, `tags/`, `commits/
 - **The `.git/` landing listing is the HOST's, through `GitPortal::category_rows`.** ❌ Never serve those six rows from
   a `Volume`: the moment a copy scan or a delete walker sees a row with no inode behind it, a repo delete stops half-way
   with `.git/` still on disk.
+- **A repo's own commands never run.** `RepoCache::discover` drops every `filter.<driver>` section from the in-memory
+  config, and status looks into a submodule's commit only (`repo::submodule_status`), ❌ never its worktree, which gix
+  opens with ITS config. ❌ Never call gix's `Repository::is_dirty` or open a repo around the cache.
 - **Every `gix` call runs on `VolumeHost::runtime().spawn_blocking`**, ❌ never on the caller's async worker.
 - **Anything a CONSUMER's test needs takes `any(test, feature = "testing")`, ❌ never `cfg(test)`**, which is off when
   the app compiles this crate as a dependency. `cfg(test)` alone is for doors only this crate's own cells open

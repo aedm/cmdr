@@ -173,7 +173,8 @@ fn run_full_repo_status(repo: &RepoHandle) -> Result<Vec<EntryStatus>, FriendlyG
     let platform = local
         .status(gix::progress::Discard)
         .map_err(|e| FriendlyGitError::with_source(FriendlyGitErrorKind::CorruptRepo, e.to_string(), e))?
-        .untracked_files(gix::status::UntrackedFiles::Files);
+        .untracked_files(gix::status::UntrackedFiles::Files)
+        .index_worktree_submodules(crate::repo::submodule_status(false));
 
     let iter = platform
         .into_iter(std::iter::empty::<gix::bstr::BString>())
