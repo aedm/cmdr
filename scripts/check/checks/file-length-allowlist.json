@@ -8,6 +8,18 @@
     "scripts/check/checks/registry.go": "append-only check registry (one CheckDefinition entry per check); line count tracks the number of checks, not splittable logic"
   },
   "files": {
+    "apps/desktop/src-tauri/src/ai/client.rs": {
+      "lines": 800,
+      "reason": "TODO: two seams sit beside the request path and only share imports with it. Move the policy-guarded HTTP client (`policy_guarded_http_client`, `policy_guarded_redirects`, `follow_allowed_hop`, `remote_destination`, `remote_endpoint`, `parse_endpoint`) into `client_policy.rs`, and the provider-error mapping (`AiError` with its `Display`, `ai_error_for_status`, `provider_error_detail`, `map_genai_error`) into `client_errors.rs`, about 140 lines out together. What stays is `AiBackend`, the three `chat_completion*` entry points, the model-specific option tweaks, and the response logging, which is what callers mean by the AI client."
+    },
+    "apps/desktop/src-tauri/src/crash_reporter/mod.rs": {
+      "lines": 812,
+      "reason": "TODO: the panic path is its own concern and already has `panic_courier.rs` and `panic_courier_tests.rs` as neighbors. Move `install_panic_hook`, `contained_panic_warning`, `PanicDisposition`, `handle_panic`, `write_first_crash_report`, `build_panic_report`, and the message/backtrace helpers (`extract_panic_message`, `sanitize_panic_message`, `sanitize_thread_name`, `cap_chars`, `cap_panic_message`, `parse_backtrace_frames`, `current_image_base_hex`) into `panic_hook.rs`, about 260 lines. `mod.rs` keeps the `CrashReport` shape, `init`, the pending-report read/write, and the active-settings snapshot."
+    },
+    "apps/desktop/src-tauri/src/error_reporter/tests.rs": {
+      "lines": 1217,
+      "reason": "One test module for the error-report bundle (manifest shape, zip contents, redaction, note and email handling, ids, and capping), sharing one set of manifest and zip-reading fixtures; `privacy_tests` already splits off the privacy cases, and splitting further would scatter those fixtures across siblings without making any test easier to find."
+    },
     "apps/desktop/src-tauri/src/file_system/listing/caching.rs": {
       "lines": 903,
       "reason": "TODO: three concerns share one file and the test siblings already name the seams. Move the full-refresh machinery (`RefreshSlot`, `REFRESH_SLOTS`, `refresh_slot`, `spawn_full_refresh`, `notify_full_refresh`, `notify_full_refresh_locked`, `publish_replacement`, `find_listings_under_path_on_volume`, `refresh_archive_listings`, roughly lines 540-800) into `caching_refresh.rs` at about 260 lines, and the freshness oracle `try_get_authoritative_listing` with its long contract doc into `caching_oracle.rs` at about 105 lines, matching the `caching_replacement_test.rs` and `caching_oracle_test.rs` siblings that already test exactly those two. What stays is about 550 lines of listing lookups (`snapshot_listings`, `find_listings_for_path*`, `find_listings_on_volume`), the cache patch helpers (`insert_entry_sorted`, `remove_entries_by_paths`, `update_entry_sorted`, `carry_forward_tags`, `apply_tags_to_listing`), and the `notify_directory_changed` dispatch with its `notify_added` / `notify_removed` / `notify_modified` arms, which is what the module map in `listing/CLAUDE.md` calls this file."
@@ -145,7 +157,7 @@
       "reason": "One closure over shared mutable teardown flags (`operationId`, `backgrounded`, `destroyed`, `closed`, `cancelRequestedBeforeId`, and the two wind-down timers) that birth, the four outcome effects, and the command handlers all read and write, plus about 90 lines of pass-through getters over `bound.current` that are the dialog's read surface; splitting `beginOperation` out would mean threading eight callbacks back in. The plain-`let` staleness hazard and the settle contract that hold the halves together are argued in the module header and in `transfer/CLAUDE.md`."
     },
     "apps/desktop/src/lib/onboarding/StepAi.svelte": {
-      "lines": 826,
+      "lines": 916,
       "reason": "TODO: Script 376 / markup 210 / style 266, and the two biggest markup blocks are static presentation carrying most of that style. The with-AI-versus-without comparison table is about 60 markup lines plus the `.comparison*`, `.with-ai-head`, and `.row-head*` rules (about 45 style) and the `code` and `chip` snippets it owns; the three FDA-outcome banners (`granted`, `denied`, `stuck`) are about 35 markup lines plus the `.banner*` rules (about 50 style) and are one shape differing only by tone, icon, title key, and body. Extract an `AiComparisonTable.svelte` and a `StepAiBanner.svelte` taking `tone`, `icon`, `titleKey`, and a body snippet, matching how `CloudProviderPicker`, `CloudProviderSetup`, and `FdaBadge` already sit beside this file. That is roughly 190 lines out, leaving the choice persistence, the confirm-once missing-key gate, and the local-download lifecycle, which are what the step is about."
     },
     "apps/desktop/src/lib/query-ui/QueryDialog.svelte": {
