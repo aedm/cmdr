@@ -4634,6 +4634,8 @@ export const commands = {
    *  Reads (and clears) the tarball path stored by `download_update`.
    */
   installUpdate: () => typedError<null, string>(__TAURI_INVOKE('install_update')),
+  // The organization's policy as the UI shows it. Reads the cache, never CFPreferences.
+  getManagedPolicy: () => __TAURI_INVOKE<ManagedPolicyView>('get_managed_policy'),
   /**
    *  Debug-only: makes sure the dialog gallery's throwaway fixture directory
    *  exists under the app data dir, and returns its path plus the landmarks inside
@@ -4731,6 +4733,7 @@ export const events = {
   listingRespelled: makeEvent<ListingRespelledEvent>('listing-respelled'),
   listingStalled: makeEvent<ListingStalledEvent>('listing-stalled'),
   lowDiskSpace: makeEvent<LowDiskSpacePayload>('low-disk-space'),
+  managedPolicyChanged: makeEvent<ManagedPolicyChanged>('managed-policy-changed'),
   mcpSettingsClose: makeEvent<McpSettingsClose>('mcp-settings-close'),
   mediaEnrichProgress: makeEvent<MediaEnrichProgressEvent>('media-enrich-progress'),
   mediaEnrichTerminal: makeEvent<MediaEnrichTerminalEvent>('media-enrich-terminal'),
@@ -5072,6 +5075,24 @@ export type AiModelInfo = {
   kvBytesPerToken: number
   // Base memory overhead in bytes (model weights + compute buffers)
   baseOverheadBytes: number
+}
+
+// How much AI the organization allows.
+export type AiPolicy =
+  // Any provider, cloud hosts subject to `AllowedCloudAIHosts`.
+  | 'allowed'
+  // Cmdr's own local model only.
+  | 'localOnly'
+  // No AI at all.
+  | 'off'
+
+export type AiPolicyView = {
+  mode: AiPolicy
+  /**
+   *  The hosts cloud AI may reach, normalized (`api.openai.com`, `*.openai.azure.com`,
+   *  `localhost:11434`). `null` when any host goes, or when cloud AI is off altogether.
+   */
+  allowedCloudHosts: string[] | null
 }
 
 // Runtime status of the AI subsystem, returned to frontend.
@@ -9633,6 +9654,19 @@ export type LocationInfo = {
   mountAccount: string | null
 }
 
+// One setting the organization manages.
+export type LockedSetting = {
+  // The settings-registry id, like `analytics.enabled`.
+  id: string
+  lock: SettingLock
+}
+
+/**
+ *  A setting value the policy pins. Typed rather than `serde_json::Value`, which can't cross IPC
+ *  (`src/lib/ipc/CLAUDE.md`); crosses as a plain `boolean | string`.
+ */
+export type LockedValue = boolean | string
+
 export type LogLevel = 'debug' | 'info' | 'warn' | 'warning' | 'error'
 
 /**
@@ -9653,6 +9687,25 @@ export type LowDiskSpacePayload = {
   freePercent: number
   thresholdPercent: number
   isLow: boolean
+}
+
+// The policy changed while Cmdr runs. Same payload as `get_managed_policy`.
+export type ManagedPolicyChanged = {
+  policy: ManagedPolicyView
+}
+
+/**
+ *  Everything the UI shows about the policy: per-row locks, feature-level states, and the "what
+ *  your organization manages" summary.
+ */
+export type ManagedPolicyView = {
+  // Whether any key restricts anything.
+  managed: boolean
+  usageStatsDisabled: boolean
+  reportsDisabled: boolean
+  updates: UpdatePolicyView
+  ai: AiPolicyView
+  lockedSettings: LockedSetting[]
 }
 
 /**
@@ -13725,6 +13778,13 @@ export type SetFavoriteShortcutError =
   | { type: 'timedOut' }
   | { type: 'unexpected'; detail: string }
 
+// How the policy constrains one setting.
+export type SettingLock =
+  // The setting reads as `value`, whatever is stored.
+  | { kind: 'fixed'; value: LockedValue }
+  // The setting can't hold any of `values`; a stored one reads as `fallback`.
+  | { kind: 'disallowedValues'; values: LockedValue[]; fallback: LockedValue }
+
 /**
  *  Settings registry default values pushed from FE. The wire format matches JSON
  *  primitives via `#[serde(untagged)]`; TS sees `boolean | number | string`.
@@ -15096,6 +15156,15 @@ export type UpdateInfo = {
   url: string
   signature: string
 }
+
+export type UpdatePolicyView =
+  | { kind: 'disabled' }
+  | {
+      kind: 'enabled'
+      automaticChecks: boolean
+      // The canonical spelling, like `0.52`. `null` when there's no ceiling.
+      ceiling: string | null
+    }
 
 /**
  *  Why a direct connection couldn't be established, as a typed reason rather

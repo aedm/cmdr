@@ -339,6 +339,10 @@ All under `apps/desktop/src-tauri/src/`.
   media index, importance). See `events/CLAUDE.md`
 - `updater/`: macOS custom updater: syncs files into the running `.app` in place so FDA survives updates. Other
   platforms use stock Tauri
+- `managed_policy/`: What an organization's MDM profile restricts (telemetry, updates, AI), read from the forced layer
+  of the app's preferences domain, cached, refreshed at egress, and shown as one `ManagedPolicyView`. Holds the
+  canonical key catalog. See `apps/desktop/src-tauri/src/managed_policy/CLAUDE.md`
+- `cf_plist.rs`: macOS-only. Core Foundation property lists as `plist::Value`, shared by every CFPreferences reader
 - `redact/`: Shared PII redactor (path-shape preserving). Used by both crash and error reporters
 - `logging/`: Log directory resolver, `KeepSome(N)` post-rotation pruner, `list_recent_log_files`
 - `commands/`: Tauri command definitions (IPC entry points)

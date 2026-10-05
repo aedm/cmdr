@@ -299,6 +299,9 @@ urlencoding = "2.1.3"
 url = "2"
 # Semver comparison: the custom updater (macOS) and the cross-platform What's-new changelog slicer.
 semver = "1"
+# Property lists: macOS bundle and Dock plists, and the managed-policy values (`managed_policy/`),
+# which the test-build plist-file override also reads on Linux.
+plist = "1.8.0"
 # CommonMark rendering for the What's-new popup, so a lead renders the way GitHub and the website
 # render the same changelog. `html` only: the default `getopts` feature is the crate's own CLI.
 pulldown-cmark = { version = "0.13.4", default-features = false, features = ["html"] }
@@ -319,7 +322,6 @@ percent-encoding = "2"
 core-foundation = "0.10.1"
 core-services = "1.0.0"
 icns = "0.4.0"
-plist = "1.8.0"
 objc2 = { version = "0.6", features = ["std", "exception"] }
 objc2-foundation = { version = "0.3", features = [
     "NSURL", "NSString", "NSDictionary", "NSDate", "NSArray", "NSValue", "NSError",

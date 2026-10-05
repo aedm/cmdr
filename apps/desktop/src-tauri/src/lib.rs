@@ -33,10 +33,13 @@ mod ai;
 mod analytics;
 mod app_lifecycle;
 pub mod benchmark;
+// Core Foundation property lists as `plist::Value`, shared by every CFPreferences reader.
 /// Test-only: invariants over the `capabilities/` manifests, which no other
 /// code references (Tauri reads them at build time).
 #[cfg(test)]
 mod capabilities;
+#[cfg(target_os = "macos")]
+mod cf_plist;
 mod child_window_state;
 mod clipboard;
 mod commands;
@@ -94,6 +97,10 @@ mod location;
 mod macos_icons;
 mod main_window_show;
 mod main_window_visibility;
+// What an organization's MDM profile restricts (telemetry, updates, AI). Gated like `network`, whose
+// deps (`url`, `semver`) it shares.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod managed_policy;
 mod mcp;
 mod menu;
 #[cfg(target_os = "macos")]
@@ -279,6 +286,12 @@ pub fn run() {
             // so the panic hook can read it without allocating or locking. Mints both install
             // ids on first launch.
             install_id::init();
+
+            // The organization's managed policy, before anything that might send: the crash
+            // reporter's next-launch path below is the first. The read is lazy anyway (no caller
+            // can see an unloaded policy); this puts its one main-thread `cfprefsd` trip here.
+            #[cfg(any(target_os = "macos", target_os = "linux"))]
+            managed_policy::init(app.handle());
 
             // Initialize crash reporter early, before anything that might crash
             crash_reporter::init(app.handle());

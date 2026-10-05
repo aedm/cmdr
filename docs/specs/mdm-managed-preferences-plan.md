@@ -377,6 +377,20 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
 - **DONE**: `get_managed_policy` returns the right `ManagedPolicyView` under the file override (a Rust test through
   `PlistFileSource`, plus one manual `pnpm dev` with `CMDR_MANAGED_PREFS_FILE`); nothing else in the app behaves
   differently yet; `pnpm check` green.
+- **Implementation notes** (M1 as built):
+  - `LockedSetting.lock` carries a typed `LockedValue` (`bool | string`), not `serde_json::Value`, which can't cross IPC
+    under specta rc.24 (`src/lib/ipc/CLAUDE.md`). `DisallowedValues` also carries a `fallback` (`off` for
+    `ai.provider`), so neither the frontend overlay nor Rust `overlay` decides the safe value itself.
+  - `overlay` turns a missing or non-object settings map into an object holding just the pinned values when anything is
+    locked: its readers fall back to defaults, and `analytics.enabled` defaults to on. With no locks it leaves the map
+    alone.
+  - `AiDestination` and `ManagedPolicy::ai_destination` live in `managed_policy/` already (pure, tested); M4 stores the
+    destination on `AiBackend` and calls it.
+  - The command is registered as `managed_policy::view::get_managed_policy` (Tauri's command macro needs the defining
+    module path). The module carries a temporary `allow(dead_code, unused_imports)` until M2–M4 call in; the last of
+    them removes it.
+  - `plist` moved from the macOS-only dependency table to the macOS+Linux one (no new crate): the parse runs on Linux
+    too, for the E2E file override.
 
 ### M2. Telemetry enforcement
 

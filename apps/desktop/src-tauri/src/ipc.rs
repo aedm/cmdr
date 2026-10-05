@@ -72,6 +72,7 @@ use crate::file_system::write_operations::{OperationsChanged, VolumesBusyChanged
 use crate::file_viewer::ViewerPullProgress;
 use crate::file_viewer::open_with_extract::OpenWithCopyRefused;
 use crate::listing_index_sizes::ListingIndexSizesChanged;
+use crate::managed_policy::ManagedPolicyChanged;
 use crate::mtp::{
     MtpDeviceConnected, MtpDeviceDisconnected, MtpExclusiveAccessError, MtpPermissionError, MtpPtpcameradRestored,
     MtpPtpcameradSuppressed, MtpStorageRemoved,
@@ -865,6 +866,13 @@ macro_rules! ipc_command_manifest {
                 ]
                 dispatch_only: []
             }
+            // What the organization's MDM profile restricts (`managed_policy/`).
+            cfg(any(target_os = "macos", target_os = "linux")) {
+                typed: [
+                    crate::managed_policy::view::get_managed_policy,
+                ]
+                dispatch_only: []
+            }
             // E2E-only commands.
             cfg(feature = "playwright-e2e") {
                 typed: [
@@ -1178,6 +1186,8 @@ pub fn builder() -> Builder<tauri::Wry> {
             // the agent's memory folder in a pane.
             ForegroundOperation,
             RevealPath,
+            // The organization's managed policy changed while Cmdr runs (managed_policy/cache.rs).
+            ManagedPolicyChanged,
         ])
 }
 
