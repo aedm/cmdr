@@ -2539,7 +2539,7 @@
   },
   "settings.managed.summary.off": "Off",
   "@settings.managed.summary.off": {
-    "description": "Value in the 'Managed by your organization' card, beside a row label like 'Usage stats' or 'Updates': the organization turned that feature off. One word if the language allows."
+    "description": "Value in the 'Managed by your organization' card, beside a row label: the organization turned that feature off. The SAME string sits beside 'Usage stats', 'Crash and error reports', 'Updates', and 'AI', which differ in grammatical gender and number in many languages, so pick a form that doesn't agree with the label (a status word like a switch's 'Off', not an adjective that inflects). One word if the language allows."
   },
   "settings.managed.summary.upTo": "Up to {ceiling}",
   "@settings.managed.summary.upTo": {
