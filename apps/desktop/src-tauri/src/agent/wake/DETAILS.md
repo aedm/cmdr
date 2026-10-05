@@ -300,10 +300,13 @@ because it decides whether the agent can SEE anything.
 told to finish setting up a provider. `ProviderGate` mirrors `BackendResolution` (`Off` / `NeedsCloudConsent` /
 `NotConfigured` / `Ready`) rather than re-deciding the distinction the backend already models, and `provider_gate` in
 `snapshot.rs` is the one mapping. `BackendResolution::Managed` (the organization's MDM policy refuses AI or the cloud
-host) maps to `Off`: an answer already given, so silent. Under `DisableCloudAI` or a host list the stored backlog stays
-for when the policy lifts; under `DisableAI` the readiness is `AskCmdrOff` first (`settings::load_ask_cmdr_enabled`
-reads `askCmdr.enabled` through the policy overlay, which locks it off), so the backlog goes like any switched-off Ask
-Cmdr's.
+host) maps to `Off`: an answer already given, so silent, and the stored backlog stays for when the policy lifts.
+
+**`AgentGates.ask_cmdr` is a tri-state `AskCmdrSwitch`, not a bool, for the same reason.** Under `DisableAI` the
+policy overlay pins `askCmdr.enabled` off; as a bool that read exactly like the person switching Ask Cmdr off, and
+`AskCmdrOff` purges the backlog, so a profile would have deleted what removing it should bring back (the policy
+overlays, it never rewrites). `settings::load_ask_cmdr_switch` keeps the two apart: the person's own `Off` is
+`AskCmdrOff` (purges), a `ManagedOff` (stored on, pinned off) is `Off` (silent, keeps the backlog).
 
 **Silence lies under a pending FDA decision**: a user who declined and a user with a tidy Downloads folder see the
 identical nothing, and only one of those is the feature working. So `NeedsFullDiskAccess` and `NeedsApiKey` both render

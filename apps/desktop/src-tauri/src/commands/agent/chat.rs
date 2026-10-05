@@ -182,8 +182,8 @@ pub async fn ask_cmdr_send_message(
     // switch (read fresh, absent reads as off), then the slot, whose resolution enforces cloud
     // consent. The rail's frontend gate is the UX layer; this is what makes it hold even if a
     // caller bypasses the UI.
-    let ask_cmdr_enabled = crate::settings::load_ask_cmdr_enabled(&app);
-    let (llm_kind, provider, model) = match admit_send(ask_cmdr_enabled, || resolve_agent_llm(&app, AgentSlot::Rail)) {
+    let ask_cmdr = crate::settings::load_ask_cmdr_switch(&app);
+    let (llm_kind, provider, model) = match admit_send(ask_cmdr, || resolve_agent_llm(&app, AgentSlot::Rail)) {
         Ok(resolved) => resolved,
         Err(kind) => return Err(AskCmdrSendRefusal::of(kind)),
     };

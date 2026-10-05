@@ -137,13 +137,16 @@ fn slot_backend(resolution: crate::ai::manager::BackendResolution) -> Result<AiB
 
 /// The rail's send gate, decided before a thread or an LLM exists: Ask Cmdr's own switch first,
 /// then the slot (which carries the cloud consent gate, `ai::manager::resolve_backend`).
-/// `resolve` runs only when Ask Cmdr is on, so a switched-off Ask Cmdr never looks at the
-/// provider. `ask_cmdr_send_message` is the caller; a wake has its own gates (`wake::readiness`).
+/// `resolve` never runs when the person switched Ask Cmdr off, so it never looks at the provider.
+/// A managed off (`DisableAI` pins the switch) goes on to the slot, whose resolution refuses with
+/// the organization's own reason: the person didn't turn Ask Cmdr off, so "Ask Cmdr is off" would
+/// be the wrong answer. `ask_cmdr_send_message` is the caller; a wake has its own gates
+/// (`wake::readiness`).
 pub fn admit_send<T>(
-    ask_cmdr_enabled: bool,
+    ask_cmdr: crate::settings::AskCmdrSwitch,
     resolve: impl FnOnce() -> Result<T, SlotRefusal>,
 ) -> Result<T, AgentErrorKindView> {
-    if !ask_cmdr_enabled {
+    if ask_cmdr == crate::settings::AskCmdrSwitch::Off {
         return Err(AgentErrorKindView::AskCmdrOff);
     }
     resolve().map_err(SlotRefusal::view)

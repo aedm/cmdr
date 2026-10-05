@@ -619,7 +619,7 @@ export interface SettingsValues {
   'ai.cloudConsentRevokePending': boolean
 
   // Ask Cmdr
-  // The feature's plain on/off. Read fresh backend-side each send (`load_ask_cmdr_enabled`); the
+  // The feature's plain on/off. Read fresh backend-side each send (`load_ask_cmdr_switch`); the
   // wake loop's cached readiness hears about it through a `settings-applier` case.
   'askCmdr.enabled': boolean
   // The interactive-slot model override (empty = use the shared `ai/` provider's model).

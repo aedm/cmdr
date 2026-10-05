@@ -128,8 +128,9 @@ download, and the user-initiated feedback and beta signup.
 - **Usage stats**: `analytics::send_permission` and the heartbeat's config shape read `settings.json` through
   `overlay`, so a managed off is an ordinary opt-out and the heartbeat reports effective values plus a coarse
   `managedByOrganization` bool.
-- **Ask Cmdr's switch**: `settings::load_ask_cmdr_enabled` (the send gate and the wake readiness) reads through
-  `overlay` too, so `DisableAI` reads as off there with no policy check of its own.
+- **Ask Cmdr's switch**: `settings::load_ask_cmdr_switch` (the send gate and the wake readiness) reads through
+  `overlay` too, as `AskCmdrSwitch::ManagedOff` when `DisableAI` pins a stored on. That's the policy's off, not the
+  person's: the wake loop goes quiet but keeps its stored backlog, and a send names the organization.
 - **Crash reports**: `check_pending_crash_report` discards the pending file unoffered under `DisableCrashAndErrorReports`.
 - **Updates**: `ManagedPolicy::update_to(version)` is the one version decision (`UpdateRefusal::Disabled` /
   `AboveCeiling`). The updater asks `updates()` before a check (no request under `DisableUpdates`, none for a
