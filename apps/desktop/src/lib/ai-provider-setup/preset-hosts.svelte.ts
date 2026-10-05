@@ -3,14 +3,14 @@
  * the two service pickers: Settings › AI › Provider's dropdown and the onboarding wizard's list. A
  * refused preset stays listed, disabled with the reason, so the person sees what IT ruled out.
  *
- * The backend judges each preset's URL (`cloud_ai_hosts_allowed`); nothing here reads the host
+ * The backend judges each preset's URL (`cloud_ai_host_verdicts`); nothing here reads the host
  * list. A preset with an editable endpoint (custom, Azure) isn't judged by its placeholder: the
  * person's own URL is checked once entered (`ProviderSetupController`).
  */
 
 import { untrack } from 'svelte'
 import { cloudProviderPresets } from '$lib/settings/cloud-providers'
-import { cloudAiHostsAllowed } from '$lib/tauri-commands'
+import { cloudAiHostVerdicts } from '$lib/tauri-commands'
 import { getManagedPolicyView } from '$lib/managed-policy/managed-policy.svelte'
 import { getAppLogger } from '$lib/logging/logger'
 import { providerHasEditableEndpoint } from './provider-setup-plan'
@@ -33,8 +33,8 @@ export class PresetHostVerdicts {
     const judged = cloudProviderPresets.filter((preset) => !providerHasEditableEndpoint(preset.id))
     let refused: string[] = []
     try {
-      const allowed = await cloudAiHostsAllowed(judged.map((preset) => preset.baseUrl))
-      refused = judged.filter((_, index) => !allowed[index]).map((preset) => preset.id)
+      const verdicts = await cloudAiHostVerdicts(judged.map((preset) => preset.baseUrl))
+      refused = judged.filter((_, index) => (verdicts[index] ?? null) !== null).map((preset) => preset.id)
     } catch (e) {
       log.debug("Couldn't ask the policy about the service presets, so none reads as refused: {error}", {
         error: e,

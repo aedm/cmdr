@@ -50,7 +50,9 @@ vi.mock('$lib/settings/ai-config', () => ({ pushConfigToBackend: vi.fn(() => Pro
 vi.mock('$lib/tauri-commands', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   getAiRuntimeStatus: vi.fn(() => Promise.resolve({ localAiSupported: stubs.localAiSupported })),
-  cloudAiHostsAllowed: vi.fn((urls: string[]) => Promise.resolve(urls.map((url) => !stubs.refusedUrls.has(url)))),
+  cloudAiHostVerdicts: vi.fn((urls: string[]) =>
+    Promise.resolve(urls.map((url) => (stubs.refusedUrls.has(url) ? ('hostNotAllowed' as const) : null))),
+  ),
   stopAiServer: vi.fn(() => Promise.resolve()),
   checkAiConnection: vi.fn(() =>
     Promise.resolve({

@@ -15,7 +15,7 @@ import { getCloudProvider, getProviderConfigs, setProviderConfig, getSetting, se
 import type { CloudProviderPreset } from '$lib/settings/cloud-providers'
 import {
   checkAiConnection,
-  cloudAiHostsAllowed,
+  cloudAiHostVerdicts,
   deleteAiApiKey,
   getAiApiKeyStatus,
   saveAiApiKey,
@@ -424,26 +424,26 @@ export class ProviderSetupController {
    * is judged the moment it's checked and a refused preset says so on open. `true` means refused:
    * the caller stops there, so nothing probes a refused host.
    *
-   * The backend answers a yes/no per URL. This surface only renders while cloud AI is allowed at
-   * all (the provider can't read `cloud` otherwise), so a refusal here is always the host list's.
-   * A failed ask reads as allowed: the backend still refuses the request itself.
+   * The backend answers each URL with the policy's own refusal, so a policy that changed while
+   * this was open shows its real reason. A failed ask reads as allowed: the backend still refuses
+   * the request itself.
    */
   async #refusedByPolicy(): Promise<boolean> {
     const idAtStart = this.#providerId
     const baseUrlAtStart = this.resolvedBaseUrl
-    let allowed = true
+    let refusal: ManagedAiRefusal | null = null
     if (baseUrlAtStart !== '') {
       try {
-        allowed = (await cloudAiHostsAllowed([baseUrlAtStart]))[0] ?? true
+        refusal = (await cloudAiHostVerdicts([baseUrlAtStart]))[0] ?? null
       } catch (e) {
         this.#log.debug("Couldn't ask the policy about this endpoint, so it reads as allowed: {error}", { error: e })
       }
     }
     // A later edit or switch owns the state now; its own check decides.
     if (idAtStart !== this.#providerId || baseUrlAtStart !== this.resolvedBaseUrl) return true
-    if (!allowed) {
+    if (refusal !== null) {
       this.#status = 'managed'
-      this.#managedRefusal = 'hostNotAllowed'
+      this.#managedRefusal = refusal
       this.#error = null
       return true
     }

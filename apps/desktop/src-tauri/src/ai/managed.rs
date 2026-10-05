@@ -53,18 +53,19 @@ fn stop(stops: &Stops) {
     }
 }
 
-/// For each base URL, whether cloud AI may send there under the current policy. The provider
-/// picker renders a refused preset disabled with the reason; a URL, never a key, crosses IPC.
+/// For each base URL, the policy's refusal of cloud AI sending there, or `None` when it may. The
+/// provider picker renders a refused preset disabled with that reason, so the frontend never works
+/// out which rule refused it. A URL, never a key, crosses IPC.
 #[tauri::command]
 #[specta::specta]
-pub fn cloud_ai_hosts_allowed(base_urls: Vec<String>) -> Vec<bool> {
-    hosts_allowed(&crate::managed_policy::current(), &base_urls)
+pub fn cloud_ai_host_verdicts(base_urls: Vec<String>) -> Vec<Option<ManagedAiRefusal>> {
+    host_verdicts(&crate::managed_policy::current(), &base_urls)
 }
 
-fn hosts_allowed(policy: &ManagedPolicy, base_urls: &[String]) -> Vec<bool> {
+fn host_verdicts(policy: &ManagedPolicy, base_urls: &[String]) -> Vec<Option<ManagedAiRefusal>> {
     base_urls
         .iter()
-        .map(|url| policy.ai_destination(&super::client::remote_destination(url)).is_ok())
+        .map(|url| policy.ai_destination(&super::client::remote_destination(url)).err())
         .collect()
 }
 
@@ -147,17 +148,25 @@ mod tests {
             "http://localhost:11434/v1".to_string(),
             "not a url".to_string(),
         ];
+        // Each URL carries the policy's own reason, so the picker never has to guess one.
+        let not_listed = Some(ManagedAiRefusal::HostNotAllowed);
         assert_eq!(
-            hosts_allowed(&hosts(&["*.openai.azure.com"]), &urls),
-            [false, true, false, false]
+            host_verdicts(&hosts(&["*.openai.azure.com"]), &urls),
+            [not_listed, None, not_listed, not_listed]
+        );
+        let cloud_off = Some(ManagedAiRefusal::CloudAiOff);
+        assert_eq!(
+            host_verdicts(&testing::forcing(&[DISABLE_CLOUD_AI]), &urls),
+            [cloud_off, cloud_off, cloud_off, cloud_off]
+        );
+        let ai_off = Some(ManagedAiRefusal::AiOff);
+        assert_eq!(
+            host_verdicts(&testing::forcing(&[testing::DISABLE_AI]), &urls),
+            [ai_off, ai_off, ai_off, ai_off]
         );
         assert_eq!(
-            hosts_allowed(&testing::forcing(&[DISABLE_CLOUD_AI]), &urls),
-            [false, false, false, false]
-        );
-        assert_eq!(
-            hosts_allowed(&ManagedPolicy::default(), &urls),
-            [true, true, true, true]
+            host_verdicts(&ManagedPolicy::default(), &urls),
+            [None, None, None, None]
         );
     }
 }

@@ -4,24 +4,27 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+import type { ManagedAiRefusal } from '$lib/ipc/bindings'
 import { cloudProviderPresets } from '$lib/settings/cloud-providers'
 import { PresetHostVerdicts } from './preset-hosts.svelte'
 
-const cloudAiHostsAllowed = vi.fn<(baseUrls: string[]) => Promise<boolean[]>>()
+const cloudAiHostVerdicts = vi.fn<(baseUrls: string[]) => Promise<(ManagedAiRefusal | null)[]>>()
 
 vi.mock('$lib/tauri-commands', () => ({
-  cloudAiHostsAllowed: (baseUrls: string[]) => cloudAiHostsAllowed(baseUrls),
+  cloudAiHostVerdicts: (baseUrls: string[]) => cloudAiHostVerdicts(baseUrls),
 }))
 
 const openAiUrl = cloudProviderPresets.find((preset) => preset.id === 'openai')?.baseUrl ?? ''
 
 beforeEach(() => {
-  cloudAiHostsAllowed.mockReset()
+  cloudAiHostVerdicts.mockReset()
 })
 
 describe('PresetHostVerdicts', () => {
   it('marks exactly the presets whose endpoint the backend refuses', async () => {
-    cloudAiHostsAllowed.mockImplementation((urls) => Promise.resolve(urls.map((url) => url !== openAiUrl)))
+    cloudAiHostVerdicts.mockImplementation((urls) =>
+      Promise.resolve(urls.map((url) => (url === openAiUrl ? ('hostNotAllowed' as const) : null))),
+    )
     const verdicts = new PresetHostVerdicts()
     expect(verdicts.isRefused('openai')).toBe(false)
 
@@ -32,11 +35,11 @@ describe('PresetHostVerdicts', () => {
   })
 
   it("never judges a preset whose endpoint is the person's own: that URL is checked once entered", async () => {
-    cloudAiHostsAllowed.mockImplementation((urls) => Promise.resolve(urls.map(() => false)))
+    cloudAiHostVerdicts.mockImplementation((urls) => Promise.resolve(urls.map(() => 'hostNotAllowed' as const)))
     const verdicts = new PresetHostVerdicts()
     await verdicts.refresh()
 
-    const asked = cloudAiHostsAllowed.mock.calls[0]?.[0] ?? []
+    const asked = cloudAiHostVerdicts.mock.calls[0]?.[0] ?? []
     const placeholder = cloudProviderPresets.find((preset) => preset.id === 'azure-openai')?.baseUrl
     expect(asked).not.toContain(placeholder)
     expect(verdicts.isRefused('custom')).toBe(false)
@@ -45,21 +48,21 @@ describe('PresetHostVerdicts', () => {
   })
 
   it('refuses nothing when the backend can’t be asked: the backend still refuses the request', async () => {
-    cloudAiHostsAllowed.mockRejectedValue(new Error('no backend'))
+    cloudAiHostVerdicts.mockRejectedValue(new Error('no backend'))
     const verdicts = new PresetHostVerdicts()
     await verdicts.refresh()
     expect(verdicts.isRefused('openai')).toBe(false)
   })
 
   it('keeps the newest answer when two asks overlap', async () => {
-    let releaseFirst: ((verdicts: boolean[]) => void) | undefined
-    cloudAiHostsAllowed.mockImplementationOnce(
+    let releaseFirst: ((verdicts: (ManagedAiRefusal | null)[]) => void) | undefined
+    cloudAiHostVerdicts.mockImplementationOnce(
       () =>
-        new Promise<boolean[]>((resolve) => {
+        new Promise<(ManagedAiRefusal | null)[]>((resolve) => {
           releaseFirst = resolve
         }),
     )
-    cloudAiHostsAllowed.mockImplementation((urls) => Promise.resolve(urls.map(() => true)))
+    cloudAiHostVerdicts.mockImplementation((urls) => Promise.resolve(urls.map(() => null)))
     const verdicts = new PresetHostVerdicts()
     const first = verdicts.refresh()
     await verdicts.refresh()

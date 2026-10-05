@@ -6,6 +6,7 @@
  */
 
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
+import type { ManagedAiRefusal } from '$lib/ipc/bindings'
 import { ProviderSetupController } from './provider-setup.svelte'
 import { clearModelCache } from '$lib/settings/ai-model-cache'
 
@@ -24,14 +25,14 @@ const checkAiConnection = vi.fn<(payload: { baseUrl: string; providerId: string 
 const saveAiApiKey = vi.fn<(payload: { providerId: string; apiKey: string }) => Promise<null>>()
 const getAiApiKeyStatus = vi.fn<(id: string) => Promise<{ isSet: boolean; fingerprint: string }>>()
 const deleteAiApiKey = vi.fn<(id: string) => Promise<void>>()
-const cloudAiHostsAllowed = vi.fn<(baseUrls: string[]) => Promise<boolean[]>>()
+const cloudAiHostVerdicts = vi.fn<(baseUrls: string[]) => Promise<(ManagedAiRefusal | null)[]>>()
 
 vi.mock('$lib/tauri-commands', () => ({
   checkAiConnection: (baseUrl: string, providerId: string) => checkAiConnection({ baseUrl, providerId }),
   saveAiApiKey: (providerId: string, apiKey: string) => saveAiApiKey({ providerId, apiKey }),
   getAiApiKeyStatus: (id: string) => getAiApiKeyStatus(id),
   deleteAiApiKey: (id: string) => deleteAiApiKey(id),
-  cloudAiHostsAllowed: (baseUrls: string[]) => cloudAiHostsAllowed(baseUrls),
+  cloudAiHostVerdicts: (baseUrls: string[]) => cloudAiHostVerdicts(baseUrls),
 }))
 
 const settingsMap: Record<string, unknown> = {}
@@ -88,8 +89,8 @@ describe('ProviderSetupController', () => {
     getAiApiKeyStatus.mockResolvedValue({ isSet: false, fingerprint: '' })
     deleteAiApiKey.mockReset()
     deleteAiApiKey.mockResolvedValue(undefined)
-    cloudAiHostsAllowed.mockReset()
-    cloudAiHostsAllowed.mockImplementation((urls) => Promise.resolve(urls.map(() => true)))
+    cloudAiHostVerdicts.mockReset()
+    cloudAiHostVerdicts.mockImplementation((urls) => Promise.resolve(urls.map(() => null)))
     controller = new ProviderSetupController({ logScope: 'test' })
   })
 
@@ -226,13 +227,22 @@ describe('ProviderSetupController', () => {
     })
 
     it('says a refused preset is refused on open, without a key and without probing it', async () => {
-      cloudAiHostsAllowed.mockResolvedValue([false])
+      cloudAiHostVerdicts.mockResolvedValue(['hostNotAllowed'])
       controller.setProvider('openai')
       await settle()
-      expect(cloudAiHostsAllowed).toHaveBeenCalledWith(['https://api.openai.com/v1'])
+      expect(cloudAiHostVerdicts).toHaveBeenCalledWith(['https://api.openai.com/v1'])
       expect(controller.status).toBe('managed')
       expect(controller.managedRefusal).toBe('hostNotAllowed')
       expect(checkAiConnection).not.toHaveBeenCalled()
+    })
+
+    it('shows the reason the backend gave, never one it works out itself', async () => {
+      // The policy flipped to on-device only while the picker was open: the reason is cloud off.
+      cloudAiHostVerdicts.mockResolvedValue(['cloudAiOff'])
+      controller.setProvider('openai')
+      await settle()
+      expect(controller.status).toBe('managed')
+      expect(controller.managedRefusal).toBe('cloudAiOff')
     })
 
     it('checks a typed endpoint once it is entered, even before there is a key', async () => {
@@ -240,15 +250,15 @@ describe('ProviderSetupController', () => {
       try {
         controller.setProvider('azure-openai')
         await vi.runAllTimersAsync()
-        cloudAiHostsAllowed.mockResolvedValue([false])
+        cloudAiHostVerdicts.mockResolvedValue(['hostNotAllowed'])
         controller.saveBaseUrl('https://elsewhere.example/v1')
         await vi.runAllTimersAsync()
-        expect(cloudAiHostsAllowed).toHaveBeenLastCalledWith(['https://elsewhere.example/v1'])
+        expect(cloudAiHostVerdicts).toHaveBeenLastCalledWith(['https://elsewhere.example/v1'])
         expect(controller.status).toBe('managed')
         expect(checkAiConnection).not.toHaveBeenCalled()
 
         // Moving to a host the policy allows lifts it again.
-        cloudAiHostsAllowed.mockResolvedValue([true])
+        cloudAiHostVerdicts.mockResolvedValue([null])
         controller.saveBaseUrl('https://tenant.openai.azure.com/openai/v1')
         await vi.runAllTimersAsync()
         expect(controller.status).toBe('idle')
@@ -259,10 +269,10 @@ describe('ProviderSetupController', () => {
     })
 
     it('drops a refusal for a provider the user already left', async () => {
-      let releaseFirst: ((verdicts: boolean[]) => void) | undefined
-      cloudAiHostsAllowed.mockImplementationOnce(
+      let releaseFirst: ((verdicts: (ManagedAiRefusal | null)[]) => void) | undefined
+      cloudAiHostVerdicts.mockImplementationOnce(
         () =>
-          new Promise<boolean[]>((resolve) => {
+          new Promise<(ManagedAiRefusal | null)[]>((resolve) => {
             releaseFirst = resolve
           }),
       )
@@ -270,7 +280,7 @@ describe('ProviderSetupController', () => {
       await settle()
       controller.setProvider('anthropic')
       await settle()
-      releaseFirst?.([false])
+      releaseFirst?.(['hostNotAllowed'])
       await settle()
       expect(controller.providerId).toBe('anthropic')
       expect(controller.status).not.toBe('managed')

@@ -94,7 +94,7 @@ vi.mock('$lib/tauri-commands', () => ({
   openPrivacySettings: () => openPrivacySettings(),
   configureAi: (...args: unknown[]) => configureAi(...args),
   getAiRuntimeStatus: () => getAiRuntimeStatus(),
-  cloudAiHostsAllowed: (urls: string[]) => Promise.resolve(urls.map(() => true)),
+  cloudAiHostVerdicts: (urls: string[]) => Promise.resolve(urls.map(() => null)),
 }))
 
 // The organization's lock on `ai.provider`, as the backend's `locked_settings` would name it.

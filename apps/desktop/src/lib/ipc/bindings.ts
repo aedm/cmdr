@@ -2010,10 +2010,12 @@ export const commands = {
   checkAiConnection: (baseUrl: string, providerId: string) =>
     __TAURI_INVOKE<AiConnectionCheckResult>('check_ai_connection', { baseUrl, providerId }),
   /**
-   *  For each base URL, whether cloud AI may send there under the current policy. The provider
-   *  picker renders a refused preset disabled with the reason; a URL, never a key, crosses IPC.
+   *  For each base URL, the policy's refusal of cloud AI sending there, or `None` when it may. The
+   *  provider picker renders a refused preset disabled with that reason, so the frontend never works
+   *  out which rule refused it. A URL, never a key, crosses IPC.
    */
-  cloudAiHostsAllowed: (baseUrls: string[]) => __TAURI_INVOKE<boolean[]>('cloud_ai_hosts_allowed', { baseUrls }),
+  cloudAiHostVerdicts: (baseUrls: string[]) =>
+    __TAURI_INVOKE<(ManagedAiRefusal | null)[]>('cloud_ai_host_verdicts', { baseUrls }),
   /**
    *  The cloud AI consent status. A missing or unreadable store reads as not accepted, so the gate
    *  stays closed rather than failing open.
@@ -4959,8 +4961,8 @@ export type AgentErrorKindView =
    */
   | 'noCloudConsent'
   /**
-   *  The organization's managed policy refuses the provider or its host. View-only, like
-   *  `NoCloudConsent`: the slot refuses before a thread exists.
+   *  The organization's managed policy refuses the provider or its host: the slot refuses
+   *  before a thread exists, and the LLM client's backstop ends a running turn with it.
    */
   | 'managedByOrganization'
   /**

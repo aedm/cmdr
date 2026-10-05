@@ -470,12 +470,12 @@ export async function checkAiConnection(baseUrl: string, providerId: string): Pr
 }
 
 /**
- * For each base URL, whether the organization's policy lets cloud AI send there: the provider
- * picker renders a refused preset disabled, and a typed endpoint is judged once entered. Local and
- * instant (no request); a URL, never a key, crosses IPC.
+ * For each base URL, the organization's refusal of cloud AI sending there, or `null` when it may:
+ * the provider picker renders a refused preset disabled, and a typed endpoint is judged once
+ * entered. Local and instant (no request); a URL, never a key, crosses IPC.
  */
-export async function cloudAiHostsAllowed(baseUrls: string[]): Promise<boolean[]> {
-  return commands.cloudAiHostsAllowed(baseUrls)
+export async function cloudAiHostVerdicts(baseUrls: string[]): Promise<(ManagedAiRefusal | null)[]> {
+  return commands.cloudAiHostVerdicts(baseUrls)
 }
 
 // ============================================================================

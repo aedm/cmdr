@@ -310,7 +310,7 @@ macro_rules! ipc_command_manifest {
                     // configure_ai, start_ai_server, start_ai_download are generic (<R: Runtime>): excluded
                     crate::ai::server::stop_ai_server,
                     crate::ai::connection_check::check_ai_connection,
-                    crate::ai::managed::cloud_ai_hosts_allowed,
+                    crate::ai::managed::cloud_ai_host_verdicts,
                     crate::ai::cloud_consent::cloud_ai_consent_status,
                     crate::ai::cloud_consent::accept_cloud_ai_consent,
                     crate::ai::cloud_consent::revoke_cloud_ai_consent,

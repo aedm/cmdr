@@ -43,7 +43,7 @@ window shows the backend's answer.
 
 - AI: `AiSection`'s provider radios disable what `lockAllowsWrite` rules out; a narrowed lock adds a visible line under
   the row (`settings-ai-provider-managed`). The consent switch locks from `CloudAiConsentStatus.managed`, the service
-  pickers from `cloud_ai_hosts_allowed` (`$lib/ai-provider-setup/DETAILS.md`), onboarding skips step 2 when the lock
+  pickers from `cloud_ai_host_verdicts` (`$lib/ai-provider-setup/DETAILS.md`), onboarding skips step 2 when the lock
   leaves only "no AI" (`$lib/onboarding/DETAILS.md`), and Ask Cmdr's provider hint reads `ai.mode === 'off'` (a feature
   state, not a lock). Every refusal sentence comes from `ai-refusal.ts`.
 
