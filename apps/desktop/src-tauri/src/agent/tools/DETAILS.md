@@ -250,11 +250,15 @@ The tool re-derives nothing the viewer already ships. Per behavior, the symbol i
   inside `crash_reporter::contain_panics` (`crash_reporter/DETAILS.md` § The one exemption): the closures wrap the
   foreign calls only, never our shapers. Order: `header_version` over the classifier's head bytes (ours, so the version
   survives a refused file), the 64 MiB `MAX_PDF_BYTES` gate (over it, `tooLarge` and no read), `std::fs::read`,
-  `Document::load_mem`, `get_pages().len()` (exact; a tree that panics the parser is `unparseable`), `is_encrypted()`
+  `Document::load_mem`, `get_pages()` (its length is the exact count; a tree that panics the parser is `unparseable`),
+  `is_encrypted()`
   (→ `encrypted`, page count kept, Info strings not read: they're ciphertext), then `Title` / `Author` through
   `doc.dereference` + `decode_text_string` (PDFDocEncoding or UTF-16, trimmed, blank is absent). Page text is
   `output_doc_page(&doc, &mut PlainTextOutput::new(&mut buf), n)`, one page at a time so a range never decodes the
-  rest; a refusal or a contained panic marks that page `unparseable` and the loop continues. `window_from_pages` and
+  rest; a refusal or a contained panic marks that page `unparseable` and the loop continues. ❗ So does a page whose
+  `Parent` chain loops (`parent_chain_ends`, checked before the parser sees the page): `pdf-extract` resolves inherited
+  `Resources` / `MediaBox` by recursing up `Parent` unguarded, a stack overflow `catch_unwind` can't contain (found by
+  the `pdf` fuzz target, `fuzz/DETAILS.md`). `window_from_pages` and
   `find_in_pages` are pure over an `extract(page)` closure (tests inject page texts): the window trims each page, cuts
   at `MAX_PAGE_CHARS` (8,000: two dense pages per row; a whole page the model can re-ask for by number beats a slice
   it can't, since there is no offset inside a page), carries whole pages until the next would break
