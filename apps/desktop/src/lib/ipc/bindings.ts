@@ -1973,6 +1973,8 @@ export const commands = {
       licenseType: string | null
       // The short code used to activate (if available)
       shortCode: string | null
+      // The end date signed into the key (RFC 3339), only on a dated license.
+      expiresAt: string | null
     } | null>('get_license_info'),
   // Mark the expiration modal as shown (so it won't show again).
   markExpirationModalShown: () => __TAURI_INVOKE<void>('mark_expiration_modal_shown'),
@@ -8970,6 +8972,8 @@ export type LicenseInfo = {
   licenseType: string | null
   // The short code used to activate (if available)
   shortCode: string | null
+  // The end date signed into the key (RFC 3339), only on a dated license.
+  expiresAt: string | null
 }
 
 // Type of license.

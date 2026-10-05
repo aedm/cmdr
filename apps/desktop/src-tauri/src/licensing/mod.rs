@@ -5,6 +5,7 @@
 
 mod app_status;
 mod device_id;
+mod offline_policy;
 mod validation_client;
 mod verification;
 
@@ -41,4 +42,7 @@ pub struct LicenseData {
     pub organization_name: Option<String>,
     #[serde(rename = "shortCode")]
     pub short_code: Option<String>,
+    /// RFC 3339, only on a dated license. Signed in, so the app enforces it offline.
+    #[serde(rename = "expiresAt")]
+    pub expires_at: Option<String>,
 }

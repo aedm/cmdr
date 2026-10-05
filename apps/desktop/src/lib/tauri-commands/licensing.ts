@@ -20,6 +20,8 @@ export interface LicenseInfo {
   organizationName: string | null
   licenseType: string | null
   shortCode: string | null
+  // The end date signed into the key (RFC 3339), only on a dated license
+  expiresAt: string | null
 }
 
 /** Result of verifying a license key without persisting it. */
