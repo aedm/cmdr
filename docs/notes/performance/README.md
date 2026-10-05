@@ -164,8 +164,13 @@ the linked note's numbers.
 1. **Get idle CPU with indexing on reliably under 1%.** David's prod 0.48.0 reads 0.8–1.2% (Activity Monitor, observed
    2026-09-29–30), so it straddles the target. Next step: attribute it per thread on the running prod, read-only
    (`proc_pidinfo` deltas, the census recipe in `idle-census-2026-09-27.md`), note the FS events/s, and rank what's
-   left. Status: not started. **Effect**: decides the last target; the indexing-driven share was ~1.1–1.4% before the
-   child-dir index, the space-poll fix, and mDNS gating.
+   left. Status: one pass on prod 0.50.0 at load average 25–30 (2026-10-05, per-thread `proc_pidinfo` over 90 s plus the
+   log): 2.3% of a core averaged over 48 h, the index writer at 0.1–0.2% in quiet hours and 1–3% from 13:00 under agent
+   churn (~420–1,000 FS events/s), and the 100%+ spikes were the writer at 70–86% of a core indexing freshly cloned
+   worktrees (90,000–270,000 rows each), not the rescan walks. Two fixes landed from it: removal storms anchor per
+   cluster (`crates/cmdr-index/src/indexing/watch/DETAILS.md` § "Removal-storm coalescing"; one worktree's root had been
+   walked 36 times that day), and the rescan lines carry each walk's CPU. **Effect**: decides the last target; the
+   indexing-driven share was ~1.1–1.4% before the child-dir index, the space-poll fix, and mDNS gating.
 2. **Explain the rest of the heap on a long-running prod**: run `memory_diagnostics` on a long-running prod (~360 MiB
    was unexplained at 0.46.1). 0.48.0 carries the mimalloc census (`rustHeapCensus`); a later, system-allocator release
    reports the default zone's live and reserved bytes instead, with no census. Status: not started. **Effect**: none by

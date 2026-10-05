@@ -268,13 +268,16 @@ minutes, and only when the window crossed a budget: more than 60 s of cumulative
 cumulative row changes.
 
 ```
-Reconciler: heavy churn in the last 15 min: 120 subtree reconciles, 169s of walking, 102,229 row changes, 64+ anchors, 37 signals held back, 8,142 signals queued behind a running rescan. Top: /Users/me/Library/Caches/… (18 walks, 96s), …
+Reconciler: heavy churn in the last 15 min: 120 subtree reconciles, 169s of walking (12s CPU), 102,229 row changes, 64+ anchors, 37 signals held back, 8,142 signals queued behind a running rescan. Top: /Users/me/Library/Caches/… (18 walks, 96s, 7s CPU), …
 ```
 
-Read it as "this machine is spending real CPU staying in sync, and here is where". The top anchors are ranked by
-accumulated walk cost, so the first one named is the folder to look at. `64+ anchors` means the per-window anchor list
-hit its cap, so the count is a floor. `signals held back` counts the change signals the per-subtree throttle and the
-new-subtree settle delay absorbed; a window that churns hard while that reads zero means one of those stopped working.
+Read it as "this machine is spending real time staying in sync, and here is where". The top anchors are ranked by
+accumulated walk cost, so the first one named is the folder to look at. The `CPU` figures are the walks' own thread CPU:
+walking is disk-bound, so on a busy machine the walk time is mostly waiting, and a big walk time with a small CPU figure
+means the CPU went somewhere else (the writer heartbeat's `writer_cpu_ms_total` is the next place to look). Each
+per-walk Debug line carries its CPU the same way. `64+ anchors` means the per-window anchor list hit its cap, so the
+count is a floor. `signals held back` counts the change signals the per-subtree throttle and the new-subtree settle
+delay absorbed; a window that churns hard while that reads zero means one of those stopped working.
 `signals queued behind a running rescan` counts the ones that arrived while the single-flight drain was already walking,
 so it reads as queue pressure; it's omitted when it's zero, and it replaces what used to be a Debug line per signal.
 
