@@ -183,7 +183,7 @@ describe('sendMessage + streaming', () => {
   it('a typed failure ends streaming and shows an honest notice', () => {
     sendMessage('hi')
     fire({ type: 'assistantStarted' })
-    fire({ type: 'failed', kind: 'rateLimited', detail: null })
+    fire({ type: 'failed', kind: 'rateLimited', detail: null, managed: null })
     expect(askCmdrState.streaming).toBe(false)
     // The empty assistant bubble is dropped; an error item takes its place.
     const last = askCmdrState.messages.at(-1)
@@ -196,7 +196,7 @@ describe('sendMessage + streaming', () => {
     fire({ type: 'toolCallStarted', callId: 'c1', tool: 'list_dir' })
     fire({ type: 'textDelta', text: 'I found part of it.' })
 
-    fire({ type: 'failed', kind: 'budgetExhausted', detail: null })
+    fire({ type: 'failed', kind: 'budgetExhausted', detail: null, managed: null })
 
     expect(assistantAt(1).tools).toEqual([])
     expect(assistantAt(1)).toMatchObject({ thinking: false, streaming: false })
@@ -229,7 +229,7 @@ describe('sendMessage + streaming', () => {
   it('a send refused because cloud AI is off re-reads the gate, so the rail can show it', async () => {
     const { refreshRailGate } = await import('./ask-cmdr-gate.svelte')
     vi.mocked(refreshRailGate).mockClear()
-    sendMock.mockResolvedValueOnce({ accepted: false, kind: 'noCloudConsent', detail: null })
+    sendMock.mockResolvedValueOnce({ accepted: false, kind: 'noCloudConsent', detail: null, managed: null })
     sendMessage('hello')
 
     await vi.waitFor(() => {
@@ -241,7 +241,7 @@ describe('sendMessage + streaming', () => {
   it("a failure with provider detail keeps the provider's wording for display", () => {
     sendMessage('hi')
     fire({ type: 'assistantStarted' })
-    fire({ type: 'failed', kind: 'provider', detail: 'HTTP 404: This model is unavailable for free.' })
+    fire({ type: 'failed', kind: 'provider', detail: 'HTTP 404: This model is unavailable for free.', managed: null })
     const last = askCmdrState.messages.at(-1)
     expect(last).toEqual({
       kind: 'error',

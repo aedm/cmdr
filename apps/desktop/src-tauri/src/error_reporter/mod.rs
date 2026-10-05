@@ -248,15 +248,6 @@ pub struct ResolvedSettings {
 }
 
 impl ResolvedSettings {
-    /// Build a snapshot from the loaded backend settings, substituting registry defaults
-    /// for any field the user hasn't explicitly set.
-    ///
-    /// Default resolution order, per field:
-    /// 1. The user's persisted value, if any (`Some(_)` in the loader struct).
-    /// 2. The FE-pushed registry default (see [`settings_defaults`]). Avoids drift when the FE
-    ///    registry's default changes.
-    /// 3. A hardcoded fallback. Used only before the FE has called `record_settings_defaults` (very
-    ///    early errors, unit tests with no FE); it's a safety net, not the primary source.
     /// The same snapshot with the organization's locks applied, through the one `overlay`: what
     /// Cmdr actually ran with, as the heartbeat's config shape reports it. Only the lockable fields
     /// here change; everything else keeps its stored value.
@@ -279,6 +270,15 @@ impl ResolvedSettings {
         self
     }
 
+    /// Build a snapshot from the loaded backend settings, substituting registry defaults
+    /// for any field the user hasn't explicitly set.
+    ///
+    /// Default resolution order, per field:
+    /// 1. The user's persisted value, if any (`Some(_)` in the loader struct).
+    /// 2. The FE-pushed registry default (see [`settings_defaults`]). Avoids drift when the FE
+    ///    registry's default changes.
+    /// 3. A hardcoded fallback. Used only before the FE has called `record_settings_defaults` (very
+    ///    early errors, unit tests with no FE); it's a safety net, not the primary source.
     fn from_settings(s: &crate::settings::loader::Settings) -> Self {
         Self {
             indexing_enabled: s
