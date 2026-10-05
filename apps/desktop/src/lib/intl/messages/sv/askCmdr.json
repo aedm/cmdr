@@ -220,6 +220,10 @@
   "@askCmdr.error.noCloudConsent": {
     "sourceHash": "cd2af1d"
   },
+  "askCmdr.error.managedByOrganization": "Din organisation tillåter inte den här AI-tjänsten. Din IT-avdelning kan berätta vilka AI-tjänster du får använda.",
+  "@askCmdr.error.managedByOrganization": {
+    "sourceHash": "845a19f"
+  },
   "askCmdr.error.localWindowTooSmall": "Cmdr behöver ett större kontextfönster än din lokala modell har. Välj 32 768 token eller mer i inställningarna, under AI.",
   "@askCmdr.error.localWindowTooSmall": {
     "sourceHash": "8ac7452"

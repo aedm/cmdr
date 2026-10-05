@@ -64,6 +64,10 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
 - **`Använd gäståtkomst`** (`fileExplorer.network.share.useGuest`): `Byt till gäst` is shorter if it reads stiff.
 - **`Välj en server för att redigera den.`** (`servers.hub.editPickHint`): the English means moving the cursor to a
   server row; confirm `Välj` doesn't suggest a picker.
+- **`Bara manuell kontroll`** (`settings.managed.summary.manualChecksOnly`, `.upToManualChecksOnly`): updates checked by
+  hand only; confirm it reads as update checks, or whether `Bara när du söker själv` is clearer.
+- **`din organisation håller den här Macen på {ceiling} eller tidigare`** (`updates.status.heldByPolicy`): confirm
+  `håller … på` reads naturally for a version cap.
 
 ## Layout (overflow-check against the pseudolocale)
 

@@ -1737,6 +1737,9 @@
     "chosen": "delad mapp",
     "confidence": "high",
     "decision": "Same concept, different English",
+    "exceptions": {
+      "errorReporter.dialog.managedOff": "English share is the verb (pass the saved report on), not an SMB share: skicka den vidare själv."
+    },
     "forms": "delad mapp / delade mappar; -resurs only inside a compound (SMB-/nätverksresurser); the share counter keeps delning / delningar; network shares → delade mappar på nätverket",
     "note": "Apple's NetAuthAgent says Delningspunkten; the catalog keeps delad mapp.",
     "sources": "macOS Finder (1069.title Delad mapp, Hantera delad mapp)"
@@ -1785,6 +1788,13 @@
     "chosen": "avisering",
     "confidence": "high",
     "sources": "macOS SystemSettings (Aviseringar), MS"
+  },
+  "on-device": {
+    "accept": ["lokal AI", "lokala", "på enheten", "på din enhet", "på den här Macen"],
+    "chosen": "lokal",
+    "confidence": "high",
+    "forms": "on-device AI → lokal AI (as the catalog already names this model: Lokal AI kräver Apple silicon); card value On-device only → Bara lokal AI; prose about where a model runs may say på enheten",
+    "sources": "catalog (ai.local.*: lokal AI, den lokala modellen); macOS TranslationUI (On-Device Translation → Översättning på enheten, live macOS 27, 2026-10-05) for the device sense"
   },
   "onboarding": {
     "accept": ["komma igång", "kom igång", "guide"],
@@ -1858,6 +1868,13 @@
     "chosen": "alternativ",
     "confidence": "high",
     "sources": "macOS Finder (Alternativ)"
+  },
+  "organization": {
+    "accept": ["organisationen", "organisations"],
+    "chosen": "organisation",
+    "confidence": "high",
+    "forms": "your organization → din organisation; managed by your organization → Hanteras av din organisation; manages → hanterar",
+    "sources": "MS terminology (organization → organisation); macOS SoftwareUpdateSettingsExtension (This setting is currently managed by your organization → Den här inställningen hanteras för närvarande av din organisation, live macOS 27, 2026-10-05); catalog (licensing.about.fallbackOrg = din organisation)"
   },
   "original": {
     "chosen": "original",

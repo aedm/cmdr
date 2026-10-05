@@ -456,7 +456,7 @@ catalog.
 - `Dock` takes no article, inflection, or possessive (`i Dock`), and pin / unpin on Apple's surface are `Behåll i Dock`
   / `Ta bort från Dock` (Dock's own menu), ❌ not Cmdr's `fäst` / `lossa`.
 - The Applications folder is `Appar` since macOS 26: `dra … från mappen Appar` (AppKit's model sentence).
-- managed by → `styrs av` (Apple's MDM formula); `hanterar` stays for the person administering the Mac.
+- managed by a profile → `styrs av`; by a person or organization → `hanteras av` (Apple's MDM).
 - `Cmdrs symbol är på plats, men Dock startade inte om`: never claim the pin failed; the icon IS there.
 - `Nej tack`, ❌ not `Inte nu`, which promises a later ask Cmdr never makes.
 - Never a number for a movable threshold (`några dagar`, `ett tag nu`).
