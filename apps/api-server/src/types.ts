@@ -39,6 +39,10 @@ export type Bindings = {
   // Workers rate-limit binding gating POST /csp-report, keyed by the caller IP (never stored).
   // Optional; the route skips the gate when absent.
   CSP_REPORT_LIMITER?: RateLimit
+  // Workers rate-limit binding gating POST /activate, keyed by the caller IP (never stored). A short
+  // code is all it takes to fetch a full license key, so this is what makes guessing codes slow.
+  // Optional; the route skips the gate when absent.
+  ACTIVATE_LIMITER?: RateLimit
   // Paddle webhook secrets (both optional to support gradual rollout)
   PADDLE_WEBHOOK_SECRET_LIVE?: string
   PADDLE_WEBHOOK_SECRET_SANDBOX?: string

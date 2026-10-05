@@ -164,6 +164,7 @@ verifies against whichever public key matches its build mode. Full rationale and
 | `LIKES_LIMITER`              | Rate limit   | Gates `POST`/`DELETE /likes/:slug` at 20 req/min/IP (bounds unauthenticated KV growth)    |
 | `BLOG_LIKES`                 | KV namespace | One key per post (`likes:<slug>`) holding the count and the caller pseudonyms             |
 | `CSP_REPORT_LIMITER`         | Rate limit   | Gates `POST /csp-report` at 30 req/min/IP (a violating page load sends a handful)         |
+| `ACTIVATE_LIMITER`           | Rate limit   | Gates `POST /activate` at 10 req/min/IP (keeps license-code guessing slow)                |
 | `CSP_ALERTS`                 | KV namespace | CSP alert dedupe: `csp:<directive>:<blocked origin>`, 24 h TTL, nothing about the visitor |
 
 **Rate limits are per data center, not global.** Cloudflare's rate-limit bindings count per colo

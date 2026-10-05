@@ -164,6 +164,18 @@ namespace_id = "1008"
 limit = 30
 period = 60
 
+# Rate limit for POST /activate, keyed by the caller IP (transient, never stored). A short code is
+# all it takes to fetch a full license key, so this keeps code guessing slow. A buyer activates
+# once, maybe after a typo or two, so 10/min/IP never turns a real one away. `period` must be 10 or
+# 60. `namespace_id` is a per-account integer id.
+[[ratelimits]]
+name = "ACTIVATE_LIMITER"
+namespace_id = "1009"
+
+[ratelimits.simple]
+limit = 10
+period = 60
+
 [triggers]
 crons = ["0 */3 * * *"]
 

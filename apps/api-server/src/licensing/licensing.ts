@@ -36,6 +36,7 @@ import {
   type PaddleWebhookPayload,
   maxOrganizationNameLength,
   activationCountKey,
+  enforceIpRateLimit,
   maxTransactionIdLength,
   redactEmail,
   getPaddleConfig,
@@ -45,6 +46,9 @@ const licensing = new Hono<{ Bindings: Bindings }>()
 
 // Activate license - exchange short code for full cryptographic key
 licensing.post('/activate', async (c) => {
+  const limited = await enforceIpRateLimit(c.env.ACTIVATE_LIMITER, c.req)
+  if (limited) return limited
+
   const { code } = await c.req.json<{ code?: string }>()
 
   if (!code || typeof code !== 'string' || code.length > 50) {
