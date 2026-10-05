@@ -222,8 +222,9 @@ risk.
   CI run or third-party action; a compromised maintainer account.
 - **Mitigations**:
   - **Every update archive is verified against a minisign public key compiled into the app**, on the downloaded bytes,
-    before anything is written into the bundle. The manifest must name a newer version, and the release workflow refuses
-    to move the published manifest backwards (`apps/desktop/src-tauri/src/updater/DETAILS.md`,
+    before anything is written into the bundle. The manifest must name a newer version, the verified archive's own
+    `Info.plist` must too (so an older signed release can't be replayed as an update), and the release workflow refuses
+    to move the published manifest backwards (`apps/desktop/src-tauri/src/updater/CLAUDE.md`,
     `apps/desktop/src/lib/updates/DETAILS.md`).
   - **Release builds are Developer ID signed and notarized** (`docs/guides/apple-signing-and-notarization.md`).
   - **The release pipeline**: release tags are SSH-signed and verified against `.github/release-signers` before a build

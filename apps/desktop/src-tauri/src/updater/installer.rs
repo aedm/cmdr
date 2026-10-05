@@ -117,6 +117,8 @@ pub fn install(tarball_path: &Path) -> Result<(), String> {
         ));
     }
 
+    refuse_unless_newer(&staged_app, env!("CARGO_PKG_VERSION"))?;
+
     log::info!("Installing update into bundle: {}", bundle_path.display());
 
     let staged_contents = staged_app.join("Contents");
@@ -153,6 +155,34 @@ pub fn install(tarball_path: &Path) -> Result<(), String> {
     }
 
     log::info!("Update installed successfully");
+    Ok(())
+}
+
+/// Refuses a staged bundle whose own version isn't newer than `current`.
+///
+/// ❗ The minisign signature proves the archive is a real release, not WHICH one:
+/// its trusted comment names only `file:Cmdr.app.tar.gz`, and the manifest that
+/// names the version isn't signed. So an older signed archive served behind a
+/// manifest claiming a newer version would verify and roll the install back. The
+/// version inside the signed bytes (`Contents/Info.plist`) is what binds it.
+fn refuse_unless_newer(staged_app: &Path, current: &str) -> Result<(), String> {
+    let info_path = staged_app.join("Contents/Info.plist");
+    let info =
+        plist::Value::from_file(&info_path).map_err(|e| format!("Couldn't read the update's Info.plist: {e}"))?;
+    let staged = info
+        .as_dictionary()
+        .and_then(|d| d.get("CFBundleShortVersionString"))
+        .and_then(plist::Value::as_string)
+        .ok_or_else(|| "The update's Info.plist names no version".to_string())?;
+    let staged_version =
+        semver::Version::parse(staged).map_err(|e| format!("The update's version {staged} isn't semver: {e}"))?;
+    let current_version =
+        semver::Version::parse(current).map_err(|e| format!("This build's version {current} isn't semver: {e}"))?;
+    if staged_version <= current_version {
+        return Err(format!(
+            "Refusing the update: it holds version {staged_version}, which isn't newer than {current_version}"
+        ));
+    }
     Ok(())
 }
 
@@ -540,5 +570,49 @@ mod tests {
         let argv = build_admin_sync_argv(staged, dest);
         assert!(argv[2].to_string_lossy().ends_with("/Contents/"));
         assert!(argv[3].to_string_lossy().ends_with("/Contents/"));
+    }
+
+    /// A staged `Cmdr.app` whose `Info.plist` names `version` (`None`: no version key).
+    fn staged_app_with_version(version: Option<&str>) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        let contents = dir.path().join("Cmdr.app/Contents");
+        fs::create_dir_all(&contents).unwrap();
+        let mut info = plist::Dictionary::new();
+        info.insert("CFBundleIdentifier".into(), "com.veszelovszki.cmdr".into());
+        if let Some(version) = version {
+            info.insert("CFBundleShortVersionString".into(), version.into());
+        }
+        plist::Value::Dictionary(info)
+            .to_file_xml(contents.join("Info.plist"))
+            .unwrap();
+        dir
+    }
+
+    #[test]
+    fn a_newer_staged_bundle_installs() {
+        let dir = staged_app_with_version(Some("0.51.0"));
+        assert_eq!(refuse_unless_newer(&dir.path().join("Cmdr.app"), "0.50.0"), Ok(()));
+    }
+
+    /// ❗ The signature proves an archive is a real release, not WHICH release:
+    /// an older signed archive behind a manifest that claims a newer version
+    /// would otherwise roll the install back to a build with known bugs.
+    #[test]
+    fn a_staged_bundle_that_isnt_newer_is_refused() {
+        for staged in ["0.50.0", "0.49.2", "0.51.0-beta.1"] {
+            let dir = staged_app_with_version(Some(staged));
+            assert!(
+                refuse_unless_newer(&dir.path().join("Cmdr.app"), "0.51.0").is_err(),
+                "{staged} over 0.51.0 must be refused"
+            );
+        }
+    }
+
+    #[test]
+    fn a_staged_bundle_without_a_readable_version_is_refused() {
+        let dir = staged_app_with_version(None);
+        assert!(refuse_unless_newer(&dir.path().join("Cmdr.app"), "0.50.0").is_err());
+        let empty = tempfile::tempdir().unwrap();
+        assert!(refuse_unless_newer(&empty.path().join("Cmdr.app"), "0.50.0").is_err());
     }
 }

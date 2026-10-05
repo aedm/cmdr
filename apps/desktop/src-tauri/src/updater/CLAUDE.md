@@ -38,6 +38,10 @@ platforms use the Tauri updater plugin and the frontend calls the plugin API dir
   user. `installer::install` and the frontend both gate on `bundle_location::classify` BEFORE the download, ❌ never by
   escalating: escalating buys an auth dialog the user can only cancel. The `PermissionDenied` arm is for a root-owned
   `/Applications`, a different thing. `DETAILS.md` § A bundle that can't be written.
+- **The signature doesn't name a version, so the archive's own `Info.plist` does.** Its trusted comment is only
+  `file:Cmdr.app.tar.gz`, and `latest.json` isn't signed, so `installer::refuse_unless_newer` refuses a staged bundle
+  whose `CFBundleShortVersionString` isn't newer than the running build. ❌ Never install around it: it's what stops an
+  older signed release from rolling an install back.
 - **Manifest fetch is bounded** (`connect_timeout` 10 s, overall `timeout` 30 s); download/install paths are
   intentionally NOT timed out (they run with user attention). Don't add timeouts there.
 - **Manifest URL routes through the API server** (`https://api.getcmdr.com/update-check/{version}?arch={arch}`), which
