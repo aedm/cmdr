@@ -43,8 +43,6 @@ differs from the field name.
 - `network_enabled: Option<bool>` (from `network.enabled`; default on, off renders the picker as "Network (disabled)").
 - `network_first_trigger_done: Option<bool>` (from `network.firstTriggerDone`; hidden internal flag, true once the macOS
   Local Network prompt has fired).
-- `analytics_enabled: Option<bool>` (from `analytics.enabled`; tri-state consent: None/Some(true) → on, Some(false) →
-  opted out; see `analytics/CLAUDE.md`).
 
 `early_load_global_go_to_latest_shortcut()` is a third early-load helper returning `Option<(bool, String)>` (enabled +
 shortcut string) for the downloads global shortcut, read before the `AppHandle` is wired in.

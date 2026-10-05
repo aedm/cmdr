@@ -13,7 +13,7 @@
 
 use super::spool::{Spool, SpooledEvent};
 use super::{SendPermission, config_shape};
-use crate::managed_policy::Egress;
+use crate::managed_policy::{Egress, ManagedPolicy};
 use crate::send_schedule::{SendCadence, SendRecord, now_unix_ms};
 use crate::server_request::ServerRequestError;
 use serde::{Deserialize, Serialize};
@@ -229,7 +229,11 @@ async fn beat(state: &mut HeartbeatState, spool: &Spool) -> BeatOutcome {
 
 fn build_payload(uptime_seconds: u64, events: Vec<SpooledEvent>) -> HeartbeatPayload {
     let fda_granted = !crate::fda_gate::is_fda_pending_runtime();
-    let config = config_shape::build_config_shape(&super::read_raw_settings(), fda_granted);
+    let config = config_for(
+        &crate::managed_policy::current(),
+        super::read_raw_settings(),
+        fda_granted,
+    );
 
     HeartbeatPayload {
         anal_id: crate::install_id::analytics_id(),
@@ -241,6 +245,19 @@ fn build_payload(uptime_seconds: u64, events: Vec<SpooledEvent>) -> HeartbeatPay
         uptime_seconds,
         events,
     }
+}
+
+/// The config shape of the EFFECTIVE settings: the organization's locks over the stored ones, plus
+/// whether any policy is in force (one coarse bool, never which keys).
+fn config_for(policy: &ManagedPolicy, mut settings: serde_json::Value, fda_granted: bool) -> serde_json::Value {
+    crate::managed_policy::overlay(policy, &mut settings);
+    config_shape::build_config_shape(
+        &settings,
+        config_shape::RuntimeState {
+            fda_granted,
+            managed_by_organization: policy.is_managed(),
+        },
+    )
 }
 
 fn current_build_mode() -> &'static str {
@@ -467,6 +484,30 @@ mod tests {
                 .is_empty()
         );
         assert_eq!(s.schedule, SendRecord::default(), "a blocked beat isn't a failed send");
+    }
+
+    /// The heartbeat reports what's in force, so a stored `true` under a managed off reads `false`.
+    #[test]
+    fn the_config_shape_reports_effective_values_and_the_managed_flag() {
+        let stored = json!({
+            "analytics.enabled": true,
+            "updates.crashReports": true,
+            "updates.errorReports": true,
+            "theme.mode": "dark",
+        });
+        let policy = testing::forcing(&[testing::DISABLE_USAGE_STATS, testing::DISABLE_CRASH_AND_ERROR_REPORTS]);
+
+        let config = config_for(&policy, stored.clone(), true);
+
+        assert_eq!(config["analytics.enabled"], json!(false));
+        assert_eq!(config["updates.crashReports"], json!(false));
+        assert_eq!(config["updates.errorReports"], json!(false));
+        assert_eq!(config["theme.mode"], json!("dark"));
+        assert_eq!(config["managedByOrganization"], json!(true));
+
+        let unmanaged = config_for(&ManagedPolicy::default(), stored, true);
+        assert_eq!(unmanaged["analytics.enabled"], json!(true));
+        assert_eq!(unmanaged["managedByOrganization"], json!(false));
     }
 
     fn state(unreported: u64) -> HeartbeatState {

@@ -69,7 +69,8 @@ an attached email links only to the diagnostics stream; the analytics stream sta
 - **Granted**: adds the time since the last wake to the unreported uptime, beats if `CADENCE` says one is due, and
   persists its state.
 - **Opted out**: zeroes the unreported uptime and deletes the spool. Nothing collected while opted in leaves after an
-  opt-out.
+  opt-out. An organization's `DisableUsageStats` lands here too: `send_permission` reads `analytics.enabled` through
+  `managed_policy::overlay`, so a managed off is an ordinary opt-out with no variant of its own.
 - **Suppressed**: does nothing, and logs why once.
 
 **The schedule is a throttle** (`crate::send_schedule`, shared with the update check): at most one acknowledged beat per
@@ -89,6 +90,9 @@ the app being open, never the person at the keyboard (same caveat as the session
 - **400 / 413 / 422**: the server refused these exact bytes, so the batch is dropped (logged at `warn`) and the uptime
   kept. Retrying the same batch would be refused every 15 min forever, and the daily-active signal with it.
 - **Anything else** (no answer, timeout, 429, 5xx): a failure; everything stays for the retry.
+- **Blocked by policy**: the beat rides `server_request::send(Egress::Heartbeat, …)`, which reads the managed policy
+  fresh. A policy that arrived after the permission check stops it before anything leaves, and the beat forgets the
+  spool and uptime like an opt-out.
 
 ## Heartbeat payload
 
@@ -100,7 +104,8 @@ the app being open, never the person at the keyboard (same caveat as the session
 - `osVersion` (required): from `crate::platform::os_version()`, always non-empty.
 - `arch` (required): `std::env::consts::ARCH`.
 - `buildMode` (optional): `"release"` / `"debug"`.
-- `config` (optional): the config-shape object, verbatim.
+- `config` (optional): the config-shape object, verbatim. It shows EFFECTIVE values (the managed locks over the
+  stored settings) plus `managedByOrganization`, one coarse bool: never which keys an organization set.
 - `uptimeSeconds`: runtime no earlier acknowledged beat reported. Always sent.
 - `events`: up to 500 spooled events, oldest first, and at most 192 KB of them (the server caps the body at 256 KB).
   Always sent, possibly empty. Each is `{ event, timestamp, id, appVersion, properties }`.
