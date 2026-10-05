@@ -66,7 +66,7 @@ describe('PresetHostVerdicts', () => {
     const verdicts = new PresetHostVerdicts()
     const first = verdicts.refresh()
     await verdicts.refresh()
-    releaseFirst?.(cloudProviderPresets.map(() => false))
+    releaseFirst?.(cloudProviderPresets.map(() => 'hostNotAllowed' as const))
     await first
     expect(verdicts.isRefused('openai')).toBe(false)
   })

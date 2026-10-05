@@ -161,7 +161,7 @@ mod tests {
         );
         let ai_off = Some(ManagedAiRefusal::AiOff);
         assert_eq!(
-            host_verdicts(&testing::forcing(&[testing::DISABLE_AI]), &urls),
+            host_verdicts(&testing::forcing(&[DISABLE_AI]), &urls),
             [ai_off, ai_off, ai_off, ai_off]
         );
         assert_eq!(
