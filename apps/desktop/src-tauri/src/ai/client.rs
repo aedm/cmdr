@@ -10,6 +10,10 @@
 //!   `gpt-*`/`o*`/`chatgpt-*` use OpenAI (incl. the Responses-API auto-routing), and every other
 //!   OpenAI-compatible provider (Groq, OpenRouter, DeepSeek, …) is forced onto OpenAI
 //!   chat-completions so `genai` doesn't mis-route it to Ollama.
+//!
+//! Every backend knows its [`AiDestination`], and each request function asks the managed policy
+//! about it on a fresh read right before sending (`managed_policy/DETAILS.md`). Remote clients
+//! also refuse to follow a redirect to a host the policy refuses.
 
 use std::fmt::Display;
 use std::sync::Arc;
@@ -25,6 +29,7 @@ use genai::{Client, ModelIden, ServiceTarget};
 use serde_json::{Value, json};
 
 use super::llm_log::{self, CallLog, Fidelity, LlmLogContext, RequestInfo, ResponseInfo};
+use crate::managed_policy::AiDestination;
 
 /// A configured AI backend ready to receive [`chat_completion`] calls.
 ///
@@ -34,6 +39,9 @@ use super::llm_log::{self, CallLog, Fidelity, LlmLogContext, RequestInfo, Respon
 pub struct AiBackend {
     client: Client,
     model: String,
+    /// Where `client` sends, parsed once from the same endpoint `genai` calls, so the per-request
+    /// policy check judges the exact URL.
+    destination: AiDestination,
     /// The logging context for this backend's calls, or `None` to skip logging (the default;
     /// unit-test backends and any path that hasn't opted in). Set by the caller via
     /// [`AiBackend::with_log_context`] once it knows which feature (and session) the call
@@ -74,6 +82,7 @@ impl AiBackend {
         Self {
             client,
             model: String::from("openai::local-model"),
+            destination: AiDestination::LocalServer,
             log_ctx: None,
         }
     }
@@ -86,21 +95,34 @@ impl AiBackend {
     /// ❌ `pub(in crate::ai)` on purpose: a cloud backend built outside `manager::resolve_backend`
     /// would skip the cloud consent gate. Tests elsewhere use `remote_for_tests`.
     pub(in crate::ai) fn remote(api_key: String, base_url: String, model: String) -> Self {
-        // Without a trailing `/` the `Url::join` quirk above silently drops `/v1`.
-        let endpoint = if base_url.ends_with('/') {
-            base_url
-        } else {
-            format!("{base_url}/")
-        };
+        let endpoint = remote_endpoint(base_url);
+        let destination = AiDestination::Remote(parse_endpoint(&endpoint));
         let resolver = make_resolver(endpoint, AuthData::from_single(api_key), ForceAdapter::None);
-        let client = Client::builder().with_service_target_resolver(resolver).build();
+        let client = Client::builder()
+            .with_reqwest(policy_guarded_http_client())
+            .with_service_target_resolver(resolver)
+            .build();
         // The resolver only overrides endpoint + auth; adapter dispatch happens from the model
         // name BEFORE the resolver runs (same reason `local` uses the `openai::` namespace).
         Self {
             client,
             model: remote_model_iden(&model),
+            destination,
             log_ctx: None,
         }
+    }
+
+    /// The backstop behind `resolve_backend`'s own check: asks the policy on a fresh read whether
+    /// this backend may still send. A backend outlives its resolution (an Ask Cmdr turn makes
+    /// many requests on one), so a profile that arrives mid-turn stops the next request here.
+    async fn check_managed_policy(&self) -> Result<(), AiError> {
+        crate::managed_policy::for_egress()
+            .await
+            .ai_destination(&self.destination)
+            .map_err(|refusal| {
+                log::info!("AI request refused by the organization's policy ({refusal:?}); nothing sent");
+                AiError::Managed(refusal)
+            })
     }
 
     /// Attaches a logging context so this backend's requests and responses are recorded to
@@ -138,6 +160,7 @@ impl AiBackend {
         request: ChatRequest,
         options: &ChatOptions,
     ) -> Result<BoxStream<'static, genai::Result<ChatStreamEvent>>, AiError> {
+        self.check_managed_policy().await?;
         let target = self
             .client
             .resolve_service_target(&self.model)
@@ -339,6 +362,9 @@ pub enum AiError {
     ServerError(String),
     /// Couldn't parse the response body.
     ParseError(String),
+    /// The organization's managed policy refuses this backend's destination, so nothing was
+    /// sent. The per-request backstop behind `resolve_backend`'s own check.
+    Managed(crate::managed_policy::ManagedAiRefusal),
 }
 
 impl Display for AiError {
@@ -352,6 +378,7 @@ impl Display for AiError {
             Self::EmptyResponse => write!(f, "AI returned no text"),
             Self::ServerError(msg) => write!(f, "AI server error: {msg}"),
             Self::ParseError(msg) => write!(f, "AI response parse error: {msg}"),
+            Self::Managed(refusal) => write!(f, "AI request refused by the organization's policy ({refusal:?})"),
         }
     }
 }
@@ -368,6 +395,7 @@ pub async fn chat_completion(
     user_prompt: &str,
     options: &ChatOptions,
 ) -> Result<String, AiError> {
+    backend.check_managed_policy().await?;
     let target = backend
         .client
         .resolve_service_target(&backend.model)
@@ -481,6 +509,7 @@ pub async fn chat_completion_stream(
     user_prompt: &str,
     options: &ChatOptions,
 ) -> Result<BoxStream<'static, Result<String, AiError>>, AiError> {
+    backend.check_managed_policy().await?;
     let target = backend
         .client
         .resolve_service_target(&backend.model)
@@ -567,6 +596,57 @@ fn is_openai_chat_reasoning_model(model_name: &str) -> bool {
         || model_name.starts_with("o4")
         || model_name.starts_with("chatgpt-")
         || model_name.starts_with("gpt-5")
+}
+
+/// The endpoint [`AiBackend::remote`] hands `genai` for `base_url`. Without a trailing `/` the
+/// `Url::join` quirk above silently drops `/v1`.
+fn remote_endpoint(base_url: String) -> String {
+    if base_url.ends_with('/') {
+        base_url
+    } else {
+        format!("{base_url}/")
+    }
+}
+
+/// Where [`AiBackend::remote`] would send for `base_url`, so `resolve_backend` judges the exact
+/// URL the backend will call.
+pub(super) fn remote_destination(base_url: &str) -> AiDestination {
+    AiDestination::Remote(parse_endpoint(&remote_endpoint(base_url.to_string())))
+}
+
+/// An endpoint that doesn't parse has no host a host list could allow (and `genai` can't reach it
+/// either), so it stands in as a hostless URL.
+fn parse_endpoint(endpoint: &str) -> url::Url {
+    url::Url::parse(endpoint).unwrap_or_else(|_| url::Url::parse("invalid:").expect("a constant, valid URL"))
+}
+
+/// How many redirects a remote request follows, matching reqwest's default policy.
+const MAX_REDIRECTS: usize = 10;
+
+/// The HTTP client remote backends send through: `genai`'s defaults, plus a redirect policy that
+/// stops at any hop the managed policy refuses. Without it, a 3xx from an allowed host would carry
+/// the request (and its key) to any host.
+fn policy_guarded_http_client() -> reqwest::Client {
+    let builder = reqwest::Client::builder().redirect(reqwest::redirect::Policy::custom(follow_allowed_hop));
+    genai::WebConfig::default().apply_to_builder(builder).build().expect(
+        "a reqwest client fails to build only when its TLS backend can't start, which genai treats as fatal too",
+    )
+}
+
+/// One redirect hop: followed only when the policy allows its destination. Synchronous, so it
+/// reads the cached policy, which the request's own egress check refreshed moments before.
+fn follow_allowed_hop(attempt: reqwest::redirect::Attempt) -> reqwest::redirect::Action {
+    if attempt.previous().len() >= MAX_REDIRECTS {
+        return attempt.error("too many redirects");
+    }
+    let destination = AiDestination::Remote(attempt.url().clone());
+    match crate::managed_policy::current().ai_destination(&destination) {
+        Ok(()) => attempt.follow(),
+        Err(refusal) => {
+            log::info!("AI request: not following a redirect the organization's policy refuses ({refusal:?})");
+            attempt.stop()
+        }
+    }
 }
 
 /// Tells `genai`'s `ServiceTargetResolver` whether to force a specific adapter.

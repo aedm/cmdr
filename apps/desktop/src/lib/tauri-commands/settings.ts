@@ -2,7 +2,7 @@
 
 import { Channel, invoke } from '@tauri-apps/api/core'
 import { type UnlistenFn } from '@tauri-apps/api/event'
-import type { AiApiKeyError } from '$lib/ipc/bindings'
+import type { AiApiKeyError, ManagedAiRefusal } from '$lib/ipc/bindings'
 import {
   commands,
   events,
@@ -455,6 +455,8 @@ export interface AiConnectionCheckResult {
   error: string | null
   /** The user hasn't allowed cloud AI, so nothing was sent and the other fields are empty. */
   cloudConsentMissing: boolean
+  /** The organization's policy refuses this endpoint, so nothing was sent. Decided before consent. */
+  managed: ManagedAiRefusal | null
 }
 
 /**

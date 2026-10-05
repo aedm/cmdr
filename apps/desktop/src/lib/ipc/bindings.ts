@@ -1999,6 +1999,11 @@ export const commands = {
   checkAiConnection: (baseUrl: string, providerId: string) =>
     __TAURI_INVOKE<AiConnectionCheckResult>('check_ai_connection', { baseUrl, providerId }),
   /**
+   *  For each base URL, whether cloud AI may send there under the current policy. The provider
+   *  picker renders a refused preset disabled with the reason; a URL, never a key, crosses IPC.
+   */
+  cloudAiHostsAllowed: (baseUrls: string[]) => __TAURI_INVOKE<boolean[]>('cloud_ai_hosts_allowed', { baseUrls }),
+  /**
    *  The cloud AI consent status. A missing or unreadable store reads as not accepted, so the gate
    *  stays closed rather than failing open.
    */
@@ -4952,6 +4957,11 @@ export type AgentErrorKindView =
    */
   | 'noCloudConsent'
   /**
+   *  The organization's managed policy refuses the provider or its host. View-only, like
+   *  `NoCloudConsent`: the slot refuses before a thread exists.
+   */
+  | 'managedByOrganization'
+  /**
    *  The local server runs with a context window too small to hold one prompt, so the send
    *  was refused before it could be assembled against
    *  (`budget::BudgetRefusal::LocalWindowBelowFloor`). View-only: the runtime never produces
@@ -5047,6 +5057,11 @@ export type AiConnectionCheckResult = {
   error: string | null
   // The user hasn't allowed cloud AI, so nothing was sent. The other fields are empty.
   cloudConsentMissing: boolean
+  /**
+   *  The organization's policy refuses this endpoint, so nothing was sent. The other fields are
+   *  empty. Decided before consent.
+   */
+  managed: ManagedAiRefusal | null
 }
 
 export type AiExtracting = null
@@ -5132,6 +5147,8 @@ export type AiStatus =
 export type AiTranslateError = {
   kind: AiTranslateErrorKind
   message: string
+  // Which managed-policy rule refused, set exactly when `kind` is `Managed`.
+  managed: ManagedAiRefusal | null
 }
 
 /**
@@ -5163,6 +5180,11 @@ export type AiTranslateErrorKind =
   | 'parseError'
   // The configured provider value isn't recognized.
   | 'unknownProvider'
+  /**
+   *  The organization's managed policy refuses this AI request. [`AiTranslateError::managed`]
+   *  says which rule.
+   */
+  | 'managed'
 
 export type AiVerifying = null
 
@@ -5917,6 +5939,11 @@ export type CloudAiConsentStatus = {
   acceptedVersion: number | null
   // When the user last accepted (unix secs), or `None` if never.
   acceptedAt: number | null
+  /**
+   *  Set when the organization's policy rules out every cloud host: the switch is locked off
+   *  for this reason, whatever the record says.
+   */
+  managed: ManagedAiRefusal | null
 }
 
 /**
@@ -9679,6 +9706,15 @@ export type LowDiskSpacePayload = {
   thresholdPercent: number
   isLow: boolean
 }
+
+// Why the policy refused an AI request. Produced only by [`super::ManagedPolicy::ai_destination`].
+export type ManagedAiRefusal =
+  // `DisableAI`: no AI at all, local included.
+  | 'aiOff'
+  // `DisableCloudAI`, or an empty `AllowedCloudAIHosts`: on-device only.
+  | 'cloudAiOff'
+  // The request's host isn't in `AllowedCloudAIHosts`.
+  | 'hostNotAllowed'
 
 // The policy changed while Cmdr runs. Same payload as `get_managed_policy`.
 export type ManagedPolicyChanged = {

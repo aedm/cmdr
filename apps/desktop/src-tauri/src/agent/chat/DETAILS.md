@@ -416,7 +416,8 @@ with no `suggestion_group_proposed` behind it (that last one is the only one tha
 
 **The funnel's top is a second reporter.** Four gates in `../../commands/agent/chat.rs` refuse a
 send BEFORE `run_turn` exists: no agent store, Ask Cmdr off (`askCmdrOff`), cloud AI not allowed
-(`noCloudConsent`, from the slot's `SlotRefusal`), no resolvable provider, and
+(`noCloudConsent`, from the slot's `SlotRefusal`), the organization's managed policy refusing the provider
+(`managedByOrganization`, `SlotRefusal::Managed`), no resolvable provider, and
 a local window under the one-turn floor. None of them reach `drive`, so `AskCmdrSendRefusal`'s
 two constructors report the same event with `outcome: "refused"` and the gate as `failure`.
 Without that half, "AI is off" and "nobody opened the rail" are both no events at all, which is

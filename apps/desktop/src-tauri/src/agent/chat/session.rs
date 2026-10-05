@@ -75,6 +75,8 @@ pub enum SlotRefusal {
     NotConfigured,
     /// Cloud AI is picked, and the user hasn't allowed it (`ai::cloud_consent`).
     NoCloudConsent,
+    /// The organization's managed policy refuses the provider or its host.
+    Managed(crate::managed_policy::ManagedAiRefusal),
 }
 
 impl SlotRefusal {
@@ -84,6 +86,7 @@ impl SlotRefusal {
         match self {
             SlotRefusal::NotConfigured => AgentErrorKindView::NotConfigured,
             SlotRefusal::NoCloudConsent => AgentErrorKindView::NoCloudConsent,
+            SlotRefusal::Managed(_) => AgentErrorKindView::ManagedByOrganization,
         }
     }
 }
@@ -128,6 +131,7 @@ fn slot_backend(resolution: crate::ai::manager::BackendResolution) -> Result<AiB
         }
         // Refused before a thread exists: nothing reaches a cloud service the user didn't allow.
         BackendResolution::NoCloudConsent => Err(SlotRefusal::NoCloudConsent),
+        BackendResolution::Managed(refusal) => Err(SlotRefusal::Managed(refusal)),
     }
 }
 
@@ -368,9 +372,14 @@ mod tests {
     #[test]
     fn a_backend_resolution_maps_onto_the_slot() {
         use crate::ai::manager::BackendResolution;
+        use crate::managed_policy::ManagedAiRefusal;
         assert!(matches!(
             slot_backend(BackendResolution::NoCloudConsent),
             Err(SlotRefusal::NoCloudConsent)
+        ));
+        assert!(matches!(
+            slot_backend(BackendResolution::Managed(ManagedAiRefusal::HostNotAllowed)),
+            Err(SlotRefusal::Managed(ManagedAiRefusal::HostNotAllowed))
         ));
         for unconfigured in [
             BackendResolution::Off,
@@ -390,6 +399,11 @@ mod tests {
         assert_eq!(
             serde_json::to_value(SlotRefusal::NotConfigured.view()).expect("serializes"),
             "notConfigured"
+        );
+        assert_eq!(
+            serde_json::to_value(SlotRefusal::Managed(crate::managed_policy::ManagedAiRefusal::CloudAiOff).view())
+                .expect("serializes"),
+            "managedByOrganization"
         );
     }
 }

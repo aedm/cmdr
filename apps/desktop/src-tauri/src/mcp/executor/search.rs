@@ -294,6 +294,10 @@ fn translate_refusal(e: &crate::ai::AiTranslateError) -> ToolError {
         // Only the user can allow it, in the app: an MCP client can't flip this switch.
         K::NoCloudConsent => ToolError::invalid_params("Cloud AI isn't allowed in Cmdr's settings.")
             .with_data(serde_json::json!({ "reason": "cloudAiNotAllowed" })),
+        // The organization's policy: nobody in the app can change it, so the client gets the
+        // rule's own name to tell the user.
+        K::Managed => ToolError::invalid_params("Your organization's policy doesn't allow this AI request.")
+            .with_data(serde_json::json!({ "reason": e.managed })),
         _ => ToolError::internal(format!("AI search couldn't run: {}", e.message)),
     }
 }
@@ -456,6 +460,23 @@ mod tests {
         let err = translate_refusal(&AiTranslateError::new(AiTranslateErrorKind::NoCloudConsent, "detail"));
         assert_eq!(err.code, ToolError::invalid_params("").code);
         assert_eq!(err.data, Some(json!({ "reason": "cloudAiNotAllowed" })));
+    }
+
+    /// The organization's policy reaches an MCP client as the refusal's own name, so a client can
+    /// tell the user why, and that nobody in the app can change it.
+    #[test]
+    fn a_managed_refusal_is_typed_by_its_rule() {
+        use crate::ai::AiTranslateError;
+        use crate::managed_policy::ManagedAiRefusal;
+        for (refusal, reason) in [
+            (ManagedAiRefusal::AiOff, "aiOff"),
+            (ManagedAiRefusal::CloudAiOff, "cloudAiOff"),
+            (ManagedAiRefusal::HostNotAllowed, "hostNotAllowed"),
+        ] {
+            let err = translate_refusal(&AiTranslateError::from_refusal(refusal));
+            assert_eq!(err.code, ToolError::invalid_params("").code);
+            assert_eq!(err.data, Some(json!({ "reason": reason })));
+        }
     }
 
     #[test]

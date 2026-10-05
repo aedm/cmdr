@@ -11,6 +11,8 @@
 //! ever probes is a cloud endpoint being set up.
 
 use regex::Regex;
+
+use crate::managed_policy::{ManagedAiRefusal, ManagedPolicy};
 use std::borrow::Cow;
 use std::sync::OnceLock;
 
@@ -24,6 +26,9 @@ pub struct AiConnectionCheckResult {
     pub error: Option<String>,
     /// The user hasn't allowed cloud AI, so nothing was sent. The other fields are empty.
     pub cloud_consent_missing: bool,
+    /// The organization's policy refuses this endpoint, so nothing was sent. The other fields are
+    /// empty. Decided before consent.
+    pub managed: Option<ManagedAiRefusal>,
 }
 
 /// Checks connectivity to the given provider's AI API endpoint.
@@ -38,11 +43,30 @@ pub async fn check_ai_connection(
     base_url: String,
     provider_id: String,
 ) -> AiConnectionCheckResult {
+    if let Some(refused) = refuse_by_policy(&*crate::managed_policy::for_egress().await, &base_url) {
+        return refused;
+    }
     if let Some(refused) = refuse_without_consent(super::cloud_consent::cloud_consent_from_app(&app)) {
         return refused;
     }
     let (api_key, _) = super::api_keys::read_for_backend(&provider_id);
     probe_ai_endpoint(base_url, api_key).await
+}
+
+/// The policy half of [`check_ai_connection`], pure so it's testable: `Some` answer when the
+/// organization refuses the endpoint (judged as the backend would send to it), `None` to go on.
+fn refuse_by_policy(policy: &ManagedPolicy, base_url: &str) -> Option<AiConnectionCheckResult> {
+    let refusal = policy
+        .ai_destination(&super::client::remote_destination(base_url))
+        .err()?;
+    Some(AiConnectionCheckResult {
+        connected: false,
+        auth_error: false,
+        models: vec![],
+        error: None,
+        cloud_consent_missing: false,
+        managed: Some(refusal),
+    })
 }
 
 /// The consent half of [`check_ai_connection`], pure so it's testable: `Some` answer when cloud
@@ -54,6 +78,7 @@ fn refuse_without_consent(cloud_consent: bool) -> Option<AiConnectionCheckResult
         models: vec![],
         error: None,
         cloud_consent_missing: true,
+        managed: None,
     })
 }
 
@@ -69,6 +94,7 @@ async fn probe_ai_endpoint(base_url: String, api_key: String) -> AiConnectionChe
             models: vec![],
             error: Some(message),
             cloud_consent_missing: false,
+            managed: None,
         };
     }
 
@@ -86,6 +112,7 @@ async fn probe_ai_endpoint(base_url: String, api_key: String) -> AiConnectionChe
                 models: vec![],
                 error: Some(format!("Can't create HTTP client: {e}")),
                 cloud_consent_missing: false,
+                managed: None,
             };
         }
     };
@@ -111,6 +138,7 @@ async fn probe_ai_endpoint(base_url: String, api_key: String) -> AiConnectionChe
                 models: vec![],
                 error: Some(msg),
                 cloud_consent_missing: false,
+                managed: None,
             };
         }
     };
@@ -124,6 +152,7 @@ async fn probe_ai_endpoint(base_url: String, api_key: String) -> AiConnectionChe
             models: vec![],
             error: Some(String::from("API key is invalid")),
             cloud_consent_missing: false,
+            managed: None,
         };
     }
 
@@ -137,6 +166,7 @@ async fn probe_ai_endpoint(base_url: String, api_key: String) -> AiConnectionChe
             models,
             error: None,
             cloud_consent_missing: false,
+            managed: None,
         };
     }
 
@@ -149,6 +179,7 @@ async fn probe_ai_endpoint(base_url: String, api_key: String) -> AiConnectionChe
         models: vec![],
         error: Some(format!("HTTP {status}: {body_preview}")),
         cloud_consent_missing: false,
+        managed: None,
     }
 }
 
@@ -255,6 +286,27 @@ mod tests {
         assert!(!refused.auth_error);
         assert!(refused.models.is_empty());
         assert_eq!(refused.error, None, "a typed flag, not a sentence");
+    }
+
+    /// The organization's policy refuses before consent, typed, and reaches nothing.
+    #[test]
+    fn a_refused_endpoint_is_answered_without_a_request() {
+        use crate::managed_policy::testing::{self, ALLOWED_CLOUD_AI_HOSTS, DISABLE_CLOUD_AI};
+        let cloud_off = testing::forcing(&[DISABLE_CLOUD_AI]);
+        let refused = refuse_by_policy(&cloud_off, "http://localhost:11434/v1").expect("cloud off ⇒ a refusal");
+        assert_eq!(refused.managed, Some(ManagedAiRefusal::CloudAiOff));
+        assert!(!refused.connected && !refused.cloud_consent_missing && refused.error.is_none());
+
+        let listed = testing::from_values(&[(
+            ALLOWED_CLOUD_AI_HOSTS,
+            plist::Value::Array(vec![plist::Value::String("api.openai.com".into())]),
+        )]);
+        assert_eq!(
+            refuse_by_policy(&listed, "https://evil.example.com/v1").and_then(|r| r.managed),
+            Some(ManagedAiRefusal::HostNotAllowed)
+        );
+        assert!(refuse_by_policy(&listed, "https://api.openai.com/v1").is_none());
+        assert!(refuse_by_policy(&ManagedPolicy::default(), "https://evil.example.com/v1").is_none());
     }
 
     #[test]

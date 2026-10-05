@@ -105,6 +105,9 @@ fn provider_gate<R: Runtime>(app: &AppHandle<R>) -> ProviderGate {
         BackendResolution::Ready(_) => ProviderGate::Ready,
         BackendResolution::Off => ProviderGate::Off,
         BackendResolution::NoCloudConsent => ProviderGate::NeedsCloudConsent,
+        // The organization's answer, already given: silent like the user's own "off", and the
+        // stored backlog stays (the policy can lift again).
+        BackendResolution::Managed(_) => ProviderGate::Off,
         BackendResolution::NotConfigured(_) | BackendResolution::UnknownProvider(_) => ProviderGate::NotConfigured,
     }
 }

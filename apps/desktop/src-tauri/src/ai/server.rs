@@ -47,6 +47,10 @@ pub fn stop_ai_server() {
 #[tauri::command]
 #[specta::specta]
 pub fn start_ai_server<R: Runtime>(app: AppHandle<R>, ctx_size: u32) -> Result<(), String> {
+    if let Err(refusal) = super::managed::local_ai_allowed(&crate::managed_policy::current()) {
+        log::info!("AI server: the organization's policy refuses local AI ({refusal:?}), not starting");
+        return Err(String::from("Your organization turned off AI in Cmdr"));
+    }
     if !is_local_ai_supported() {
         return Err(String::from("Local AI not supported on this hardware"));
     }

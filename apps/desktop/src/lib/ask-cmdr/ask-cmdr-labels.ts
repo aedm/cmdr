@@ -59,6 +59,7 @@ const ERROR_KEYS: Record<AskCmdrErrorKind, MessageKey> = {
   // refusal also flips the rail back to its gate, which carries the way out.
   askCmdrOff: 'askCmdr.error.askCmdrOff',
   noCloudConsent: 'askCmdr.error.noCloudConsent',
+  managedByOrganization: 'askCmdr.error.managedByOrganization',
   localWindowTooSmall: 'askCmdr.error.localWindowTooSmall',
   unavailable: 'askCmdr.error.unavailable',
   timeout: 'askCmdr.error.timeout',

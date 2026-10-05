@@ -100,8 +100,9 @@ download, and the user-initiated feedback and beta signup.
   periodically, calling it "undocumented and therefore fragile".
 - **Every egress**: `for_egress().await`, coalesced to one read per second, behind a lock so racing callers make one
   trip.
-- A change calls `apply_change` (cache.rs): today it logs and emits `managed-policy-changed`; the AI milestone adds the
-  immediate stops there (cancel in-flight cloud work, stop `llama-server`, cancel a model download).
+- A change calls `apply_change` (cache.rs): it logs, emits `managed-policy-changed`, and hands the change to
+  `ai::managed::apply_policy_change`, which cancels in-flight AI calls on any narrowing and stops `llama-server` plus a
+  model download when `DisableAI` arrives (`ai/DETAILS.md` § Managed policy).
 
 ## Where the gates live
 
@@ -117,6 +118,10 @@ download, and the user-initiated feedback and beta signup.
   background trigger under `DisableAutomaticUpdateChecks`), then `update_to` for the offered release, again before the
   download and the install, and once more for the version the extracted archive names. `updater/DETAILS.md` § Managed
   policy.
+- **AI**: `ai_destination` is the one decision, asked by `resolve_backend` (the typed reason, before consent) and by
+  the LLM client before every request (the backstop, on a fresh read), plus each redirect hop.
+  `any_cloud_refusal` is its host-independent half, for the consent predicate and cloud-only features.
+  `ai/DETAILS.md` § Managed policy.
 
 ## Testing
 

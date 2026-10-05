@@ -38,6 +38,7 @@ const ALL_KINDS: AiTranslateErrorKind[] = [
   'serverError',
   'parseError',
   'unknownProvider',
+  'managed',
 ]
 
 function makeThrown(kind: AiTranslateErrorKind): AiTranslateThrown {
@@ -68,6 +69,13 @@ describe('aiTranslateErrorToast', () => {
     expect(copy.title).toBe('Cloud AI is off')
     expect(copy.body).toBe('Allow it in Settings > AI, then try again.')
     expect(copy.level).toBe('warn')
+  })
+
+  it('names the organization, calmly, when its policy refused the request', () => {
+    const copy = aiTranslateErrorToast('managed')
+    expect(copy.title).toBe('Your organization manages AI in Cmdr')
+    expect(copy.body).toBe('Your IT team can tell you which AI services you can use.')
+    expect(copy.level).toBe('info')
   })
 
   it('points the quota case at the plan/billing and the empty case at a smaller model', () => {

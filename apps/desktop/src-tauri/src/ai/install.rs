@@ -83,6 +83,10 @@ fn finish_download(m: &mut ManagerState) {
 #[tauri::command]
 #[specta::specta]
 pub async fn start_ai_download<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    if let Err(refusal) = super::managed::local_ai_allowed(&crate::managed_policy::current()) {
+        log::info!("AI download: the organization's policy refuses local AI ({refusal:?}), not downloading");
+        return Err(String::from("Your organization turned off AI in Cmdr"));
+    }
     if !is_local_ai_supported() {
         return Err(String::from("Local AI not supported on this hardware"));
     }

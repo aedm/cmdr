@@ -40,7 +40,14 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => ({
   getAiRuntimeStatus: vi.fn(() => Promise.resolve({ localAiSupported: true })),
   stopAiServer: vi.fn(() => Promise.resolve()),
   checkAiConnection: vi.fn(() =>
-    Promise.resolve({ connected: false, authError: false, models: [], error: null, cloudConsentMissing: false }),
+    Promise.resolve({
+      connected: false,
+      authError: false,
+      models: [],
+      error: null,
+      cloudConsentMissing: false,
+      managed: null,
+    }),
   ),
   saveAiApiKey: vi.fn(() => Promise.resolve(null)),
   getAiApiKeyStatus: vi.fn(() => Promise.resolve({ isSet: false, fingerprint: '' })),
@@ -51,6 +58,7 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => ({
       currentVersion: 1,
       acceptedVersion: stubs.consent.accepted ? 1 : null,
       acceptedAt: stubs.consent.accepted ? 1_760_000_000 : null,
+      managed: null,
     }),
   ),
   acceptCloudAiConsent: vi.fn(() => {

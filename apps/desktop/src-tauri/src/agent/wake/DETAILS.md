@@ -299,7 +299,8 @@ because it decides whether the agent can SEE anything.
 `BackendResolution::Off` into the same `false` as a cloud provider with a blank key, so a user who had turned AI off was
 told to finish setting up a provider. `ProviderGate` mirrors `BackendResolution` (`Off` / `NeedsCloudConsent` /
 `NotConfigured` / `Ready`) rather than re-deciding the distinction the backend already models, and `provider_gate` in
-`snapshot.rs` is the one mapping.
+`snapshot.rs` is the one mapping. `BackendResolution::Managed` (the organization's MDM policy refuses AI or the cloud
+host) maps to `Off`: an answer already given, so silent, and the stored backlog stays for when the policy lifts.
 
 **Silence lies under a pending FDA decision**: a user who declined and a user with a tidy Downloads folder see the
 identical nothing, and only one of those is the feature working. So `NeedsFullDiskAccess` and `NeedsApiKey` both render

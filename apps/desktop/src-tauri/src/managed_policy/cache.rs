@@ -105,7 +105,8 @@ pub fn init(app: &AppHandle) {
     super::watch::start();
 }
 
-/// Everything a policy change does, in one visible list.
+/// Everything a policy change does, in one visible list: log it, tell every window, and make AI
+/// stop what the new policy refuses (in-flight calls, the local server, a model download).
 fn apply_change(change: &Change) {
     log::info!(
         target: "managed_policy",
@@ -120,6 +121,7 @@ fn apply_change(change: &Change) {
         if let Err(e) = payload.emit(app) {
             log::warn!(target: "managed_policy", "Couldn't emit managed-policy-changed: {e}");
         }
+        crate::ai::managed::apply_policy_change(app, &change.old, &change.new);
     }
 }
 

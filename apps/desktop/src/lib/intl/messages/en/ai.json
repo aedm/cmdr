@@ -348,6 +348,18 @@
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   },
+  "ai.translateError.managed.title": "Your organization manages AI in Cmdr",
+  "@ai.translateError.managed.title": {
+    "description": "Title of the toast shown when an AI search or AI selection is refused because the person's organization (their employer's IT team, through a device management profile) turned off AI, allows only on-device AI, or doesn't allow the configured AI service. Nothing was sent, and the person can't change this in Cmdr. Sentence case, no ending period.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.translateError.managed.body": "Your IT team can tell you which AI services you can use.",
+  "@ai.translateError.managed.body": {
+    "description": "Next-step line under the toast whose title says the person's organization manages AI in Cmdr. Points them to their IT team, since no setting in Cmdr changes it. One short sentence.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
   "ai.cloud.serviceAria": "Cloud AI service",
   "@ai.cloud.serviceAria": {
     "description": "aria-label for the dropdown that picks which cloud AI service (provider) to use, in Settings > AI.",

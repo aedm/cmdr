@@ -6,15 +6,6 @@
 //! would leave the Mac) and gets typed answers. Nothing outside this module touches CFPreferences
 //! or spells a key name. The key catalog, parse rules, and refresh triggers: `DETAILS.md`.
 
-// The policy core lands before its callers: the telemetry, update, and AI gates arrive in M2–M4 of
-// `docs/specs/mdm-managed-preferences-plan.md`. ❗ Remove this allow with the last of them, so
-// anything still unused then gets flagged.
-#![allow(
-    dead_code,
-    unused_imports,
-    reason = "gates that call this module land in later MDM milestones"
-)]
-
 mod cache;
 mod ceiling;
 mod egress;
@@ -31,7 +22,7 @@ pub use cache::{current, for_egress, init, refresh};
 pub use ceiling::UpdateCeiling;
 pub use egress::Egress;
 pub use hosts::HostPattern;
-pub use locked::{LockedSetting, LockedValue, SettingLock, locked_settings, overlay};
+pub use locked::{LockedSetting, locked_settings, overlay};
 pub use refusal::{AiDestination, ManagedAiRefusal};
 pub use view::{ManagedPolicyChanged, ManagedPolicyView};
 
@@ -166,22 +157,29 @@ impl ManagedPolicy {
         }
     }
 
-    /// Whether cloud AI may send to `url`.
-    pub fn cloud_host_allowed(&self, url: &url::Url) -> bool {
-        self.ai_destination(&AiDestination::Remote(url.clone())).is_ok()
-    }
-
     /// The one AI decision: may a request go to `destination`? `resolve_backend` asks it for the
     /// user-facing reason and the LLM client asks it again per request as the backstop.
     pub fn ai_destination(&self, destination: &AiDestination) -> Result<(), ManagedAiRefusal> {
-        match (self.ai(), destination) {
-            (AiPolicy::Off, _) => Err(ManagedAiRefusal::AiOff),
-            (_, AiDestination::LocalServer) => Ok(()),
-            (AiPolicy::LocalOnly, AiDestination::Remote(_)) => Err(ManagedAiRefusal::CloudAiOff),
-            (AiPolicy::Allowed, AiDestination::Remote(url)) => match &self.allowed_cloud_ai_hosts {
-                Some(hosts) if !hosts.iter().any(|host| host.allows(url)) => Err(ManagedAiRefusal::HostNotAllowed),
-                _ => Ok(()),
+        match destination {
+            AiDestination::LocalServer if self.ai() == AiPolicy::Off => Err(ManagedAiRefusal::AiOff),
+            AiDestination::LocalServer => Ok(()),
+            AiDestination::Remote(url) => match (self.any_cloud_refusal(), &self.allowed_cloud_ai_hosts) {
+                (Some(refusal), _) => Err(refusal),
+                (None, Some(hosts)) if !hosts.iter().any(|host| host.allows(url)) => {
+                    Err(ManagedAiRefusal::HostNotAllowed)
+                }
+                (None, _) => Ok(()),
             },
+        }
+    }
+
+    /// The refusal EVERY cloud destination gets, whatever its host, for a feature that needs cloud
+    /// AI before any endpoint is known (AI selection). `None` when some cloud host may be allowed.
+    pub fn any_cloud_refusal(&self) -> Option<ManagedAiRefusal> {
+        match self.ai() {
+            AiPolicy::Off => Some(ManagedAiRefusal::AiOff),
+            AiPolicy::LocalOnly => Some(ManagedAiRefusal::CloudAiOff),
+            AiPolicy::Allowed => None,
         }
     }
 }
@@ -246,7 +244,26 @@ mod tests {
             Err(ManagedAiRefusal::HostNotAllowed)
         );
         assert_eq!(policy.ai_destination(&AiDestination::LocalServer), Ok(()));
-        assert!(!policy.cloud_host_allowed(&url::Url::parse("https://api.openai.com/").expect("url")));
+    }
+
+    #[test]
+    fn any_cloud_refusal_ignores_the_host_list() {
+        assert_eq!(ManagedPolicy::default().any_cloud_refusal(), None);
+        let listed = ManagedPolicy {
+            allowed_cloud_ai_hosts: hosts(&["api.openai.com"]),
+            ..Default::default()
+        };
+        assert_eq!(listed.any_cloud_refusal(), None);
+        let cloud_off = ManagedPolicy {
+            cloud_ai_disabled: true,
+            ..Default::default()
+        };
+        assert_eq!(cloud_off.any_cloud_refusal(), Some(ManagedAiRefusal::CloudAiOff));
+        let off = ManagedPolicy {
+            ai_disabled: true,
+            ..Default::default()
+        };
+        assert_eq!(off.any_cloud_refusal(), Some(ManagedAiRefusal::AiOff));
     }
 
     fn version(text: &str) -> semver::Version {

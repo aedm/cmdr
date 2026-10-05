@@ -84,7 +84,7 @@ pub fn get_managed_policy() -> ManagedPolicyView {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::managed_policy::{LockedValue, SettingLock};
+    use crate::managed_policy::locked::{LockedValue, SettingLock};
     use crate::test_support::TestDir;
     use serde_json::json;
 

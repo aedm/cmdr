@@ -31,6 +31,7 @@ const ALL_KINDS: ReadonlySet<string> = new Set<AiTranslateErrorKind>([
   'serverError',
   'parseError',
   'unknownProvider',
+  'managed',
 ])
 
 /**
@@ -125,6 +126,12 @@ export function aiTranslateErrorToast(kind: AiTranslateErrorKind): AiTranslateTo
         title: tString('ai.translateError.unknownProvider.title'),
         body: tString('ai.translateError.unknownProvider.body'),
         level: 'warn',
+      }
+    case 'managed':
+      return {
+        title: tString('ai.translateError.managed.title'),
+        body: tString('ai.translateError.managed.body'),
+        level: 'info',
       }
   }
 }

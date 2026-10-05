@@ -397,6 +397,9 @@ impl From<AiError> for AgentLlmError {
             AiError::EmptyResponse => AgentLlmError::Provider("the model returned no text".to_string()),
             AiError::ServerError(detail) => AgentLlmError::Provider(detail),
             AiError::ParseError(detail) => AgentLlmError::Provider(detail),
+            // Only reachable mid-turn (a policy that arrived after the slot resolved), which
+            // `managed_policy`'s change handler also cancels; the turn ends honestly either way.
+            error @ AiError::Managed(_) => AgentLlmError::Provider(error.to_string()),
         }
     }
 }

@@ -354,8 +354,8 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
   precedence, manual test recipe), a line in `docs/architecture.md`. No gate changes yet.
 - **Intentions**: everything downstream asks `managed_policy::current()` / `refresh()` and never touches CFPreferences
   or key names itself. `ManagedPolicy` exposes typed answers (`usage_stats_disabled()`,
-  `ai() -> AiPolicy { Allowed, LocalOnly, Off }`, `cloud_host_allowed(url)`, `updates() -> UpdatePolicy`), not raw
-  values. `UpdatePolicy` is `Disabled | Enabled { automatic_checks: bool, ceiling: Option<UpdateCeiling> }`: a flat
+  `ai() -> AiPolicy { Allowed, LocalOnly, Off }`, `ai_destination(..)`, `updates() -> UpdatePolicy`), not raw values.
+  `UpdatePolicy` is `Disabled | Enabled { automatic_checks: bool, ceiling: Option<UpdateCeiling> }`: a flat
   `{ Allowed, NoAutomaticChecks, Ceiling, Disabled }` enum can't express "a ceiling AND no background checks", which is
   the most common combination.
 - **Landmines**: `CFPreferencesCopyAppValue` merges user, any-user, and managed layers, so ALWAYS gate on `IsForced`
@@ -521,6 +521,25 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
   receives nothing).
 - **DONE**: under each AI key no request leaves for a disallowed destination from suggestions, both translate commands,
   Ask Cmdr (rail and wake), MCP `ai_search`, or the connection check, all proven by tests.
+- **Implementation notes** (M4 as built):
+  - `DisableAI` refuses EVERY provider, `off` included (`Managed(AiOff)`): under M5's overlay `ai.provider` reads `off`
+    exactly then, and a translate toast or MCP client should name the organization, not "turn AI on".
+  - `ManagedPolicy::any_cloud_refusal()` is `ai_destination`'s host-independent half. The consent predicate takes it (a
+    host list leaves consent to the user), `CloudAiConsentStatus.managed` is that `Option<ManagedAiRefusal>`, and AI
+    selection (cloud-only) answers it on a non-cloud provider. `cloud_host_allowed` is gone (nothing called it).
+  - Ask Cmdr's wire refusal is ONE view kind, `managedByOrganization`: `AgentErrorKindView` is a unit enum the rail maps
+    1:1 to copy, so `SlotRefusal::Managed(_)` keeps the refusal on the Rust side only. Under `DisableAI` the overlaid
+    `askCmdr.enabled` answers `askCmdrOff` first anyway. A refusal from the client backstop mid-turn ends the turn as a
+    provider failure (rare: `apply_change` cancels running turns first).
+  - `AiTranslateError` gained `managed: Option<ManagedAiRefusal>` beside the `managed` kind. The toast has one generic
+    line for now; M7 can word it per refusal from `err.managed`.
+  - The redirect guard sits on every remote client and reads the CACHED policy per hop (reqwest's callback is sync; the
+    request's own egress check refreshed it moments before). A refused hop stops, returning the 3xx.
+  - `start_ai_server` / `start_ai_download` keep `Result<(), String>`: the frontend only logs their errors and never
+    classifies them, and M7's UI doesn't offer either under `Off`.
+  - "Narrowing" in `apply_change` means the AI part changed AND the new policy restricts AI at all, so even adding a
+    host to a list stops in-flight calls (conservative; they re-resolve). The wake loop maps `Managed` to the silent
+    `ProviderGate::Off`, keeping the stored backlog.
 
 ### M5. Frontend overlay and the MCP settings paths
 
