@@ -113,6 +113,13 @@ impl StartRequest {
     pub(super) fn volume_root(&self) -> &Path {
         &self.volume_root
     }
+
+    /// The same start for a volume whose mount point moved to `volume_root`: same
+    /// kind, same inode fact, same activation. A rename keeps the filesystem, so
+    /// nothing but the root can have changed.
+    pub(super) fn moved_to(self, volume_root: PathBuf) -> Self {
+        Self { volume_root, ..self }
+    }
 }
 
 /// Record that the user turned drive indexing ON for this volume, on the volume's

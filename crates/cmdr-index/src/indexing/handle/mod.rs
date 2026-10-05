@@ -361,6 +361,29 @@ impl Index {
         state::stop_removable_volume(volume_id, wait_at_most)
     }
 
+    /// A volume's mount point moved while it stayed mounted (the user renamed a
+    /// drive), and the host already serves it at its new root. Follow it there,
+    /// answering whether its index did.
+    ///
+    /// The index restarts at the new root and keeps its database: rows are
+    /// mount-relative, so nothing in it changes, and nothing is deleted on the
+    /// move's account. What a start always costs follows (a completed drive
+    /// reconciles in place), which is also what catches up on the changes nobody
+    /// heard while the old path stood empty.
+    ///
+    /// `false` when there's nothing to follow: the volume isn't indexing, already
+    /// sits at that root, or reads through the host's `Volume` (a share or a
+    /// phone), which the host re-roots on its own.
+    ///
+    /// **Blocking**: draining the running index can take seconds. Never call it on
+    /// a thread the interface is waiting on.
+    pub fn follow_volume_move(&self, volume_id: &str) -> bool {
+        let Some(volume) = crate::indexing::host::volumes::current().get(volume_id) else {
+            return false;
+        };
+        state::follow_the_move(volume_id, volume.root().to_path_buf())
+    }
+
     /// Apply the master drive-indexing switch. Off stops every volume that's
     /// indexing; on only moves the gate, and
     /// [`drives_to_resume`](Self::drives_to_resume) says which volumes the host

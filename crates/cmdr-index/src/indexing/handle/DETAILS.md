@@ -18,11 +18,13 @@ quietly abandons the encapsulation. So every item got one of four dispositions, 
 
 ## Where it landed
 
-**36 public items on `Index`**, against a target of about 25. Over, and worth saying plainly rather than redefining what
-counts. What justifies the eleven:
+**37 public items on `Index`**, against a target of about 25. Over, and worth saying plainly rather than redefining what
+counts. What justifies the twelve:
 
 - **Two are the coverage pair** (`coverage`, `coverage_token`), added 2026-08-05. See § "Coverage: the one concept added
   since the audit" below.
+- **One follows a renamed drive** (`follow_volume_move`), added 2026-10-06. See § "A drive whose mount point moved"
+  below.
 
 - **Four are the direct-database read side** (`read_pool`, `read_path`, `volume_id_for_path`, `search_generation`). They
   exist because `search/` and the operation log's coverage check run their OWN SQL over an index database. They're
@@ -149,6 +151,24 @@ volumes, which is exactly the set that misses the case.
 The concept is closed: measuring and clearing is all of it. A cap on the footprint would be a third call and a policy,
 and David's decision is that there is no cap for now (`docs/specs/unindexed-search-plan.md` Decision 17).
 
+## A drive whose mount point moved: the third concept added since the audit
+
+Added 2026-10-06 (#157), `HandleMethods` 40 → 41 with no new root promise. Renaming a mounted drive moves its mount
+point (`/Volumes/Old` → `/Volumes/New`) while the filesystem stays mounted, and an index whose walker and watcher read
+the old path stops hearing the drive. The host sees the rename (macOS posts `NSWorkspaceDidRenameVolumeNotification`)
+and re-roots its own registry; **`follow_volume_move(volume_id)`** is it telling the index, which restarts that volume
+at the root the host now serves (`../lifecycle/state/relocation.rs`).
+
+Why no disposition fits: nothing on the handle carries "the host moved this volume". `resume_after_reconnect` is the
+nearest, and it means "a share came back, resume it if its settings say so", an SMB intent gate a move must not pass
+through (a drive mid-rename is already indexing; asking its persisted intent again could only lose it). Folding the move
+into it would make one call mean two things depending on the volume kind. Detecting the move inside the index instead
+was the other option, and it loses: the host is the one place that knows a rename happened, and the index noticing a
+dead root by itself can't tell a rename from an unplug.
+
+It answers a `bool` (followed or not) rather than a typed outcome, because the host only logs it and a new enum would
+spend a root promise on a log line.
+
 ## The mapping
 
 ### The 14 the glob was hiding
@@ -265,11 +285,11 @@ parent). A grant of "one item" for such a type is `RootPromises` moving by one a
 - **53 root promises** — the names `lib.rs` exports, `pub mod` included. 44 at the audit, plus coverage's six types (the
   read half's three on 2026-08-05, the walk half's three the same day), then `CoveragePhase`, `FolderChangeRollup`, and
   `RemovableStop`, one at a time (§ "The 14 the glob was hiding").
-- **40 methods on `Index`** — the 36 above plus `Index::builder`, which the headline number treats as the constructor
-  rather than a call, plus `cover`, which took the slot reserved for it by name, plus the disk-footprint pair below. The
-  cold-volume bootstrap took none of it: it went behind `cover` rather than becoming a method (above, "Why standing a
-  cold volume's index up is NOT a method of its own"). No reserved slot is left, so the next method has to be argued the
-  way these were.
+- **41 methods on `Index`** — the 37 above (`follow_volume_move` among them) plus `Index::builder`, which the headline
+  number treats as the constructor rather than a call, plus `cover`, which took the slot reserved for it by name, plus
+  the disk-footprint pair below. The cold-volume bootstrap took none of it: it went behind `cover` rather than becoming
+  a method (above, "Why standing a cold volume's index up is NOT a method of its own"). No reserved slot is left, so the
+  next method has to be argued the way these were.
 - **17 public modules** and **156 public items inside them** — the surface the root re-exports don't capture, which is
   where `media_index` and `importance` live. Unchanged: the coverage module is `pub(crate)`, reaching a host only
   through the handle and the root re-exports.

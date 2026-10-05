@@ -24,6 +24,8 @@ concurrently without corrupting each other. Every invariant below holds independ
     `disable_drive_index_persist_intent`, `remove_instance_and_handles`, and `stop_all_indexing`, all sharing the
     withdraw-then-publish-`ShuttingDown`-then-drop-the-guard-then-drain ordering. Plus `stop_removable_volume`, the one
     stop that waits for the volume to be let go.
+  - `relocation.rs` — `follow_the_move`, restarting a renamed drive at its new mount point (§ "A drive whose mount point
+    moved").
   - `scan_control.rs` — `force_scan`, `stop_scan`, `trigger_verification`, plus `off_the_registry` and the
     `DetachedManager` guard behind it: the ONE place a live volume's manager comes out for blocking work.
   - `queries.rs` — the read-only surface: `is_active`, `is_failed`, `index_failure`, `awaits_its_first_scan`,
@@ -547,6 +549,45 @@ search's walk and the phase machine, each still reading after the drain),
 `state::tests::a_removable_stop_waits_for_the_start_it_cancelled`,
 `state::tests::a_removable_stop_never_waits_on_a_drive_that_already_left`, and `hold::tests` (the wake, the per-kind
 counts, generations, and the linked cancel).
+
+## A drive whose mount point moved (`state/relocation.rs`)
+
+Renaming a mounted drive moves its mount point (`/Volumes/Old` → `/Volumes/New`) and nothing else: same filesystem, same
+volume id (it keys on the UUID), no unmount. macOS reports it as ONE `NSWorkspaceDidRenameVolumeNotification` carrying
+both URLs, with no unmount or mount around it (verified on macOS 27.0, APFS and FAT32 disk images observed from a Swift
+`NSWorkspace` observer while `diskutil rename` ran, 2026-10-05). The host re-roots its registry and calls
+`Index::follow_volume_move`, and `state::follow_the_move` restarts the volume at the root the host now serves.
+
+**Decision: restart, ❌ not re-root the running manager.** Rows are mount-relative, so the database carries over as is,
+and a start rebuilds every piece that captured the root (the walker, the FSEvents stream, the live loop's
+`IndexPathSpace`, the phase machine's frontier) from one `StartRequest`. Re-rooting in place means finding each of
+those, and the one that's missed keeps reading a path that no longer exists. The instance keeps the request it was
+started with (`IndexInstance::started_as`), so the restart has the same kind, inode fact, and `Activation`: a
+search-walked drive comes back writer-only, ❌ never promoted to a full index.
+
+**What it costs, and why that's the honest cost.** The restart routes like any start (§ "What a launch does with the
+index it finds"): a completed drive reconciles in place (no truncation, sizes stay visible, loads Stale until the walk
+lands) and a partial one resumes its phases. The walk is not waste: the old FSEvents stream stopped hearing the drive
+when its path moved, and an external drive has no journal to replay that gap from, so anything changed between the
+rename and the restart is only found by listing.
+`moves::a_drive_renamed_while_it_indexes_keeps_indexing_at_its_new_mount_point` writes a file into exactly that gap.
+
+**The restart is RECORDED in the critical section that takes the volume down, ❌ never a stop followed by a start.** A
+stop frees the slot, a user's disable landing in the gap finds nothing to veto, and the start after it would bring back
+a drive the user just turned off. So a `Running` volume publishes `ShuttingDown { restart: Some(at the new root) }` and
+drains through the same `finish_stopping` a toggle does, where a later teardown's fresh `ShuttingDown` drops it. Per
+phase:
+
+- `Running` ⇒ that drain. `Initializing` ⇒ the stop's own arm (cancel the reservation, remove the instance), then a
+  start at the new root.
+- `ShuttingDown` / a claimed `Detached` carrying a restart ⇒ the restart is retargeted to the new root. Carrying none ⇒
+  nothing: the user's last word is off, and a move is no reason to bring a drive back.
+- An unclaimed `Detached` (a scan start has the manager out) ⇒ claims `Stopped` with the restart riding it, so the
+  handback drains the manager it brings back at the old root.
+- `Failed` ⇒ nothing; the rebuild asks the host for the root afresh.
+
+Only a local-scanner volume follows (`uses_local_scanner()`): a share or a phone reads through the host's `Volume`,
+which the host re-roots itself. Anchors: `cover::cold_drive_tests::moves`.
 
 ## Capability axes (`IndexVolumeKind`)
 

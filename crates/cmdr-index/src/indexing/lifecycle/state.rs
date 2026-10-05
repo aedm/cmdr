@@ -11,6 +11,7 @@
 //!   through, plus the per-transport entry points. [`walk_database`]: what a
 //!   `WriterOnly` start does to the database a search walk will fill.
 //! - [`teardown`]: stop / forget / reset, and the sweep over every volume.
+//! - [`relocation`]: following a renamed drive to its new mount point.
 //! - [`scan_control`]: force a rescan, stop one, trigger verification.
 //! - [`queries`]: the read-only question surface.
 //! - [`freshness_bridge`]: registry ↔ `lifecycle/freshness.rs` wiring + epoch bumps.
@@ -49,6 +50,7 @@ use crate::indexing::watch::branches::{self, AfterWalk};
 mod auto_start;
 mod freshness_bridge;
 mod queries;
+mod relocation;
 mod reservation;
 mod scan_control;
 mod startup;
@@ -69,6 +71,7 @@ pub(crate) use queries::{
     ready_volumes_to_wire, ready_volumes_with_kind, volume_kind,
 };
 pub use queries::{is_active, is_failed};
+pub(crate) use relocation::follow_the_move;
 #[cfg(any(test, feature = "testing"))]
 pub use reservation::reserve_initializing_index_for_test;
 pub(crate) use reservation::{is_initializing_phase, try_reserve_initializing_phase};
@@ -334,11 +337,11 @@ impl VolumeSignals {
 /// § "Where a volume's read handles live".
 pub(crate) struct IndexInstance {
     pub(crate) phase: IndexPhase,
-    /// This volume's scan kind (Local / SMB / MTP). Retained so a consumer of the
-    /// registry (the importance scheduler's startup sweep) can branch typed on the
-    /// kind — score Local + SMB, exclude MTP — instead of re-deriving it from the
-    /// volume-id string.
-    pub(crate) kind: IndexVolumeKind,
+    /// The start that reserved this instance: where the volume is mounted, what kind
+    /// of storage it is, its inode fact, and what the start was for. Kept whole so
+    /// following a renamed drive (`relocation.rs`) restarts it exactly as it was
+    /// started, at its new root, ❌ never re-derived from a manager being drained.
+    pub(crate) started_as: StartRequest,
     /// The handles this volume shares with its `IndexManager`.
     pub(crate) signals: VolumeSignals,
     /// The volume's root work, minted by its reservation: its stop signal, the ROOT
@@ -355,6 +358,16 @@ pub(crate) struct IndexInstance {
     /// would answer `None` for a volume that just went away and hand the walk a
     /// token that never fires — precisely the walk that needs to stop.
     pub(crate) work: VolumeWork,
+}
+
+impl IndexInstance {
+    /// This volume's scan kind (Local / SMB / MTP), so a consumer of the registry
+    /// (the importance scheduler's startup sweep) can branch typed on the kind —
+    /// score Local + SMB, exclude MTP — instead of re-deriving it from the
+    /// volume-id string.
+    pub(crate) fn kind(&self) -> IndexVolumeKind {
+        self.started_as.kind()
+    }
 }
 
 /// The registry as the jobs take it: a mutex over the per-volume map.

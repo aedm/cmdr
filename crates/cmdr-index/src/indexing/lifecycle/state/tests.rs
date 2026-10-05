@@ -1074,7 +1074,7 @@ fn a_start_answers_every_phase_it_can_meet() {
             "phase-table".to_string(),
             IndexInstance {
                 phase,
-                kind: IndexVolumeKind::Local,
+                started_as: StartRequest::for_test(IndexVolumeKind::Local),
                 signals: VolumeSignals::new(fresh(None), NoopEventSink::shared()),
                 work: VolumeWork::for_test("phase-table"),
             },

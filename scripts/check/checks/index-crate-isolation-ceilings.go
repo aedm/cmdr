@@ -112,6 +112,12 @@ var surfaceGuardedCrates = []struct {
 		// `bool` nor a new `IndexError` variant every other method would then have
 		// to match says it. Why, in the audit doc below under "A seventeenth".
 		//
+		// Raised on 2026-10-06, `HandleMethods` 40 -> 41, for ONE method and no root promise:
+		// `Index::follow_volume_move`, the host telling the index a mounted drive was
+		// renamed (#157). Nothing on the handle carried "the host moved this volume", and
+		// folding it into `resume_after_reconnect` would make one call mean two things by
+		// volume kind. Why, in the audit doc below under "A drive whose mount point moved".
+		//
 		// ⚠️ WHICH BUCKET a grant lands in is not a choice, so read the right counter
 		// before assuming you have headroom. A value an event carries always spends a
 		// ROOT PROMISE, never `SubsystemItems`. Why, in the audit doc below, under
@@ -119,7 +125,7 @@ var surfaceGuardedCrates = []struct {
 		HandleType: "Index",
 		Ceilings: surfaceCeilings{
 			RootPromises:   53,
-			HandleMethods:  40,
+			HandleMethods:  41,
 			PublicModules:  17,
 			SubsystemItems: 156,
 		},

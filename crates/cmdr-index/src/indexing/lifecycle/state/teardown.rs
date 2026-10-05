@@ -294,7 +294,7 @@ fn stop_the_volume(volume_id: &str, persist: PersistDisable) -> Result<(), Strin
 /// record the veto if the stop was the user asking for one. The half of
 /// [`stop_indexing`] that runs OFF the lock, shared with the deferred path so both
 /// end the volume in exactly the same place.
-fn finish_stopping(volume_id: &str, mut mgr: Box<IndexManager>, persist: PersistDisable) {
+pub(super) fn finish_stopping(volume_id: &str, mut mgr: Box<IndexManager>, persist: PersistDisable) {
     withdraw_from_the_read_path(volume_id);
     // Guard released: run the blocking drain without holding the registry lock.
     mgr.shutdown();

@@ -1130,7 +1130,7 @@ fn try_reserve_initializing_succeeds_only_from_disabled() {
             ROOT_VOLUME_ID.to_string(),
             IndexInstance {
                 phase: IndexPhase::ShuttingDown { restart: None },
-                kind: IndexVolumeKind::Local,
+                started_as: StartRequest::for_test(IndexVolumeKind::Local),
                 signals: VolumeSignals::new(Arc::new(std::sync::Mutex::new(None)), NoopEventSink::shared()),
                 work: hold::VolumeWork::for_test(ROOT_VOLUME_ID),
             },
@@ -1260,7 +1260,7 @@ fn shutdown_drain_does_not_hold_indexing_lock() {
             ROOT_VOLUME_ID.to_string(),
             IndexInstance {
                 phase: IndexPhase::ShuttingDown { restart: None },
-                kind: IndexVolumeKind::Local,
+                started_as: StartRequest::for_test(IndexVolumeKind::Local),
                 signals: VolumeSignals::new(Arc::new(std::sync::Mutex::new(None)), NoopEventSink::shared()),
                 work: hold::VolumeWork::for_test(ROOT_VOLUME_ID),
             },

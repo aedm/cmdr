@@ -9,7 +9,7 @@ use std::sync::atomic::Ordering;
 
 use cmdr_fs::ignore_poison::IgnorePoison;
 
-use super::{INDEX_REGISTRY, IndexPhase, Registry};
+use super::{INDEX_REGISTRY, IndexInstance, IndexPhase, Registry};
 use crate::indexing::lifecycle::freshness::Freshness;
 use crate::indexing::lifecycle::lifecycle_bus::RegisteredVolume;
 use crate::indexing::store::{IndexFailure, IndexStore};
@@ -78,7 +78,7 @@ pub(super) fn ready_candidates_on(reg: &Registry) -> Vec<(RegisteredVolume, bool
                 .is_some_and(|f| f == Freshness::Fresh);
             let candidate = RegisteredVolume {
                 volume_id: vid.clone(),
-                kind: instance.kind,
+                kind: instance.kind(),
                 stop: instance.work.cancel.child_token(),
             };
             (candidate, fresh)
@@ -110,7 +110,10 @@ pub(crate) fn all_registered_volume_ids() -> Vec<VolumeId> {
 /// visit for a Local/SMB volume, skip an MTP one — without inspecting the
 /// volume-id string.
 pub(crate) fn volume_kind(volume_id: &str) -> Option<IndexVolumeKind> {
-    INDEX_REGISTRY.lock_ignore_poison().get(volume_id).map(|i| i.kind)
+    INDEX_REGISTRY
+        .lock_ignore_poison()
+        .get(volume_id)
+        .map(IndexInstance::kind)
 }
 
 /// All registered MTP volume ids belonging to `device_id` (one device hosts N

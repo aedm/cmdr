@@ -32,6 +32,8 @@ struct ColdDrive {
     tree: tempfile::TempDir,
     index: crate::indexing::handle::Index,
     events: Arc<crate::indexing::events::RecordingSink>,
+    /// The host the drive is registered with, so a test can move it.
+    volumes: Arc<crate::indexing::host::volumes::FakeVolumeProvider>,
     volume_id: &'static str,
     _serialized: std::sync::MutexGuard<'static, ()>,
 }
@@ -96,6 +98,7 @@ impl ColdDrive {
             tree,
             index,
             events,
+            volumes,
             volume_id,
             _serialized: serialized,
         }
@@ -224,3 +227,6 @@ mod toggles;
 
 /// Stopping a removable drive's index for an eject, whatever window it lands in.
 mod removals;
+
+/// A drive renamed while it indexes, which moves its mount point under the index.
+mod moves;
