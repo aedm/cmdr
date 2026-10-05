@@ -33,6 +33,9 @@
     import { tString } from '$lib/intl/messages.svelte'
     import Trans from '$lib/intl/Trans.svelte'
     import { dependOn } from '$lib/utils/reactivity'
+    import { getSettingLock } from '$lib/managed-policy/managed-policy.svelte'
+    import { lockAllowsWrite } from '$lib/managed-policy/overlay'
+    import { followPresetHostVerdicts } from '$lib/ai-provider-setup/preset-hosts.svelte'
     import type { Snippet } from 'svelte'
 
     /**
@@ -383,10 +386,16 @@
      * carries reads as quiet text beside its label instead (`itemTrailing`), except the
      * local model's, which is long enough to belong behind an info glyph.
      */
+    // The organization's policy: under on-device only, Cloud stays listed but can't be picked, with
+    // the reason as its help text. (When nothing but "no AI" is left, the wizard skips this step.)
+    const cloudRuledOut = $derived(!lockAllowsWrite(getSettingLock('ai.provider'), 'cloud'))
+    // A service the organization refuses stays listed in the picker, disabled with the reason.
+    const presetHosts = followPresetHostVerdicts()
+
     const aiOptions = $derived([
         { value: 'off', label: tString('onboarding.stepAi.off.label') },
         { value: 'local', label: tString('onboarding.stepAi.local.label'), disabled: !localAiSupported },
-        { value: 'cloud', label: tString('onboarding.stepAi.cloud.label') },
+        { value: 'cloud', label: tString('onboarding.stepAi.cloud.label'), disabled: cloudRuledOut },
     ])
 
     /** The forward button's own label, so the warning can name the button by its real name. */
@@ -543,11 +552,15 @@
                     <span class="choice-help">{localTooltip}</span>
                 {/if}
             {:else if value === 'cloud'}
-                <span class="choice-badge">
-                    <span class="choice-badge-icon"><Icon name="sparkles" size={12} aria-hidden="true" /></span>
-                    {tString('onboarding.stepAi.cloud.recommended')}
-                </span>
-                <span class="choice-help">{tString('onboarding.stepAi.cloud.help')}</span>
+                {#if cloudRuledOut}
+                    <span class="choice-help">{tString('ai.managed.cloudAiOff')}</span>
+                {:else}
+                    <span class="choice-badge">
+                        <span class="choice-badge-icon"><Icon name="sparkles" size={12} aria-hidden="true" /></span>
+                        {tString('onboarding.stepAi.cloud.recommended')}
+                    </span>
+                    <span class="choice-help">{tString('onboarding.stepAi.cloud.help')}</span>
+                {/if}
             {/if}
         {/snippet}
 
@@ -579,6 +592,7 @@
                         <h3 class="picker-title">{tString('onboarding.stepAi.cloud.pickerTitle')}</h3>
                         <CloudProviderPicker
                             value={cloudProviderId}
+                            isRefused={(id: string) => presetHosts.isRefused(id)}
                             onChange={(id: string) => {
                                 cloudProviderId = id
                                 setSetting('ai.cloudProvider', id)

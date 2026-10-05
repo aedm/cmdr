@@ -92,6 +92,14 @@ vi.mock('$lib/tauri-commands', () => ({
   openPrivacySettings: () => openPrivacySettings(),
   configureAi: (...args: unknown[]) => configureAi(...args),
   getAiRuntimeStatus: () => getAiRuntimeStatus(),
+  cloudAiHostsAllowed: (urls: string[]) => Promise.resolve(urls.map(() => true)),
+}))
+
+// The organization's lock on `ai.provider`, as the backend's `locked_settings` would name it.
+const policyLocks = vi.hoisted(() => new Map<string, unknown>())
+vi.mock('$lib/managed-policy/managed-policy.svelte', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  getSettingLock: (id: string) => policyLocks.get(id),
 }))
 
 // Settings store mock: in-memory key-value, mirroring what `$lib/settings` exposes.
@@ -226,6 +234,7 @@ describe('StepAi', () => {
     resetSettings()
     closeWizard()
     resetForTesting()
+    policyLocks.clear()
     // Land us on step 2 with a default banner; tests override per case.
     openWizard('force')
     setCurrentStep(2)
@@ -415,6 +424,18 @@ describe('StepAi', () => {
     await waitForAsync()
     expect(startAiDownload).not.toHaveBeenCalled()
     expect(settingsMap['ai.provider']).toBe('off')
+  })
+
+  it('under on-device-only, offers only local or no AI, and says why Cloud is out', async () => {
+    policyLocks.set('ai.provider', { kind: 'disallowedValues', values: ['cloud'], fallback: 'off' })
+    mounted = mountStep()
+    await waitForAsync()
+    expect(radioByValue(mounted.target, 'cloud')?.getAttribute('data-disabled')).not.toBeNull()
+    expect(radioByValue(mounted.target, 'local')?.getAttribute('data-disabled')).toBeNull()
+    expect(radioByValue(mounted.target, 'off')?.getAttribute('data-disabled')).toBeNull()
+    expect(mounted.target.textContent).toContain('Your organization allows only on-device AI.')
+    // No "Recommended" steer toward an option nobody can pick.
+    expect(mounted.target.querySelector('.choice-badge')).toBeNull()
   })
 
   it('registers a single "Next" forward button via setFooterOverride', async () => {
