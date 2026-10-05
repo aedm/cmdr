@@ -32,8 +32,8 @@ evidence of that weight.
   `leftBehind` repeats `會略過沒有把握的部分`.
 - `stagedLeftover.*`: `不完整副本`, cleared with `清掉` (Cmdr's own files, not the user's), and ❌ never `下次`: the
   cleanup skips files under an hour old, so an immediate retry doesn't clear them.
-- `in {folder}` is a trailing, unquoted `位於 {folder}` (as `downloads.toast.inSubdir`): the row renders after
-  `reversalDeleting`, so the preverbal `在…中` isn't available, and `位於` marks the folder as a place, not the target.
+- `in {folder}` is a trailing, unquoted `位於 {folder}` (as `downloads.toast.inSubdir`): it follows `reversalDeleting`,
+  so preverbal `在…中` can't fit, and `位於` marks a place, not the target.
 
 ## An unfinished move's staging folder (`fileOperations.leftovers.stagingFolderKept`)
 
@@ -144,11 +144,9 @@ contrasts packages with app bundles.
 - Owner `擁有者`, ❌ not `管理者` (a home NAS is usually the user's own). Reinstalled `重新安裝過`, not slang `重灌`.
 - Root folder `根資料夾` over TC/MS `根目錄` (user-facing `資料夾`); start folder `起始資料夾`, ❌ not `開始位置` (TC's
   Start in, and `位置` is Places) nor `啟動資料夾` (Windows Startup). Label and every mention match exactly.
-- "Won't connect" `Cmdr 不會連線到 {name}` (a standing refusal, like `servers.refusal.hostKeyRevoked`), not `停止`.
-- Sheet titles quote the server: `登入「{name}」` / `編輯「{name}」`.
-- Add anyway `仍要加入` (Apple's `仍要儲存` / `仍要共享`), quoted exactly in `addAnywayHelp`. An optional field's
-  placeholder is `選填` (Apple Home's optional field, `errorReporter.dialog.noteLabel`); `可選` is an optional step.
-- A cancelled connect is `{name} 尚未連線`, like `errors.*.notConnected.title`: a state, so no `無法`.
+- Won't connect `Cmdr 不會連線到 {name}` (standing refusal, not `停止`); cancelled `{name} 尚未連線` (a state, no
+  `無法`). Titles quote the server: `登入「{name}」`. Add anyway `仍要加入` (Apple `仍要儲存`; quoted in
+  `addAnywayHelp`). Optional field `選填` (`可選` = a step).
 
 ## Reconnecting and the nothing-to-ask line (`servers.paneState.reconnecting`, `servers.paneState.signedOutNothingToAsk`)
 
@@ -304,3 +302,8 @@ Allow `允許` (TCC's permission button), ❌ not `同意`, which is approve. Ev
 ## 移動完成了，原本的檔案卻還在（`errors.write.sourceNotRemoved.*`、`errors.write.permissionDenied.*.source*`、`errors.write.deletePending.message`）
 
 - Cmdr's failed step is `移除`, the user's `刪除`. `原本的檔案` as in `destinationNotFound.*` and `moveNotConfirmed.*`.
+
+## Managed-by-organization copy (`settings.managed.*`, `ai.managed.*`, `updates.status.managedOff`)
+
+- `由你的組織管理` (Apple zh-TW's MDM wording), turned off `已關閉`. The summary card's Off is the state `已關閉`, ❌
+  not the option label `關閉`. Your IT team → `IT 人員` (team- and department-neutral, no possessive needed).
