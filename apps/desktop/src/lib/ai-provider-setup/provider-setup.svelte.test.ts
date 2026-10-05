@@ -15,6 +15,7 @@ interface CheckResult {
   models: string[]
   error: string | null
   cloudConsentMissing?: boolean
+  managed?: 'aiOff' | 'cloudAiOff' | 'hostNotAllowed' | null
 }
 
 // One object payload per spy, so the assertions name the argument they mean and the
@@ -23,12 +24,14 @@ const checkAiConnection = vi.fn<(payload: { baseUrl: string; providerId: string 
 const saveAiApiKey = vi.fn<(payload: { providerId: string; apiKey: string }) => Promise<null>>()
 const getAiApiKeyStatus = vi.fn<(id: string) => Promise<{ isSet: boolean; fingerprint: string }>>()
 const deleteAiApiKey = vi.fn<(id: string) => Promise<void>>()
+const cloudAiHostsAllowed = vi.fn<(baseUrls: string[]) => Promise<boolean[]>>()
 
 vi.mock('$lib/tauri-commands', () => ({
   checkAiConnection: (baseUrl: string, providerId: string) => checkAiConnection({ baseUrl, providerId }),
   saveAiApiKey: (providerId: string, apiKey: string) => saveAiApiKey({ providerId, apiKey }),
   getAiApiKeyStatus: (id: string) => getAiApiKeyStatus(id),
   deleteAiApiKey: (id: string) => deleteAiApiKey(id),
+  cloudAiHostsAllowed: (baseUrls: string[]) => cloudAiHostsAllowed(baseUrls),
 }))
 
 const settingsMap: Record<string, unknown> = {}
@@ -85,6 +88,8 @@ describe('ProviderSetupController', () => {
     getAiApiKeyStatus.mockResolvedValue({ isSet: false, fingerprint: '' })
     deleteAiApiKey.mockReset()
     deleteAiApiKey.mockResolvedValue(undefined)
+    cloudAiHostsAllowed.mockReset()
+    cloudAiHostsAllowed.mockImplementation((urls) => Promise.resolve(urls.map(() => true)))
     controller = new ProviderSetupController({ logScope: 'test' })
   })
 
@@ -201,6 +206,75 @@ describe('ProviderSetupController', () => {
     await settle()
     expect(controller.status).toBe('idle')
     expect(controller.error).toBeNull()
+  })
+
+  describe("the organization's policy", () => {
+    it('reads a check the policy refused as managed, with the rule, not as a connection problem', async () => {
+      checkAiConnection.mockResolvedValue({
+        connected: false,
+        authError: false,
+        models: [],
+        error: null,
+        managed: 'hostNotAllowed',
+      })
+      getAiApiKeyStatus.mockResolvedValue({ isSet: true, fingerprint: 'fp' })
+      controller.setProvider('openai')
+      await settle()
+      expect(controller.status).toBe('managed')
+      expect(controller.managedRefusal).toBe('hostNotAllowed')
+      expect(controller.error).toBeNull()
+    })
+
+    it('says a refused preset is refused on open, without a key and without probing it', async () => {
+      cloudAiHostsAllowed.mockResolvedValue([false])
+      controller.setProvider('openai')
+      await settle()
+      expect(cloudAiHostsAllowed).toHaveBeenCalledWith(['https://api.openai.com/v1'])
+      expect(controller.status).toBe('managed')
+      expect(controller.managedRefusal).toBe('hostNotAllowed')
+      expect(checkAiConnection).not.toHaveBeenCalled()
+    })
+
+    it('checks a typed endpoint once it is entered, even before there is a key', async () => {
+      vi.useFakeTimers()
+      try {
+        controller.setProvider('azure-openai')
+        await vi.runAllTimersAsync()
+        cloudAiHostsAllowed.mockResolvedValue([false])
+        controller.saveBaseUrl('https://elsewhere.example/v1')
+        await vi.runAllTimersAsync()
+        expect(cloudAiHostsAllowed).toHaveBeenLastCalledWith(['https://elsewhere.example/v1'])
+        expect(controller.status).toBe('managed')
+        expect(checkAiConnection).not.toHaveBeenCalled()
+
+        // Moving to a host the policy allows lifts it again.
+        cloudAiHostsAllowed.mockResolvedValue([true])
+        controller.saveBaseUrl('https://tenant.openai.azure.com/openai/v1')
+        await vi.runAllTimersAsync()
+        expect(controller.status).toBe('idle')
+        expect(controller.managedRefusal).toBeNull()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('drops a refusal for a provider the user already left', async () => {
+      let releaseFirst: ((verdicts: boolean[]) => void) | undefined
+      cloudAiHostsAllowed.mockImplementationOnce(
+        () =>
+          new Promise<boolean[]>((resolve) => {
+            releaseFirst = resolve
+          }),
+      )
+      controller.setProvider('openai')
+      await settle()
+      controller.setProvider('anthropic')
+      await settle()
+      releaseFirst?.([false])
+      await settle()
+      expect(controller.providerId).toBe('anthropic')
+      expect(controller.status).not.toBe('managed')
+    })
   })
 
   it('reports a secret-store read failure to its owner as well as its own state', async () => {

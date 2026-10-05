@@ -18,6 +18,11 @@
          * reserves the space, so labels stay aligned down the list.
          */
         iconUrl?: string
+        /**
+         * Listed but can't be picked: pointer and keyboard skip it (Ark reads `disabled` off the item
+         * by default), and it renders dimmed. Say why in `description`.
+         */
+        disabled?: boolean
     }
 </script>
 
@@ -459,6 +464,11 @@
 
     :global(.select-item[data-highlighted]:hover) {
         background: var(--color-accent-hover);
+    }
+
+    /* A disabled row stays readable but dimmed, and the cursor never lands on it. */
+    :global(.select-item[data-disabled]) {
+        color: var(--color-text-tertiary);
     }
 
     :global(.select-item:focus),

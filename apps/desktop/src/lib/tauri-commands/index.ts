@@ -711,6 +711,7 @@ export {
   stopAiServer,
   startAiServer,
   checkAiConnection,
+  cloudAiHostsAllowed,
   saveAiApiKey,
   getAiApiKeyStatus,
   deleteAiApiKey,

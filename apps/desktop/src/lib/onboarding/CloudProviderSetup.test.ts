@@ -30,6 +30,9 @@ const getAiApiKeyStatus = vi.fn<(id: string) => Promise<{ isSet: boolean; finger
   Promise.resolve({ isSet: false, fingerprint: '' }),
 )
 const openExternalUrl = vi.fn<(url: string) => Promise<void>>(() => Promise.resolve())
+const cloudAiHostsAllowed = vi.fn<(baseUrls: string[]) => Promise<boolean[]>>((urls) =>
+  Promise.resolve(urls.map(() => true)),
+)
 
 // The shared controller suppresses its auto-check on open under `isE2eRun()`. These tests are
 // about the everyday path, so they pin it false rather than lean on an unresolved mode; the
@@ -44,6 +47,7 @@ vi.mock('$lib/tauri-commands', () => ({
   saveAiApiKey: (providerId: string, apiKey: string) => saveAiApiKey({ providerId, apiKey }),
   getAiApiKeyStatus: (id: string) => getAiApiKeyStatus(id),
   openExternalUrl: (url: string) => openExternalUrl(url),
+  cloudAiHostsAllowed: (baseUrls: string[]) => cloudAiHostsAllowed(baseUrls),
 }))
 
 const settingsMap: Record<string, unknown> = {}
@@ -105,6 +109,8 @@ describe('CloudProviderSetup', () => {
     getAiApiKeyStatus.mockResolvedValue({ isSet: false, fingerprint: '' })
     openExternalUrl.mockReset()
     openExternalUrl.mockResolvedValue()
+    cloudAiHostsAllowed.mockReset()
+    cloudAiHostsAllowed.mockImplementation((urls) => Promise.resolve(urls.map(() => true)))
     vi.useFakeTimers()
   })
 
@@ -256,6 +262,15 @@ describe('CloudProviderSetup', () => {
     keyInput.dispatchEvent(new Event('input', { bubbles: true }))
     await advanceTimers(1500)
     expect(mounted.target.textContent).toContain('Invalid key')
+  })
+
+  it("says the organization doesn't allow a refused service, and never probes it", async () => {
+    cloudAiHostsAllowed.mockResolvedValue([false])
+    mountSetup('openai')
+    await settle()
+    if (!mounted) throw new Error('not mounted')
+    expect(mounted.target.textContent).toContain('Your organization doesn’t allow this AI service.')
+    expect(checkAiConnection).not.toHaveBeenCalled()
   })
 
   it('a connection-error result surfaces the error text', async () => {

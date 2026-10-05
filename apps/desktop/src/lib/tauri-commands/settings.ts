@@ -469,6 +469,15 @@ export async function checkAiConnection(baseUrl: string, providerId: string): Pr
   return commands.checkAiConnection(baseUrl, providerId)
 }
 
+/**
+ * For each base URL, whether the organization's policy lets cloud AI send there: the provider
+ * picker renders a refused preset disabled, and a typed endpoint is judged once entered. Local and
+ * instant (no request); a URL, never a key, crosses IPC.
+ */
+export async function cloudAiHostsAllowed(baseUrls: string[]): Promise<boolean[]> {
+  return commands.cloudAiHostsAllowed(baseUrls)
+}
+
 // ============================================================================
 // AI API key storage (OS secret store, not settings.json)
 // ============================================================================
