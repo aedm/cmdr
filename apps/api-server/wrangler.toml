@@ -176,6 +176,20 @@ namespace_id = "1009"
 limit = 10
 period = 60
 
+# Rate limit for POST /validate, keyed by the caller IP (transient, never stored). Each request
+# costs a Paddle API call. A Mac rechecks once every seven days, so even a thousand Macs behind one
+# company NAT average a few per hour, and a Monday-morning burst rarely reaches 60 in one minute.
+# A 429 is harmless to a real one anyway: the app keeps its cached status and tries again after its
+# cooldown. 60/min/IP still caps one abusive client at one Paddle call a second. `period` must be
+# 10 or 60. `namespace_id` is a per-account integer id.
+[[ratelimits]]
+name = "VALIDATE_LIMITER"
+namespace_id = "1010"
+
+[ratelimits.simple]
+limit = 60
+period = 60
+
 [triggers]
 crons = ["0 */3 * * *"]
 

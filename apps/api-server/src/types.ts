@@ -43,6 +43,11 @@ export type Bindings = {
   // code is all it takes to fetch a full license key, so this is what makes guessing codes slow.
   // Optional; the route skips the gate when absent.
   ACTIVATE_LIMITER?: RateLimit
+  // Workers rate-limit binding gating POST /validate, keyed by the caller IP (never stored). Each
+  // request costs a Paddle API call. Loose, because a company's Macs share one NAT address, and a
+  // 429 only keeps a Mac on its cached status until its next try. Optional; the route skips the
+  // gate when absent.
+  VALIDATE_LIMITER?: RateLimit
   // Paddle webhook secrets (both optional to support gradual rollout)
   PADDLE_WEBHOOK_SECRET_LIVE?: string
   PADDLE_WEBHOOK_SECRET_SANDBOX?: string

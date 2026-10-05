@@ -101,6 +101,9 @@ const deviceAlertThreshold = 6
 
 // Validate license - called by app to check subscription status
 licensing.post('/validate', async (c) => {
+  const limited = await enforceIpRateLimit(c.env.VALIDATE_LIMITER, c.req)
+  if (limited) return limited
+
   const body = await c.req.json<{ transactionId?: string; deviceId?: string }>()
   const { response, trackingPromise } = await handleValidation(body.transactionId, body.deviceId, c.env)
   if (trackingPromise) {

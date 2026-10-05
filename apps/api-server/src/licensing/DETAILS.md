@@ -110,6 +110,9 @@ minutes leaves room for clock skew and a slow hop. The fulfillment row still bac
 notification log shows it.
 
 **`/activate` is rate-limited per IP** (`ACTIVATE_LIMITER`, 10/min): a short code is all it takes to fetch a full key.
+**`/validate` is too, loosely** (`VALIDATE_LIMITER`, 60/min): each request costs a Paddle call, but a company's Macs
+share one NAT address. A 429 is safe: the app reads any non-502 failure like a network error, keeps its cached status,
+and retries after its cooldown (`apps/desktop/src-tauri/src/licensing/validation_client.rs`).
 
 ## Manual licenses
 

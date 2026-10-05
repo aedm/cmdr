@@ -55,3 +55,38 @@ describe('/activate rate limiting', () => {
     expect(limit).toHaveBeenCalledWith({ key: '203.0.113.7' })
   })
 })
+
+function validate(bindings: ReturnType<typeof createBindings>, ip = '203.0.113.7') {
+  return app.request(
+    '/validate',
+    {
+      method: 'POST',
+      headers: { 'cf-connecting-ip': ip, 'content-type': 'application/json' },
+      body: JSON.stringify({ transactionId: 'txn_01abc', deviceId: 'device-1' }),
+    },
+    bindings,
+  )
+}
+
+// Each request costs a Paddle API call. A 429 is safe for a real Mac: the app reads any non-502
+// failure as a network error and keeps its cached status (`validation_client.rs`).
+describe('/validate rate limiting', () => {
+  it('returns 429 and never asks Paddle when the limiter rejects the caller', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    const bindings = createBindings({
+      VALIDATE_LIMITER: { limit: vi.fn(() => Promise.resolve({ success: false })) },
+    })
+
+    const res = await validate(bindings)
+
+    expect(res.status).toBe(429)
+    expect(fetchSpy).not.toHaveBeenCalled()
+    fetchSpy.mockRestore()
+  })
+
+  it('keys the limit on the caller IP', async () => {
+    const limit = vi.fn(() => Promise.resolve({ success: false }))
+    await validate(createBindings({ VALIDATE_LIMITER: { limit } }))
+    expect(limit).toHaveBeenCalledWith({ key: '203.0.113.7' })
+  })
+})
