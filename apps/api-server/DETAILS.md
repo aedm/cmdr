@@ -448,7 +448,8 @@ triage value live in the other columns, and there's no privacy reason to lose th
 - **`analytics_event`**: rows DELETED after two years, the same "desktop usage stats" promise as `heartbeat`. Aged by
   `received_at` (our clock), never `occurred_at`: that's the client's clock, and a wrong one would keep a row forever.
   The copy forwarded to PostHog is under PostHog's own retention, which the privacy policy names separately.
-- **Error report bundles**: 90-day R2 lifecycle, plus capacity-driven eviction that never touches anything under 60 days
+- **Error report bundles**: 90-day R2 lifecycle (`error-reports/` prefix only, rule details in
+  `src/telemetry/DETAILS.md` § Eviction), plus capacity-driven eviction that never touches anything under 60 days
   (`src/telemetry/DETAILS.md` § Eviction). Not part of this sweep. The same 90 days covers every reply-to address an
   error report can carry (`meta.email` inside the bundle zip, and any address in the `.amend.json` sidecar) and the
   `report:{id}` KV index entry, whose TTL is set to match. That is the same window `crash_reports.email` gets, reached

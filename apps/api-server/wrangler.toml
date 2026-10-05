@@ -53,7 +53,8 @@ database_name = "cmdr-telemetry"
 database_id = "537fdb4a-cd66-4faf-a2fe-3e51b5f6f915"
 
 # R2 bucket for error report bundles (zips of redacted logs + manifest)
-# Provision with ./scripts/setup-cf-infra.sh (that also applies the 90-day lifecycle rule).
+# Provision with ./scripts/setup-cf-infra.sh (that also applies the 90-day lifecycle rule, scoped to the
+# `error-reports/` prefix so the license backups under `backups/licenses/` survive).
 [[r2_buckets]]
 binding = "ERROR_REPORTS_BUCKET"
 bucket_name = "cmdr-error-reports"

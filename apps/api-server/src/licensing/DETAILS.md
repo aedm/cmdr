@@ -242,8 +242,8 @@ snapshot therefore holds BOTH halves and is restorable on its own, with no signi
 A restore writes each `keys` entry back under its code and each `licenses` row back into `license_issuance`. There is no
 restore script: doing it by hand from a known-good day is the point, and a script would be the more dangerous half.
 
-- **The prefix is load-bearing.** `backups/` sits outside `error-reports/`, which the eviction sweep and both size
-  watermarks list exclusively, so nothing here is swept or counted against them.
+- **The prefix is load-bearing.** `backups/` sits outside `error-reports/`, which the eviction sweep, both size
+  watermarks, and the bucket's 90-day lifecycle rule are scoped to, so nothing here is swept, counted, or expired.
 - **Append-only, deliberately.** Nothing prunes these; each day is a few kilobytes. Add a rule when there are enough
   objects for one to be worth writing.
 - A second run on the same day overwrites that day's object, so a retried tick can't leave two versions of one day.
