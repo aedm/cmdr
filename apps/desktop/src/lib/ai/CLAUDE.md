@@ -13,9 +13,7 @@ llama-server process, inference client with provider routing).
 - **`translate-error-toast.ts`**: pure `aiTranslateErrorToast(kind)` + `isAiTranslateError` guard +
   `showAiTranslateErrorToast(err)` (the one impure wrapper); `noCloudConsent` renders `CloudAiOffToastContent.svelte`,
   and `managed` (the organization's MDM policy) names the rule `err.managed` carries.
-- **`local-ai-error.ts`**: `toLocalAiError` (the typed rejection of `start_ai_server` / `start_ai_download`) and
-  `localAiErrorLogLevel`: the organization's refusal and a cancel log at info, ❌ never error (an error log can send a
-  report).
+- **`local-ai-error.ts`**: the local-AI commands' typed rejection and its log level (refusal, cancel: info).
 - **`cloud-consent.svelte.ts`** + **`AiCloudConsentToggle.svelte`**: the "Allow cloud AI" state and switch. `DETAILS.md`
   § Cloud AI consent.
 
