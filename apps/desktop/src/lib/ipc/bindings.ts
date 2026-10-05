@@ -9519,6 +9519,22 @@ export type LiveSystemState = {
 }
 
 /**
+ *  Why `start_ai_server` or `start_ai_download` didn't do its job. Exported to `bindings.ts`
+ *  through `ipc.rs`'s `.typ` (both commands are generic, so specta doesn't collect them).
+ *
+ *  ❌ `detail` is for logs only, never a sentence a person reads.
+ */
+export type LocalAiError =
+  // The organization's policy refuses local AI. Not a failure: ❌ never log it at warn or error.
+  | { type: 'managed'; refusal: ManagedAiRefusal }
+  // Local AI needs Apple Silicon.
+  | { type: 'unsupported' }
+  // The download stopped on request: the person's, or a policy change's (`apply_policy_change`).
+  | { type: 'cancelled' }
+  // Anything else: extraction, the download, the size check, the spawn.
+  | { type: 'failed'; detail: string }
+
+/**
  *  Snapshot of the system pane labels we surface in user-facing copy.
  *
  *  Field names match the placeholder tokens the frontend substitutes

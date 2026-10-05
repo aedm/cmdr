@@ -405,6 +405,20 @@ describe('StepAi', () => {
     expect(logInfo).not.toHaveBeenCalled()
   })
 
+  it('a download the organization’s policy stopped logs at info, not as a failure', async () => {
+    const start = pendingStart()
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'local')
+    await waitForAsync()
+
+    start.reject({ type: 'cancelled' })
+    await waitForAsync()
+
+    expect(logWarn).not.toHaveBeenCalled()
+    expect(logInfo).toHaveBeenCalledOnce()
+  })
+
   it('Intel gate: when localAiSupported is false the local radio is disabled and ignored', async () => {
     getAiRuntimeStatus.mockResolvedValue({
       serverRunning: false,

@@ -182,6 +182,10 @@ How the organization's MDM profile (`managed_policy/DETAILS.md`, the canonical k
   every HTTP client that talks to an AI endpoint must.
 - **Local model.** Under `DisableAI`, `configure_ai` treats `local` like switching away (stops a running server, never
   spawns), `start_ai_server` and `start_ai_download` refuse, and `compute_ai_status` never offers the download.
+  Both commands reject with the typed `LocalAiError` (`Managed { refusal }`, `Unsupported`, `Cancelled`,
+  `Failed { detail }`; exported through `ipc.rs`'s `.typ`, since generic commands aren't collected). A download that
+  ends with the cancel flag set is `Cancelled`, whoever set it, so a policy-driven cancel is never a failure. The
+  frontend logs `Managed` and `Cancelled` at info (`$lib/ai/local-ai-error.ts`).
   `DisableCloudAI` leaves all of that alone.
 - **A change while running.** `managed_policy`'s `apply_change` calls `managed::apply_policy_change`: ANY narrowing of
   the AI policy cancels every in-flight Ask Cmdr turn and suggestion stream (the same `stop_in_flight_calls` a consent

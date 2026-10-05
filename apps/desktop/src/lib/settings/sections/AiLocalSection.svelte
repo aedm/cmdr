@@ -26,6 +26,7 @@
     type SystemMemoryInfo } from '$lib/tauri-commands'
     import { computeGaugeSegments } from './ram-gauge-utils'
     import { getAppLogger } from '$lib/logging/logger'
+    import { localAiErrorLogLevel, toLocalAiError } from '$lib/ai/local-ai-error'
     import { colorizeSizeString } from '$lib/file-explorer/selection/selection-info-utils'
     import { t, tString } from '$lib/intl/messages.svelte'
     import { formatByteSize } from '$lib/units'
@@ -153,6 +154,15 @@
         }
     }
 
+    /**
+     * Logs a `start_ai_server` / `start_ai_download` rejection at its level: the organization's
+     * refusal and a cancel at info (an error log can send an automatic report), the rest at error.
+     */
+    function logLocalAiError(message: string, rejection: unknown): void {
+        const error = toLocalAiError(rejection)
+        logger[localAiErrorLogLevel(error)](message, { error })
+    }
+
     async function performContextRestart(): Promise<void> {
         isRestarting = true
         try {
@@ -160,7 +170,7 @@
             const ctxSize = Number(getSetting('ai.localContextSize'))
             await startAiServer(ctxSize)
         } catch (e) {
-            logger.error("Couldn't restart AI server: {error}", { error: e })
+            logLocalAiError("Couldn't restart AI server: {error}", e)
             isRestarting = false
         }
         await refreshStatus()
@@ -177,7 +187,7 @@
             activeContextSize = ctxSize
             await refreshStatus()
         } catch (e) {
-            logger.error("Couldn't start AI server: {error}", { error: e })
+            logLocalAiError("Couldn't start AI server: {error}", e)
         }
     }
 
@@ -201,7 +211,8 @@
             if (downloadCancelledByUser) {
                 logger.info('AI download cancelled by user')
             } else {
-                logger.error("Couldn't start AI download: {error}", { error: e })
+                // A cancel from a policy change, or the organization's refusal, logs at info too.
+                logLocalAiError("Couldn't start AI download: {error}", e)
             }
             downloadProgress = null
             installStep = null

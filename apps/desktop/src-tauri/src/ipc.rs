@@ -977,6 +977,9 @@ pub fn builder() -> Builder<tauri::Wry> {
     let combined_commands = tauri_specta::internal::command(runtime_handler, collect_all_types);
     Builder::<tauri::Wry>::new()
         .commands(combined_commands)
+        // The error type of `start_ai_server` / `start_ai_download`, which are generic and so
+        // missing from the collected commands: the frontend branches on its `type`.
+        .typ::<crate::ai::server::LocalAiError>()
         // Typed events. Each registered struct derives `tauri_specta::Event`;
         // its kebab-cased name is the wire event name and its TS type + a typed
         // `events.<name>.listen(...)` helper are generated into `bindings.ts`.

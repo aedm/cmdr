@@ -43,6 +43,7 @@
     import { getSettingLock } from '$lib/managed-policy/managed-policy.svelte'
     import { lockAllowsWrite } from '$lib/managed-policy/overlay'
     import { followPresetHostVerdicts } from '$lib/ai-provider-setup/preset-hosts.svelte'
+    import { localAiErrorLogLevel, toLocalAiError } from '$lib/ai/local-ai-error'
     import type { Snippet } from 'svelte'
 
     /**
@@ -271,6 +272,9 @@
     function logDownloadEnd(end: LocalDownloadEnd): void {
         if (end.kind === 'cancelledByChoice') {
             log.info('The AI download stopped because the person switched away from Local')
+        } else if (localAiErrorLogLevel(toLocalAiError(end.error)) === 'info') {
+            // The organization's refusal, or a cancel a policy change made: not a failure.
+            log.info('The AI download stopped: {error}', { error: toLocalAiError(end.error) })
         } else {
             log.warn("Couldn't download the local AI model during onboarding: {error}", { error: end.error })
         }

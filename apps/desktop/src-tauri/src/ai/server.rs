@@ -15,11 +15,35 @@ use super::process::{
 use super::state::{MANAGER, ManagerState, get_ai_dir, is_fully_installed, save_state};
 use super::{AiServerReady, AiStarting, get_default_model, get_model_by_id, is_local_ai_supported};
 use crate::ignore_poison::IgnorePoison;
+use crate::managed_policy::ManagedAiRefusal;
 use crate::pluralize::pluralize;
 use std::path::Path;
 use tauri::{AppHandle, Runtime};
 use tauri_specta::Event as _;
 use tokio_util::sync::CancellationToken;
+
+/// Why `start_ai_server` or `start_ai_download` didn't do its job. Exported to `bindings.ts`
+/// through `ipc.rs`'s `.typ` (both commands are generic, so specta doesn't collect them).
+///
+/// ❌ `detail` is for logs only, never a sentence a person reads.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, specta::Type)]
+#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum LocalAiError {
+    /// The organization's policy refuses local AI. Not a failure: ❌ never log it at warn or error.
+    Managed { refusal: ManagedAiRefusal },
+    /// Local AI needs Apple Silicon.
+    Unsupported,
+    /// The download stopped on request: the person's, or a policy change's (`apply_policy_change`).
+    Cancelled,
+    /// Anything else: extraction, the download, the size check, the spawn.
+    Failed { detail: String },
+}
+
+impl From<String> for LocalAiError {
+    fn from(detail: String) -> Self {
+        Self::Failed { detail }
+    }
+}
 
 /// Stops the local llama-server without uninstalling.
 #[tauri::command]
@@ -46,13 +70,13 @@ pub fn stop_ai_server() {
 /// Spawns the server in a background task and returns immediately.
 #[tauri::command]
 #[specta::specta]
-pub fn start_ai_server<R: Runtime>(app: AppHandle<R>, ctx_size: u32) -> Result<(), String> {
+pub fn start_ai_server<R: Runtime>(app: AppHandle<R>, ctx_size: u32) -> Result<(), LocalAiError> {
     if let Err(refusal) = super::managed::local_ai_allowed(&crate::managed_policy::current()) {
         log::info!("AI server: the organization's policy refuses local AI ({refusal:?}), not starting");
-        return Err(String::from("Your organization turned off AI in Cmdr"));
+        return Err(LocalAiError::Managed { refusal });
     }
     if !is_local_ai_supported() {
-        return Err(String::from("Local AI not supported on this hardware"));
+        return Err(LocalAiError::Unsupported);
     }
 
     // Recovery: re-extract binary if missing (before acquiring lock)
@@ -67,7 +91,7 @@ pub fn start_ai_server<R: Runtime>(app: AppHandle<R>, ctx_size: u32) -> Result<(
     {
         let mut manager = MANAGER.lock_ignore_poison();
         let Some(ref mut m) = *manager else {
-            return Err(String::from("AI manager not initialized"));
+            return Err(String::from("AI manager not initialized").into());
         };
         m.context_size = ctx_size;
 
@@ -77,7 +101,7 @@ pub fn start_ai_server<R: Runtime>(app: AppHandle<R>, ctx_size: u32) -> Result<(
                     m.server_starting = true;
                     Some((pid, port, cancel))
                 }
-                Err(e) => return Err(e),
+                Err(e) => return Err(e.into()),
             }
         } else {
             None
@@ -259,6 +283,22 @@ mod tests {
     /// as an `i32`, so `kill(pid, 0)` reports "no such process" rather than the `-1` broadcast.
     const DEAD_PID: u32 = 999_999;
     const UNUSED_DIR: &str = "/nonexistent-cmdr-startup-test-dir";
+
+    /// A refusal is typed, so the frontend can log it at info: an error log can send an
+    /// automatic report, and the organization's "no" isn't a failure.
+    #[test]
+    fn under_ai_off_the_server_start_refuses_typed() {
+        use crate::managed_policy::ManagedAiRefusal;
+        use crate::managed_policy::testing::{self, DISABLE_AI};
+        let _policy = testing::override_for_test(testing::forcing(&[DISABLE_AI]));
+        let app = tauri::test::mock_app();
+        assert_eq!(
+            start_ai_server(app.handle().clone(), 4096),
+            Err(LocalAiError::Managed {
+                refusal: ManagedAiRefusal::AiOff
+            })
+        );
+    }
 
     #[tokio::test]
     async fn wait_for_server_health_reports_cancelled_not_failed_when_token_fired() {
