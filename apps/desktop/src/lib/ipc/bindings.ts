@@ -5081,8 +5081,6 @@ export type AiModelInfo = {
   id: string
   displayName: string
   sizeBytes: number
-  // Human-readable size (like "4.3 GB")
-  sizeFormatted: string
   // Bytes per token for KV cache (used for memory estimation)
   kvBytesPerToken: number
   // Base memory overhead in bytes (model weights + compute buffers)
@@ -5116,7 +5114,6 @@ export type AiRuntimeStatus = {
   modelInstalled: boolean
   modelName: string
   modelSizeBytes: number
-  modelSizeFormatted: string
   downloadInProgress: boolean
   localAiSupported: boolean
   kvBytesPerToken: number
