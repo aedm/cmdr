@@ -65,7 +65,8 @@ The organization's `DisableUpdates`, `DisableAutomaticUpdateChecks`, and `MaxUpd
   return before any request (so no `update-check` row either). `trigger` is the frontend's analytics token;
   `startup` / `poll` / `auto_check_on` are automatic, `command` / `settings` are a person asking, which
   `DisableAutomaticUpdateChecks` still allows. The policy is asked BEFORE `skip_reason`, so a dev build run with
-  `CMDR_MANAGED_PREFS_FILE` shows the managed answer.
+  `CMDR_MANAGED_PREFS_FILE` shows the managed answer. The backend trusts that trigger; why that's accepted:
+  `managed_policy/DETAILS.md` § Accepted residuals.
 - **Offer.** Only `Available` stores the release (`UpdateInfo`: version, URL, signature) in `UpdateState.offered`; every
   check clears the slot first, so a download can only fetch what the newest check offered under the newest policy.
 - **Download.** `download_update` takes no arguments: it fetches the offered URL, never one the frontend names, after

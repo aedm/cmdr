@@ -141,6 +141,17 @@ download, and the user-initiated feedback and beta signup.
   `any_cloud_refusal` is its host-independent half, for the consent predicate and cloud-only features.
   `ai/DETAILS.md` § Managed policy.
 
+## Accepted residuals
+
+- **`DisableAutomaticUpdateChecks` trusts the frontend's trigger.** `check_for_update(trigger)` refuses an automatic
+  trigger, but the trigger is a frontend argument, so a bypassed or buggy frontend that labels its poll `command` runs
+  background checks under that key (rule 1). Decided 2026-10-05 to accept it rather than move the poll into Rust: the
+  frontend is our own code (no third party drives that command; MCP has no update tool), a manual check is allowed under
+  this key anyway, so the most a mislabeled poll does is ask more often, nothing above `MaxUpdateVersion` installs, and
+  `DisableUpdates` still blocks every request in the backend whatever the trigger says. Moving the decision would mean a
+  Rust-side scheduler that owns the startup check, the poll interval, and the onboarding hold, all of which live in
+  `src/lib/updates/updater.svelte.ts` today. Revisit if a non-UI caller ever gets an update-check path.
+
 ## Testing
 
 - Tests elsewhere put a policy in force with `testing::override_for_test(testing::forcing(&[KEY]))`: a guard that makes
