@@ -157,6 +157,11 @@ in `public/fonts/`.
   agents; each blog post also has a Markdown mirror at `/blog/{slug}/index.md`. Keep the llms files in sync when product
   facts (pricing, features, system requirements) change. nginx serves `.md` as `text/markdown` via a dedicated location
   block in `nginx.conf`.
+- **Sample MDM files**: `public/mdm/` holds the sample `.mobileconfig` profile and the bare `.plist` linked from
+  `/trust#mdm`. nginx's `/mdm/` location gives them `application/x-apple-aspen-config` and `application/x-plist` (the
+  default mime table knows neither). A Rust test guards their keys against the app's
+  (`apps/desktop/src-tauri/src/managed_policy/DETAILS.md` § The public mirror), so a key edit here needs the app's key
+  list to match.
 
 ## Icons
 

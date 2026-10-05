@@ -43,7 +43,7 @@ export const networkConnections: NetworkConnection[] = [
     sends:
       'The app version and CPU architecture, in the URL. The server keeps a one-way hash of the IP address, the date, the version, and the architecture. It deletes each record after seven days and keeps only daily totals.',
     control:
-      '<strong>On by default.</strong> Turn off with Settings &gt; Updates &amp; privacy &gt; "Automatically check for updates". A found update downloads and installs by itself, then asks the user to restart.',
+      '<strong>On by default.</strong> Turn off with Settings &gt; Updates &amp; privacy &gt; "Automatically check for updates". A found update downloads and installs by itself, then asks the user to restart. IT can turn off background checks, all updates, or updates past a version (<a href="#mdm">central management</a>).',
   },
   {
     id: 'usage-stats',
@@ -54,7 +54,7 @@ export const networkConnections: NetworkConnection[] = [
     sends:
       'A random install id created on the Mac (not linked to a name, email, or license), app version, macOS version, CPU architecture, the names of features used, and a fixed list of settings values (like light or dark mode). No file names, paths, file contents, search terms, or AI prompts. That list is enforced by code review, not by an automatic filter.',
     control:
-      '<strong>On by default</strong> during the open beta. The first-launch setup shows this, and the user can\'t skip that step. Turn off with Settings &gt; Updates &amp; privacy &gt; "Send usage stats". When it\'s off, nothing is sent.',
+      '<strong>On by default</strong> during the open beta. The first-launch setup shows this, and the user can\'t skip that step. Turn off with Settings &gt; Updates &amp; privacy &gt; "Send usage stats". When it\'s off, nothing is sent. IT can turn it off for everyone with <code>DisableUsageStats</code>.',
   },
   {
     id: 'crash-reports',
@@ -64,7 +64,7 @@ export const networkConnections: NetworkConnection[] = [
     sends:
       "App and macOS version, where in Cmdr's code the crash happened, the crash message after it's cleaned of personal data on the Mac (at most 2,000 characters), memory addresses of the crashing code, and a random report id. From macOS's own crash report, only the one-line reason and the function names of the crashing thread. An email address only if the user ticks a box.",
     control:
-      '<strong>On by default.</strong> Turn off with Settings &gt; Updates &amp; privacy &gt; "Send crash reports".',
+      '<strong>On by default.</strong> Turn off with Settings &gt; Updates &amp; privacy &gt; "Send crash reports". IT can turn it off for everyone with <code>DisableCrashAndErrorReports</code>.',
   },
   {
     id: 'error-reports',
@@ -74,7 +74,7 @@ export const networkConnections: NetworkConnection[] = [
     sends:
       "A zip with the recent part of the app's log, the app and macOS version, and the user's note. Before it leaves the Mac, Cmdr replaces file and folder names in paths with placeholders, keeping only the extension and common folder names like Documents. <strong>Known gap</strong>: a file name that appears in free text (outside a path) can get through.",
     control:
-      'Sent by hand only, by default. Automatic sending is Settings &gt; Updates &amp; privacy &gt; "Send error reports automatically", off by default.',
+      'Sent by hand only, by default. Automatic sending is Settings &gt; Updates &amp; privacy &gt; "Send error reports automatically", off by default. IT can turn off both kinds for everyone with <code>DisableCrashAndErrorReports</code>.',
     devTodo:
       'Release timing: AI search and selection words stopped reaching the log in 3bfa0e246, which ships in the release after 0.50.0, so this narrowed wording is only true from then. Remaining: the redactor misses a file name in free text (<code>redact/CLAUDE.md</code> § Gotchas). Close it, then drop the "Known gap" sentence here, the matching gap in "Not in place yet", and the gap sentences in the privacy policy (section 2 and the intro).',
   },
@@ -86,7 +86,7 @@ export const networkConnections: NetworkConnection[] = [
     sends:
       "The license's transaction id, and a device id that's a one-way hash (SHA-256) of the Mac's hardware UUID. Activation sends the short license code.",
     control:
-      "Free personal-use installs never make this call. The license itself is checked offline with a signature. If the server can't be reached, the license keeps working for 30 days, then the app falls back to the free personal tier until a check succeeds.",
+      "Free personal-use installs never make this call. The license itself is checked offline with a signature. If the server can't be reached, the license keeps working for 30 days, then the app falls back to the free personal tier until a check succeeds. No managed preference turns it off, since a paid license has to stay checkable.",
   },
   {
     id: 'feedback',
@@ -103,7 +103,8 @@ export const networkConnections: NetworkConnection[] = [
       'The AI provider the user picks, straight from the Mac. None of it goes through Cmdr\'s servers. Details in <a href="#ai">AI features and your files</a>.',
     when: 'Only after the user sets up a cloud provider with their own API key and turns on "Allow cloud AI".',
     sends: 'File and folder names and, when asked, parts of file contents. See the AI section.',
-    control: '<strong>Off by default.</strong> Settings &gt; AI &gt; Provider.',
+    control:
+      '<strong>Off by default.</strong> Settings &gt; AI &gt; Provider. IT can turn AI off, allow only on-device AI, or limit which hosts cloud AI may reach (<a href="#mdm">central management</a>).',
   },
   {
     id: 'models',
@@ -131,7 +132,71 @@ export const networkConnections: NetworkConnection[] = [
     when: 'Only for users of S3 storage: when Cmdr estimates what an S3 copy, move, delete, or rename costs, and its stored price table is missing or over a day old. At most once a day.',
     sends: 'Nothing beyond the request itself. The server stores nothing about it.',
     control:
-      'Happens only when the user works with S3. Without it, Cmdr uses the last stored table or the one built into the app.',
+      'Happens only when the user works with S3. Without it, Cmdr uses the last stored table or the one built into the app. No managed preference turns it off, since it carries no user data.',
+  },
+]
+
+export interface ManagedPreferenceKey {
+  /** The key name in the `com.veszelovszki.cmdr` preference domain. */
+  key: string
+  type: 'Boolean' | 'String' | 'Array of strings'
+  /** Inline HTML. */
+  effect: string
+}
+
+/**
+ * Every managed preference (MDM) key the app reads, in the order of the sample profile. A Rust
+ * test (`managed_policy/public_docs_test.rs`) checks this list and both files in `public/mdm/`
+ * against the key names in `managed_policy/keys.rs`, so a new key can't skip this page. The
+ * canonical catalog is `apps/desktop/src-tauri/src/managed_policy/DETAILS.md`.
+ */
+export const managedPreferenceKeys: ManagedPreferenceKey[] = [
+  {
+    key: 'DisableUsageStats',
+    type: 'Boolean',
+    effect:
+      'No usage stats. Cmdr sends no heartbeat and no feature events, and deletes the ones waiting on the Mac. "Send usage stats" stays off.',
+  },
+  {
+    key: 'DisableCrashAndErrorReports',
+    type: 'Boolean',
+    effect:
+      "No crash reports and no error reports, automatic or sent by hand. A crash report waiting from the last session is deleted without being offered. Users can still save an error report to disk. In-app feedback isn't covered: it's a message the user writes and sends on purpose.",
+  },
+  {
+    key: 'DisableAutomaticUpdateChecks',
+    type: 'Boolean',
+    effect: 'No background update checks. A user can still check by hand.',
+  },
+  {
+    key: 'DisableUpdates',
+    type: 'Boolean',
+    effect:
+      'No update check, download, or install of any kind, so Cmdr never contacts the update servers. For teams that ship new versions themselves. Overrides the other two update keys.',
+  },
+  {
+    key: 'MaxUpdateVersion',
+    type: 'String',
+    effect:
+      "\"Never update past this version.\" <code>0.52</code> allows up to the last 0.52.x, <code>0.52.3</code> up to and including 0.52.3, and <code>1</code> anything below 2.0.0. A whole number works too. A value Cmdr can't read turns updates off. <strong>What it can't do</strong>: Cmdr only learns about its newest release, so once a release past the ceiling ships, the Mac gets no more updates, patches included, until you raise it. It holds Cmdr at a version; it isn't an update channel.",
+  },
+  {
+    key: 'DisableAI',
+    type: 'Boolean',
+    effect:
+      "No AI at all: no request to any AI provider, no on-device model download, no local AI server, and no Ask Cmdr. AI search over the MCP server refuses too. Image search isn't covered: its on-device model indexes images and doesn't generate anything.",
+  },
+  {
+    key: 'DisableCloudAI',
+    type: 'Boolean',
+    effect:
+      "On-device AI only: nothing goes to a cloud AI provider. An Ollama or LM Studio server counts as cloud, even on the same Mac, because <code>localhost</code> can be a tunnel to another machine. Cmdr's own on-device model still works.",
+  },
+  {
+    key: 'AllowedCloudAIHosts',
+    type: 'Array of strings',
+    effect:
+      "Cloud AI may reach only these hosts. Each entry is a host (<code>api.openai.com</code>), a host and port (<code>localhost:11434</code>), a pattern for any subdomain (<code>*.openai.azure.com</code>, which doesn't match <code>openai.azure.com</code> itself), or a pasted URL, of which only the host and port count. Case doesn't matter. Cmdr checks every request and every redirect. It skips entries it can't read, and an empty list allows no host, the same as <code>DisableCloudAI</code>.",
   },
 ]
 
@@ -249,15 +314,14 @@ export const serverRetention: RetentionRule[] = [
  * sentences; the reviewer scans this list.
  */
 export const notInPlaceYet: string[] = [
-  '<strong>No central administration.</strong> No MDM configuration profile or managed preferences. Every setting (usage stats, crash reports, updates, AI) is per user, and the user can change it back.',
-  '<strong>Usage stats and crash reports are on by default.</strong> Each user can turn them off.',
-  '<strong>No update control for IT.</strong> Updates install automatically. There are no update channels, no staged rollout, and no way to pin a version centrally.',
+  '<strong>Usage stats and crash reports are on by default.</strong> Each user can turn them off, and IT can turn them off for everyone (<a href="#mdm">central management</a>).',
+  "<strong>No update channels and no staged rollout.</strong> IT can turn updates off or hold Cmdr at a version, but can't install an older release through the updater.",
+  '<strong>No managed preference turns off the remaining traffic</strong>: license checks, S3 prices, and the image-search model download (<a href="#mdm-not-covered">why each one stays</a>).',
   '<strong>No <code>.pkg</code> installer and no published PPPC profile</strong> for granting Full Disk Access through MDM. The code-signing requirement on this page is what such a profile needs.',
   "<strong>Data leaves the EU</strong> (see above), and Cloudflare storage isn't locked to the EU jurisdiction.",
   '<strong>No data processing agreement (DPA)</strong> ready to sign.',
   "<strong>The 90-day deletion of error-report zips isn't active yet.</strong>",
   '<strong>Error-report cleaning has a known gap</strong>: a file name in free text can be included.',
-  "<strong>No central control over AI.</strong> IT can't disable AI or limit which providers users can pick.",
   '<strong>No reproducible builds.</strong> Each release publishes SHA-256 checksums, signed build provenance, and signed SBOMs, and its tag is signed.',
   '<strong>No second-person code review.</strong> Cmdr has one maintainer, and development is AI-assisted. Automated checks stand in for a reviewer (<a href="/trust/development#review">details</a>).',
   '<strong>One maintainer account can publish a release</strong> to every install, and the signing keys are GitHub repository secrets without a protected environment.',

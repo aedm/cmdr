@@ -8,6 +8,7 @@ import DevTodo from '../components/DevTodo.astro'
 import {
     allowlistHosts,
     dataLocations,
+    managedPreferenceKeys,
     networkConnections,
     notInPlaceYet,
     serverRetention,
@@ -22,6 +23,7 @@ const euLabel = { yes: 'In the EU', no: 'Outside the EU', partly: 'Partly outsid
 const toc = [
     { id: 'summary', label: 'Summary' },
     { id: 'network', label: 'What the app sends over the network' },
+    { id: 'mdm', label: 'Central management (MDM)' },
     { id: 'eu', label: 'Does data leave the EU?' },
     { id: 'subprocessors', label: 'Subprocessors' },
     { id: 'storage', label: 'What is stored where, and for how long' },
@@ -67,7 +69,7 @@ const toc = [
         </li>
         <li>
             <strong>On by default</strong>: update checks, usage stats, and crash reports. Each user can turn each one
-            off in Settings. There's no central (MDM) control yet.
+            off in Settings, and IT can turn them off for everyone through MDM.
         </li>
         <li>
             <strong>AI is off by default.</strong> If a user turns it on with their own API key, the app talks straight
@@ -145,6 +147,106 @@ const toc = [
         getcmdr.com counts visits with Umami, which runs on Cmdr's own server in Finland and uses no cookies. It also
         uses PostHog (EU cloud) for visit recordings and heatmaps, kept in memory only, so it sets no cookie either.
     </p>
+
+    <h2 id="mdm">Central management (MDM)</h2>
+    <p>
+        IT can turn off usage stats, reports, updates, and AI for every user with a configuration profile from any
+        MDM (Jamf, Kandji, Intune, and others). Cmdr reads managed preferences from the
+        <code>com.veszelovszki.cmdr</code> preference domain, the app's bundle id. A user can't change a managed
+        setting: Settings shows it locked, with a note that the organization manages it, and the MCP server can't
+        change it either. Cmdr picks up a new or changed profile while it runs, before it sends anything else.
+    </p>
+    <ul>
+        <li>
+            <a href="/mdm/cmdr-managed-preferences.mobileconfig" download>Sample configuration profile</a>
+            (<code>.mobileconfig</code>): every key below with an example value and a comment. It's unsigned, because
+            your MDM signs profiles when it deploys them.
+        </li>
+        <li>
+            <a href="/mdm/com.veszelovszki.cmdr.plist" download>Preference file</a> (<code>.plist</code>): the same
+            keys on their own, for Jamf Pro's "Application &amp; Custom Settings", a Kandji custom profile, or an
+            Intune preference file.
+        </li>
+    </ul>
+
+    <h3 id="mdm-keys">Keys</h3>
+    <p>
+        Every key only turns something off or narrows it, and no key can turn anything on. A key that's missing, or
+        set to false, leaves that part up to each user.
+    </p>
+    <ul>
+        {
+            managedPreferenceKeys.map((entry) => (
+                <li>
+                    <code>{entry.key}</code> ({entry.type}): <Fragment set:html={entry.effect} />
+                </li>
+            ))
+        }
+    </ul>
+    <ul>
+        <li>
+            <strong>Which key wins</strong>: <code>DisableAI</code> beats <code>DisableCloudAI</code>, which beats
+            <code>AllowedCloudAIHosts</code>. <code>DisableUpdates</code> beats both other update keys, while
+            <code>MaxUpdateVersion</code> and <code>DisableAutomaticUpdateChecks</code> work together.
+        </li>
+        <li>
+            <strong>Values</strong>: a Boolean also accepts the strings <code>true</code>, <code>false</code>,
+            <code>yes</code>, <code>no</code>, <code>1</code>, and <code>0</code>, and a number (0 is false). A value
+            Cmdr can't read counts as the strictest setting of that key, and Cmdr logs a warning.
+        </li>
+        <li>
+            <strong>Only managed values count.</strong> Cmdr reads only what a profile sets (in
+            <code>/Library/Managed Preferences</code>). A user's own <code>defaults write</code> to the same domain
+            changes nothing.
+        </li>
+        <li>
+            <strong>Local Ollama or LM Studio only</strong>: <code>DisableCloudAI</code> blocks <code>localhost</code>
+            too, so leave it off and set <code>AllowedCloudAIHosts</code> to <code>localhost</code> and
+            <code>127.0.0.1</code>.
+        </li>
+        <li>
+            <strong>macOS only.</strong> Cmdr doesn't read managed preferences on other systems.
+        </li>
+        <li>
+            <strong>To check a Mac</strong>, run
+            <code>defaults read "/Library/Managed Preferences/com.veszelovszki.cmdr"</code>, which shows what the
+            profile delivered.
+        </li>
+    </ul>
+
+    <h3 id="mdm-heartbeat">What usage stats say about a managed Mac</h3>
+    <p>
+        If usage stats stay on, the settings values they send are the ones in effect, so a managed setting reports its
+        managed value. They add one yes-or-no flag saying that an organization manages some of Cmdr's settings. They
+        never say which keys are set or to what.
+    </p>
+
+    <h3 id="mdm-not-covered">What no key turns off</h3>
+    <ul>
+        <li>
+            <strong>License checks</strong>: a paid license has to stay checkable. The check sends the license's
+            transaction id and a hashed device id, nothing about files, and only on Macs with a commercial license.
+        </li>
+        <li>
+            <strong>The S3 price table</strong>: public prices for estimating what an S3 operation costs, at most once a
+            day and only for S3 users. It sends no user data.
+        </li>
+        <li>
+            <strong>The image-search model download</strong> from Hugging Face, when a user turns on semantic image
+            search: a download of the on-device model. Nothing is uploaded. (<code>DisableAI</code> does stop the local
+            AI model download.)
+        </li>
+        <li>
+            <strong>Feedback and newsletter signup</strong>: only when the user sends them.
+        </li>
+        <li><strong>Remote files</strong>: servers and devices the user connects to.</li>
+    </ul>
+    <DevTodo>
+        Release timing: managed preferences ship in the first release after 0.50.0. This section, the gap lines it
+        replaced, and the "IT can" sentences elsewhere on this page are only true from then, so publish them with
+        that release. Then David runs plan M9 (the sample profile on a real Mac) before the
+        <a href="https://github.com/vdavid/cmdr/issues/118">#118</a> boxes get ticked.
+    </DevTodo>
 
     <h2 id="eu">Does data leave the EU?</h2>
     <p>
@@ -290,8 +392,8 @@ const toc = [
             write to, the update asks for an administrator password.
         </li>
         <li>
-            <strong>Turning updates off</strong>: per user only, in Settings &gt; Updates &amp; privacy. There's no
-            central way to pin a version yet.
+            <strong>Turning updates off</strong>: per user in Settings &gt; Updates &amp; privacy. IT can turn them
+            off for everyone or hold Cmdr at a version (<a href="#mdm">central management</a>).
         </li>
         <li>
             <strong>Signing keys</strong>: the release build signs with keys stored as GitHub secrets. The GitHub
@@ -386,7 +488,8 @@ const toc = [
     </ul>
     <p>
         Text recognition in images, image tags, and image search always run on the Mac, using Apple's built-in
-        frameworks. IT can't yet turn AI off centrally or limit which providers are allowed.
+        frameworks. IT can turn AI off, allow only on-device AI, or limit which hosts cloud AI may reach
+        (<a href="#mdm">central management</a>).
     </p>
 
     <h2 id="development">How Cmdr is built</h2>

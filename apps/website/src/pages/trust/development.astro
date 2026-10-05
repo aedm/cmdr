@@ -347,7 +347,8 @@ const toc = [
         <li>
             <strong>How</strong>: the app checks for a new version at launch and every three hours. It downloads the update,
             checks its signature, installs it in place, and asks the user to restart. It only ever installs a newer
-            version. Users can turn this off per Mac; IT can't yet control it centrally.
+            version. Users can turn this off per Mac, and IT can control it centrally
+            (<a href="/trust#mdm">central management</a>).
         </li>
         <li>
             <strong>How often</strong>: {releaseCadence.releases} releases in the last {window.days} days, from
