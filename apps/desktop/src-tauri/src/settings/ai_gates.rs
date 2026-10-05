@@ -11,13 +11,24 @@ use std::fs;
 /// Whether Ask Cmdr is switched on (`askCmdr.enabled`), read by the send gate and the wake
 /// readiness. An absent key reads as OFF (fail quiet): the registry default is `false`, and every
 /// user who should have it on gets it written explicitly (onboarding, or the one-time mapping
-/// from the legacy Ask Cmdr opt-in).
+/// from the legacy Ask Cmdr opt-in). Read through the organization's locks
+/// (`managed_policy::overlay`), so `DisableAI` reads as off here too.
 pub fn load_ask_cmdr_enabled<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> bool {
-    load_true_flag(app, parse_ask_cmdr_enabled)
+    load_true_flag(app, |contents| {
+        ask_cmdr_enabled_under(&crate::managed_policy::current(), contents)
+    })
 }
 
+/// The effective `askCmdr.enabled`: the policy's lock over what `settings.json` holds.
+fn ask_cmdr_enabled_under(policy: &crate::managed_policy::ManagedPolicy, contents: &str) -> bool {
+    let mut settings = serde_json::from_str::<serde_json::Value>(contents).unwrap_or(serde_json::Value::Null);
+    crate::managed_policy::overlay(policy, &mut settings);
+    settings.get("askCmdr.enabled").and_then(serde_json::Value::as_bool) == Some(true)
+}
+
+#[cfg(test)]
 fn parse_ask_cmdr_enabled(contents: &str) -> bool {
-    parse_true_flag(contents, "askCmdr.enabled")
+    ask_cmdr_enabled_under(&crate::managed_policy::ManagedPolicy::default(), contents)
 }
 
 /// Whether a "no" to Ask Cmdr is held for a `main.db` that refused to record it
@@ -103,6 +114,24 @@ mod tests {
         ] {
             assert!(!parse_ask_cmdr_enabled(contents), "{contents} must read as off");
         }
+    }
+
+    /// `DisableAI` pins Ask Cmdr off whatever the person stored, so the send gate and the wake
+    /// loop read the same answer as the switch in Settings; without a lock, the stored value stands.
+    #[test]
+    fn ask_cmdr_reads_off_under_a_managed_ai_off() {
+        use crate::managed_policy::testing::{self, DISABLE_AI, DISABLE_CLOUD_AI};
+        let on = r#"{ "askCmdr.enabled": true }"#;
+        assert!(!ask_cmdr_enabled_under(&testing::forcing(&[DISABLE_AI]), on));
+        assert!(ask_cmdr_enabled_under(&testing::forcing(&[DISABLE_CLOUD_AI]), on));
+        assert!(ask_cmdr_enabled_under(
+            &crate::managed_policy::ManagedPolicy::default(),
+            on
+        ));
+        assert!(!ask_cmdr_enabled_under(
+            &testing::forcing(&[DISABLE_AI]),
+            "not json at all"
+        ));
     }
 
     /// A held "no" to cloud AI closes every cloud gate, so only the value the frontend writes (a
