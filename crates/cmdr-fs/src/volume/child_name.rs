@@ -17,15 +17,14 @@
 //!   never sees it raw: `smb2` maps it into the private-use area like every other
 //!   character SMB forbids (`VolumeError::InvalidName`'s doc).
 //!
-//! A refusal is [`VolumeError::InvalidName`] (through [`NotAChildName`]), the
+//! A refusal is [`VolumeError::InvalidName`](super::VolumeError::InvalidName)
+//! (through [`NotAChildName`], whose `From` lives beside `VolumeError`), the
 //! same typed "this name can't land here" every backend already raises, so the
 //! transfer engine fails the item the way it fails any other unusable name.
 
 use std::ffi::OsStr;
 use std::fmt;
 use std::path::{Path, PathBuf};
-
-use super::VolumeError;
 
 /// One plain path component: never empty, `.`, or `..`, and never holding a
 /// `/` or a NUL. Built only by [`ChildName::new`].
@@ -73,15 +72,10 @@ impl fmt::Display for NotAChildName {
     }
 }
 
-impl From<NotAChildName> for VolumeError {
-    fn from(err: NotAChildName) -> Self {
-        VolumeError::InvalidName(err.to_string())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::volume::VolumeError;
 
     #[test]
     fn a_plain_name_passes_and_joins_as_a_direct_child() {

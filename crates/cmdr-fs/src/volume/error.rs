@@ -219,6 +219,14 @@ impl std::fmt::Display for VolumeError {
 
 impl std::error::Error for VolumeError {}
 
+// Here, not in `child_name.rs`: the module-cycle check files an impl under the type it
+// produces, so beside `ChildName` it reads as `error` ↔ `child_name`.
+impl From<super::NotAChildName> for VolumeError {
+    fn from(err: super::NotAChildName) -> Self {
+        VolumeError::InvalidName(err.to_string())
+    }
+}
+
 impl VolumeError {
     /// Classifies a [`std::io::Error`] that happened at a KNOWN path.
     ///
