@@ -2085,7 +2085,7 @@
   "@settings.managed.summary.usageStats": {
     "sourceHash": "4e0483c"
   },
-  "settings.managed.summary.usageStatsOff": "Off",
+  "settings.managed.summary.usageStatsOff": "Tắt",
   "@settings.managed.summary.usageStatsOff": {
     "sourceHash": "ca7981b"
   },
@@ -2093,7 +2093,7 @@
   "@settings.managed.summary.reports": {
     "sourceHash": "ef409c3"
   },
-  "settings.managed.summary.reportsOff": "Off",
+  "settings.managed.summary.reportsOff": "Tắt",
   "@settings.managed.summary.reportsOff": {
     "sourceHash": "ca7981b"
   },
@@ -2101,7 +2101,7 @@
   "@settings.managed.summary.updates": {
     "sourceHash": "22e2bad"
   },
-  "settings.managed.summary.updatesOff": "Off",
+  "settings.managed.summary.updatesOff": "Tắt",
   "@settings.managed.summary.updatesOff": {
     "sourceHash": "ca7981b"
   },
@@ -2110,7 +2110,7 @@
     "sourceHash": "11fb682",
     "sameAsSourceJustification": "'AI' is the vi term ruling for ai-feature (terms.json); the catalog writes it bare, like settings.section AI."
   },
-  "settings.managed.summary.aiOff": "Off",
+  "settings.managed.summary.aiOff": "Tắt",
   "@settings.managed.summary.aiOff": {
     "sourceHash": "ca7981b"
   },
