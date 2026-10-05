@@ -183,6 +183,47 @@ describe('ProviderSetupController', () => {
     expect(saveAiApiKey).toHaveBeenCalledWith({ providerId: 'openai', apiKey: 'sk-typed-for-openai' })
   })
 
+  it("keeps the previous provider's key-save failure off the provider the user switched to", async () => {
+    controller.setProvider('openai')
+    await settle()
+    let rejectSave: ((error: Error) => void) | undefined
+    saveAiApiKey.mockImplementationOnce(
+      () =>
+        new Promise<null>((_resolve, reject) => {
+          rejectSave = reject
+        }),
+    )
+    controller.handleApiKeyChange('sk-typed-for-openai')
+    // The switch flushes the pending save against openai; it fails only after anthropic is up.
+    controller.setProvider('anthropic')
+    await settle()
+    rejectSave?.(new Error('keyring locked'))
+    await settle()
+
+    expect(controller.providerId).toBe('anthropic')
+    expect(controller.secretError).toBeNull()
+  })
+
+  it("keeps the previous provider's key-removal failure off the provider the user switched to", async () => {
+    getAiApiKeyStatus.mockResolvedValue({ isSet: true, fingerprint: 'fp' })
+    controller.setProvider('openai')
+    await settle()
+    let rejectDelete: ((error: Error) => void) | undefined
+    deleteAiApiKey.mockImplementationOnce(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectDelete = reject
+        }),
+    )
+    const removal = controller.removeApiKey()
+    controller.setProvider('anthropic')
+    await settle()
+    rejectDelete?.(new Error('keyring locked'))
+    await removal
+
+    expect(controller.secretError).toBeNull()
+  })
+
   it('treats an auth failure as an auth failure, not a generic one', async () => {
     checkAiConnection.mockResolvedValue({ connected: false, authError: true, models: [], error: 'Invalid key' })
     getAiApiKeyStatus.mockResolvedValue({ isSet: true, fingerprint: 'fp' })

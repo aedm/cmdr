@@ -71,7 +71,9 @@ The merge had to preserve behaviour that existed in only one of the two. Where e
   change): moved into the controller, so the wizard now gets it too. The digest is guarded: a runtime without Web Crypto
   degrades to "always refetch", never to "never check".
 - **Secret errors as a persistent toast**: an `onSecretErrorChange` option. Settings passes it; the wizard doesn't, so
-  it stays at the inline message. Both render `controller.secretError` inline.
+  it stays at the inline message. Both render `controller.secretError` inline. A save or removal that fails for a
+  provider the user already switched away from (the switch flushes pending typing) is logged and dropped, so it never
+  shows under the new provider's field.
 - **`isE2eRun()` suppression of the auto-check on open**: in the controller, so it now covers the wizard as well. An
   automated run has no real provider to answer, and a cache hit still serves everywhere. Unit tests mock `$lib/app-mode`
   to pin the answer either way, since the real `isE2eRun()` reads a mode resolved over IPC.

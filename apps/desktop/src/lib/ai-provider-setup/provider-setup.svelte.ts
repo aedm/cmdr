@@ -234,8 +234,8 @@ export class ProviderSetupController {
     try {
       await deleteAiApiKey(id)
     } catch (e) {
-      this.#setSecretError(describeSecretError(e, 'remove'))
       this.#log.warn("Couldn't remove the AI API key for provider {provider}: {error}", { provider: id, error: e })
+      if (id === this.#providerId) this.#setSecretError(describeSecretError(e, 'remove'))
       return
     }
     if (id !== this.#providerId) return
@@ -326,12 +326,15 @@ export class ProviderSetupController {
     try {
       await saveAiApiKey(id, value)
     } catch (e) {
-      // Surface it and skip the check: an in-memory value would tell the user it worked.
-      this.#setSecretError(describeSecretError(e, 'save'))
       this.#log.warn("Couldn't save the AI API key for provider {provider}: {error}", {
         provider: id,
         error: e,
       })
+      // Surface it and skip the check: an in-memory value would tell the user it worked. Only
+      // for the provider on screen, though: a flush for the one they switched away from would
+      // otherwise land under the new provider's field. Coming back re-reads the store, so that
+      // provider's row then shows what's really saved.
+      if (id === this.#providerId) this.#setSecretError(describeSecretError(e, 'save'))
       return
     }
     if (id !== this.#providerId) return
