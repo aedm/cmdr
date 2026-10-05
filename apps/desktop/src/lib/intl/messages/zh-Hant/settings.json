@@ -2085,7 +2085,7 @@
   "@settings.managed.summary.usageStats": {
     "sourceHash": "4e0483c"
   },
-  "settings.managed.summary.usageStatsOff": "Off",
+  "settings.managed.summary.usageStatsOff": "已關閉",
   "@settings.managed.summary.usageStatsOff": {
     "sourceHash": "ca7981b"
   },
@@ -2093,7 +2093,7 @@
   "@settings.managed.summary.reports": {
     "sourceHash": "ef409c3"
   },
-  "settings.managed.summary.reportsOff": "Off",
+  "settings.managed.summary.reportsOff": "已關閉",
   "@settings.managed.summary.reportsOff": {
     "sourceHash": "ca7981b"
   },
@@ -2101,7 +2101,7 @@
   "@settings.managed.summary.updates": {
     "sourceHash": "22e2bad"
   },
-  "settings.managed.summary.updatesOff": "Off",
+  "settings.managed.summary.updatesOff": "已關閉",
   "@settings.managed.summary.updatesOff": {
     "sourceHash": "ca7981b"
   },
@@ -2110,7 +2110,7 @@
     "sourceHash": "11fb682",
     "sameAsSourceJustification": "Row label “AI”, kept as the Latin abbreviation the whole catalog uses (`settings.ai.provider.opt.cloud` 雲端 AI, `ai.translateError.off.title` AI 已關閉) and Apple Traditional writes verbatim (Apple Intelligence copy). No Chinese word replaces it in UI."
   },
-  "settings.managed.summary.aiOff": "Off",
+  "settings.managed.summary.aiOff": "已關閉",
   "@settings.managed.summary.aiOff": {
     "sourceHash": "ca7981b"
   },

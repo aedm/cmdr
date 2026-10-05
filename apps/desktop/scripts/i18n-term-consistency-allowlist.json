@@ -374,6 +374,10 @@
         "reason": "`修改日期` is the Finder column header and the date filters, where `Modified` abbreviates `Date modified`. The keyboard-shortcuts filter chip means `commands whose shortcut YOU changed`, with no date involved, so it takes `已修改`."
       },
       {
+        "source": "Off",
+        "reason": "Option label vs state. `關閉` is a selectable option in a segmented control or picker (`settings.ai.provider.opt.off`, `settings.behavior.fileSystemWatching.lowDiskSpaceNotifications.opt.off`), the bare-verb register buttons and options take. The `Managed by your organization` card's `settings.managed.summary.*Off` values report a STATE the organization set, beside a row label, so they keep the aspect marker: `已關閉`, like `已連線` / `已儲存` in the servers Status column. A bare `關閉` there reads as a Close or Turn off control. `docs/i18n/zh-Hant/decisions.md` § Managed-by-organization copy and the `disable` ruling (`state → 已關閉`) in `docs/i18n/zh-Hant/terms.json`."
+      },
+      {
         "source": "Regex",
         "reason": "Total Commander, the source the glossary already cites for the full `正規表示式`, ships its own short chip `正規式` (WCMD.LNG IDs 5615/6626). The search-mode chips are tight and take it; `viewer.search.regex` is an aria label plus tooltip whose visible text is the fixed `.*` glyph, so it has room for the full form and a screen reader wants it. Bare `正規` is banned in both: it's a bound morpheme, and Microsoft's only `正規*` entries are `正規化` = normalization."
       },
