@@ -1,8 +1,8 @@
 # cmdr-s3
 
-The S3 backend for AWS, R2, B2, Wasabi, Hetzner, GCS, Spaces, and any other S3-compatible server: the protocol layer
-plus a `Volume` per place (a bucket, or the account root that lists them). The plan: `docs/specs/s3-support-plan.md`.
-Decisions and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
+The S3 backend for AWS and every S3-compatible server (DETAILS § Providers): the protocol plus a `Volume` per place (a
+bucket, or an account root listing them). Plan: `docs/specs/s3-support-plan.md`. Fixtures:
+`apps/desktop/test/s3-servers/`.
 
 ## Module map
 
@@ -20,8 +20,7 @@ Decisions and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
 ## Must-knows
 
 - ❌ **Never classify by `<Message>`.** `<Code>` plus the status; a bodyless answer (every HEAD) by status alone.
-- ❗ **`reqwest` stays in `transport/`**, and every request goes out through it, inside `noting`: the operations are the
-  liveness detector.
+- ❗ **`reqwest` stays in `transport/`**; every request goes through it inside `noting` (operations detect liveness).
 - ❗ **Every request costs the user money.** ❌ No HEAD per child, no watcher, no space poll, no index.
 - ❗ **A wrong secret is ambiguous**: Garage answers `AccessDenied`, so only `SignatureDoesNotMatch` /
   `InvalidAccessKeyId` (or R2's 401) are `KeysRejected`.
@@ -46,5 +45,8 @@ Decisions and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
   `UploadPartCopy`: one `CopyObject` there.
 - ❗ **No checksum headers; equal-size parts** (R2); a short tail follows the provider's `ShortTail`. Streamed bodies
   sign `UNSIGNED-PAYLOAD`.
-- ❌ **One unattended authentication attempt, never a loop.**
+- ❌ **One unattended auth attempt, never a loop.**
 - ❗ **A share link is a credential**: `cmdr_fs::volume::ShareLink`, ❌ never logged, never across IPC.
+
+Decisions and evidence: `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or
+advising.

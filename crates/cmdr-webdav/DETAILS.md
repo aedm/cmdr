@@ -276,6 +276,9 @@ bounds a PROPFIND; `MAX_PROBE_BODY` (1 MiB) bounds the connect probe's `Depth: 0
 `PropfindOutcome::TooLarge`, which `volume/query.rs` answers as an `IoError`. Streaming reads and writes (GET, PUT) are
 never buffered, so they carry no cap.
 
+What fits under the cap still reaches `propfind.rs`, so the parser is fuzzed: the `fuzzing` feature exposes
+`fuzzing::propfind`, which the `webdav_propfind` target drives (`fuzz/DETAILS.md`).
+
 ## Silent or slow
 
 A server that goes SILENT (a NAS asleep, Wi-Fi gone, a VPN dropped) closes nothing, and HTTP has no keepalive, so a

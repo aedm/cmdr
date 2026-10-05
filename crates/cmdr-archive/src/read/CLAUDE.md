@@ -22,9 +22,6 @@ the `Volume` trait, capability flags, and any write path.
   one-pass subtree extractor for sequential formats (compressed tar, 7z), decode-once bulk extract.
 - `name.rs`: `sanitize_entry_name` — the Zip Slip defense. `cache.rs`: `ArchiveIndexCache`. `error.rs`: `ArchiveError`.
 
-Depth, rationale, and the full test list: `DETAILS.md`. Read it before any non-trivial work here: editing, planning,
-reorganizing, or advising.
-
 ## Must-knows
 
 - **Zip Slip: `sanitize_entry_name` is the single choke point every entry passes before entering the tree; don't bypass
@@ -51,5 +48,9 @@ reorganizing, or advising.
   writes. Low nine bits only — setuid/setgid/sticky are dropped at the parser.
 - **The index cache key is `(path, size, mtime)`** (external edits auto-invalidate); `index_for_local` is blocking, call
   it from `spawn_blocking`.
-- **Two DoS caps bound the synthetic tree**: per-entry depth (`name::MAX_COMPONENT_DEPTH`, over-deep entries quarantine)
-  and total node count (`index::MAX_TREE_NODES`, over-cap fails the parse `TooLarge`). Don't remove either.
+- **Three DoS caps**: per-entry depth (`name::MAX_COMPONENT_DEPTH`, over-deep entries quarantine), total node count
+  (`index::MAX_TREE_NODES`), and an xz block's dictionary (`format::XZ_MEMORY_LIMIT_KIB`); the last two fail as
+  `TooLarge`. ❌ Don't remove any. DETAILS § "Resource caps".
+
+Depth, rationale, and the full test list: `DETAILS.md`. Read it before any non-trivial work here: editing, planning,
+reorganizing, or advising.

@@ -22,14 +22,17 @@ the next section.
   platforms' SMB mount-source parsers share, bracketed IPv6 included); `capabilities.rs`; `share_link.rs` (`ShareLink`,
   a URL that's a credential and so prints nothing in `Debug`, and `ShareLinkExpiry`); `entry_kind.rs` (`File` /
   `Directory` / `Symlink`, the answer `Volume::entry_kind` gives, a link reported as the link, where `is_directory` may
-  follow it); `server_side.rs` (`RenameWork`, `SubtreeTally`, `ServerCopyProgress`: work a server does on its own, §
-  "Server-side work"); `retirement.rs` (how background work learns it stopped being the live volume);
-  `channel_stream.rs` (a network backend's read path, consumer half); `scan_boundary.rs` + `scan_stop.rs` (the one seam
-  a copy scan touches per entry: counts, Cancel, and Pause); `scan_walk.rs`, `mkdir_all.rs`, `patching.rs`, and
-  `secret_store.rs` (the bodies a stat-and-listing backend gets for free); `liveness.rs` (the HTTP backends' silence
-  watch, which tells a server gone silent from one that's only slow: `crates/cmdr-webdav/DETAILS.md` § "Silent or slow")
-  and `tls.rs` (their connect probes' TLS-refusal test, by the typed `io::ErrorKind`); `remote_paths.rs` (a server
-  tree's `<scheme>://user@host:port` app spelling, and the ONE translation); `friendly_error/` (typed, word-free
+  follow it); `child_name.rs` (`ChildName`, a listed name proven to be one plain path component, the only way a source
+  listing's name may join a destination path; a refusal is `VolumeError::InvalidName`. Why and who calls it:
+  `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Listed names are untrusted");
+  `server_side.rs` (`RenameWork`, `SubtreeTally`, `ServerCopyProgress`: work a server does on its own, § "Server-side
+  work"); `retirement.rs` (how background work learns it stopped being the live volume); `channel_stream.rs` (a network
+  backend's read path, consumer half); `scan_boundary.rs` + `scan_stop.rs` (the one seam a copy scan touches per entry:
+  counts, Cancel, and Pause); `scan_walk.rs`, `mkdir_all.rs`, `patching.rs`, and `secret_store.rs` (the bodies a
+  stat-and-listing backend gets for free); `liveness.rs` (the HTTP backends' silence watch, which tells a server gone
+  silent from one that's only slow: `crates/cmdr-webdav/DETAILS.md` § "Silent or slow") and `tls.rs` (their connect
+  probes' TLS-refusal test, by the typed `io::ErrorKind`); `remote_paths.rs` (a server tree's
+  `<scheme>://user@host:port` app spelling, and the ONE translation); `friendly_error/` (typed, word-free
   classification); `usb_speed.rs` (❗ its doc comment reaches `bindings.ts`); `in_memory.rs` (the store and its knobs;
   `in_memory/volume_impl.rs` is its `impl Volume`); `conformance.rs` (+ `conformance/directory_creation.rs`, the three
   `create_directory_all` promises); and `host/` (what a backend needs from the app, as named traits; read
@@ -575,6 +578,8 @@ models something a real backend genuinely does:
   on.
 - **`set_reported_size(path, bytes)`** — the listed size disagrees with the real streamed byte count. A remote source
   whose directory entry is stale; a transfer planning against the real stream still lands correct bytes.
+- **`set_reported_name(path, name)`** — the listing reports a name the entry doesn't have, such as `../x` or `/x`. A
+  hostile server, device, or archive; the transfer engines must refuse it through `ChildName`, not join it.
 - **`set_modified_at(path, secs)`** — ages a file into the past or clears its mtime, for the conditional policies
   (`OverwriteOlder`).
 - **`with_sibling_duplicates_allowed()`** — `create_directory_errors_on_existing_dir()` reports `false`, modeling MTP,

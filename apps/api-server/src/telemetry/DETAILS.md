@@ -38,7 +38,7 @@ Error report amendment: POST /error-report/:id/amend → rate-limit by IP (ERROR
 
 Heartbeat: POST /heartbeat → rate-limit by IP (HEARTBEAT_LIMITER, 429 if over) → read the body under 256 KB (400) → validate the beat (required fields + analId/version shape + config-size cap + uptimeSeconds + events is an array; 400) → keep the first 500 events, drop malformed ones (counted, logged) → AWAITED: ONE D1 batch writing the heartbeat row + the events (failure → soft 502), no IP stored → in waitUntil: forward the events to PostHog (skipped without POSTHOG_PROJECT_KEY; failure logged, never surfaced) → 204
 
-Feedback: POST /feedback → rate-limit by IP (FEEDBACK_LIMITER, 429 if over) → validate shape (required feedback text ≤ 100k code points + appVersion/osVersion, optional email/buildMode) → AWAITED D1 write to `feedback` (failure → soft 502 so the app offers a retry) → Discord ping in waitUntil (DISCORD_FEEDBACK_WEBHOOK_URL, falls back to DISCORD_WEBHOOK_URL) → 204 → the 3-hourly cron mails the row in the feedback digest (`../../DETAILS.md` § Cron handler)
+Feedback: POST /feedback → rate-limit by IP (FEEDBACK_LIMITER, 429 if over) → validate shape (required feedback text ≤ 100k code points + appVersion/osVersion, optional email/buildMode) → AWAITED D1 write to `feedback` (failure → soft 502 so the app offers a retry) → Discord ping in waitUntil (DISCORD_FEEDBACK_WEBHOOK_URL, falls back to DISCORD_WEBHOOK_URL; never the email, only `hasReplyTo`: `../../DETAILS.md` § Discord webhooks) → 204 → the 3-hourly cron mails the row in the feedback digest (`../../DETAILS.md` § Cron handler)
 
 Download redirect: GET /download/:version/:arch → write to D1 (fire-and-forget) → 302 to GitHub Releases
 

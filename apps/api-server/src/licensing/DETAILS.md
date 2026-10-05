@@ -112,7 +112,8 @@ notification log shows it.
 **`/activate` is rate-limited per IP** (`ACTIVATE_LIMITER`, 10/min): a short code is all it takes to fetch a full key.
 **`/validate` is too, loosely** (`VALIDATE_LIMITER`, 60/min): each request costs a Paddle call, but a company's Macs
 share one NAT address. A 429 is safe: the app reads any non-502 failure like a network error, keeps its cached status,
-and retries after its cooldown (`apps/desktop/src-tauri/src/licensing/validation_client.rs`).
+and retries after its cooldown (`apps/desktop/src-tauri/src/licensing/validation_client.rs`). Both limits and their
+bindings: `../../DETAILS.md` § Configuration; pinned by `rate-limits.test.ts`.
 
 ## Manual licenses
 

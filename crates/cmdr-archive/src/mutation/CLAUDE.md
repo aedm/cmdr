@@ -4,9 +4,6 @@
 `Volume`-free and manager-free like the [read core](../read/CLAUDE.md): the write-ops `ArchiveEditOperation` driver
 wraps it with the real event sink, pause gate, and cancel intent.
 
-Depth, rationale, and the data-safety test list: `DETAILS.md`. Read it before any non-trivial work here: editing,
-planning, reorganizing, or advising.
-
 ## Must-knows
 
 - **Edits go through `mutator.rs` + the write-ops `ArchiveEditOperation` driver, NOT `ArchiveVolume`'s mutation
@@ -24,3 +21,6 @@ planning, reorganizing, or advising.
 - **A new entry's options go through `with_entry_mtime`** (local DOS time + the exact UTC second in the `UT` extra
   field), the host's fresh-ZIP producer included. ❌ Never bare `SimpleFileOptions::default()`: it dates the entry
   1980-01-01.
+
+Depth, rationale, and the data-safety test list: `DETAILS.md`. Read it before any non-trivial work here: editing,
+planning, reorganizing, or advising.

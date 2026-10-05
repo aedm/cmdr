@@ -1,8 +1,8 @@
 # cmdr-webdav
 
 The WebDAV backend: a `Volume` over one `reqwest` client with one account's Basic credentials on it. Same shape as
-`crates/cmdr-sftp`, leaner: no host keys, no auth ladder, no extensions probe. Decisions and the full tables:
-`DETAILS.md`. The Docker fixture stack: `apps/desktop/test/webdav-servers/start.sh`.
+`crates/cmdr-sftp`, leaner: no host keys, no auth ladder, no extensions probe. Fixtures:
+`apps/desktop/test/webdav-servers/start.sh`.
 
 ## Module map
 
@@ -31,8 +31,8 @@ The WebDAV backend: a `Volume` over one `reqwest` client with one account's Basi
   bodies".
 - ❌ **No `read_timeout`, no `.timeout()` on the streaming PUT or GET, and never a timeout read as a lost server**: a
   long transfer or a slow listing would be cut or flicker `Disconnected`. `transport.rs` has why.
-- ❌ **One unattended authentication attempt, never a loop.** A 401 on the re-probe moves to `NeedsCredentials` and
-  stops. The store is only ever refreshed by an attended sign-in, never seeded.
+- ❌ **One unattended auth attempt, never a loop.** A 401 on the re-probe moves to `NeedsCredentials` and stops. Only an
+  attended sign-in refreshes the store.
 - ❗ **Redirects are off**: a followed MOVE or COPY would resend `Destination` somewhere the user never named.
 - ❗ **The engine owns staging**: `CreateOrReplace` is one plain PUT onto its temp; ❌ don't stage it again (a MOVE per
   file). Only `CreateNew` stages here (MOVE `Overwrite: F`). `DETAILS.md` § "Write staging".
@@ -48,3 +48,6 @@ The WebDAV backend: a `Volume` over one `reqwest` client with one account's Basi
   after a `Depth: 1` PROPFIND.
 - ❌ Never `root_anchored`, never a stat per child in a scan, never `authoritative_listing` (coverage is `None`).
 - Digest-only servers are a typed `AuthMethodUnsupported`, by the `WWW-Authenticate` scheme token.
+
+Decisions and the full tables: `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing,
+or advising.

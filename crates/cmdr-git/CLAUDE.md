@@ -48,5 +48,5 @@ chip, and the read-only `Volume` that turns `.git/branches/`, `tags/`, `commits/
 - **`missing_docs` is denied.** Every `pub` item says what a caller must know, and specta copies these into
   `bindings.ts`.
 
-The boundary's rationale, the capped surface item by item, the performance table, the column catalog, and every
-decision: `DETAILS.md`. Read it before any non-trivial work here.
+The boundary's rationale, the capped surface, performance, the column catalog, and every decision: `DETAILS.md`. Read it
+before any non-trivial work here: editing, planning, reorganizing, or advising.

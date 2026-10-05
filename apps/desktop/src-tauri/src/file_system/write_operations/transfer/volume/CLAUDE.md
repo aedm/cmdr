@@ -23,8 +23,8 @@ merge/staging engine (`strategy.rs`, `merge.rs`). File map: `DETAILS.md` § File
 - **Skip the dest pre-check ONLY for a dir THIS op created** (`DirectoryCreation::Created`), ❌ never one that looks
   empty. Every name asks `landing.rs`, and an unanswerable probe fails the item. § "Look-alike names and new-name
   spelling".
-- **A listed name joins a destination ONLY as a `ChildName`**, ❌ never a raw `join` (a hostile `../x` escapes).
-  § "Listed names are untrusted".
+- **A listed name joins a destination ONLY as a `ChildName`**, ❌ never a raw `join` (`../x` escapes). § "Listed
+  names are untrusted".
 
 ## Staging and cleanup
 
@@ -55,4 +55,5 @@ merge/staging engine (`strategy.rs`, `merge.rs`). File map: `DETAILS.md` § File
 - **Two test traps**: a `*_tests.rs` here is a `#[path]` CHILD (`super::` one level shallower), and a
   `FaultyVolume` cell must **assert `fault_fired(op)`**.
 
-The rest: `DETAILS.md`; read it first for non-trivial work.
+Flows and decisions: `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing,
+or advising.

@@ -1,7 +1,7 @@
 # Website (getcmdr.com)
 
 Marketing site and blog for Cmdr. Astro + Tailwind v4 (CSS-first config in `src/styles/global.css`), Playwright E2E in
-`e2e/`, statically built. Full details: [DETAILS.md](DETAILS.md). Human-facing; its markdown may use tables freely.
+`e2e/`, statically built. Human-facing; its markdown may use tables freely.
 
 ## Module map
 
@@ -61,13 +61,14 @@ Color scheme.
   transform → add a block to `src/fixtures/visual-fixture.md`. Refresh with
   `apps/website/scripts/update-visual-baselines.sh`; CI verifies inside that same container, so ❌ never move that job
   to the bare runner or install browsers in it. [DETAILS.md](DETAILS.md) § Visual baselines.
-- **Keep TS generic calls single-line in `.astro` `<script>` blocks**: multi-line ones break astro-eslint, and so
-  deploys.
+- **Keep TS generic calls single-line in `.astro` `<script>` blocks** (multi-line breaks astro-eslint).
 - **Typed lint needs `astro sync` first**; the `.astro` block omits the `no-unsafe-*` rules (only false positives
   there). [DETAILS.md](DETAILS.md) § Typed linting.
 - `site` must be set in `astro.config.ts` for RSS and OG image URLs.
-- `compressHTML: true` is deliberate: Astro 7's `'jsx'` default breaks home + pricing; don't drop it.
-- Markdown pipeline details: [DETAILS.md](DETAILS.md) § Patterns.
+- Keep `compressHTML: true`: Astro 7's `'jsx'` default breaks home + pricing.
 - **A new fetch origin goes in `connect-src`** (`nginx-security-headers.conf`), or prod silently blocks it.
   [DETAILS.md](DETAILS.md) § Security headers.
 - Remark42 comments disabled in dev. Setup: `docs/guides/deploying-remark42.md`.
+
+Patterns, analytics, and baselines: `DETAILS.md`. Read it before any non-trivial work here: editing, planning,
+reorganizing, or advising.

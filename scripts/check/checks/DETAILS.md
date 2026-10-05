@@ -1908,14 +1908,15 @@ Checks by app and tech:
   (`cargo doc --all-features --document-private-items` over every first-party member, with every doc lint in
   `rustdocDeniedLints` denied and any leftover warning failing the check too; the vendored fork is skipped because
   `--all-features` turns on two mutually exclusive arms there), cargo-audit, cargo-deny, cargo-machete, cargo-udeps
-  (CI-only), fuzz (CI-only and slow: every target in `fuzz/` for `CMDR_FUZZ_SECONDS`, `fuzz/DETAILS.md`), jscpd (the
-  clone list, on a per-file-pair ratchet), log-error-macro, macos-availability (no call to a selector newer than the
-  bundle's `minimumSystemVersion`; § "macOS availability"), macos-framework-floor (no framework in the BUILT binary's
-  load commands newer than that same floor, which is the half no runtime gate can save; § "macOS framework floor"),
-  sqlite-open-direct (every SQLite connection opens through `crate::sqlite_util`, so the process-wide shared page cache
-  is always installed before SQLite initializes), error-string-match, write-ops-isolation (the write engine may not name
-  the `agent` module: an approved operation is an ordinary operation, and an engine that can see the agent grows a
-  second execution path; per-source outcomes reach a caller through the injected `OperationEventSink` instead),
+  (CI-only), fuzz (CI-only and slow: every target in `fuzz/` for `CMDR_FUZZ_SECONDS`, default 60, `fuzz/DETAILS.md`; a
+  target loosens its sanitizer limits only through `fuzzTargetOverrides`, each entry naming its upstream finding), jscpd
+  (the clone list, on a per-file-pair ratchet), log-error-macro, macos-availability (no call to a selector newer than
+  the bundle's `minimumSystemVersion`; § "macOS availability"), macos-framework-floor (no framework in the BUILT
+  binary's load commands newer than that same floor, which is the half no runtime gate can save; § "macOS framework
+  floor"), sqlite-open-direct (every SQLite connection opens through `crate::sqlite_util`, so the process-wide shared
+  page cache is always installed before SQLite initializes), error-string-match, write-ops-isolation (the write engine
+  may not name the `agent` module: an approved operation is an ordinary operation, and an engine that can see the agent
+  grows a second execution path; per-source outcomes reach a caller through the injected `OperationEventSink` instead),
   lock-poison (two lanes: an error-level one for an acquisition that records no poison-handling choice, and a warn-only
   one for a failure that's silently discarded, on a per-file ratchet), test-sleep (flags a fixed `thread::sleep` /
   `tokio::time::sleep` in test code, where a condition-based `wait_until` belongs; opt out a genuine
@@ -1964,13 +1965,15 @@ doubles as production code.
 
 - **Crates / Rust**: workspace-member-coverage (every workspace member is reachable by the cargo lanes and the source
   scanners, and every Rust check has declared which of the two it is), index-crate-isolation (no guarded crate —
-  `cmdr-index`, `cmdr-fs`, `cmdr-archive`, `cmdr-smb`, `cmdr-sftp`, `cmdr-webdav`, `cmdr-s3`, `cmdr-mtp`, `cmdr-git` —
-  reaches `tauri`, `tauri-specta`, or `cmdr` anywhere in its `cargo metadata` tree, plus a per-bucket public-surface
-  ceiling on all of them except `cmdr-fs`, which is permanently uncapped: it's shared vocabulary whose job is to be
-  named from everywhere. See `crates/cmdr-index/src/indexing/handle/DETAILS.md` for what each index number means, the
-  crate's own entry in `index-crate-isolation.go` for the backend ones, and why raising any of them needs David's
-  say-so), nextest-filter-coverage (every `test(...)` atom in `.config/nextest.toml` still selects a live test, so a
-  per-test cap or `test-group` can't be silently detached by a module move; it lists the workspace's tests with
+  `cmdr-index`, `cmdr-fs`, `cmdr-archive`, `cmdr-smb`, `cmdr-sftp`, `cmdr-webdav`, `cmdr-s3`, `cmdr-mtp`, `cmdr-adb`,
+  `cmdr-git` — reaches `tauri`, `tauri-specta`, or `cmdr` anywhere in its `cargo metadata` tree, plus a per-bucket
+  public-surface ceiling on all of them except `cmdr-fs`, which is permanently uncapped: it's shared vocabulary whose
+  job is to be named from everywhere. An item whose attributes gate it on `cfg(test)` or the `testing`, `tooling`, or
+  `fuzzing` feature (`isGated`) counts as a gated door, never as public API, so a fuzz entry point doesn't eat a crate's
+  ceiling. See `crates/cmdr-index/src/indexing/handle/DETAILS.md` for what each index number means, the crate's own
+  entry in `index-crate-isolation.go` for the backend ones, and why raising any of them needs David's say-so),
+  nextest-filter-coverage (every `test(...)` atom in `.config/nextest.toml` still selects a live test, so a per-test cap
+  or `test-group` can't be silently detached by a module move; it lists the workspace's tests with
   `cargo nextest list --run-ignored all` and names where a stale atom's leaf went. It judges the HOST platform, so a
   filter for a macOS-only test looks deleted on the Linux lane: those carry
   `# allowed-unmatched-nextest-filter: macos-only, <why>`, which excuses the filter everywhere except the platform it

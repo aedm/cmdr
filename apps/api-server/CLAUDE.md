@@ -51,5 +51,5 @@ Areas depend on root leaves, never each other.
 - **Deploy rails**: apply D1 migrations first (`wrangler d1 migrations apply cmdr-telemetry`); the default export stays
   the object form (`{ fetch, scheduled }`) or cron breaks (`app` is also named-exported for tests).
 
-Routes, secrets, bindings, Worker types (`wrangler types`, gitignored), cron, retention, the reports repo, test
-runtimes, and the runbooks: `DETAILS.md`. Read it before any non-trivial work here.
+Routes, secrets, bindings, Worker types (`wrangler types`, gitignored), cron, retention, and runbooks: `DETAILS.md`.
+Read it before any non-trivial work here: editing, planning, reorganizing, or advising.

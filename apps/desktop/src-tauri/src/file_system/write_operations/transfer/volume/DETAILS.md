@@ -464,7 +464,7 @@ Pinned by `copy_precheck_tests.rs` (end to end, against a destination that resol
 A source listing comes from whoever answers it: an SMB, SFTP, WebDAV, or S3 server, an MTP or ADB device, an archive. A hostile one can list `../x` or `/x`, and `dest_dir.join(name)` would then write outside the folder the user dropped onto. So a listed name reaches a destination path ONLY as a `cmdr_fs::volume::ChildName`, proven to be one plain path component (not empty, `.`, or `..`, no `/`, no NUL). A refusal is the typed `VolumeError::InvalidName`, which fails that item the way any unusable name does.
 
 - `landing.rs::where_it_lands` takes a `ChildName`, so the merge walk, the concurrent top-level copy, and the top-level pre-check all validate before joining; the same-volume rename-merge and the native drag-out fulfillment (`apps/desktop/src-tauri/src/native_drag/fulfillment.rs`) do too. One check under every backend, so a new backend can't forget it.
-- `InMemoryVolume::set_reported_name` models a source that lists a hostile name. Pinned by `hostile_names_tests.rs` and a drag-out cell in `apps/desktop/src-tauri/src/native_drag/fulfillment_test.rs`.
+- `InMemoryVolume::set_reported_name` models a source that lists a hostile name. Pinned by `hostile_names_tests.rs` (a bad file name, a folder listed as `..`, and the symlink-then-folder trick: a copy never merges a source folder through a link already at the destination, under every policy) and a drag-out cell in `apps/desktop/src-tauri/src/native_drag/fulfillment_test.rs`.
 
 ### Look-alike names and new-name spelling
 

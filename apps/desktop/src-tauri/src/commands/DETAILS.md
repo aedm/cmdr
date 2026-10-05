@@ -367,7 +367,9 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   report and so takes no id (it resolves the target from the stash, then supplies
   `error_report_amend_url(id)` the way the send path supplies its own URL). `flow_a_request` is the single place note validation, id reuse, and wrapping an address in
   `AttachedEmail` happen. Uploads use localhost in debug builds and skip network only in CI and E2E builds. The two preview commands are dispatch-only (a `BundleManifest`
-  holds a `serde_json::Value`, which specta can't describe), so the frontend reaches them by raw invoke.
+  holds a `serde_json::Value`, which specta can't describe), so the frontend reaches them by raw invoke. Every upload
+  (send, amend, `send_crash_log_report`) asks `server_request::check_policy` first, so a managed
+  `DisableCrashAndErrorReports` refuses it typed: `../managed_policy/DETAILS.md` § "Where the gates live".
 - **`analytics.rs`**: `track_event(name, props_json)`, a thin pass-through to `events::capture` for the open set of
   frontend feature events. No capability entry; the PII-free prop contract lives in `analytics/CLAUDE.md`.
 - **`usage.rs`**: `get_launch_day_count()`, the read seam over the on-device launch-day ledger, so the frontend can gate
@@ -381,7 +383,8 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
 - **`selection.rs`**: Selection-dialog backend (parallel to `search.rs`), thin wrappers over `crate::selection`:
   `translate_selection_query` (AI translation via `crate::ai` + `crate::selection::ai`) plus the recent-selections
   history (`get_recent_selections`, `add_recent_selection`, `remove_recent_selection`, `clear_recent_selections`,
-  `apply_recent_selections_max_count`).
+  `apply_recent_selections_max_count`). The request's words never reach the log, only its length
+  (`selection_request_for_log`): the file log is always debug, and an error report carries it.
 - **`go_to_path.rs`**: the "Go to path" quick-nav surface: `resolve_go_to_path(input, base_dir)` plus recent-paths
   history (`get_recent_paths`, `add_recent_path`, `remove_recent_path`, `clear_recent_paths`).
 - **`sync_status.rs`**: `get_sync_status`: macOS delegates to `file_system::sync_status`; non-macOS returns an empty map

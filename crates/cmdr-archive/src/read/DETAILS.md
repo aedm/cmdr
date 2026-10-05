@@ -97,7 +97,8 @@ maps it onto `FileEntry`. Inner paths are `/`-separated, no leading/trailing sla
 ## Resource caps (memory-amplification defense)
 
 The synthetic tree materializes one node (with a path string) per ancestor prefix of every entry, so a small central
-directory can expand into a huge tree — a browse-time DoS. Two caps bound it on both axes:
+directory can expand into a huge tree — a browse-time DoS. Two caps bound the tree on both axes, and a third bounds a
+decoder:
 
 - **Per-entry depth** (`name::MAX_COMPONENT_DEPTH`, 256): an entry named `a/a/…` with N components costs O(N) nodes
   whose path strings sum to O(N²) bytes; a `u16` name field allows N ≈ 32k (≈1 GB from one entry). Over-deep entries are

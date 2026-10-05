@@ -707,6 +707,8 @@ and so is a cross-bucket copy where the provider copies within one bucket only (
   (16 MiB, against a ~1 MiB 1,000-key listing page) and refuses an announced or streamed overrun as a typed
   `ExchangeError::BodyTooLarge`, so a hostile S3-compatible endpoint can't exhaust memory. A data read (`Opened`)
   streams and is never buffered.
+- **The parsers are fuzzed.** The `fuzzing` feature exposes `fuzzing::response_body`, which feeds one body to every
+  response parser in `xml/`; the `s3_xml` target drives it (`fuzz/DETAILS.md`).
 - **The element tree** (`xml/mod.rs`): bodies are small, so each is read into a tree first, matched by local name (AWS
   uses a default namespace, some servers none). Text is kept untrimmed because keys may begin or end with spaces;
   `Element::value` trims for numbers, dates, and tokens. Entities resolve through `GeneralRef` (quick-xml 0.41 splits
