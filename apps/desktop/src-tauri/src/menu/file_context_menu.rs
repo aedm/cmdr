@@ -48,10 +48,10 @@ use super::{
     GET_INFO_ID, QUICK_LOOK_ID,
 };
 use super::{
-    COPY_FILENAME_ID, COPY_PATH_ID, EDIT_ID, FAVORITES_ADD_CONTEXT_ID, FILE_COPY_ID, FILE_DELETE_ID, FILE_DUPLICATE_ID,
-    FILE_MOVE_ID, FILE_NEW_FILE_ID, FILE_NEW_FOLDER_ID, FILE_VIEW_ID, GO_PARENT_ID, ImageIndexMenuState, OPEN_ID,
-    RENAME_ID, SHARE_LINK_ONE_DAY_ID, SHARE_LINK_ONE_HOUR_ID, SHARE_LINK_SEVEN_DAYS_ID, SHARE_LINK_SUBMENU_ID,
-    SHOW_IN_FINDER_ID, SHOW_SEARCH_RESULT_IN_FOLDER_ID, image_index_menu_items,
+    COPY_FILENAME_ID, COPY_PATH_ID, EDIT_ID, FAVORITES_ADD_CONTEXT_ID, FILE_COMPRESS_ID, FILE_COPY_ID, FILE_DELETE_ID,
+    FILE_DUPLICATE_ID, FILE_MOVE_ID, FILE_NEW_FILE_ID, FILE_NEW_FOLDER_ID, FILE_VIEW_ID, GO_PARENT_ID,
+    ImageIndexMenuState, OPEN_ID, RENAME_ID, SHARE_LINK_ONE_DAY_ID, SHARE_LINK_ONE_HOUR_ID, SHARE_LINK_SEVEN_DAYS_ID,
+    SHARE_LINK_SUBMENU_ID, SHOW_IN_FINDER_ID, SHOW_SEARCH_RESULT_IN_FOLDER_ID, image_index_menu_items,
 };
 
 /// A fact the menu asked off the main thread (`context_menu_facts.rs`): answered in time,
@@ -288,19 +288,24 @@ pub fn build_context_menu<R: Runtime>(
         }
     }
 
-    // Copy / Move / Duplicate / Rename group. Rename and Duplicate are omitted on the
+    // Copy / Move / Duplicate / Compress / Rename group, in the File menu's order. Rename
+    // and Duplicate are omitted on the
     // search-results virtual pane: the underlying file CAN be renamed, but doing it from
     // the snapshot view splits the file (snapshot keeps the old name, disk has the new)
     // which is confusing, and a duplicate would have to land in each item's own real
     // folder, which one transfer can't express. The user can navigate to the real folder
-    // and do either there.
+    // and do either there. Compress stays, as Copy and Move do: it writes into the other pane.
     let copy_item = context_item(app, shortcuts, FILE_COPY_ID, menu_t("menu.file.copy"), true)?;
     let move_item = context_item(app, shortcuts, FILE_MOVE_ID, menu_t("menu.file.move"), true)?;
+    let compress_item = context_item(app, shortcuts, FILE_COMPRESS_ID, menu_t("menu.file.compress"), true)?;
     menu.append(&copy_item)?;
     menu.append(&move_item)?;
     if !restrict_destination_actions {
         let duplicate_item = context_item(app, shortcuts, FILE_DUPLICATE_ID, menu_t("menu.file.duplicate"), true)?;
         menu.append(&duplicate_item)?;
+    }
+    menu.append(&compress_item)?;
+    if !restrict_destination_actions {
         let rename_item = context_item(app, shortcuts, RENAME_ID, menu_t("menu.file.rename"), true)?;
         menu.append(&rename_item)?;
     }

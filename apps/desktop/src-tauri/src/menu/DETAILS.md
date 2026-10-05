@@ -1033,7 +1033,9 @@ backend resolves the self-collision per item. The context menu (`file_context_me
 `restrict_destination_actions` is false, so it is absent on the search-results virtual pane alongside `Rename`: each
 selected item would have to land in its own real folder, which one transfer can't express. Its macOS SF Symbol is
 `plus.square.on.square`, the Linux mnemonic is `D&uplicate`. What the command does once dispatched:
-`apps/desktop/src/lib/file-explorer/pane/DETAILS.md`.
+`apps/desktop/src/lib/file-explorer/pane/DETAILS.md`. The file context menu runs the same group in the same order, with
+`Rename` after `Compress…`; `Compress…` stays on the search-results pane because, like Copy and Move, it writes into
+the other pane. Its ⌥F5 label comes from the registry through `context_item`, like every other row.
 
 The **creation** group is `New folder…` (F7) then `New file…` (⇧F4), in the File menu and the file context menu alike:
 both create into the active pane's folder, so they read as a pair and stay adjacent. Like `Duplicate` and `Rename`, both
