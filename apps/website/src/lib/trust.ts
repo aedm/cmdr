@@ -15,7 +15,7 @@
  */
 
 /** The release and date the page's claims were checked against. */
-export const verifiedAgainst = { version: '0.47.0', date: '2026-09-24' }
+export const verifiedAgainst = { version: '0.50.0', date: '2026-10-05' }
 
 export interface NetworkConnection {
   id: string
@@ -117,17 +117,27 @@ export const networkConnections: NetworkConnection[] = [
   {
     id: 'file-access',
     name: 'Remote files the user opens',
-    destination: 'Only servers and devices the user connects to: SMB, SFTP, and WebDAV servers, and phones over USB.',
+    destination:
+      'Only servers and devices the user connects to: SMB, SFTP, and WebDAV servers, S3-compatible storage, and phones over USB.',
     when: 'When the user browses them. To find SMB servers on the local network, Cmdr uses Bonjour (mDNS). It runs only while the Servers view is open, while Cmdr looks up the server behind an SMB share it connects to, and for 10 seconds after launch.',
     sends: 'What the protocol needs: credentials the user entered and the file operations the user asked for.',
     control:
       'SMB, phone (MTP), and Android (ADB) support are on by default and each can be turned off in Settings &gt; File systems. Git support is local only and never fetches or pushes.',
   },
+  {
+    id: 's3-prices',
+    name: 'S3 price table',
+    destination: '<code>api.getcmdr.com/s3-prices/v1</code>',
+    when: 'Only for users of S3 storage: when Cmdr estimates what an S3 copy, move, delete, or rename costs, and its stored price table is missing or over a day old. At most once a day.',
+    sends: 'Nothing beyond the request itself. The server stores nothing about it.',
+    control:
+      'Happens only when the user works with S3. Without it, Cmdr uses the last stored table or the one built into the app.',
+  },
 ]
 
 /** Hosts to allow on a proxy or firewall, with whether Cmdr needs them to work. */
 export const allowlistHosts: { host: string; purpose: string }[] = [
-  { host: 'api.getcmdr.com', purpose: 'update checks, license checks, usage stats, reports' },
+  { host: 'api.getcmdr.com', purpose: 'update checks, license checks, usage stats, reports, S3 prices' },
   { host: 'getcmdr.com', purpose: 'the update manifest (latest.json)' },
   { host: 'github.com, release-assets.githubusercontent.com', purpose: 'update downloads' },
   { host: 'license.getcmdr.com', purpose: 'license checks from older versions only' },
