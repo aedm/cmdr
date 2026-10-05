@@ -123,6 +123,12 @@ The shape:
   explains how a stand-in screenshot maps to this key ("this shows a different error, but your string is the
   title/explanation in this same pane"). Absent on direct (captured) couplings. Like `screenshot`, it's harness-written,
   never hand-authored, and stripped before runtime/codegen.
+- `agreesWith` (`en` only, optional): the key of the LABEL this value sits beside and agrees with in gender and number,
+  for a value word English writes identically across rows (the managed card's per-row "Off":
+  `@settings.managed.summary.usageStatsOff` carries `"agreesWith": "settings.managed.summary.usageStats"`). It takes the
+  key out of the term-consistency check's plain same-English group, so an agreeing language needs no allowlist entry
+  (`docs/guides/i18n.md` § Term consistency). It must name a real key other than itself, or that check fails. Give each
+  such row its own key; one shared value can't agree with labels of different gender.
 - `sourceHash` (non-`en` locales only): a 7-char lowercase hex hash (git-style; the SHA-256 prefix of the EXACT value
   the translation was made from), computed by `sourceHash()` in `apps/desktop/scripts/i18n-catalog-lib.ts`. That value
   is the English one for a full translation; for an OVERLAY (`en-GB`, `pt-PT`) it's the value the key overrides, so a

@@ -2527,7 +2527,8 @@
   },
   "settings.managed.summary.usageStatsOff": "Off",
   "@settings.managed.summary.usageStatsOff": {
-    "description": "Value beside the row label 'Usage stats' (the anonymous usage statistics Cmdr can send) in the 'Managed by your organization' card (Settings > Updates & privacy). The organization turned this off. Each row has its own 'Off' key so the word can agree in gender and number with that row's label: use the form your language's macOS Settings shows for a switched-off feature, agreeing with the label where your grammar asks for it. One or two words."
+    "description": "Value beside the row label 'Usage stats' (the anonymous usage statistics Cmdr can send) in the 'Managed by your organization' card (Settings > Updates & privacy). The organization turned this off. Each row has its own 'Off' key so the word can agree in gender and number with that row's label: use the form your language's macOS Settings shows for a switched-off feature, agreeing with the label where your grammar asks for it. One or two words.",
+    "agreesWith": "settings.managed.summary.usageStats"
   },
   "settings.managed.summary.reports": "Crash and error reports",
   "@settings.managed.summary.reports": {
@@ -2535,7 +2536,8 @@
   },
   "settings.managed.summary.reportsOff": "Off",
   "@settings.managed.summary.reportsOff": {
-    "description": "Value beside the row label 'Crash and error reports' (the crash and error reports Cmdr can send to its developer) in the 'Managed by your organization' card (Settings > Updates & privacy). The organization turned this off. Each row has its own 'Off' key so the word can agree in gender and number with that row's label: use the form your language's macOS Settings shows for a switched-off feature, agreeing with the label where your grammar asks for it. One or two words."
+    "description": "Value beside the row label 'Crash and error reports' (the crash and error reports Cmdr can send to its developer) in the 'Managed by your organization' card (Settings > Updates & privacy). The organization turned this off. Each row has its own 'Off' key so the word can agree in gender and number with that row's label: use the form your language's macOS Settings shows for a switched-off feature, agreeing with the label where your grammar asks for it. One or two words.",
+    "agreesWith": "settings.managed.summary.reports"
   },
   "settings.managed.summary.updates": "Updates",
   "@settings.managed.summary.updates": {
@@ -2543,7 +2545,8 @@
   },
   "settings.managed.summary.updatesOff": "Off",
   "@settings.managed.summary.updatesOff": {
-    "description": "Value beside the row label 'Updates' (Cmdr's own app updates, switched off entirely) in the 'Managed by your organization' card (Settings > Updates & privacy). The organization turned this off. Each row has its own 'Off' key so the word can agree in gender and number with that row's label: use the form your language's macOS Settings shows for a switched-off feature, agreeing with the label where your grammar asks for it. One or two words."
+    "description": "Value beside the row label 'Updates' (Cmdr's own app updates, switched off entirely) in the 'Managed by your organization' card (Settings > Updates & privacy). The organization turned this off. Each row has its own 'Off' key so the word can agree in gender and number with that row's label: use the form your language's macOS Settings shows for a switched-off feature, agreeing with the label where your grammar asks for it. One or two words.",
+    "agreesWith": "settings.managed.summary.updates"
   },
   "settings.managed.summary.ai": "AI",
   "@settings.managed.summary.ai": {
@@ -2551,7 +2554,8 @@
   },
   "settings.managed.summary.aiOff": "Off",
   "@settings.managed.summary.aiOff": {
-    "description": "Value beside the row label 'AI' (Cmdr's AI features, switched off entirely) in the 'Managed by your organization' card (Settings > Updates & privacy). The organization turned this off. Each row has its own 'Off' key so the word can agree in gender and number with that row's label: use the form your language's macOS Settings shows for a switched-off feature, agreeing with the label where your grammar asks for it. One or two words."
+    "description": "Value beside the row label 'AI' (Cmdr's AI features, switched off entirely) in the 'Managed by your organization' card (Settings > Updates & privacy). The organization turned this off. Each row has its own 'Off' key so the word can agree in gender and number with that row's label: use the form your language's macOS Settings shows for a switched-off feature, agreeing with the label where your grammar asks for it. One or two words.",
+    "agreesWith": "settings.managed.summary.ai"
   },
   "settings.managed.summary.upTo": "Up to {ceiling}",
   "@settings.managed.summary.upTo": {
