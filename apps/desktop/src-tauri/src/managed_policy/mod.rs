@@ -35,6 +35,22 @@ pub use locked::{LockedSetting, LockedValue, SettingLock, locked_settings, overl
 pub use refusal::{AiDestination, ManagedAiRefusal};
 pub use view::{ManagedPolicyChanged, ManagedPolicyView};
 
+/// For tests outside this module: build a policy from forced keys and put it in force on the
+/// test's thread.
+#[cfg(test)]
+pub mod testing {
+    pub use super::cache::{PolicyOverride, override_for_test};
+    pub use super::keys::*;
+    use super::{ManagedPolicy, source::FakeSource};
+
+    /// The policy a profile forcing each key in `forced` to `true` produces. A non-bool key (like
+    /// `MaxUpdateVersion`) reads a `true` as unparseable, which is its most restrictive reading.
+    pub fn forcing(forced: &[&str]) -> ManagedPolicy {
+        let entries: Vec<_> = forced.iter().map(|key| (*key, plist::Value::Boolean(true))).collect();
+        parse(&FakeSource::with(&entries)).policy
+    }
+}
+
 use serde::{Deserialize, Serialize};
 
 /// What the organization restricts. `Default` is no restriction. Fields hold what each key said

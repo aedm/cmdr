@@ -2,6 +2,7 @@
 
 use super::{CRASH_FILE_NAME, CRASH_SHORT_ID_PREFIX, CrashReport, read_crash_report};
 use crate::config;
+use crate::managed_policy::Egress;
 use crate::server_request::{self, ServerRequestError};
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -159,6 +160,6 @@ pub(super) async fn post_crash_report(url: &str, report: &CrashReport) -> Result
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| ServerRequestError::unexpected(format!("HTTP client: {e}")))?;
-    server_request::send(client.post(url).json(report)).await?;
+    server_request::send(Egress::CrashReport, client.post(url).json(report)).await?;
     Ok(())
 }

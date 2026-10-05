@@ -13627,6 +13627,11 @@ export type ServerRequestError =
   | { type: 'badResponse'; detail: string }
   // Cmdr couldn't put the request together (building the HTTP client, encoding the payload).
   | { type: 'unexpected'; detail: string }
+  /**
+   *  The organization's managed policy turns this pipeline off, so nothing was sent. Not a
+   *  failure: ❌ never log it at warn or error.
+   */
+  | { type: 'blockedByPolicy' }
 
 /**
  *  Which server to dial, in add mode.

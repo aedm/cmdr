@@ -993,6 +993,7 @@ export type MessageKey =
   | 'errors.provider.veraCrypt.needsAction'
   | 'errors.provider.veraCrypt.serious'
   | 'errors.provider.veraCrypt.transient'
+  | 'errors.serverRequest.blockedByPolicy'
   | 'errors.serverRequest.refused'
   | 'errors.serverRequest.serverBusy'
   | 'errors.serverRequest.timedOut'

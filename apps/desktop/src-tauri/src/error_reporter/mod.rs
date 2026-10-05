@@ -584,7 +584,11 @@ pub async fn upload(
             )
             .text("meta", meta_json);
 
-        let response = crate::server_request::send(client.post(server_url).multipart(form)).await?;
+        let response = crate::server_request::send(
+            crate::managed_policy::Egress::ErrorReport,
+            client.post(server_url).multipart(form),
+        )
+        .await?;
         crate::server_request::read_json(response).await
     }
 }

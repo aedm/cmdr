@@ -166,5 +166,9 @@
   "errors.eject.remoteNotConnected": "This server isn’t connected any more, so there’s nothing left to close.",
   "@errors.eject.remoteNotConnected": {
     "sourceHash": "3f38dd0"
+  },
+  "errors.serverRequest.blockedByPolicy": "Your organisation turned this off for Cmdr.",
+  "@errors.serverRequest.blockedByPolicy": {
+    "sourceHash": "9a27fb3"
   }
 }

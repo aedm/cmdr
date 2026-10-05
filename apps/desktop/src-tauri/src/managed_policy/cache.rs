@@ -26,6 +26,10 @@ static APP: OnceLock<AppHandle> = OnceLock::new();
 /// The cached policy. The first call anywhere in the process reads it synchronously, so no caller
 /// ever sees the "not loaded yet" `Default` (which would be no restriction).
 pub fn current() -> Arc<ManagedPolicy> {
+    #[cfg(test)]
+    if let Some(policy) = test_override() {
+        return policy;
+    }
     CACHE.current()
 }
 
@@ -45,6 +49,10 @@ pub fn refresh() -> bool {
 /// fresh unless the last read is under a second old, on a blocking thread so a slow `cfprefsd`
 /// never stalls a tokio worker.
 pub async fn for_egress() -> Arc<ManagedPolicy> {
+    #[cfg(test)]
+    if let Some(policy) = test_override() {
+        return policy;
+    }
     if !CACHE.is_fresh(EGRESS_MAX_AGE) {
         match tauri::async_runtime::spawn_blocking(|| CACHE.refresh_if_older_than(EGRESS_MAX_AGE)).await {
             Ok(Some(change)) => apply_change(&change),
@@ -55,6 +63,36 @@ pub async fn for_egress() -> Arc<ManagedPolicy> {
         }
     }
     current()
+}
+
+#[cfg(test)]
+thread_local! {
+    static TEST_POLICY: std::cell::RefCell<Option<Arc<ManagedPolicy>>> = const { std::cell::RefCell::new(None) };
+}
+
+#[cfg(test)]
+fn test_override() -> Option<Arc<ManagedPolicy>> {
+    TEST_POLICY.with_borrow(Clone::clone)
+}
+
+/// While alive, [`current`] and [`for_egress`] on THIS thread answer `policy`. Per thread, so
+/// parallel tests can't see each other's policy; a `#[tokio::test]` (current-thread runtime) runs
+/// its tasks on the test thread, so the override reaches them too.
+#[cfg(test)]
+#[must_use = "the override ends when the guard drops"]
+pub struct PolicyOverride(());
+
+#[cfg(test)]
+pub fn override_for_test(policy: ManagedPolicy) -> PolicyOverride {
+    TEST_POLICY.with_borrow_mut(|slot| *slot = Some(Arc::new(policy)));
+    PolicyOverride(())
+}
+
+#[cfg(test)]
+impl Drop for PolicyOverride {
+    fn drop(&mut self) {
+        TEST_POLICY.with_borrow_mut(|slot| *slot = None);
+    }
 }
 
 /// Reads the policy (if nothing has yet), keeps the app handle for change events, and starts the

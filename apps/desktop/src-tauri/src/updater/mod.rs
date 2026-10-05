@@ -38,6 +38,7 @@ const DOWNLOAD_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const DOWNLOAD_READ_TIMEOUT: Duration = Duration::from_secs(30);
 
 use crate::ignore_poison::IgnorePoison as _;
+use crate::managed_policy::Egress;
 use crate::server_request::describe_error_chain;
 
 /// Shared state between `download_update` and `install_update`.
@@ -141,7 +142,7 @@ async fn fetch_manifest(url: &str) -> Result<manifest::UpdateManifest, crate::se
                 describe_error_chain(&e)
             ))
         })?;
-    let response = crate::server_request::send(client.get(url)).await?;
+    let response = crate::server_request::send(Egress::UpdateCheck, client.get(url)).await?;
     crate::server_request::read_json(response).await
 }
 
@@ -215,7 +216,7 @@ async fn fetch_verified_tarball(url: &str, signature: &str) -> Result<Vec<u8>, U
             ))
         })?;
 
-    let response = crate::server_request::send(client.get(url)).await?;
+    let response = crate::server_request::send(Egress::UpdateDownload, client.get(url)).await?;
     let bytes = response
         .bytes()
         .await

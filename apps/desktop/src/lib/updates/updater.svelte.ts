@@ -465,10 +465,13 @@ function finishCheckWithFailure(
     logCheckFailure(request, message)
   } else {
     standing = { phase: failure === 'install' ? 'install' : 'download' }
-    if (downloadInstallLogLevel(error) === 'error') {
+    const level = downloadInstallLogLevel(error)
+    if (level === 'error') {
       log.error('Download/install failed: {error}', { error: message })
-    } else {
+    } else if (level === 'warn') {
       log.warn('Download/install failed: {error}', { error: message })
+    } else {
+      log.info('Download/install not run: {error}', { error: message })
     }
   }
 
@@ -488,7 +491,7 @@ function finishCheckWithFailure(
  * A download the network or the tarball host's bad moment stopped follows the check's rule (`serverRequestLogLevel`).
  * Everything else stays at error: a signature mismatch, a disk failure, an install, and the plugin's untyped failures.
  */
-function downloadInstallLogLevel(error: unknown): 'warn' | 'error' {
+function downloadInstallLogLevel(error: unknown): 'info' | 'warn' | 'error' {
   const download = failureOf(UpdateDownloadFailure, error)
   return download?.type === 'request' ? serverRequestLogLevel(download.failure) : 'error'
 }
@@ -498,10 +501,13 @@ function logCheckFailure(request: ServerRequestError | null, message: string): v
   const condition =
     request === null ? 'untyped' : request.type === 'refused' ? `refused ${String(request.status)}` : request.type
   if (!checkFailureLog.shouldLog(condition)) return
-  if (request !== null && serverRequestLogLevel(request) === 'error') {
+  const level = request === null ? 'warn' : serverRequestLogLevel(request)
+  if (level === 'error') {
     log.error('Check failed: {error}', { error: message })
-  } else {
+  } else if (level === 'warn') {
     log.warn('Check failed: {error}', { error: message })
+  } else {
+    log.info('Check not run: {error}', { error: message })
   }
 }
 

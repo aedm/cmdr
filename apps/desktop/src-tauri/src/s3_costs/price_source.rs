@@ -13,6 +13,7 @@ use std::time::{Duration, Instant, SystemTime};
 use cmdr_s3::cost::PriceTable;
 
 use crate::ignore_poison::{IgnorePoison, RwLockIgnorePoison};
+use crate::managed_policy::Egress;
 use crate::server_request::{self, ServerRequestError};
 
 const PRICES_URL: &str = "https://api.getcmdr.com/s3-prices/v1";
@@ -130,7 +131,7 @@ async fn fetch(url: &str) -> Result<(PriceTable, String), FetchError> {
         .timeout(REQUEST_TIMEOUT)
         .build()
         .map_err(|e| FetchError::Request(ServerRequestError::unexpected(e)))?;
-    let response = server_request::send(client.get(url))
+    let response = server_request::send(Egress::S3PriceList, client.get(url))
         .await
         .map_err(FetchError::Request)?;
     let json = response

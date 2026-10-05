@@ -207,7 +207,11 @@ async fn send_amend(
             .timeout(AMEND_TIMEOUT)
             .build()
             .map_err(|e| ServerRequestError::unexpected(format!("HTTP client: {e}")))?;
-        crate::server_request::send(client.post(server_url).json(&body)).await?;
+        crate::server_request::send(
+            crate::managed_policy::Egress::ErrorReportAmend,
+            client.post(server_url).json(&body),
+        )
+        .await?;
 
         log::info!(target: "cmdr_lib::error_reporter", "Added a note to an error report");
         Ok(())
