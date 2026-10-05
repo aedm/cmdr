@@ -718,6 +718,23 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
 - David runs recipe 3 of "Testing without an MDM" once (records in `managed_policy/DETAILS.md` which of the `root:wheel`
   / `cfprefsd` steps were needed, dated), then installs the sample profile (recipe 4) and walks the three groups. Then
   tick the three #118 checkboxes and the `/trust` one.
+- **Implementation notes** (M9 conformance fixes, 2026-10-05; these supersede the M4/M7 notes they name):
+  - The connection probe follows redirects through the same guard as the LLM client (`client::policy_guarded_redirects`,
+    one function).
+  - Onboarding's AI step writes nothing when its preselect came from the policy (a stored `cloud` read as `off`) and the
+    person didn't pick; `isOverriddenByPolicy(id)` in the settings store says when that's the case.
+  - `load_ask_cmdr_enabled` reads through `overlay`, as § Architecture said; the M4 note's "the overlaid
+    `askCmdr.enabled` answers `askCmdrOff` first" now holds in the backend too.
+  - The model download reads the policy with `for_egress()` at start and again before its post-download server start,
+    and `spawn_and_track_server` (every start's lowest function) refuses under `DisableAI`.
+  - The client backstop's mid-turn refusal stays typed: `AgentLlmError::Managed` →
+    `AgentErrorKind::ManagedByOrganization` (supersedes M4's "ends the turn as a provider failure").
+  - `start_ai_server` / `start_ai_download` reject with the typed `LocalAiError`; the frontend logs `managed` and
+    `cancelled` at info (supersedes M4's "keep `Result<(), String>`").
+  - `cloud_ai_hosts_allowed` became `cloud_ai_host_verdicts`, answering `Vec<Option<ManagedAiRefusal>>` (supersedes M7's
+    `Vec<bool>` decision).
+  - The frontend-supplied update trigger stays trusted, as an accepted residual (`managed_policy/DETAILS.md` § Accepted
+    residuals).
 
 ## Testing without an MDM
 
