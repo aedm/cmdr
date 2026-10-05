@@ -96,7 +96,12 @@ impl SyncSession {
         let mut conn = endpoint.connect().await.map_err(connect_as_transport)?;
         conn.bind_device(serial).await?;
         conn.request("sync:").await?;
-        Ok(Self { conn, features })
+        Ok(Self::from_connection(conn, features))
+    }
+
+    /// Wraps a connection that already speaks `sync:`.
+    pub(crate) fn from_connection(conn: AdbConnection, features: DeviceFeatures) -> Self {
+        Self { conn, features }
     }
 
     /// Writes `[id][u32 LE]`.
@@ -126,9 +131,18 @@ impl SyncSession {
         }
     }
 
-    /// Reads `[u32 len][bytes]`.
+    /// Reads `[u32 len][bytes]`, refusing a length past [`MAX_DATA_CHUNK`]
+    /// before allocating: the device chooses the length word, and nothing on
+    /// this wire is longer than a `DATA` chunk (the reference client caps names
+    /// at 255 bytes and messages at `SYNC_DATA_MAX`; `client/file_sync_client.cpp`,
+    /// AOSP `packages/modules/adb` main, 2026-10-05).
     async fn read_len_prefixed(&mut self) -> Result<Vec<u8>, AdbError> {
         let len = self.conn.read_u32_le().await? as usize;
+        if len > MAX_DATA_CHUNK {
+            return Err(AdbError::Protocol(format!(
+                "sync payload of {len} bytes exceeds the {MAX_DATA_CHUNK}-byte maximum"
+            )));
+        }
         let mut buf = vec![0u8; len];
         self.conn.read_exact(&mut buf).await?;
         Ok(buf)

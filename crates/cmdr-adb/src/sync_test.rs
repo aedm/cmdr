@@ -156,3 +156,47 @@ fn kind_reads_the_type_bits() {
         .exists()
     );
 }
+
+/// A `STA2`/`DNT2` stat body with everything zeroed but the mode.
+fn stat_v2_body(mode: u32) -> Vec<u8> {
+    let mut body = vec![0u8; 68];
+    body[20..24].copy_from_slice(&mode.to_le_bytes());
+    body
+}
+
+// Regression: a length word straight off the wire sized the buffer, so one
+// hostile `DNT2` made us allocate 4 GiB (found by the `adb_sync` fuzz target).
+#[tokio::test]
+async fn a_name_longer_than_the_protocol_allows_is_refused_before_allocating() {
+    let mut device = b"DNT2".to_vec();
+    device.extend(stat_v2_body(0o100644));
+    device.extend(u32::MAX.to_le_bytes());
+    let mut session = SyncSession::from_connection(AdbConnection::scripted(&device), DeviceFeatures::all());
+
+    let err = session.list("/sdcard", &mut |_| {}).await.unwrap_err();
+
+    assert!(matches!(err, AdbError::Protocol(_)), "got {err:?}");
+}
+
+#[tokio::test]
+async fn a_data_chunk_longer_than_the_protocol_allows_is_refused() {
+    let mut device = b"DATA".to_vec();
+    device.extend(u32::try_from(MAX_DATA_CHUNK + 1).unwrap().to_le_bytes());
+    let mut session = SyncSession::from_connection(AdbConnection::scripted(&device), DeviceFeatures::all());
+
+    let err = session.recv_chunk().await.unwrap_err();
+
+    assert!(matches!(err, AdbError::Protocol(_)), "got {err:?}");
+}
+
+#[tokio::test]
+async fn a_full_size_data_chunk_still_reads() {
+    let mut device = b"DATA".to_vec();
+    device.extend(u32::try_from(MAX_DATA_CHUNK).unwrap().to_le_bytes());
+    device.extend(vec![7u8; MAX_DATA_CHUNK]);
+    let mut session = SyncSession::from_connection(AdbConnection::scripted(&device), DeviceFeatures::all());
+
+    let chunk = session.recv_chunk().await.unwrap().unwrap();
+
+    assert_eq!(chunk.len(), MAX_DATA_CHUNK);
+}

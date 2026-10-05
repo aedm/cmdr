@@ -79,6 +79,12 @@ only the low nine bits anyway.
   len + message. `SND2` (feature `sendrecv_v2`) sends `SND2` + len + path then `SND2` + mode(u32) + flags(u32), then the
   same data stream. `SEND` truncates on open, which is why every write here stages (§ "The `Volume` answers").
 
+**Every length word is the device's to choose, so each is bounded before its buffer exists.** A sync payload (name,
+`DATA`, `FAIL` message) past `MAX_DATA_CHUNK` (64 KiB) and a shell frame past `shell::MAX_FRAME_PAYLOAD` (1 MiB, adbd's
+own buffer) are `AdbError::Protocol`. Before the caps, one hostile `DNT2` or stderr frame allocated 4 GiB; the
+`adb_sync` and `adb_shell` fuzz targets (`fuzz/DETAILS.md`) found both within a few hundred runs, and `sync_test.rs` /
+`shell_test.rs` pin them.
+
 **Shell** (`shell.rs`): `shell,v2,raw:<cmd>` (feature `shell_v2`) frames stdout, stderr, and the exit code as packets
 `[id: u8][len: u32 LE][payload]` with ids `0` stdin, `1` stdout, `2` stderr, `3` exit (payload one byte). A device
 without `shell_v2` (pre-Android 7, 2016) is refused with `AdbConnectError::DeviceTooOld` rather than guessed at: the
@@ -263,6 +269,9 @@ A cell lives with whatever it **asserts**, never with whatever it connects to.
 - **`#[cfg(any(test, feature = "testing"))]`** widens `testing` and `volume::testing` to `pub` for the app's suites; the
   crate's own `dev-dependencies` self-entry turns the feature on for every dev target and leaves it off for the lib, so
   a shipped build carries no fixture. ❌ Never gate a fixture on `cfg(test)` alone.
+- **Codec cells that need exact bytes, not a conversation**, script the peer: `AdbConnection::scripted` plays a fixed
+  byte string and discards what we write (`AdbConnection` holds any `AsyncRead + AsyncWrite` stream for this). The
+  `fuzzing` feature's `fuzzing` module drives the sync and shell readers the same way for the fuzz targets.
 - **A real-device pass is pending** (§ "Known gaps"). The fake server implements what the AOSP docs say; the documented
   differences between the docs and a phone's `adbd` are what that pass is for.
 
