@@ -1817,6 +1817,9 @@
     "accept": ["Freigaben", "freigegeben"],
     "chosen": "Freigabe",
     "confidence": "high",
+    "exceptions": {
+      "errorReporter.dialog.managedOff": "„share it yourself“ is the verb (pass the saved report on), not an SMB share → selbst weitergeben"
+    },
     "forms": "network share → Netzwerkfreigabe; SMB share → SMB-Freigabe; Connect directly → Direkt verbinden",
     "sources": "macOS (Freigabe, Bildschirmfreigabe); NetAuthAgent EINFO_NO_SHARE"
   },

@@ -220,6 +220,10 @@
   "@askCmdr.error.noCloudConsent": {
     "sourceHash": "cd2af1d"
   },
+  "askCmdr.error.managedByOrganization": "Deine Organisation erlaubt diesen KI-Dienst nicht. Dein IT-Team kann dir sagen, welche Dienste du nutzen kannst.",
+  "@askCmdr.error.managedByOrganization": {
+    "sourceHash": "845a19f"
+  },
   "askCmdr.error.localWindowTooSmall": "Cmdr braucht ein größeres Kontextfenster, als dein lokales Modell hat. Wähle in den Einstellungen unter KI 32.768 Token oder mehr.",
   "@askCmdr.error.localWindowTooSmall": {
     "sourceHash": "8ac7452"

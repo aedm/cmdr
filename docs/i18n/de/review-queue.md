@@ -83,3 +83,8 @@ German runs 20–35% longer than English. Look at these against the pseudolocale
 - `settings.indexing.overriddenBadge` (`Mit der Laufwerksindizierung aus`) and `menu.network.pinToSwitcher`
   (`In der Volume-Auswahl fixieren`), both much longer than the English; `menu.network.unpin`
   (`Aus der Volume-Auswahl lösen`, 28 vs 19) in the same narrow dropdown.
+- `settings.managed.summary.upToManualChecksOnly` (`Bis {ceiling}, nur manuelle Update-Suche`, 39 vs 37) in the
+  managed-policy card's value column.
+
+- `ai.translateError.managed.body`, `ai.managed.hostNotAllowed`: `dein IT-Team` follows the English „IT team“; a native
+  reviewer may prefer the more common `deine IT-Abteilung`.
