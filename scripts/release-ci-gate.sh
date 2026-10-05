@@ -11,12 +11,16 @@
 # again before tagging, where it returns at once.
 #
 # Emergency bypass (a hotfix while CI is red for a reason outside the repo): RELEASE_SKIP_CI_GATE=1.
+# `release.yml` enforces the same rule server-side (its `ci-gate` job), with its own bypass: the
+# repository variable RELEASE_SKIP_CI_GATE_TAG set to the exact tag.
 set -euo pipefail
 
 WORKFLOW=ci.yml
 
 if [[ "${RELEASE_SKIP_CI_GATE:-}" == "1" ]]; then
   echo "⚠️  RELEASE_SKIP_CI_GATE=1: releasing WITHOUT a green full CI run."
+  echo "   release.yml checks this again: set the repository variable RELEASE_SKIP_CI_GATE_TAG to the exact tag"
+  echo "   (like v1.2.3) before pushing it, and clear it once the release run finishes."
   exit 0
 fi
 

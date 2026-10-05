@@ -67,9 +67,68 @@ jobs:
 
           echo "$TAG moves the manifest $CURRENT -> $VERSION. Proceeding."
 
+  # The server-side twin of `scripts/release-ci-gate.sh`: only a commit with a fully green CI run
+  # ships. Fully green means a `workflow_dispatch` run of `ci.yml` (the `run_all` one the local gate
+  # starts), never a push run, since push runs skip every lane whose paths didn't change.
+  #
+  # Which commit: `release.sh` runs the local gate on `origin/main`, THEN commits the version bump
+  # and tags that. So the tagged commit itself never has a full run at push time, and its parent
+  # is the one that was gated. The parent counts only when the tagged commit is that release
+  # commit (subject `chore(release): vX.Y.Z`); a tag on any other commit needs a full run of its
+  # own. The local gate already waited for the run to finish, so there's nothing to wait for here.
+  ci-gate:
+    name: Require green CI on the released commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read # list CI runs
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # The tagged commit and its parent.
+          fetch-depth: 2
+
+      - name: Require a green full CI run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          # Same shape as RELEASE_REPUBLISH_TAG: names one exact tag, so a stale value can't act as
+          # a blanket bypass. The server-side half of the local RELEASE_SKIP_CI_GATE=1.
+          SKIP: ${{ vars.RELEASE_SKIP_CI_GATE_TAG }}
+        run: |
+          set -euo pipefail
+          if [ "$SKIP" = "$TAG" ]; then
+            echo "::warning::RELEASE_SKIP_CI_GATE_TAG names $TAG, so this release ships WITHOUT a green full CI run. Clear that variable once this run finishes."
+            exit 0
+          fi
+
+          VERSION="${TAG#v}"
+          SHA=$(git rev-parse HEAD)
+          CANDIDATES="$SHA"
+          if [ "$(git log -1 --format=%s HEAD)" = "chore(release): v$VERSION" ]; then
+            CANDIDATES="$CANDIDATES $(git rev-parse HEAD^)"
+          fi
+
+          for c in $CANDIDATES; do
+            URL=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$c&event=workflow_dispatch&status=success&per_page=1" \
+              --jq '.workflow_runs[0].html_url // empty')
+            if [ -n "$URL" ]; then
+              echo "Full CI run on ${c:0:9} is green: $URL"
+              exit 0
+            fi
+          done
+
+          echo "::error::No green full CI run (ci.yml, workflow_dispatch) on $(for c in $CANDIDATES; do printf '%s ' "${c:0:9}"; done)for $TAG."
+          echo "scripts/release.sh runs scripts/release-ci-gate.sh before tagging, which starts and waits for that run. If that run is still going, wait for it, then re-run the failed jobs."
+          echo "Emergency bypass: set the repository variable RELEASE_SKIP_CI_GATE_TAG to exactly '$TAG', re-run, then clear it. Procedure: docs/guides/releasing.md § Release gates that abort before tagging."
+          exit 1
+
   build:
     name: Build (${{ matrix.arch }})
-    needs: [guard]
+    needs: [guard, ci-gate]
     # Two runners can build this: GitHub's hosted macOS images, and David's self-hosted M3 MBP
     # (`[self-hosted, macOS, ARM64]`). GitHub-hosted is the ACTIVE one; see
     # `docs/guides/releasing.md` § "Which runner builds the release" for the trade-offs and the
@@ -305,7 +364,7 @@ jobs:
   # It needs only the checkout, so it runs beside the macOS builds and costs no wall-clock.
   sbom:
     name: Generate SBOMs
-    needs: [guard]
+    needs: [guard, ci-gate]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

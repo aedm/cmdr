@@ -77,9 +77,16 @@ tagged. Beyond the version/CHANGELOG checks and `oxfmt --ci`, four are worth kno
   `run_all`. ❗ A push run doesn't count: CI's change detection skips unchanged lanes, so a docs-only HEAD reads green
   while the commit before it broke Rust. The gate reuses a full run already on the commit, starts one otherwise, and
   waits (~25 min), so `/release` pushes and starts it early to overlap it with changelog drafting. A flaky red run:
-  `gh run rerun <id> --failed`, then re-run the release. Emergency bypass for a hotfix while CI is red for reasons
-  outside the repo: `RELEASE_SKIP_CI_GATE=1`. The release commit itself (version bumps, CHANGELOG) lands after the gate;
-  the `oxfmt --ci` gate and the post-tag CI run cover it.
+  `gh run rerun <id> --failed`, then re-run the release. The release commit itself (version bumps, CHANGELOG) lands
+  after the gate; the `oxfmt --ci` gate and the post-tag CI run cover it.
+  - **`release.yml` enforces it again server-side** (the `ci-gate` job, which `build` and `sbom` wait on), so a tag
+    pushed by hand can't skip it. It looks for a successful `workflow_dispatch` run of `ci.yml` on the tagged commit, or
+    on its parent when the tagged commit is the `chore(release): vX.Y.Z` commit `release.sh` makes after the local gate.
+    It doesn't wait: the local gate already did. If it fails because the run was still going, wait for it, then "Re-run
+    failed jobs".
+  - **Emergency bypass** for a hotfix while CI is red for reasons outside the repo: `RELEASE_SKIP_CI_GATE=1` locally,
+    AND the repository variable `RELEASE_SKIP_CI_GATE_TAG` set to the exact tag (like `v0.51.1`) before pushing it. Same
+    shape as `RELEASE_REPUBLISH_TAG`: it unblocks only the tag written in it. Clear it once the run finishes.
 
 - **Changelog refs must survive the script's own rebase.** The script's `git pull --rebase` rewrites every unpushed hash
   whenever `origin/main` moved, so right after it, `pnpm check changelog-links --fresh` fails the release on any ref no
