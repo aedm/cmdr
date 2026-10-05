@@ -252,8 +252,8 @@ import LegalLayout from '../layouts/LegalLayout.astro'
             >
         </li>
         <li>
-            <strong>Resend</strong> (license and notification emails): sends the email with your license key, and the
-            notification emails that tell us about new crash reports, error reports, and feedback, including what you
+            <strong>Resend</strong> (license, newsletter, and notification emails): sends the email with your license
+            key, the newsletter and its confirmation emails, and the notification emails that tell us about new crash reports, error reports, and feedback, including what you
             wrote and your email address if you attached one. Resend is a US company, sending our emails from its
             Ireland region.
             <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer"
@@ -276,13 +276,9 @@ import LegalLayout from '../layouts/LegalLayout.astro'
         </li>
         <li>
             <strong>Listmonk</strong> (newsletter and beta list): self-hosted on our server. Stores your email address
-            and subscription status, including the optional beta contact email you can share in the desktop app. No data
-            leaves our infrastructure except when sending emails via AWS SES.
-        </li>
-        <li>
-            <strong>AWS SES</strong> (email delivery): sends newsletter and confirmation emails on our behalf, from
-            Stockholm, Sweden.
-            <a href="https://aws.amazon.com/privacy/" target="_blank" rel="noopener noreferrer">AWS privacy policy</a>
+            and subscription status, including the optional beta contact email you can share in the desktop app. Your
+            signup passes through our API server on its way there, which doesn't keep it. No data leaves our
+            infrastructure except when sending emails via Resend.
         </li>
     </ul>
     <p>

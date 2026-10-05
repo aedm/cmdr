@@ -253,7 +253,7 @@ export const dataLocations: DataLocation[] = [
   },
   {
     name: 'Resend',
-    what: 'Sends license emails (with the license key) and internal notification emails about reports and feedback.',
+    what: 'Sends license emails (with the license key), newsletter and confirmation emails, and internal notification emails about reports and feedback.',
     where: "US company. It sends Cmdr's email from its Ireland region (eu-west-1).",
     inEu: 'partly',
   },
@@ -262,12 +262,6 @@ export const dataLocations: DataLocation[] = [
     what: 'Every email sent to an @getcmdr.com address, including security@, lands in a Gmail inbox. So do the notification emails above.',
     where: 'United States.',
     inEu: 'no',
-  },
-  {
-    name: 'Amazon Web Services (SES)',
-    what: 'Sends newsletter emails.',
-    where: 'Stockholm, Sweden (eu-north-1).',
-    inEu: 'yes',
   },
   {
     name: 'Paddle',
