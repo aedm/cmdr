@@ -23,7 +23,13 @@ pub fn dismiss_pending_crash_report<R: tauri::Runtime>(app: &tauri::AppHandle<R>
     let Ok(data_dir) = config::resolved_app_data_dir(app) else {
         return;
     };
-    let _ = std::fs::remove_file(data_dir.join(CRASH_FILE_NAME));
+    discard_pending_at(&data_dir.join(CRASH_FILE_NAME));
+}
+
+/// Deletes the pending slot only. A claim a send holds (`crash-report.sending.<id>.json`) is a
+/// different file, so this can't reach a report mid-upload.
+pub(super) fn discard_pending_at(crash_path: &Path) {
+    let _ = std::fs::remove_file(crash_path);
 }
 
 /// Reloads and sends the backend-owned pending report identified by the preview's short id.
@@ -61,6 +67,8 @@ where
     Upload: FnOnce(CrashReport) -> UploadFuture,
     UploadFuture: Future<Output = Result<(), ServerRequestError>>,
 {
+    // Before the claim: a blocked send leaves the pending file exactly where it was.
+    server_request::check_policy(Egress::CrashReport).await?;
     if pending_report_id(crash_path).as_deref() != Some(report_id) {
         return Err(ServerRequestError::unexpected(
             "pending crash report changed before send",

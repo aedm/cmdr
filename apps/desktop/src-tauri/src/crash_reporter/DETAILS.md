@@ -216,6 +216,11 @@ all three; nextest never sees the race, so a test green only under nextest is th
 5. Send returns only that preview's `shortId` and optional explicitly attached email. `pending_delivery.rs` reloads the
    pending file, rejects an id mismatch, claims the file, transforms the backend-owned report, uploads it, and deletes
    the claim. The same module owns dismissal, which deletes without sending.
+6. Under a managed `DisableCrashAndErrorReports`, step 2 discards the pending file (the dismissal helper, which can't
+   reach a claim) and answers `None`, so nothing is offered: the person couldn't send it, and the offer would return
+   every launch. A send that races a newly arrived policy refuses with `BlockedByPolicy` BEFORE the claim, leaving the
+   file in place for the next launch to discard. Capture (hook, handler, next-launch assembly) never reads the policy:
+   it locks and talks to `cfprefsd`, neither of which is safe in a dying process.
 
 ### Released-build gates
 

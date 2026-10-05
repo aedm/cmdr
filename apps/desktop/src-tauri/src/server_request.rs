@@ -108,10 +108,7 @@ pub(crate) fn describe_error_chain(err: &(dyn std::error::Error + 'static)) -> S
 /// ❗ This is the one gate for every api-server pipeline: a sender names its [`Egress`] here and
 /// can't skip the check.
 pub async fn send(egress: Egress, request: reqwest::RequestBuilder) -> Result<reqwest::Response, ServerRequestError> {
-    if !crate::managed_policy::for_egress().await.allows(egress) {
-        log::info!(target: "managed_policy", "Not sending {egress:?}: the organization's policy turns it off");
-        return Err(ServerRequestError::BlockedByPolicy);
-    }
+    check_policy(egress).await?;
     let response = request
         .send()
         .await
@@ -127,6 +124,16 @@ pub async fn send(egress: Egress, request: reqwest::RequestBuilder) -> Result<re
         status: status.as_u16(),
         detail: body.trim().chars().take(MAX_SERVER_DETAIL_CHARS).collect(),
     })
+}
+
+/// [`ServerRequestError::BlockedByPolicy`] when the managed policy, read fresh, turns `egress` off.
+/// [`send`] always asks; a command asks too before it builds a bundle nobody may send.
+pub async fn check_policy(egress: Egress) -> Result<(), ServerRequestError> {
+    if crate::managed_policy::for_egress().await.allows(egress) {
+        return Ok(());
+    }
+    log::info!(target: "managed_policy", "Not sending {egress:?}: the organization's policy turns it off");
+    Err(ServerRequestError::BlockedByPolicy)
 }
 
 /// Reads a 2xx body as JSON.

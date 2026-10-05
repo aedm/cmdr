@@ -15,7 +15,7 @@ Both paths write `crash-report.json` in the app data dir: the hook with full std
 
 ## Must-knows (invariants and guardrails)
 
-- **On by default.** `updates.crashReports` is `true` (narrow, stack-shaped, sanitized). ❌ Never extend that default
+- **On by default.** `updates.crashReports` is `true`. ❌ Never extend that default
   to `updates.errorReports` (an unbounded log bundle) or `updates.attachEmailToReports` (an identity).
   `$lib/crash-reporter/DETAILS.md` § The three report consents.
 - **The pending file is authoritative at send.** Send takes only the preview's `short_id` plus optional email, reloads
@@ -31,8 +31,9 @@ Both paths write `crash-report.json` in the app data dir: the hook with full std
 - **The report id binds consent; a claim scopes deletion.** Send renames the file to `crash-report.sending.<id>.json`
   before uploading and deletes only that. ❌ Never `rename` a claim back: `release_claim` hard-links it, so a newer
   crash in the slot survives. DETAILS § One delivery transform.
-- **Dev mode: capture only, never send.** **Crash-loop guard**: a crash file under 5 s old sets `possible_crash_loop`,
-  and the frontend asks instead of auto-sending.
+- ❌ **The hook and handler never read the managed policy** (locks, XPC); only delivery does.
+- **Dev mode: capture only, never send.** **Crash-loop guard**: a crash file under 5 s old sets `possible_crash_loop`;
+  the frontend asks.
 - **`survival.rs` makes two one-way amendments.** ❌ `app_fate` is not a `bool`: `false` would misclassify old files.
   ❌ `reported_in_session` means DELIVERED, so stamp it only after `auto_dispatcher::flush` uploads.
 - ❌ **Nothing in the panic hook may be able to panic**, and `catch_unwind` can't help (a panic inside a hook aborts

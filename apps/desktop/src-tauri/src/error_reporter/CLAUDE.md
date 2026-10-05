@@ -36,6 +36,9 @@ Builds a privacy-redacted zip of recent logs plus a manifest and ships it to `PO
   and the `playwright-e2e` feature short-circuit.
 - **`diagId` is the `diag_` diagnostics id, NEVER the `anal_` analytics id**: that split keeps an attached email
   unjoinable from analytics.
+- **A managed `DisableCrashAndErrorReports` wins over a stored `updates.errorReports: true`.** Every send rides
+  `server_request::send`; the send commands and Flow B's `take_window_to_send` also ask `check_policy` first, so no
+  bundle gets built for nothing. Save-to-disk stays allowed.
 - **The auto-dispatcher does NOT flush on shutdown, and that's load-bearing**: the panic courier opens a window for
   EVERY panic, so a flush would double-report every fatal one. No queue, no persistence.
 - ❌ **Never move the crash-file stamp out of `flush`'s `Ok` arm**: earlier stamps a delivery that didn't happen.

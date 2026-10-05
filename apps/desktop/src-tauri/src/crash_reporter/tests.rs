@@ -1077,3 +1077,46 @@ fn recording_a_delivery_with_no_crash_file_is_a_quiet_no_op() {
 
     assert!(!path.exists(), "a delivery notice must never conjure a report");
 }
+
+fn reports_off() -> crate::managed_policy::testing::PolicyOverride {
+    use crate::managed_policy::testing;
+    testing::override_for_test(testing::forcing(&[testing::DISABLE_CRASH_AND_ERROR_REPORTS]))
+}
+
+#[test]
+fn a_pending_report_is_discarded_unoffered_when_reports_are_managed_off() {
+    let dir = crate::test_support::TestDir::new("crash-pending-managed-off");
+    let path = dir.join(CRASH_FILE_NAME);
+    write_report_with_id(&path, "CRASH-A2345");
+    let _policy = reports_off();
+
+    assert!(take_pending_crash_report_at(&path).is_none());
+    assert!(!path.exists(), "the report is discarded, not kept for a later offer");
+}
+
+#[test]
+fn a_pending_report_is_offered_without_a_policy() {
+    let dir = crate::test_support::TestDir::new("crash-pending-unmanaged");
+    let path = dir.join(CRASH_FILE_NAME);
+    write_report_with_id(&path, "CRASH-A2345");
+
+    let report = take_pending_crash_report_at(&path).expect("offered");
+    assert_eq!(report.short_id.as_deref(), Some("CRASH-A2345"));
+}
+
+#[tokio::test]
+async fn a_send_the_policy_blocks_never_claims_or_uploads() {
+    let dir = crate::test_support::TestDir::new("crash-send-managed-off");
+    let path = dir.join(CRASH_FILE_NAME);
+    write_report_with_id(&path, "CRASH-A2345");
+    let _policy = reports_off();
+
+    let result = send_pending_crash_report_from_path(&path, "CRASH-A2345", None, false, |_| async {
+        panic!("a blocked send must not reach the upload")
+    })
+    .await;
+
+    assert_eq!(result, Err(ServerRequestError::BlockedByPolicy));
+    assert!(path.exists(), "nothing was claimed");
+    assert!(!claimed_crash_path(&path, "CRASH-A2345").exists());
+}

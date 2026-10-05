@@ -361,8 +361,20 @@ pub fn init<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
 /// Used by milestone 2 (crash report dialog) to check for pending reports.
 pub fn take_pending_crash_report<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<CrashReport> {
     let data_dir = config::resolved_app_data_dir(app).ok()?;
-    let crash_path = data_dir.join(CRASH_FILE_NAME);
-    let mut report = read_crash_report(&crash_path)?;
+    take_pending_crash_report_at(&data_dir.join(CRASH_FILE_NAME))
+}
+
+/// Under a managed `DisableCrashAndErrorReports` the pending report is discarded unoffered: it can
+/// never be sent, and an offer the person can't act on would come back every launch.
+fn take_pending_crash_report_at(crash_path: &Path) -> Option<CrashReport> {
+    if !crate::managed_policy::current().allows(crate::managed_policy::Egress::CrashReport) {
+        if crash_path.exists() {
+            log::info!("Crash reporter: discarding the pending crash report, the organization turned reports off");
+            pending_delivery::discard_pending_at(crash_path);
+        }
+        return None;
+    }
+    let mut report = read_crash_report(crash_path)?;
     // Defense in depth if the next-launch rewrite couldn't persist (for example, permissions
     // changed after the file was created): no preview can bypass the delivery transform.
     report.prepare_for_delivery();
