@@ -223,9 +223,8 @@ pub(crate) const MENU_BAR: &[BarMenu] = &[
             // would select right now (`update_select_same_kind_menu`). `⌥⇧=` is the physical
             // spelling, the one honest on a layout where that key isn't `+`.
             displayed_item(SELECT_SAME_KIND_ID, "menu.select.sameKind", "⌥⇧="),
-            // `⇧8`, the main-row spelling, not `*`: it's honest on every layout, and it's the
-            // first of the command's two shortcuts (`sources/file-list.ts`).
-            displayed_item(INVERT_SELECTION_ID, "menu.select.invert", "⇧8"),
+            // `*` means whichever key types `*` on the user's layout (`sources/file-list.ts`).
+            displayed_item(INVERT_SELECTION_ID, "menu.select.invert", "*"),
             SEPARATOR,
             displayed_item(SELECT_FILES_ID, "menu.select.files", "+"),
             displayed_item(DESELECT_FILES_ID, "menu.select.deselectFiles", "-"),

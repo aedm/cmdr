@@ -191,8 +191,9 @@ export async function initializeShortcuts(): Promise<void> {
     // Bring display-form key names back to the canonical vocabulary (`⌘⌫` →
     // `⌘Backspace`). A file written before the two spellings were unified would
     // otherwise hold a binding no keypress can produce and no menu accelerator
-    // can parse. See `key-capture.ts` for the canonical-vs-display split.
-    customShortcuts.set(commandId, healed.map(toCanonicalShortcut))
+    // can parse. See `key-capture.ts` for the canonical-vs-display split. Healing
+    // can fold two entries into one (`['⇧8', '*']` → `*` twice), so dedupe.
+    customShortcuts.set(commandId, [...new Set(healed.map(toCanonicalShortcut))])
   }
 
   if (customShortcuts.size > 0) {

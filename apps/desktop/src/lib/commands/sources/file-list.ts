@@ -290,10 +290,12 @@ export const fileListCommands: CommandSource[] = [
     nameKey: 'commands.fileDelete.label',
     scope: 'Main window/File list',
     showInPalette: true,
-    // `⌘Backspace` (shown as ⌘⌫) mirrors Finder's "Move to Trash". The menu
-    // accelerator stays `F8` (first shortcut); ⌘⌫ dispatches purely via the
-    // document keydown handler.
-    shortcuts: ['F8', '⌘Backspace'],
+    // `⌘Backspace` (shown as ⌘⌫) mirrors Finder's "Move to Trash", and `Delete`
+    // is the forward-delete key (⌦, or fn+⌫ on a laptop), the way Total Commander
+    // and Windows users reach for it. The menu accelerator stays `F8` (first
+    // shortcut); the other two dispatch purely via the document keydown handler,
+    // which leaves them to a focused text field.
+    shortcuts: ['F8', '⌘Backspace', 'Delete'],
     whileDialogOpen: BLOCKED_BY_DIALOGS,
   },
   {
@@ -581,13 +583,10 @@ export const fileListCommands: CommandSource[] = [
     nameKey: 'commands.selectionInvert.label',
     scope: 'Main window/File list',
     showInPalette: true,
-    // Total Commander's invert key, both ways it's typed. `⇧8` is `*` on a US
-    // layout, matched by physical key too (`eventMatchesCommand`'s digit
-    // fallback) so it works where Shift+8 types something else; bare `*` is the
-    // numpad key, which reports `*` with no Shift on every layout. `⇧8` stays
-    // first because a menu accelerator (pushed only on a rebind) reads
-    // `shortcuts[0]`.
-    shortcuts: ['⇧8', '*'],
+    // Total Commander's invert key: whichever key types `*` on the user's layout
+    // (US ⇧8, Swedish ⇧', the numpad, an AltGr-style ⌥ combo), since
+    // `formatKeyCombo` names typed symbols by character.
+    shortcuts: ['*'],
     whileDialogOpen: BLOCKED_BY_DIALOGS,
     descriptionKey: 'commands.selectionInvert.description',
   },
@@ -598,8 +597,8 @@ export const fileListCommands: CommandSource[] = [
     showInPalette: true,
     // Total Commander's `Alt+Num +`, both ways it's typed: the main-row key and
     // the numpad one. `⌥⇧=` is `±` on a US layout, matched by physical key
-    // (`eventMatchesCommand`'s punctuation fallback) so it works wherever the
-    // combo types something else. It stays first because that's the combo the
+    // (`keyComboCandidates`) so it works wherever the combo types something
+    // else. It stays first because that's the combo the
     // menu DISPLAYS; the file pane's keydown handler owns both, so neither is a
     // real menu accelerator (a bare-ish `⌥` combo would eat the character in
     // every text field).
@@ -624,10 +623,10 @@ export const fileListCommands: CommandSource[] = [
     nameKey: 'commands.selectionDeselectFiles.label',
     scope: 'Main window/File list',
     showInPalette: true,
-    // `-` and `⇧-` both open "Deselect files…"; FilePane classifies the physical
-    // Minus key (layout-independent) in `selection-dialog-keys.ts`. The menu
-    // accelerator stays `-` (first shortcut).
-    shortcuts: ['-', '⇧-'],
+    // Total Commander's `-`: the main-row key and the numpad one, whatever Shift
+    // the layout needs to type it (`formatKeyCombo` names typed symbols by
+    // character). The menu only displays it: no ⌘ / ⌃ / ⌥, so no accelerator.
+    shortcuts: ['-'],
     whileDialogOpen: BLOCKED_BY_DIALOGS,
     status: getBadgeStatus('select-files'),
     descriptionKey: 'commands.selectionDeselectFiles.description',

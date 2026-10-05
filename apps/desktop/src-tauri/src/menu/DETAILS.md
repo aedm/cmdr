@@ -321,8 +321,10 @@ default binding through `update_menu_accelerator` (only CUSTOM shortcuts are re-
 default stays display-only; a user who deliberately rebinds the command to a ⌥ combo gets a real accelerator, which is
 what "a rebind stays honest" means below.
 
-❌ **No display rule prettifies the glyph** (`⌥⇧=` → `⌥+`, `⇧8` → `*`). The menu shows the physical combo because that
-is true on every layout, and David types on a custom mixed English/Hungarian one where the "friendly" spelling is wrong.
+❌ **No display rule prettifies the glyph** (`⌥⇧=` → `⌥+`). An ⌥ combo is a key position, so the menu shows the physical
+combo: that is true on every layout, and David types on a custom mixed English/Hungarian one where the "friendly"
+spelling is wrong. A Shift-typed symbol is the opposite case: `*` is named by its character (`key-capture.ts`), so
+Invert selection shows `*`, which is true on every layout too.
 The numpad spelling is the command's SECOND default (`['⌥⇧=', '⌥+']`), not a display alias.
 
 **The modifier floor** is where that rule lives. `frontend_shortcut_to_accelerator` answers `None` for any combo
@@ -1081,7 +1083,7 @@ All three Drive items also reach the command palette, re-resolving the links fro
 agree.
 
 The **Select** submenu (between Edit and View) holds the six selection commands: `Select all` (⌘A), `Deselect all`
-(⌘⇧A), `Select all of the same kind` (⌥⇧=), `Invert selection` (⇧8), `Select files…` (+), and `Deselect files…` (-).
+(⌘⇧A), `Select all of the same kind` (⌥⇧=), `Invert selection` (*), `Select files…` (+), and `Deselect files…` (-).
 Only the first two carry a REGISTERED accelerator; the other four show a dimmed, display-only glyph and are run by
 `FilePane`'s keydown handler, each for a reason set out under "Display-only accelerators" above. The two `…` items open
 the Selection dialog (see `apps/desktop/src/lib/selection-dialog/CLAUDE.md`). All six are registered in

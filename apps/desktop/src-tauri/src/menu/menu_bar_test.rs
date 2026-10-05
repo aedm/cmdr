@@ -20,7 +20,7 @@ const PLATFORMS: [Platform; 2] = [Platform::MacOs, Platform::Linux];
 ///
 /// ❗ The Select menu's last three rows read differently here than in `LINUX_MENU_BAR`, and
 /// that's the point: a display-only shortcut rides on the macOS item's attributed title
-/// (`[display ⇧8]`) and inside the Linux item's own label (`(⇧8)`). See `item_accelerator`.
+/// (`[display *]`) and inside the Linux item's own label (`(*)`). See `item_accelerator`.
 const MACOS_MENU_BAR: &str = "\
 menu Cmdr id=menu_app
   0 item about menu.app.about untracked
@@ -76,7 +76,7 @@ menu menu.bar.select id=menu_select
   0 item select_all_files menu.select.all [Cmd+A] tracked
   1 item deselect_all menu.select.deselectAll [Cmd+Shift+A] tracked
   2 item select_same_kind menu.select.sameKind [display ⌥⇧=] tracked
-  3 item invert_selection menu.select.invert [display ⇧8] tracked
+  3 item invert_selection menu.select.invert [display *] tracked
   4 separator
   5 item select_files menu.select.files [display +] tracked
   6 item deselect_files menu.select.deselectFiles [display -] tracked
@@ -191,7 +191,7 @@ menu menu.bar.select
   0 item select_all_files menu.select.all [Cmd+A] tracked
   1 item deselect_all menu.select.deselectAll [Cmd+Shift+A] tracked
   2 item select_same_kind menu.select.sameKind (⌥⇧=) tracked
-  3 item invert_selection menu.select.invert (⇧8) tracked
+  3 item invert_selection menu.select.invert (*) tracked
   4 separator
   5 item select_files menu.select.files (+) tracked
   6 item deselect_files menu.select.deselectFiles (-) tracked
@@ -504,7 +504,7 @@ fn item_label(item: &ItemSpec, platform: Platform) -> String {
     }
 }
 
-/// `[Cmd+A]` for an accelerator the platform registers, `[display ⇧8]` for one it only
+/// `[Cmd+A]` for an accelerator the platform registers, `[display *]` for one it only
 /// draws on the item's attributed title (macOS), and nothing at all on Linux, where the
 /// shortcut is already inside the label above.
 ///

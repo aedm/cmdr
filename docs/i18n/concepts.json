@@ -1605,7 +1605,7 @@
     "en": "Invert selection",
     "match": ["invert selection", "inverts the selection"],
     "note": "Total Commander and Double Commander have this exact item; the menu item and the palette command share one English string.",
-    "sense": "The command that flips the selection in the active pane (⇧8): selected files become unselected and the rest selected."
+    "sense": "The command that flips the selection in the active pane (the `*` key): selected files become unselected and the rest selected."
   },
   "ip-address": {
     "distinct": ["hostname", "server-address"],

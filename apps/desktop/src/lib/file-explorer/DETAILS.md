@@ -38,10 +38,10 @@ Quick Look's opening and Escape handling are documented in `src-tauri/src/quick_
   model is intentionally asymmetric: Shift+Down 3× then Shift+Up 3× does NOT restore the start state — each press
   independently toggles the cursor's item.
 - **Cmd+A / Cmd+Shift+A**: select all / deselect all
-- **`+` / `-`**: open the Selection dialog ("Select files…" / "Deselect files…", Total Commander parity). Bare keys, no
-  modifier required. On US QWERTY, `Shift+=` IS the `event.key === '+'` event so `Shift` is intentionally NOT filtered.
-  See [`$lib/selection-dialog/CLAUDE.md`](../selection-dialog/CLAUDE.md) for the dialog itself; the pane-side classifier
-  lives in `pane/selection-dialog-keys.ts`.
+- **`+` / `-`**: open the Selection dialog ("Select files…" / "Deselect files…", Total Commander parity). Whichever key
+  types the character on the user's layout, main row or numpad: a Shift-typed symbol is named by its character
+  (`$lib/shortcuts/DETAILS.md` § Key capture). See [`$lib/selection-dialog/CLAUDE.md`](../selection-dialog/CLAUDE.md)
+  for the dialog itself; the pane-side classifier lives in `pane/selection-dialog-keys.ts`.
 - **".." entry can't be selected**: keyboard fills from `..` default to "select" (so Shift+End from `..` selects).
 - **Cleared on navigation**: selection is per-directory
 

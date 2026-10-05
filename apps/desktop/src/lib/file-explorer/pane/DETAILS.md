@@ -727,11 +727,10 @@ or doubles a real shortcut. Every handler here therefore resolves through `event
 
 - `selection-keys.ts` — the pure `classifySelectionKey`, mapping a keypress to `selection.toggle` / `toggleAndDown` /
   `selectAll` / `deselectAll` / `invert`. Its arms all `stopPropagation()`, so each command runs exactly once (`⌘A` used
-  to run twice, locally and centrally; invisible only because both did the same thing). `invert` defaults to `⇧8` plus a
-  bare `*`. No layout types `⇧8` as `8` (`*` on US, `(` on Hungarian), so `eventMatchesCommand` also tries the physical
-  `Digit<n>` key for a Shift+digit press and the binding stays layout-independent; the bare `*` is the numpad key, which
-  that retry can't reach (`NumpadMultiply` is not a `Digit<n>` code). The menu item carries no accelerator for the same
-  reason `+` / `-` don't: a bare `Shift+8` accelerator would eat `*` in every text field.
+  to run twice, locally and centrally; invisible only because both did the same thing). `invert` defaults to `*`, which
+  is whichever key types `*` on the user's layout, main row or numpad. The menu item carries no accelerator for the same
+  reason `+` / `-` don't: a bare-key accelerator would eat `*` in every text field.
+- `selection-dialog-keys.ts` — `+` / `-` → `selection.selectFiles` / `deselectFiles`, the same registry match.
 - `handleOpenOrParentKey` — `nav.open` (`Enter` / `⌘↓`) and `nav.parent` (`Backspace` / `⌘↑`). The `⌘Backspace`
   carve-out is now structural rather than a hand-written `!e.metaKey`: it's `file.delete`'s combo, not `nav.parent`'s,
   so it falls through to the dispatcher and deletes.
@@ -739,9 +738,9 @@ or doubles a real shortcut. Every handler here therefore resolves through `event
   fixed six plus Home/End/PageUp/PageDown), with `allowShift` for the extend-selection gesture. It replaced a partial
   `⌘←`/`⌘→` bail, so no modifier superset moves the cursor any more.
 
-`type-to-jump-keys.ts` and `selection-dialog-keys.ts` deliberately stay hand-rolled: they match a key CLASS (any
-printable character; the physical Minus key) rather than a combo. Both already reject ⌘/⌃/⌥, which is the property that
-matters. Full contract and the why: `$lib/shortcuts/DETAILS.md` § "Local handlers resolve through the registry too".
+`type-to-jump-keys.ts` deliberately stays hand-rolled: it matches a key CLASS (any printable character) rather than a
+combo, and rejects ⌘/⌃/⌥, which is the property that matters. Full contract and the why: `$lib/shortcuts/DETAILS.md` §
+"Local handlers resolve through the registry too".
 
 **Selection-dialog keys dispatch onto the bus.** The `+` / `-` keypresses are classified by `selection-dialog-keys.ts`
 and reach the bus through a typed `onCommand?: (commandId: CommandId) => void` prop chain: `FilePane` (the classifier at

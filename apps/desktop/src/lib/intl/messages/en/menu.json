@@ -271,7 +271,7 @@
 
   "menu.select.invert": "Invert selection",
   "@menu.select.invert": {
-    "description": "VERB phrase (imperative). Flips the selection in the active pane: every selected file becomes unselected and every unselected one becomes selected (⇧8, the `*` key on a US keyboard). Sits right under menu.select.deselectAll. Total Commander and Double Commander have this exact item; use the wording their localized menus use in your language."
+    "description": "VERB phrase (imperative). Flips the selection in the active pane: every selected file becomes unselected and every unselected one becomes selected (shortcut: the `*` key). Sits right under menu.select.deselectAll. Total Commander and Double Commander have this exact item; use the wording their localized menus use in your language."
   },
   "menu.select.files": "Select files…",
   "@menu.select.files": {
