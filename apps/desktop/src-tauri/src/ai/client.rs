@@ -627,10 +627,16 @@ const MAX_REDIRECTS: usize = 10;
 /// stops at any hop the managed policy refuses. Without it, a 3xx from an allowed host would carry
 /// the request (and its key) to any host.
 fn policy_guarded_http_client() -> reqwest::Client {
-    let builder = reqwest::Client::builder().redirect(reqwest::redirect::Policy::custom(follow_allowed_hop));
+    let builder = reqwest::Client::builder().redirect(policy_guarded_redirects());
     genai::WebConfig::default().apply_to_builder(builder).build().expect(
         "a reqwest client fails to build only when its TLS backend can't start, which genai treats as fatal too",
     )
+}
+
+/// The redirect policy every HTTP client that talks to an AI endpoint uses (the LLM client above
+/// and the connection probe): it follows a hop only when the managed policy allows its host.
+pub(super) fn policy_guarded_redirects() -> reqwest::redirect::Policy {
+    reqwest::redirect::Policy::custom(follow_allowed_hop)
 }
 
 /// One redirect hop: followed only when the policy allows its destination. Synchronous, so it

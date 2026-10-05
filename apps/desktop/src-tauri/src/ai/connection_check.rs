@@ -100,8 +100,10 @@ async fn probe_ai_endpoint(base_url: String, api_key: String) -> AiConnectionChe
 
     let url = format!("{}/models", base_url.trim_end_matches('/'));
 
+    // The policy judged `base_url` above; the redirect guard judges every hop after it.
     let client = match reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
+        .redirect(super::client::policy_guarded_redirects())
         .build()
     {
         Ok(c) => c,
@@ -307,6 +309,42 @@ mod tests {
         );
         assert!(refuse_by_policy(&listed, "https://api.openai.com/v1").is_none());
         assert!(refuse_by_policy(&ManagedPolicy::default(), "https://evil.example.com/v1").is_none());
+    }
+
+    /// An allowed endpoint answering 302 must not carry the probe to a host the policy refuses:
+    /// the probe follows redirects through the same guard as every LLM request.
+    #[tokio::test]
+    async fn the_probe_never_follows_a_redirect_to_a_refused_host() {
+        use crate::managed_policy::testing::{self, ALLOWED_CLOUD_AI_HOSTS};
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let elsewhere = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/models"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(r#"{"data":[{"id":"m"}]}"#))
+            .mount(&elsewhere)
+            .await;
+        let allowed = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/models"))
+            .respond_with(
+                ResponseTemplate::new(302).insert_header("location", format!("{}/v1/models", elsewhere.uri())),
+            )
+            .mount(&allowed)
+            .await;
+
+        // Both servers listen on 127.0.0.1, so the list names the allowed one by its port.
+        let entry = format!("127.0.0.1:{}", allowed.address().port());
+        let _policy = testing::override_for_test(testing::from_values(&[(
+            ALLOWED_CLOUD_AI_HOSTS,
+            plist::Value::Array(vec![plist::Value::String(entry)]),
+        )]));
+        let result = probe_ai_endpoint(format!("{}/v1", allowed.uri()), String::new()).await;
+
+        assert!(result.models.is_empty(), "the probe stopped at the 302");
+        let reached = elsewhere.received_requests().await.map_or(0, |r| r.len());
+        assert_eq!(reached, 0, "the redirect target saw nothing");
     }
 
     #[test]

@@ -178,6 +178,8 @@ How the organization's MDM profile (`managed_policy/DETAILS.md`, the canonical k
   this check makes "the next request stops" hold for them. Mid-turn it ends the turn as a provider failure.
 - **Redirects.** Remote backends send through `policy_guarded_http_client` (`genai::ClientBuilder::with_reqwest`), whose
   redirect policy stops at any hop the (cached) policy refuses. Without it, a 3xx from an allowed host reaches any host.
+  The connection probe (`check_ai_connection`) uses the same policy (`client::policy_guarded_redirects`, one function):
+  every HTTP client that talks to an AI endpoint must.
 - **Local model.** Under `DisableAI`, `configure_ai` treats `local` like switching away (stops a running server, never
   spawns), `start_ai_server` and `start_ai_download` refuse, and `compute_ai_status` never offers the download.
   `DisableCloudAI` leaves all of that alone.
