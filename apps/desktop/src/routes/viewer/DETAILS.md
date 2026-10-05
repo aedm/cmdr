@@ -827,10 +827,16 @@ so the page shows how far it got. Backend half: `apps/desktop/src-tauri/src/file
   row lookup at all. The character count goes in as a NUMBER, ❌ never `String(n)`: the strings are ICU plurals whose
   `#` picks the singular ("1 character") and prints the locale's digit grouping ("12,345"), and a string argument gets
   neither.
+- **Drag autoscroll copies WebKit's selection autoscroll**, which Binary and Hex get natively: nothing until the pointer
+  is PAST the top or bottom edge, then `AUTOSCROLL_PX_PER_SEC_PER_PX_PAST` (20) px/s per px past it (WebKit's 50 ms
+  timer revealing the pointer each tick). Speed is per second off the RAF timestamp, so 60 Hz and 120 Hz cover the same
+  distance; sub-pixel frames accumulate, so a 1 px pull still crawls; and it's in content px, divided through
+  `getScrollScale` for a squeezed huge file. Gotcha/Why: ❌ no band inside the edge and no per-frame speed. A 30 px
+  inner band ramping to 540 px per frame reached a file's end before the user could take two more lines.
 - **Drag autoscroll honours `prefers-reduced-motion`.** Under reduced motion, `createViewerAutoscroll().start()` does a
-  single synchronous snap step and exits without queuing a RAF. The page's `pointermove` calls `start()` on every move,
-  so the user still progresses through the file in discrete jumps. Override via the `prefersReducedMotion` dep for
-  tests.
+  single synchronous step (one WebKit tick: the distance past the edge) and exits without queuing a RAF. The page's
+  `pointermove` calls `start()` on every move, so the user still progresses through the file in discrete jumps. Override
+  via the `prefersReducedMotion` dep for tests.
 - `getLineHeight()` (returns `18px × effective scale`) and the CSS rule
   `.line { height: calc(18px * var(--font-scale)) }` in `+page.svelte` must stay paired. Both read the same scale: the
   JS function for virtualization math, the CSS rule for layout. If you change the 18 base, change both.

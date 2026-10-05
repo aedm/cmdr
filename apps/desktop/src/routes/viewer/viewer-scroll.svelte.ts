@@ -707,6 +707,9 @@ export function createViewerScroll(deps: ScrollDeps) {
     get scrollLineHeight() {
       return scrollLineHeight
     },
+    get scrollScale() {
+      return scrollScale
+    },
     get visibleFrom() {
       return visibleFrom
     },

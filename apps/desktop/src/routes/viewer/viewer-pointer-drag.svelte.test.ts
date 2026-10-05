@@ -203,7 +203,9 @@ describe('viewer pointer drag extension', () => {
     expect(frames).toHaveLength(1)
 
     harness.setFocus.mockClear()
+    // The first frame sets the loop's clock; the second scrolls by the time between them.
     frames[0](0)
+    frames[1](50)
 
     // Dragging below the viewport sweeps whole rows: the end of the bottom visible row.
     expect(harness.setFocus).toHaveBeenCalledWith({ row: 1, offset: 11 })

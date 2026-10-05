@@ -21,7 +21,7 @@
  */
 
 import { caretFromPoint, caretFromPointClamped } from './viewer-pointer'
-import { computeAutoscrollPxPerFrame } from './viewer-autoscroll'
+import { computeAutoscrollPxPerSecond } from './viewer-autoscroll'
 import { createViewerAutoscroll } from './viewer-autoscroll.svelte'
 import { advanceMultiClick, type MultiClickState } from './viewer-multi-click'
 import {
@@ -35,6 +35,8 @@ import type { RowOffset, Selection } from './selection.svelte'
 interface PointerDragDeps {
   /** Returns the scrollable `.file-content` element, or `undefined` before mount. */
   getContentRef: () => HTMLElement | undefined
+  /** Scroll px per content px (below 1 for a huge, squeezed file), for the autoscroll speed. */
+  getScrollScale?: () => number
   /** Reads the cached text of a line (for word / line granularity), or `undefined` if not cached. */
   getRowText: (line: number) => string | undefined
   /** Whether a selection currently exists (for shift-click extend vs. fresh anchor). */
@@ -136,6 +138,7 @@ export function createViewerPointerDrag(deps: PointerDragDeps) {
 
   const autoscroll = createViewerAutoscroll({
     getContentRef: deps.getContentRef,
+    getScrollScale: deps.getScrollScale,
     getPointerY: () => dragPointerY,
     onScrollStep: reAimAfterAutoscroll,
   })
@@ -207,10 +210,9 @@ export function createViewerPointerDrag(deps: PointerDragDeps) {
     const caret = caretFromPointClamped(content, e.clientX, e.clientY)
     if (caret !== null) extendToCaret(caret, dragGranularity)
 
-    // Check whether the pointer is near a viewport edge; start/stop autoscroll as needed.
+    // Autoscroll while the pointer is past the viewport's top or bottom; stop once it's back.
     const rect = content.getBoundingClientRect()
-    const delta = computeAutoscrollPxPerFrame(e.clientY, rect.top, rect.bottom)
-    if (delta !== 0) {
+    if (computeAutoscrollPxPerSecond(e.clientY, rect.top, rect.bottom) !== 0) {
       autoscroll.start()
     } else {
       autoscroll.stop()

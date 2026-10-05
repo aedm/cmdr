@@ -395,6 +395,7 @@
     // earlier run was heading. `keyboard` is defined below and read lazily here.
     const pointerDrag = createViewerPointerDrag({
         getContentRef: () => scroll.contentRef,
+        getScrollScale: () => scroll.scrollScale,
         getRowText: (row) => scroll.rowCache.get(row)?.text,
         hasSelection: () => selection.selection !== null,
         setAnchor: (point) => {
