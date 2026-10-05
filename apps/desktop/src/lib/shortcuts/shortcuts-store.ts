@@ -301,6 +301,7 @@ export const menuCommands = [
   // Panes
   'pane.switch',
   'pane.swap',
+  'pane.clone',
   // Search
   'search.open',
   // Sort

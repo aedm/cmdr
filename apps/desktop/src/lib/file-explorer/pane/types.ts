@@ -89,6 +89,13 @@ export interface CancelLoadingPayload {
 export interface CopyPathBetweenPanesArgs {
   source: 'left' | 'right'
   target: 'left' | 'right'
+  /**
+   * When the source pane is focused, let the cursor refine the destination (a
+   * folder under the cursor opens instead of the pane's own folder). Default
+   * `true`, the ⌘→ / ⌘← behavior; `pane.clone` passes `false` to copy the pane's
+   * location exactly.
+   */
+  followCursor?: boolean
 }
 
 /**

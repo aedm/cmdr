@@ -327,6 +327,10 @@
   "@menu.view.swapPanes": {
     "description": "VERB phrase (imperative). Exchanges the two panes' contents, so the left folder appears on the right and vice versa (⌘U). ❗ Different from menu.view.switchPane, which only moves focus: this one moves the folders. Use the same word for \"pane\" as in menu.view.leftPane."
   },
+  "menu.view.clonePane": "Clone pane",
+  "@menu.view.clonePane": {
+    "description": "View menu item that opens the focused pane's folder in the other pane too, so both panes show the same folder. \"Pane\" is one of the two side-by-side file lists."
+  },
 
   "menu.view.commandPalette": "Command palette…",
   "@menu.view.commandPalette": {

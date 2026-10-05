@@ -346,6 +346,7 @@ pub(crate) const NATIVE_STRINGS: &[LocaleStrings] = &[
             ("menu.tag.yellow", "Yellow"),
             ("menu.view.askCmdr", "Ask Cmdr"),
             ("menu.view.briefView", "Brief view"),
+            ("menu.view.clonePane", "Clone pane"),
             ("menu.view.commandPalette", "Command palette…"),
             ("menu.view.fullView", "Full view"),
             ("menu.view.leftPane", "Left pane"),

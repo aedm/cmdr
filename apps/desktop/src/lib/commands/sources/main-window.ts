@@ -280,6 +280,17 @@ export const mainWindowCommands: CommandSource[] = [
     whileDialogOpen: BLOCKED_BY_DIALOGS,
   },
   {
+    // Total Commander's "Target = Source": the other pane opens the focused
+    // pane's folder. Unlike ⌘→ / ⌘←, the cursor never refines it.
+    id: 'pane.clone',
+    nameKey: 'commands.paneClone.label',
+    scope: 'Main window',
+    showInPalette: true,
+    shortcuts: ['⌘⇧C'],
+    whileDialogOpen: BLOCKED_BY_DIALOGS,
+    descriptionKey: 'commands.paneClone.description',
+  },
+  {
     id: 'pane.leftVolumeChooser',
     nameKey: 'commands.paneLeftVolumeChooser.label',
     scope: 'Main window',

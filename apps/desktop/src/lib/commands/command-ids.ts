@@ -101,6 +101,7 @@ export const COMMAND_IDS = [
   // Pane commands
   'pane.switch',
   'pane.swap',
+  'pane.clone',
   'pane.leftVolumeChooser',
   'pane.rightVolumeChooser',
   'pane.copyPathLeftToRight',

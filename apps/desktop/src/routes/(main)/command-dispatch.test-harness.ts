@@ -236,6 +236,12 @@ export const DELEGATE_ROWS: DelegateRow[] = [
     },
   },
   {
+    id: 'pane.clone',
+    expect: (e) => {
+      expect(e.copyPathBetweenPanes).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ followCursor: false }))
+    },
+  },
+  {
     id: 'pane.leftVolumeChooser',
     expect: (e) => {
       expect(e.toggleVolumeChooser).toHaveBeenCalledExactlyOnceWith('left')
