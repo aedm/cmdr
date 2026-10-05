@@ -29,7 +29,8 @@ pub enum Egress {
 impl ManagedPolicy {
     /// Whether `egress` may send right now. The always-`true` arms are the code form of the
     /// "traffic no key turns off" list on `/trust`. The update ceiling isn't judged here: it needs
-    /// the version, which the updater checks with [`super::UpdateCeiling::allows`].
+    /// the version, which the macOS updater checks with
+    /// [`UpdateCeiling`](super::UpdateCeiling)`::allows`.
     pub fn allows(&self, egress: Egress) -> bool {
         match egress {
             Egress::Heartbeat => !self.usage_stats_disabled(),
