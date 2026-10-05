@@ -26,8 +26,9 @@ event loop that turns its stream into index writes.
 - **Renames are detected by INODE, not intent** (`detect_renames_by_inode` → `MoveEntryV2`, preserving `entry_id` and
   `dir_stats`). ❌ Never revert to `DeleteSubtreeById` + `UpsertEntryV2`: that wipes the renamed dir's `dir_stats` and
   drops its subtree until a full scan heals it. (Inode is null on FAT/exFAT — `../paths/DETAILS.md`.)
-- **A removal storm coalesces to ONE subtree rescan** (`storm.rs`), anchored at the deepest common ancestor, NOT the
-  capped grouping prefix. Only STRICT descendants drop, and each dropped event re-queues the anchor.
+- **A removal storm coalesces to subtree rescans** (`storm.rs`), anchored at each storm CLUSTER's deepest common
+  ancestor, ❌ never the capped grouping prefix, and never widened by a few stray deletes (that walked whole worktrees).
+  Only STRICT descendants drop, and each dropped event re-queues the anchor.
 - **Both observers hook BOTH live loops, by construction**: `process_live_batch` takes `BatchObservers` (churn + the
   activity tap) by `&mut`, and two scanners key on `BatchObservers::from_env(`. Hooking one loop measured nothing on
   replay.
