@@ -24,6 +24,9 @@ merge/staging engine (`strategy.rs`, `merge.rs`). File map: `DETAILS.md` § File
 - **Skip the dest pre-check ONLY for a dir THIS op created** (`DirectoryCreation::Created`), ❌ never one that looks
   empty. Every name asks `landing.rs`: a look-alike is taken (by ITS bytes), only free names respell, and an
   unanswerable probe fails the item.
+- **A listed name joins a destination ONLY as a `ChildName`** (`cmdr_fs::volume::ChildName`): a hostile server or
+  device lists `../x` or `/x`, and a raw `join` writes outside the folder. A refusal is `InvalidName`, failing the item
+  (`hostile_names_tests.rs`).
 
 ## Staging and cleanup
 

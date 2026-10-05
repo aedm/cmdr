@@ -1920,6 +1920,7 @@ pub fn root_anchored(root: &Path, path: &Path) -> PathBuf {
 // `volume::VolumeError`, `volume::smb_volume_id`, etc.
 mod capabilities;
 mod channel_stream;
+mod child_name;
 mod connection;
 mod entry_kind;
 mod error;
@@ -1963,6 +1964,7 @@ pub mod host;
 
 pub use capabilities::VolumeCapabilities;
 pub use channel_stream::ChannelReadStream;
+pub use child_name::{ChildName, NotAChildName};
 pub use connection::{BackendKind, ConnectionState, DeviceReadiness, DeviceUnavailableReason, SignInShape};
 pub use entry_kind::EntryKind;
 pub use error::{ErrnoField, VolumeError};

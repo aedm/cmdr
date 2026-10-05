@@ -134,6 +134,10 @@ mod finalize_recovery_tests;
 #[cfg(test)]
 mod dest_precheck_failure_tests;
 
+/// A listed name that isn't one plain path component (`../x`, `/x`) never
+/// lands outside the destination.
+#[cfg(test)]
+mod hostile_names_tests;
 /// The same rule on a backend whose `is_directory` follows a link (ADB, SFTP).
 #[cfg(test)]
 mod link_following_backend_tests;

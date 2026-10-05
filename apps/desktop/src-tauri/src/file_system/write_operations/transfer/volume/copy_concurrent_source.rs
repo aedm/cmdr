@@ -27,7 +27,7 @@ use super::merge_ctx::MergeProbe;
 use super::preflight::SourceFileFacts;
 use super::strategy::{LandingName, Replaces, failed_write_leaves_ours_at, resolve_source_is_directory, staging_for};
 use super::transfer_error::{PathRole, WriteFailure, map_volume_error};
-use crate::file_system::volume::VolumeError;
+use crate::file_system::volume::{ChildName, VolumeError};
 use crate::ignore_poison::IgnorePoison;
 
 impl ConcurrentCopy<'_> {
@@ -313,7 +313,14 @@ impl ConcurrentCopy<'_> {
                 ),
             );
         }
-        where_it_lands(&self.dest_volume, dest_dir, name, folder, NewName::Respell).await
+        where_it_lands(
+            &self.dest_volume,
+            dest_dir,
+            ChildName::new(name)?,
+            folder,
+            NewName::Respell,
+        )
+        .await
     }
 
     /// Runs the conflict resolver for one top-level clash, on the driver.

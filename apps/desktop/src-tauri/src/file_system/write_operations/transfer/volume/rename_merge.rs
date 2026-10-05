@@ -55,7 +55,6 @@
 //! child finalizes its stored decision instead of re-prompting.
 
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -70,7 +69,7 @@ use super::displaced_destination::{DisplacedDestination, displace_destination};
 use super::strategy::Replaces;
 use super::transfer_error::{PathRole, map_volume_error};
 use crate::file_system::listing::FileEntry;
-use crate::file_system::volume::{EntryKind, Volume, VolumeError};
+use crate::file_system::volume::{ChildName, EntryKind, Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
 
 /// Context threaded through the recursive rename-merge so each level can resolve
@@ -176,18 +175,24 @@ pub(super) async fn rename_merge_directory(
         }
 
         let child_source = PathBuf::from(&entry.path);
+        // ❗ Listed names are the server's word: ❌ never join one raw, or `../x`
+        // renames the entry out of the folder being merged.
+        let name = ChildName::new(&entry.name).map_err(|e| map_rename_error(&child_source, e.into()))?;
         // A look-alike is a hit on the entry that's there, addressed by ITS
         // name from here on. A move keeps the name it moves, so a free name is
         // never respelled.
-        let (child_dest, dest_hit) = match dest_index.lookup(Some(OsStr::new(&entry.name))) {
-            DestLookup::Present(hit) => (dest_dir.join(&entry.name), Some(*hit)),
-            DestLookup::LookAlike(hit) => (dest_dir.join(&hit.name), Some(*hit)),
+        let (child_dest, dest_hit) = match dest_index.lookup(Some(name.as_os_str())) {
+            DestLookup::Present(hit) => (name.under(dest_dir), Some(*hit)),
+            DestLookup::LookAlike(hit) => {
+                let stored = ChildName::new(&hit.name).map_err(|e| map_rename_error(&child_source, e.into()))?;
+                (stored.under(dest_dir), Some(*hit))
+            }
             DestLookup::Ambiguous => {
                 return Err(WriteOperationError::DestinationExists {
-                    path: dest_dir.join(&entry.name).display().to_string(),
+                    path: name.under(dest_dir).display().to_string(),
                 });
             }
-            DestLookup::Absent | DestLookup::Unknown => (dest_dir.join(&entry.name), None),
+            DestLookup::Absent | DestLookup::Unknown => (name.under(dest_dir), None),
         };
         let dest_hit = dest_hit.as_ref();
 

@@ -23,7 +23,6 @@
 //! `safety_oracle.rs`, never fresh inline asserts. See `CLAUDE.md` § Merge and
 //! conflicts, and `DETAILS.md` § "Scan-as-you-merge".
 
-use std::ffi::OsStr;
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
@@ -47,7 +46,7 @@ use super::strategy::Replaces;
 use super::strategy::{LandingName, WriteStaging, note_pending_for_local_dest, staging_for, stream_pipe_file};
 use super::transfer_error::{AtPath, PathedVolumeError};
 use crate::file_system::listing::FileEntry;
-use crate::file_system::volume::{Volume, VolumeError};
+use crate::file_system::volume::{ChildName, Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
 
 /// What one leaf file's copy reports back to the walker.
@@ -524,16 +523,15 @@ async fn merge_level<'a>(
             Some(index) => DestFolder::Listed(index),
             None => DestFolder::CreatedByUs,
         };
-        let (child_dest, dest_hit) = where_it_lands(
-            dest_volume,
-            dest_path,
-            OsStr::new(&entry.name),
-            folder,
-            NewName::Respell,
-        )
-        .await
-        .at(&child_source)?
-        .into_parts();
+        // ❗ The source's listing named this child, and a hostile server or
+        // device can name it `../x` or `/x`: ❌ never join it raw.
+        let name = ChildName::new(&entry.name)
+            .map_err(VolumeError::from)
+            .at(&child_source)?;
+        let (child_dest, dest_hit) = where_it_lands(dest_volume, dest_path, name, folder, NewName::Respell)
+            .await
+            .at(&child_source)?
+            .into_parts();
         let dest_hit = dest_hit.as_ref();
 
         if entry.is_directory {

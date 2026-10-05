@@ -468,6 +468,19 @@ impl InMemoryVolume {
         }
     }
 
+    /// Overrides the NAME an existing entry is listed under, while it stays
+    /// stored (and readable) at its real path: a hostile server or device that
+    /// lists `../x` or `/x` for a file. Whatever joins a listed name onto a
+    /// destination path has to refuse it rather than write outside the folder it
+    /// was given (`ChildName`). Test-only.
+    pub fn set_reported_name(&self, path: &Path, reported_name: &str) {
+        let normalized = self.normalize(path);
+        let mut entries = self.entries.write_ignore_poison();
+        if let Some(entry) = entries.get_mut(&normalized) {
+            entry.metadata.name = reported_name.to_string();
+        }
+    }
+
     /// Creates an in-memory volume pre-populated with entries.
     pub fn with_entries(name: impl Into<String>, entries: Vec<FileEntry>) -> Self {
         let volume = Self::new(name);

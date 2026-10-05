@@ -52,7 +52,7 @@ use std::path::{Path, PathBuf};
 
 use crate::file_system::volume::Volume;
 use crate::file_system::volume::friendly_error::{ErrorCategory, ListingError, listing_error_from_volume_error};
-use crate::file_system::volume::{VolumeError, VolumeReadStream, WriteMode};
+use crate::file_system::volume::{ChildName, VolumeError, VolumeReadStream, WriteMode};
 
 /// A drag-out fulfillment failure, carrying the typed [`ListingError`]
 /// classification so the delegate can surface a title through the promise
@@ -316,8 +316,11 @@ async fn populate_directory(volume: &dyn Volume, source_path: &Path, dest_path: 
         .map_err(|e| FulfillError::from_volume_error(&e, dest_path))?;
 
     for entry in entries {
-        let child_source = source_path.join(&entry.name);
-        let child_dest = dest_path.join(&entry.name);
+        // ❗ The phone or server named this child: `../x` or `/x` joined raw
+        // would write outside the folder Finder made.
+        let name = ChildName::new(&entry.name).map_err(|e| FulfillError::from_volume_error(&e.into(), dest_path))?;
+        let child_source = name.under(source_path);
+        let child_dest = name.under(dest_path);
         if entry.is_directory {
             // `Box::pin` because this is an async-recursive call into the same
             // function (Rust needs the future boxed to size it).
@@ -775,6 +778,33 @@ mod tests {
         assert!(
             !dest.exists(),
             "a failed folder fulfillment must remove the entire created tree"
+        );
+    }
+
+    /// ❗ A phone or server that lists `../escape.txt` inside a dragged folder
+    /// must not write next to the folder Finder made: the fulfillment refuses
+    /// the name, and nothing lands outside the drop.
+    #[tokio::test]
+    async fn folder_with_a_listed_name_that_climbs_out_is_refused() {
+        let v = populated_volume();
+        add_dir(&v, "/DCIM").await;
+        add_file(&v, "/DCIM/evil.jpg", b"EVIL").await;
+        v.set_reported_name(Path::new("/DCIM/evil.jpg"), "../escape.jpg");
+        // Where the raw join would read from, so a missing source can't be what
+        // stops the escape.
+        add_file(&v, "/DCIM/../escape.jpg", b"EVIL").await;
+
+        let dest_dir = tempfile::tempdir().unwrap();
+        let dest = dest_dir.path().join("DCIM");
+
+        let resolver = FixedResolver(Some(v));
+        let err = fulfill_with_resolver(&resolver, "phone", Path::new("/DCIM"), &dest)
+            .await
+            .expect_err("a listed name that climbs out must fail the fulfillment");
+        assert!(!err.cancelled);
+        assert!(
+            !dest_dir.path().join("escape.jpg").exists(),
+            "the listed name wrote outside the dropped folder"
         );
     }
 }
