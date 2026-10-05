@@ -48,7 +48,7 @@
   Worth reporting upstream.
 - **xz dictionary, `lzma-rust2`, bounded in our wrapper**: a block header names its LZMA2 dictionary and the decoder
   allocated and zeroed it up front (4 GiB from 40 bytes). `lzma-rust2` 0.21.0 added `XzReader::new_mem_limit`;
-  `format::XZ_MEMORY_LIMIT_KIB` sets it (`crates/cmdr-archive/src/read/DETAILS.md` § DoS caps).
+  `format::XZ_MEMORY_LIMIT_KIB` sets it (`crates/cmdr-archive/src/read/DETAILS.md` § Resource caps).
 - **xz index, `lzma-rust2` 0.21.0, known upstream issue**: the index's record count is a varint the reader passes
   straight to `try_reserve_exact` (its `Index::parse`, still on upstream main 2026-10-05), so 23 bytes reserve ~3 GiB.
   Reserved, never touched, and released on the error that follows, so it costs address space rather than RAM. Input
