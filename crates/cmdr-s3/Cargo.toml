@@ -87,11 +87,14 @@ uuid = { version = "1.19.0", features = ["v4"], optional = true }
 #
 # Never enable in a production build.
 testing = ["cmdr-fs/testing", "dep:uuid"]
+# Exposes `fuzzing`, the entry points the fuzz targets in `fuzz/` (repo root)
+# drive. Never enable in a production build.
+fuzzing = []
 
 [dev-dependencies]
 # Depending on ourselves turns the `testing` feature on for every DEV target and
 # leaves it off for the lib, so a shipped build carries no fixtures.
-cmdr-s3 = { path = ".", features = ["testing"] }
+cmdr-s3 = { path = ".", features = ["testing", "fuzzing"] }
 cmdr-fs = { path = "../cmdr-fs", features = ["testing"] }
 # The Docker-backed suites drive real concurrency, so their tests need a
 # multi-threaded runtime the lib deliberately can't build for itself. `net` and

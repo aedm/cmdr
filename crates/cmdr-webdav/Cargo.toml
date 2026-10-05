@@ -20,6 +20,9 @@ workspace = true
 #
 # Never enable in a production build.
 testing = ["cmdr-fs/testing", "dep:uuid"]
+# Exposes `fuzzing`, the entry points the fuzz targets in `fuzz/` (repo root)
+# drive. Never enable in a production build.
+fuzzing = []
 
 [dependencies]
 # The `Volume` trait, every type it exchanges, and the host seams this backend
@@ -63,7 +66,7 @@ uuid = { version = "1.19.0", features = ["v4"], optional = true }
 [dev-dependencies]
 # Depending on ourselves turns the `testing` feature on for every DEV target and
 # leaves it off for the lib, so a shipped build carries no fixtures.
-cmdr-webdav = { path = ".", features = ["testing"] }
+cmdr-webdav = { path = ".", features = ["testing", "fuzzing"] }
 # The recording host-seam fakes this crate's tests assert against.
 cmdr-fs = { path = "../cmdr-fs", features = ["testing"] }
 # The Docker-backed suites drive real concurrency, so their tests need a

@@ -22,6 +22,9 @@ pub(crate) mod transport;
 pub mod volume;
 pub(crate) mod xml;
 
+#[cfg(feature = "fuzzing")]
+pub mod fuzzing;
+
 pub use params::{InvalidProvider, S3ConnectionParams, S3Provider};
 pub use refusal::S3ConnectError;
 pub use volume::{S3Volume, UnattendedReconnect, connect_s3_volume};
