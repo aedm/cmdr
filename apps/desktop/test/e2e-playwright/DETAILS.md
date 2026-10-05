@@ -658,6 +658,23 @@ The four per-FDA-state banner branches stay covered where they can be driven pro
 `StepAi.test.ts`, `onboarding-state.test.ts`), plus the i18n capture run, which relaunches per pass with its own
 `CMDR_MOCK_FDA` value.
 
+## The managed-policy (MDM) specs
+
+The macOS check runner gives every shard's app AND its Playwright process `CMDR_MANAGED_PREFS_FILE`, pointing at
+`managed-prefs.plist` in that shard's data dir (`shardManagedPrefsFile` in `scripts/check/checks/`). The file doesn't
+exist at launch, which reads as no policy, so every other spec runs unmanaged. The app watches it, so a spec pushes a
+real policy into the running app with no relaunch. How the build honors it: `src-tauri/src/managed_policy/DETAILS.md` §
+Testing.
+
+- `managed-policy.spec.ts` (Settings › Updates & privacy: each locked row and its reason) and
+  `managed-policy-ai.spec.ts` (Settings › AI › Provider under `DisableCloudAI` and `AllowedCloudAIHosts`) share
+  `managed-policy-helpers.ts`: `writePolicyFile` (one rename, so the watcher never reads half a file),
+  `waitForManagedPolicy`, and `removePolicyFileAndWait`.
+- ❌ Every test that writes the file removes it AND waits for the app to read unmanaged again (`afterEach` /
+  `afterAll`), or the shard's later specs inherit the policy.
+- Both specs `test.skip` when the variable is unset (a hand-run suite, the Linux Docker lane): there's no watched file
+  to push through.
+
 ## App modes and their title bars
 
 `app-mode.ts` resolves one of `prod` / `dev` / `e2e` / `capture`, which the main window turns into a tinted title bar

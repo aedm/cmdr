@@ -92,7 +92,7 @@ download, and the user-initiated feedback and beta signup.
 ## Data flow
 
 - `ManagedPolicy` (fields as parsed) → typed answers → `ManagedPolicyView` (one payload for `get_managed_policy` and the
-  `managed-policy-changed` event, carrying the lock list and what the M6 "what your organization manages" summary
+  `managed-policy-changed` event, carrying the lock list and what the Settings "what your organization manages" summary
   needs: update ceiling, AI mode, allowed hosts).
 - `locked_settings()` maps policy to settings-registry ids: `Fixed { value }` or `DisallowedValues { values, fallback }`.
   `LockedValue` is a typed `bool | string` because `serde_json::Value` can't cross IPC. The fallback rides along so
@@ -171,5 +171,5 @@ download, and the user-initiated feedback and beta signup.
   `sudo defaults write "/Library/Managed Preferences/com.veszelovszki.cmdr" DisableUsageStats -bool true`, then
   re-activate Cmdr (or rely on the folder watch). If `IsForced` doesn't see it, make the file `root:wheel` `0644` like a
   profile-written one, then `sudo killall cfprefsd`. Undo with
-  `sudo defaults delete "/Library/Managed Preferences/com.veszelovszki.cmdr"`. Unverified until David runs it (plan
-  M9); record which steps were needed here, dated.
+  `sudo defaults delete "/Library/Managed Preferences/com.veszelovszki.cmdr"`. Unverified until David runs it; record
+  which steps were needed here, dated.

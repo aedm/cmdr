@@ -616,9 +616,11 @@ maintainability.
 
 Props:
 
-- `items: SelectItem[]` — `{ value, label, description?, group?, iconUrl? }`. `description` renders as quieter inline
-  text after the label (used by `SettingSelect`); `group`, when present on any item, buckets items under Ark `ItemGroup`
-  / `ItemGroupLabel` headings (used by the viewer's `EncodingPicker` for Unicode / Western); `iconUrl` puts a 16px image
+- `items: SelectItem[]` — `{ value, label, description?, group?, iconUrl?, disabled? }`. A `disabled` item stays listed
+  but dimmed, and pointer and keyboard skip it (Ark reads `disabled` off the item); say why in its `description` (the AI
+  service picker lists a service the organization refuses this way). `description` renders as quieter inline text after
+  the label (used by `SettingSelect`); `group`, when present on any item, buckets items under Ark `ItemGroup` /
+  `ItemGroupLabel` headings (used by the viewer's `EncodingPicker` for Unicode / Western); `iconUrl` puts a 16px image
   before the label. Icons are decorative (`alt=""`), so a label must never lean on one to be understandable. As soon as
   ONE item carries an icon every row reserves the slot, keeping labels in a single column, and the trigger shows the
   selected item's icon so the button reads like the row it came from. The one caller today is the settings row that
@@ -628,7 +630,9 @@ Props:
 - `onChange: (value: string) => void`.
 - `onHighlightChange?: (highlightedValue: string | null) => void` — fires on keyboard / pointer highlight.
   `SettingSelect` uses it to apply on highlight.
-- `disabled?`, `placeholder?` (default `Select...`), `ariaLabel` (lands on the trigger).
+- `disabled?`, `placeholder?` (default `Select...`), `ariaLabel` and `ariaDescribedBy?` (both land on the trigger).
+  `Checkbox`, `Switch`, `RadioGroup`, and `NumberInput` take the same `ariaDescribedBy?`, which a settings row points at
+  its disabled or managed note (`../settings/components/DETAILS.md` § Managed rows).
 - `contentClass?: string` — extra class on the `.select-content` element (`SettingSelect` sets `custom-highlighted` to
   suppress the checked state on other items while its "Custom…" row is highlighted).
 
@@ -637,7 +641,7 @@ Props:
 `--color-border-glass` tokens with tooltips and filter-chip popovers; blur dropped under `html.reduce-transparency`).
 The checkmark marks the current value on the LEFT (`.select-item-text` is the flex label cell after it); the accent fill
 follows the keyboard / pointer highlight (`[data-highlighted]`), so a checked-but-not-highlighted row is plain with just
-its checkmark — matching macOS, and distinct from the old "checked = accent bg" behavior.
+its checkmark, matching macOS.
 
 **macOS overlap positioning (the menu opens _over_ the trigger).** Zag positions the _positioner_ just below the trigger
 (`bottom-start`, `gutter: 0`, `flip: false`, `slide: true`); we then translate the _content_ (a child of the positioner,

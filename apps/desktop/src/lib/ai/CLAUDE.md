@@ -14,6 +14,7 @@ llama-server process, inference client with provider routing).
   `showAiTranslateErrorToast(err)` (the one impure wrapper); `noCloudConsent` renders `CloudAiOffToastContent.svelte`,
   and `managed` (the organization's MDM policy) names the rule `err.managed` carries.
 - **`local-ai-error.ts`**: the local-AI commands' typed rejection and its log level (refusal, cancel: info).
+  `DETAILS.md` § Under the organization's policy.
 - **`cloud-consent.svelte.ts`** + **`AiCloudConsentToggle.svelte`**: the "Allow cloud AI" state and switch. `DETAILS.md`
   § Cloud AI consent.
 
@@ -47,8 +48,6 @@ No circular dependency: `ai-state.svelte.ts` never imports from the sync or cont
   interprets them into `aiStatus`. The backend has no "status" concept, just `AiState` (installed/port/pid).
 - **`resetForTesting()` must clear every `$state` field**: when adding a field to `ai-state.svelte.ts`, update
   `resetForTesting()` too. Tests use it instead of `vi.resetModules()` (avoids ~8s module re-parse per test).
-- **`opted_out` in `AiState` is dead**: superseded by the `ai.provider` setting, which is the source of truth. It
-  remains in the struct but is no longer checked.
 
 ## Behavior notes
 
@@ -59,5 +58,5 @@ No circular dependency: `ai-state.svelte.ts` never imports from the sync or cont
 - **Folder suggestions degrade gracefully**: a failed suggestion stream ends quietly, and the UI hides the section with
   no error.
 
-Full details (settings registry and config push, wizard reuse of the cloud pipeline, model registry, download
-resumption, dev commands): `DETAILS.md`.
+Consent, the organization's policy, config push, and the model registry: `DETAILS.md`. Read it before any non-trivial
+work here: editing, planning, reorganizing, or advising.

@@ -94,6 +94,9 @@ commands, and notable non-obvious placements.
   ask once their scan preview settles (`apps/desktop/src-tauri/src/s3_costs/DETAILS.md`).
 - **`licensing.ts`**: license status, activation, expiry, server validation.
 - **`settings.ts`**: port checking, file watcher debounce, indexing toggle, MCP server control, AI subsystem commands.
+  `cloudAiHostVerdicts(baseUrls)` answers each URL with the policy's own `ManagedAiRefusal | null` (local, no request).
+  `startAiServer` and `startAiDownload` are raw invokes (generic commands specta skips), so their typed `LocalAiError`
+  rejection arrives as `unknown`: `$lib/ai/local-ai-error.ts` restores it.
 - **`logging.ts`**: `getDebugLogPath`, the log file this session writes (Help > View debug log).
 - **`tab.ts`**: tab context menu: `showTabContextMenu`, `onTabContextAction`.
 - **`function-key-bar.ts`**: the function key bar's one-item context menu: `showFunctionKeyBarContextMenu`,
@@ -163,6 +166,8 @@ commands, and notable non-obvious placements.
   `../../../src-tauri/src/dock/CLAUDE.md`.
 - **`crash-reporter.ts`**: next-launch crash preview, dismiss, and send. Send crosses IPC with the preview's report id
   and separately consented optional email only; the backend-owned pending file remains the payload authority.
+- **`error-reporter.ts`**: the error-report preview, send, and `saveErrorReportToDisk` (a command in every build: it's
+  the only action when the organization turned reports off, `../error-reporter/DETAILS.md`).
 - **`managed-policy.ts`**: the organization's MDM policy for the UI: `getManagedPolicy` and `onManagedPolicyChanged`,
   both carrying `ManagedPolicyView`. Its one caller loads the barrel lazily (`../managed-policy/CLAUDE.md`).
 

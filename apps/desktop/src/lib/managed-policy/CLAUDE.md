@@ -8,7 +8,10 @@ The organization's MDM policy as this window shows it. The backend reads, decide
 - `managed-policy.svelte.ts`: the reactive view, fetched once per window and followed through `managed-policy-changed`
   (`initManagedPolicy`), plus `getSettingLock` / `isSettingLocked` (pinned) / `isSettingManaged` (any lock).
 - `overlay.ts`: `lockedValue` and `lockAllowsWrite`, the pure twins of Rust `overlay` / `refuses_write`.
-- `ai-refusal.ts`: `managedAiRefusalMessage`, the ONE copy map for `ManagedAiRefusal`; every AI surface words it here.
+- `ai-refusal.ts`: `managedAiRefusalMessage`, the ONE copy map for `ManagedAiRefusal`; every surface holding one words
+  it here.
+- `ManagedPolicySummary.svelte` + `policy-summary.ts`: the "Managed by your organization" card (Settings › Updates &
+  privacy), one line per restricted area, worded from the view alone.
 
 ## Must-knows
 
@@ -23,4 +26,5 @@ The organization's MDM policy as this window shows it. The backend reads, decide
 - **The barrel is imported lazily** (`await import('$lib/tauri-commands')`): the settings store imports this file, and a
   static barrel import would drag the whole IPC surface into every settings consumer.
 
-Flows and decisions: `DETAILS.md`.
+Flows and decisions: `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or
+advising.

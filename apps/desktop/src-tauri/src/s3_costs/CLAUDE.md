@@ -21,4 +21,5 @@ estimator and the price table live in `crates/cmdr-s3/src/cost/`; this module wi
 - A same-account server-side copy bills one account, so it's one workload; across accounts it's two (a download and
   an upload), possibly in two currencies.
 
-Decisions, the planner's request shapes, and the refresh policy: `DETAILS.md`.
+Decisions, the planner's request shapes, and the refresh policy: `DETAILS.md`. Read it before any non-trivial work
+here: editing, planning, reorganizing, or advising.

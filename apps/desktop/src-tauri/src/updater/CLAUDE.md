@@ -20,21 +20,16 @@ platforms use the Tauri updater plugin and the frontend calls the plugin API dir
 
 - **Sync into the bundle, never replace the `.app` directory**, because the per-file atomic rename below needs a bundle
   to sync into. ❌ NOT because replacing loses the FDA grant: it doesn't (measured; `DETAILS.md`).
-- **Per-file writes use atomic rename (temp + `rename()`), not in-place `fs::copy`.** `fs::copy` keeps the same inode;
-  macOS's kernel code-signing cache keys on inode and validates the new binary against the old cached code directory,
-  causing `SIGKILL (Code Signature Invalid)` on launch. A new inode forces fresh validation. The admin path (`rsync -a`)
-  already renames atomically.
-- **Staging dir is per-instance: `<tmp>/cmdr-update-staging-{CMDR_INSTANCE_ID}`** (`installer::staging_dir`; production
-  with no env var lands at `…-default`). Don't make it shared: concurrent `Cmdr` processes (main + a worktree) race on
-  one path and trip `ENOTEMPTY`.
-- **Only a real user's production install may check** (`skip_reason`): inside a `.app` bundle, and none of
-  `crate::prod_instance::NON_PROD_ENV_VARS` set. Otherwise it spams the error reporter or inflates active installs.
-  ❌ Never keep a second copy of the env-var list here. `DETAILS.md` § Who may check.
-- **A read-only bundle is EROFS, not EPERM, and no amount of admin fixes it.** App Translocation (Cmdr opened from
-  `~/Downloads`) and a mounted `.dmg` both put the bundle on a read-only mount, which refuses root as flatly as the
-  user. `installer::install` and the frontend both gate on `bundle_location::classify` BEFORE the download, ❌ never by
-  escalating: escalating buys an auth dialog the user can only cancel. The `PermissionDenied` arm is for a root-owned
-  `/Applications`, a different thing. `DETAILS.md` § A bundle that can't be written.
+- **Per-file writes use atomic rename (temp + `rename()`), not in-place `fs::copy`.** The kernel code-signing cache keys
+  on inode, so a same-inode copy dies with `SIGKILL (Code Signature Invalid)` on launch. `rsync -a` (the admin path)
+  already renames.
+- **Staging dir is per-instance** (`installer::staging_dir`, keyed on `CMDR_INSTANCE_ID`). A shared one makes
+  concurrent `Cmdr` processes (main + a worktree) race and trip `ENOTEMPTY`.
+- **Only a real user's production install may check** (`skip_reason`). ❌ Never keep a second copy of
+  `crate::prod_instance::NON_PROD_ENV_VARS` here. `DETAILS.md` § Who may check.
+- **A read-only bundle is EROFS, not EPERM, and no amount of admin fixes it.** App Translocation and a mounted `.dmg`
+  refuse root too. `installer::install` and the frontend both gate on `bundle_location::classify` BEFORE the download,
+  ❌ never by escalating (an auth dialog the user can only cancel). `DETAILS.md` § A bundle that can't be written.
 - **The signature doesn't name a version, so the archive's own `Info.plist` does.** Its trusted comment is only
   `file:Cmdr.app.tar.gz`, and `latest.json` isn't signed, so `installer::refuse_unless_newer` refuses a staged bundle
   whose `CFBundleShortVersionString` isn't newer than the running build. ❌ Never install around it: it's what stops an
@@ -43,11 +38,11 @@ platforms use the Tauri updater plugin and the frontend calls the plugin API dir
   `UpdateCheckOutcome` (`DisableUpdates` and a refused background check return before any request); `download_update`
   takes no URL and fetches only what the last check offered; `install_update` re-asks
   `ManagedPolicy::update_to` on a fresh read, then again for the version the extracted `Info.plist` names. ❌ Never let
-  the frontend name a URL or version again. `DETAILS.md` § Managed policy.
-- **Manifest fetch is bounded** (`connect_timeout` 10 s, overall `timeout` 30 s); download/install paths are
-  intentionally NOT timed out (they run with user attention). Don't add timeouts there.
-- **Manifest URL routes through the API server** (`api.getcmdr.com/update-check/{version}?arch={arch}`, which counts
-  the check, then 302s to `getcmdr.com/latest.json`).
+  the frontend name a URL or version. `DETAILS.md` § Managed policy.
+- **Manifest fetch is bounded** (10 s connect, 30 s overall); download and install are intentionally untimed (they run
+  with user attention). The check and the download ride `server_request::send` (`Egress::UpdateCheck`,
+  `UpdateDownload`).
 
-Full details (sync order, deletion pass, minisign rationale, privilege escalation, error-chain logging,
-dependencies): `DETAILS.md`.
+Sync order, deletion pass, minisign rationale, privilege escalation, who may check, the manifest URL, and the managed
+policy step by step: `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or
+advising.

@@ -30,4 +30,5 @@ What an organization's configuration profile restricts: telemetry, updates, and 
 - **The overlay never writes.** `overlay()` changes an in-memory `settings.json` map; ❌ never persist its result.
 - **`CMDR_MANAGED_PREFS_FILE` works only in debug, `playwright-e2e`, and test builds.** ❌ Never in a release build.
 
-Key catalog, parse rules, precedence, refresh triggers, and manual testing: `DETAILS.md`.
+Key catalog, parse rules, precedence, refresh triggers, gate locations, and manual testing: `DETAILS.md`. Read it
+before any non-trivial work here: editing, planning, reorganizing, or advising.

@@ -53,10 +53,11 @@ finish, cleared when a check starts), `previousVersion` (snapshot of `getVersion
 singleton and format via `formatUpdateStatus()`, or `describeUpdateFailure()` while a failure stands.
 
 The macOS path runs `download_update` and `install_update` as two commands (distinct `downloading` / `installing`
-phases); the non-macOS path uses the plugin's fused `downloadAndInstall()` (stays in `downloading`, and the plugin is
-dynamically imported so the bundle doesn't carry it on macOS). The Rust backend at `src-tauri/src/updater/` syncs files
-into the existing `.app` bundle, preserving the inode and TCC/Full Disk Access permissions, and isn't compiled off
-macOS.
+phases). `download_update` takes no URL: the backend fetches the build its own last check offered, so nothing the
+frontend holds picks what gets installed. The non-macOS path uses the plugin's fused `downloadAndInstall()` (stays in
+`downloading`, and the plugin is dynamically imported so the bundle doesn't carry it on macOS). The Rust backend at
+`src-tauri/src/updater/` syncs files into the existing `.app` bundle, preserving the inode and TCC/Full Disk Access
+permissions, and isn't compiled off macOS.
 
 The branch is `isMacOS()` from `$lib/shortcuts/key-capture`, ❌ never `navigator.platform`, which is deprecated and lies
 under WKWebView. Both UIs treat `downloading` and `installing` identically, so the split costs the frontend nothing.

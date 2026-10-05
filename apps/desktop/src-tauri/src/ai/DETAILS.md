@@ -60,9 +60,9 @@ Each concern module's Tauri commands are registered from their real module path 
 
 ### Tauri commands
 
-Core: `get_ai_status`, `get_ai_model_info`, `get_ai_runtime_status`, `configure_ai`, `start_ai_server`, `stop_ai_server`, `check_ai_connection`, `start_ai_download`, `cancel_ai_download`, `stream_folder_suggestions`, `cancel_folder_suggestions`. Note: `get_system_memory_info` moved to top-level `system_memory.rs`.
+Core: `get_ai_status`, `get_ai_model_info`, `get_ai_runtime_status`, `configure_ai`, `start_ai_server`, `stop_ai_server`, `check_ai_connection`, `start_ai_download`, `cancel_ai_download`, `stream_folder_suggestions`, `cancel_folder_suggestions`. (`get_system_memory_info` lives in top-level `system_memory.rs`.)
 API keys: `save_ai_api_key`, `get_ai_api_key_status`, `delete_ai_api_key` (in `api_keys.rs`).
-Also: `uninstall_ai` (the Uninstall button in `AiLocalSection.svelte`). The dead opt-out machinery (`opt_in_ai`, `is_ai_opted_out`, `dismiss_ai_offer`, `opt_out_ai`, and the `AiState.opted_out` field) was removed with the onboarding revamp — `ai.provider` is the single source of truth for whether AI is on.
+Also: `uninstall_ai` (the Uninstall button in `AiLocalSection.svelte`). There's no separate opt-out flag: `ai.provider` is the single source of truth for whether AI is on.
 
 ## Startup flow
 
@@ -198,8 +198,8 @@ How the organization's MDM profile (`managed_policy/DETAILS.md`, the canonical k
   revoke runs), `DisableAI` arriving also stops `llama-server` and cancels a model download, and the wake readiness
   is refreshed. It doesn't work out which call talks to which host: the event is rare, and the next request
   re-resolves and gets the typed reason.
-- **The picker.** `cloud_ai_host_verdicts(base_urls)` answers per URL with the same decision, as the refusal itself (`None` when allowed); a URL crosses IPC, never
-  a key.
+- **The picker.** `cloud_ai_host_verdicts(base_urls)` answers per URL with the same decision, as the refusal itself
+  (`None` when allowed), so the picker names the organization's actual reason; a URL crosses IPC, never a key.
 
 ## Download/install event sequence
 
@@ -240,7 +240,7 @@ The frontend (`AiSection.svelte`) tracks `installStep` state and displays "Step 
 **Decision**: Two separate install flags (`installed` + `model_download_complete`) rather than a single boolean.
 **Why**: The download can be interrupted (crash, cancel, network loss). A partial 2 GB file on disk looks "installed" but is corrupt. `model_download_complete` is only set after file-size verification passes. This prevents launching llama-server with a truncated model, which would crash silently or produce garbage.
 
-**Decision**: Frontend pushes AI config to backend via `configure_ai` -- Rust never reads settings files.
+**Decision**: Frontend pushes AI config (provider, endpoint, model) to backend via `configure_ai`; Rust never reads it from `settings.json`. (The held consent revoke, § Cloud AI consent, is the one AI value read from that file, because it must hold before any push.)
 **Why**: The frontend is the single source of truth for settings via `tauri-plugin-store`. Having Rust also read `settings.json` directly would create a second reader with potential format/timing mismatches.
 
 **Decision**: `init()` only sets up directories and cleans stale PIDs. Server start is deferred to `configure_ai`.

@@ -248,6 +248,11 @@ These commands stay on raw `invoke()` for now. Each call site has:
 | `store_font_metrics`                                     | Generic over `<R: tauri::Runtime>`, specta can't collect type info for generic commands | Keep as-is; font metrics are write-only (no TS type needed for the return value) |
 | `stream_folder_suggestions`, `cancel_folder_suggestions` | Tauri `Channel<T>` (streaming) isn't specta-friendly yet                                | Re-evaluate when specta supports `Channel<T>` (track upstream)                   |
 
+The table names the representative cases; the complete list is `ipc_command_manifest!` in `src-tauri/src/ipc.rs`. Many
+more commands are generic over `<R: Runtime>` like `store_font_metrics` (the menu-sync commands, `configure_ai`,
+`start_ai_server`, `start_ai_download`, …). A generic command that rejects with a typed error still crosses as
+`unknown`, so its caller restores the type (`$lib/ai/local-ai-error.ts` for the two local-AI ones).
+
 When specta gets a fix that closes one of these, drop the opt-out comment, add the command to `collect_*_types()`,
 regenerate, migrate the call site to `commands.foo(...)`.
 

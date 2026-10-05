@@ -70,7 +70,9 @@ an attached email links only to the diagnostics stream; the analytics stream sta
   persists its state.
 - **Opted out**: zeroes the unreported uptime and deletes the spool. Nothing collected while opted in leaves after an
   opt-out. An organization's `DisableUsageStats` lands here too: `send_permission` reads `analytics.enabled` through
-  `managed_policy::overlay`, so a managed off is an ordinary opt-out with no variant of its own.
+  `managed_policy::overlay`, so a managed off is an ordinary opt-out with no variant of its own. Consent is tri-state
+  because the frontend persists only non-default values: `analytics_consent_granted` reads an absent key (`None`) and
+  `Some(true)` as granted, `Some(false)` as opted out. There's no "I opted out" bit on the wire.
 - **Suppressed**: does nothing, and logs why once.
 
 **The schedule is a throttle** (`crate::send_schedule`, shared with the update check): at most one acknowledged beat per

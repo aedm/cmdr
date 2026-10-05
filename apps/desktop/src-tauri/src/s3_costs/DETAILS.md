@@ -56,6 +56,8 @@ keeps the table in hand. `LAST_ATTEMPT` keeps a failing server from being asked 
 bundled copy. **Why**: tests mustn't depend on the network, and every worktree's dev build would otherwise ask the
 production server. The fetch itself is tested against a mock server (`price_source_tests.rs`).
 
+The fetch rides `server_request::send(Egress::S3PriceList, …)`. No managed-policy key turns it off (it's on the
+"traffic no key turns off" list in `../managed_policy/DETAILS.md`): it carries no user data, only fetches a public table.
 There's no "stay offline" setting in the app today; if one lands, `fetching_allowed` is where it goes.
 
 ## Known gaps

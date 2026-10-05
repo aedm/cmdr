@@ -33,6 +33,8 @@ Linux (Docker), so a modifier key comes from `CTRL_OR_META`, ❌ never a hardcod
   needs the redirect too. DETAILS § "The locale pin".
 - **`emitBackendEvent` state is shared**: emit the clearing event in the test AND `afterEach`. DETAILS § "Synthetic
   backend events".
+- **A spec that writes the `CMDR_MANAGED_PREFS_FILE` policy removes it and waits for unmanaged**, or the shard's later
+  specs inherit it. DETAILS § "The managed-policy (MDM) specs".
 - **`marketing-shots.spec.ts` shoots real folders**: ❌ never set `CMDR_E2E_START_PATH` for it (its guard deletes
   anything outside the manifest), and it needs the machine left alone; say both first.
 - **A `*.test.ts` here runs under Vitest** through `vitest-playwright-shim.ts`, without the Tauri matchers. DETAILS §

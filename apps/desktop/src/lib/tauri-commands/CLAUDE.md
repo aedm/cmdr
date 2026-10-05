@@ -66,5 +66,5 @@ routing map.
   `playwright-e2e` build can record instead of launch); see `file-actions.ts`.
 - Types from `$lib/file-explorer/types`.
 
-Full details (per-file command inventory, the new-command routing map, and notable non-obvious placements):
-`DETAILS.md`.
+Per-file inventory and the new-command routing map: `DETAILS.md`. Read it before any non-trivial work here: editing,
+planning, reorganizing, or advising.

@@ -35,9 +35,10 @@ Frontend auto-update checker, restart toast, and the manual "Check for updates" 
   answered. `DETAILS.md` § The schedule.
 - **The organization's policy is the backend's call.** `checkForUpdate(trigger)` answers a typed outcome; a managed one
   (`updatesDisabledByPolicy`, `heldByPolicy`) lands in `updateState.managed` as a terminal phase, ❌ never a failure,
-  warn, or toast of its own. A held release never toasts from a background check. `DETAILS.md` § Managed policy.
+  warn, or toast of its own; `automaticChecksDisabledByPolicy` stops the poll loop silently. `DETAILS.md` § Managed
+  policy.
 - **Only a real production install reaches the endpoint** (`check_for_update` answers `None` otherwise), and the
   manifest URL is hardcoded in Rust. `src-tauri/src/updater/CLAUDE.md`.
 
-Depth (lifecycle, state machine, staged re-checks, the unwritable bundle, onboarding gating, what a check reports, menu
-wiring, i18n, decisions, gotchas, dependencies): `DETAILS.md`.
+Lifecycle, state machine, the managed outcomes, and decisions: `DETAILS.md`. Read it before any non-trivial work here:
+editing, planning, reorganizing, or advising.

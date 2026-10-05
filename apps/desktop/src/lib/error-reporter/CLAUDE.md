@@ -40,5 +40,5 @@ Compose entry points: the Help menu's "Send error report…" (`command-dispatch.
 inline link on plain-text error toasts (`ToastItem.svelte`), which pre-fills the note. The dialog mounts in
 `(main)/+layout.svelte`.
 
-Full details (the two modes side by side, Flow B toast lifecycle, note-capture timing, the caps, `<script module>`
-`$state` notes): `DETAILS.md`.
+The two modes, the managed-off dialog, the Flow B toast, and the caps: `DETAILS.md`. Read it before any non-trivial work
+here: editing, planning, reorganizing, or advising.

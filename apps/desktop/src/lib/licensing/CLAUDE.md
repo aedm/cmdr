@@ -51,7 +51,7 @@ against the page's "yours forever" promise. Prices, wiring, and what each type g
   server-sourced `getCachedStatus()`. `isServerInvalid` catches a stored key later rejected on a 7-day re-validation
   (`existingLicense !== null` AND cached type `'personal'`).
 - **Mailto links use `openExternalUrl`** (via `@tauri-apps/plugin-opener`), never raw `<a href="mailto:">` (Tauri blocks
-  that navigation). The email is also shown as copyable text with a Copy button.
+  that navigation).
 - **Ed25519 public key is embedded** in backend `verification.rs` and must match the API server's private key.
 - **`CMDR_MOCK_LICENSE` bypasses validation in debug builds only** (silently ignored in release). Values: `personal`,
   `personal_reminder`, `commercial`, `perpetual`, `expired`, `expired_no_modal`. Example:
@@ -62,5 +62,5 @@ against the page's "yours forever" promise. Prices, wiring, and what each type g
 - Reset trial (debug): `security delete-generic-password -s "com.veszelovszki.cmdr" -a "trial-*"`.
 - Generate a test license key: see [API server CLAUDE.md](../../../../api-server/CLAUDE.md#generate-a-test-license-key).
 
-Full details (decision rationale, `licenseState`-not-`$state` choice, full activation-outcome and pending-verification
-flows): `DETAILS.md`.
+Decisions and the activation flows: `DETAILS.md`. Read it before any non-trivial work here: editing, planning,
+reorganizing, or advising.

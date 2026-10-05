@@ -31,16 +31,19 @@ window shows the backend's answer.
 
 ## The UI
 
-- `SettingRow` and every row primitive read `isSettingLocked(id)` themselves (`settings/components/DETAILS.md` § Managed
-  rows): disabled, the managed note in place of any section-passed note or badge, no reset pip, and the control's
-  `aria-describedby` pointing at that note.
+- `SettingRow` and every row primitive read the lock themselves (`useSettingLock(id)`, `settings/components/DETAILS.md`
+  § Managed rows): disabled, the managed note in place of any section-passed note or badge, no reset pip, and the
+  control's `aria-describedby` pointing at that note.
 - `SettingsSection` shows "Your organization manages some of these settings." at its top when any row it holds is
   managed (pinned or narrowed). Rows register with the nearest section through context (`section-rows.svelte.ts`), so no
   section keeps a list of its lockable ids.
 - MCP: the `cmdr://settings` YAML marks a managed setting `managed: true` beside its effective `value`, and the bridge
   refuses a ruled-out write with `refusal: 'managedByOrganization'` (the backend's own refusal comes first,
   `src-tauri/src/mcp/DETAILS.md`).
-
+- The "Managed by your organization" card (`ManagedPolicySummary.svelte`) tops Settings › Updates & privacy while no
+  search is active, so a help desk has one place to check the profile took. `managedPolicySummary(view)` builds its
+  lines in a fixed order (usage stats, reports, updates, AI), one per area the view restricts, from the view's typed
+  fields only (❌ never a key name or setting value). It renders nothing on an unmanaged Mac.
 - AI: `AiSection`'s provider radios disable what `lockAllowsWrite` rules out; a narrowed lock adds a visible line under
   the row (`settings-ai-provider-managed`). The consent switch locks from `CloudAiConsentStatus.managed`, the service
   pickers from `cloud_ai_host_verdicts` (`$lib/ai-provider-setup/DETAILS.md`), onboarding skips step 2 when the lock

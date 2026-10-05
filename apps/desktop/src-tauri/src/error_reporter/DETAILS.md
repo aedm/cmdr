@@ -40,8 +40,8 @@ Manifest fields (`BundleManifest`):
   different one and the user copies an id no report was ever filed under. Anything that
   isn't a well-formed `ERR-XXXXX` is discarded and a fresh id minted: the value crosses
   IPC, and it becomes part of a server-side object key, so it's vetted rather than
-  trusted. `save_error_report_to_disk` takes the same argument so the debug path can't
-  drift from the real one.
+  trusted. `save_error_report_to_disk` takes the same argument so the saved zip can't
+  drift from the one a send would ship.
 - `kind`: `"user"` (user-initiated send) or `"auto"` (opt-in auto-send).
 - `buildMode`: `"release"` or `"debug"`. Resolved at compile time from
   `cfg!(debug_assertions)` via `BuildMode::current()`. Forwarded to the api server so the

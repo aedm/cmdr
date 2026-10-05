@@ -24,6 +24,8 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
   `rsync` expresses the full sync (copy + delete stale) in one shell command. Only triggers when direct writes are
   denied, so users running from `~/Applications` or a dev build won't see the dialog.
 - **Atomic rename instead of in-place `fs::copy`.** (Inode / code-signing-cache rationale is in `CLAUDE.md`.)
+- **Per-instance staging dir: `<tmp>/cmdr-update-staging-{CMDR_INSTANCE_ID}`**, `…-default` for production with no env
+  var set, so a main-clone and a worktree `Cmdr` never share one path.
 - **Bounded manifest-fetch timeouts.** `reqwest::get`'s default client has no overall timeout; a stuck TCP handshake to
   the redirect target was observed hanging ~2.5 min, which made transient network blips look like a hung app and tripped
   the auto error reporter. Download/install stay untimed (user attention; can legitimately take a while).
@@ -62,8 +64,9 @@ The organization's `DisableUpdates`, `DisableAutomaticUpdateChecks`, and `MaxUpd
 
 - **Check.** `check_for_update(trigger)` answers `UpdateCheckOutcome`: `UpToDate`, `Available { version }`,
   `HeldByPolicy { available, ceiling }`, `UpdatesDisabledByPolicy`, or `AutomaticChecksDisabledByPolicy`. The last two
-  return before any request (so no `update-check` row either). `trigger` is the frontend's analytics token;
-  `startup` / `poll` / `auto_check_on` are automatic, `command` / `settings` are a person asking, which
+  return before any request (so no `update-check` row either). `trigger` is the Rust `UpdateCheckTrigger` enum,
+  passed by the frontend and carried by its `update_check` analytics event too; `is_automatic` decides: `startup` /
+  `poll` / `auto_check_on` are automatic, `command` / `settings` are a person asking, which
   `DisableAutomaticUpdateChecks` still allows. The policy is asked BEFORE `skip_reason`, so a dev build run with
   `CMDR_MANAGED_PREFS_FILE` shows the managed answer. The backend trusts that trigger; why that's accepted:
   `managed_policy/DETAILS.md` § Accepted residuals.

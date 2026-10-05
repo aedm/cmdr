@@ -64,7 +64,9 @@ stays simple:
 - `failed` → drop an empty bubble, push a typed `{ kind: 'error' }` item, `streaming = false`. The item carries the
   source error's own wording (`detail`, when the backend has one — a retired model slug, a quota reset time) under the
   friendly headline, rendered as escaped plain text (never `{@html}`), so the user sees what to fix. Display only: the
-  UI branches on `errorKind`, never on `detail`.
+  UI branches on `errorKind`, never on `detail`. `managedByOrganization` (the organization's MDM policy refused the
+  turn, nothing sent) renders `askCmdr.error.managedByOrganization`; the kind carries no `ManagedAiRefusal`, so it's one
+  fixed sentence rather than `managedAiRefusalMessage`.
 - `modelChanged` / `chatMemoryChanged` → insert a `{ kind: 'modelChange' }` / `{ kind: 'chatMemoryChange' }` timeline
   line BEFORE the current user bubble (the change happened between the turns; the backend already persisted the event
   row). Both go through the one `insertBeforeCurrentTurn` helper. `chatMemoryChanged` carries a token COUNT and the rail

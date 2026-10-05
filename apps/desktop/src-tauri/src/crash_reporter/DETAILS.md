@@ -167,7 +167,8 @@ stays true either way.
 can't write a file until `init` sets `CRASH_PATH` (the data dir isn't resolved before
 Tauri's `setup`), and the logger isn't up that early either, so a panic in the first few
 milliseconds of `run()` reaches stderr only. Everything after `logging::startup::init()`
-is logged; everything after `crash_reporter::init` is also written to disk.
+is logged; everything after `crash_reporter::init` is also written to disk. An unresolvable data dir costs the crash
+FILE, never the hook.
 
 ### The one exemption: `contain_panics`
 
@@ -241,7 +242,8 @@ These are reporter gates, not release-pipeline behavior.
 - Panic message (`panicMessage`) and thread name (`threadName`). The hook stores them through `sanitize_panic_message`
   / `sanitize_thread_name` (the shared `crate::redact` pipeline, then a 2,000-char / 100-char cap; a byte-index cut
   would panic inside the hook). Delivery re-redacts both with the report's context and re-caps. `None` for signal
-  crashes, which carry no payload. The cap exists because the ingestion endpoint rejects a report body over 64 KB, so an
+  crashes, which carry no payload. Paths matter here because `unwrap()` on an `io::Error` embeds the file path in the
+  panic message. The cap exists because the ingestion endpoint rejects a report body over 64 KB, so an
   uncapped `assert_eq!` dump would cost the whole report. Redaction catches paths and identities, not arbitrary words
   a panic message may quote.
 - Active feature flags (booleans plus the closed `ai.provider` values `off`, `cloud`, or `local`). An unknown provider

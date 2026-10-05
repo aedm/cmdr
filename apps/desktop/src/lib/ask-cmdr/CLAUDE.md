@@ -11,8 +11,7 @@ The frontend of Ask Cmdr: a right-side panel for chatting with a BYO-key LLM abo
   `ask-cmdr-sessions.svelte.ts` is a SEPARATE slice for the sessions panel: it calls the trigger, never the reverse.
 - `ask-cmdr-turn-stream.svelte.ts`: the window's one turn-event subscription, fanned out to the stream reducer and the
   sessions slice — the only module knowing both, so that loop stays open.
-- `wake-indicator.svelte.ts` + `WakeIndicator.svelte`: the status corner's word on the PROACTIVE half, on its own event
-  rather than the turn stream.
+- `wake-indicator.svelte.ts` + `WakeIndicator.svelte`: the status corner's word on the PROACTIVE half (its own event).
 - `AskCmdrRail.svelte`: the panel, mounted beside `DualPaneExplorer` by `routes/(main)/+page.svelte`, overlaid by
   `AskCmdrSessions.svelte`, with its `AskCmdrMessage` / `ToolLine` / `Composer` / `AttachmentChip` / `WakeDigest` /
   `ProposalDecisions` parts. `BulkRenameReviewDialog.svelte` is the rename review.
@@ -49,4 +48,5 @@ The frontend of Ask Cmdr: a right-side panel for chatting with a BYO-key LLM abo
 - **Attachments cross as path + kind ONLY, never contents** (the read-only privacy line). A pane drag is a NATIVE
   webview drag, so a DOM `ondrop` never fires.
 
-Architecture, flows, and decisions: `DETAILS.md`. Read it before any non-trivial work here.
+Architecture, flows, and decisions: `DETAILS.md`. Read it before any non-trivial work here: editing, planning,
+reorganizing, or advising.

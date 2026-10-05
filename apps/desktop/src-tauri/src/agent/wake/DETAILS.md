@@ -300,7 +300,10 @@ because it decides whether the agent can SEE anything.
 told to finish setting up a provider. `ProviderGate` mirrors `BackendResolution` (`Off` / `NeedsCloudConsent` /
 `NotConfigured` / `Ready`) rather than re-deciding the distinction the backend already models, and `provider_gate` in
 `snapshot.rs` is the one mapping. `BackendResolution::Managed` (the organization's MDM policy refuses AI or the cloud
-host) maps to `Off`: an answer already given, so silent, and the stored backlog stays for when the policy lifts.
+host) maps to `Off`: an answer already given, so silent. Under `DisableCloudAI` or a host list the stored backlog stays
+for when the policy lifts; under `DisableAI` the readiness is `AskCmdrOff` first (`settings::load_ask_cmdr_enabled`
+reads `askCmdr.enabled` through the policy overlay, which locks it off), so the backlog goes like any switched-off Ask
+Cmdr's.
 
 **Silence lies under a pending FDA decision**: a user who declined and a user with a tidy Downloads folder see the
 identical nothing, and only one of those is the feature working. So `NeedsFullDiskAccess` and `NeedsApiKey` both render
@@ -524,7 +527,9 @@ path by which a provider's answer reaches the scheduler.
 ⚠️ **Transient failures must NOT fold in here.** `Unavailable`, `Timeout`, `UnfinishedReply`,
 `BudgetExhausted`, and `Provider` say nothing about the key, and six hours of silence for one
 flaky request would be the agent punishing the user for their network. `NotConfigured` is a gate
-`resolve_slot` refuses ahead of the turn, so reaching it again costs nothing.
+`resolve_slot` refuses ahead of the turn, so reaching it again costs nothing. `ManagedByOrganization` (a policy that
+landed mid-turn) also keeps the ordinary pace and logs at info: the change already refreshed the readiness, which
+keeps the loop quiet on its own.
 
 `SettingsChanged` and `ReadinessChanged` clear the stamp outright, and `refresh_readiness` is what
 a key change already sends, so fixing the key is felt at once rather than six hours later.
