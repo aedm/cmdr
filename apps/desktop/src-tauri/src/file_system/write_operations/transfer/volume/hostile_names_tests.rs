@@ -145,6 +145,93 @@ async fn a_copy_refuses_a_folder_listed_under_a_parent_name() {
     );
 }
 
+/// The symlink-then-folder trick, the half that needs a link already at the
+/// destination: `inbox/album/a` is a link to a folder outside, and the source
+/// brings a FOLDER `a` holding `x`. The walk must treat the link as a leaf (a
+/// type clash for the policy), ❌ never merge through it, under every policy.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_copy_never_merges_through_a_destination_link() {
+    use crate::file_system::write_operations::types::ConflictResolution;
+    for policy in [
+        ConflictResolution::Skip,
+        ConflictResolution::Overwrite,
+        ConflictResolution::Rename,
+        ConflictResolution::OverwriteSmaller,
+    ] {
+        let source = InMemoryVolume::new("Phone").with_space_info(10_000_000, 10_000_000);
+        source.create_directory(Path::new("/album")).await.unwrap();
+        source.create_directory(Path::new("/album/a")).await.unwrap();
+        source.create_file(Path::new("/album/a/x"), b"EVIL").await.unwrap();
+        let source: Arc<dyn Volume> = Arc::new(source);
+
+        let dest_dir = TempDir::new().unwrap();
+        let outside = dest_dir.path().join("outside");
+        std::fs::create_dir_all(&outside).unwrap();
+        std::fs::create_dir_all(dest_dir.path().join("inbox/album")).unwrap();
+        std::os::unix::fs::symlink(&outside, dest_dir.path().join("inbox/album/a")).unwrap();
+        let dest: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Dest", dest_dir.path().to_path_buf()));
+
+        let _ = copy_volumes_with_progress(
+            Arc::new(CollectorEventSink::new()),
+            "link-then-dir-copy",
+            &make_state(),
+            source,
+            &[PathBuf::from("/album")],
+            dest,
+            Path::new("/inbox"),
+            &VolumeCopyConfig {
+                conflict_resolution: policy,
+                ..config()
+            },
+        )
+        .await;
+
+        assert!(
+            !outside.join("x").exists(),
+            "{policy:?}: the folder merged through the destination link"
+        );
+    }
+}
+
+/// The other half: one listing names a FILE (standing in for a source link,
+/// which no backend recreates as a link) and a FOLDER the same. The folder
+/// lands on the name the file took in a level this copy made, so nothing can
+/// lead it outside.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_copy_with_a_file_and_folder_listed_under_one_name_stays_inside() {
+    let source = InMemoryVolume::new("Phone").with_space_info(10_000_000, 10_000_000);
+    source.create_directory(Path::new("/album")).await.unwrap();
+    source.create_file(Path::new("/album/link"), b"LINK").await.unwrap();
+    source.set_reported_name(Path::new("/album/link"), "a");
+    source.create_directory(Path::new("/album/a")).await.unwrap();
+    source.create_file(Path::new("/album/a/x"), b"EVIL").await.unwrap();
+    let source: Arc<dyn Volume> = Arc::new(source);
+
+    let dest_dir = TempDir::new().unwrap();
+    std::fs::create_dir(dest_dir.path().join("inbox")).unwrap();
+    let dest: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Dest", dest_dir.path().to_path_buf()));
+
+    let _ = copy_volumes_with_progress(
+        Arc::new(CollectorEventSink::new()),
+        "file-and-dir-one-name",
+        &make_state(),
+        source,
+        &[PathBuf::from("/album")],
+        dest,
+        Path::new("/inbox"),
+        &config(),
+    )
+    .await;
+
+    for file in files_under(dest_dir.path()) {
+        assert!(
+            file.starts_with("inbox/album"),
+            "{} landed outside the copied folder",
+            file.display()
+        );
+    }
+}
+
 /// A `LocalPosixVolume` whose listings report `reported` for the entry really
 /// named `real`, the same-volume twin of `set_reported_name`.
 struct RenamingListings {
