@@ -261,7 +261,6 @@ export const notInPlaceYet: string[] = [
   '<strong>No reproducible builds.</strong> Each release publishes SHA-256 checksums, signed build provenance, and signed SBOMs, and its tag is signed.',
   '<strong>No second-person code review.</strong> Cmdr has one maintainer, and development is AI-assisted. Automated checks stand in for a reviewer (<a href="/trust/development#review">details</a>).',
   '<strong>One maintainer account can publish a release</strong> to every install, and the signing keys are GitHub repository secrets without a protected environment.',
-  '<strong>No threat model for the app as a whole.</strong> Security decisions are written down per part of the app.',
   "<strong>Checks on GitHub run after a change lands</strong>, on Linux. A release waits for a full, green run of the commit it's cut from, checked by both the maintainer's release script and the release workflow on GitHub. The macOS-only code and the macOS end-to-end tests run only on the maintainer's Mac.",
   '<strong>No automated tests on older macOS versions.</strong> A release-time check catches system frameworks and functions that are too new for them.',
   '<strong>No third-party audit or penetration test, and no SOC 2 or ISO 27001.</strong>',

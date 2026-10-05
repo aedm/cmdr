@@ -95,7 +95,7 @@ const toc = [
             {latestAdvisories.map((fix) => fix.days).sort((a, b) => a - b).join(' and ')} days after they were published.
         </li>
         <li>
-            <strong>Gaps</strong>: no app-wide threat model, no fuzzing, no third-party audit, and checks on GitHub run
+            <strong>Gaps</strong>: no fuzzing, no third-party audit, and checks on GitHub run
             after a change lands instead of before. The full list is in
             <a href="/trust#gaps">Not in place yet</a>.
         </li>
@@ -121,19 +121,13 @@ const toc = [
             there's no per-window permission check on the app's internal commands.
         </li>
         <li>
-            <strong>One planned feature has a formal threat model</strong>: running file operations with administrator
-            rights (<code>docs/specs/elevated-file-operations.md</code>).
-            <strong>There's no threat model for the app as a whole.</strong>
+            <strong>A whole-app threat model</strong>
+            (<a href={`${repo}/blob/main/docs/threat-model.md`}>docs/threat-model.md</a>) lists what Cmdr protects,
+            from whom, where the trust boundaries run, what stops each threat today, and the risks that remain, ranked.
+            One planned feature, running file operations with administrator rights, has its own
+            (<code>docs/specs/elevated-file-operations.md</code>).
         </li>
     </ul>
-    <DevTodo>
-        No app-wide threat model exists. <code>docs/security.md</code> is a set of per-subsystem decisions, and the
-        only "Threat model" heading in the repo is in the draft <code>elevated-file-operations.md</code> spec.
-        Suggest a short <code>docs/threat-model.md</code> that lists the attack surfaces (network protocols SMB, SFTP,
-        WebDAV, ADB, and MTP; archive, PDF, and image parsers; the webview and its <code>{'{@html}'}</code> sinks; the
-        MCP server; the updater; the AI agent and prompt injection; local attackers with the user's rights) with the
-        mitigation and the gap for each. Then link it here and drop the sentence above.
-    </DevTodo>
 
     <h2 id="code">Code</h2>
     <ul>
