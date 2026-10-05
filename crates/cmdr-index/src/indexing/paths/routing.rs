@@ -274,6 +274,28 @@ pub(crate) fn index_read_path(volume_id: &str, abs_path: &str) -> Option<String>
     index_read_path_pure(volume_id, abs_path, mount_root.as_deref())
 }
 
+/// Where an index-relative path of `volume_id` sits on the local filesystem: the
+/// inverse of [`index_read_path`] for a volume the local filesystem reaches (the
+/// boot disk, a local drive). The boot disk's index paths already are absolute; a
+/// drive's get the mount root the host serves it at RIGHT NOW joined on, so a
+/// renamed drive answers at its new name.
+///
+/// `None` when the host has no root for the volume (it isn't mounted).
+pub(crate) fn local_path_of(volume_id: &str, index_relative: &str) -> Option<String> {
+    if volume_id == ROOT_VOLUME_ID {
+        return Some(index_relative.to_string());
+    }
+    let mount_root = host::volumes::current()
+        .get(volume_id)?
+        .root()
+        .to_string_lossy()
+        .into_owned();
+    Some(crate::indexing::paths::path_space::join_volume_relative(
+        &mount_root,
+        index_relative,
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

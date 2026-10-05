@@ -112,6 +112,17 @@ _unavailable_ (`scorer/DETAILS.md` § Missing-signal redistribution); the `Signa
 `MDItem` queries against the mount, which the scheduler must never do (it reads only the local index). Off macOS
 `is_available()` is `false`, the sample is empty, and the weight redistributes.
 
+**Spotlight is asked about the folder ON DISK, and answers come back under the INDEX path.** A walk produces
+index-relative paths, which are absolute only on the boot disk: an external drive's index stores `/photos` for
+`/Volumes/Ext/photos`, and asking Spotlight about `/photos` asks about a boot-disk folder that isn't there (the signal
+was noise on every external drive until #157). `sample_last_used(volume_id, paths)` joins the mount root the host serves
+the drive at RIGHT NOW (`paths::routing::local_path_of`, so a renamed drive answers at its new name) and keys the result
+by the path it was handed, which is what the scorer looks it up by. A volume the host can't place samples nothing. Why
+joining rather than switching the signal off for external drives: the query then asks about the right file, and a drive
+Spotlight doesn't index answers "no record" for every folder, the same "available but unsampled" a never-opened
+boot-disk folder gets. Pinned by `last_used::tests::an_external_drive_is_sampled_at_its_mount_point`, through a test
+stand-in for the MDItem query.
+
 `SAMPLE_CAP` is a guess until measured on a real home; the caller hands the sampler only the paths it can use, not the
 whole volume's, which is worth ~60 MB of transient on a local volume.
 

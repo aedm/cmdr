@@ -226,6 +226,7 @@ impl TestVolume {
         let (cleared, demoted) = plan.lists_for(scope);
         self.last_report = incremental_rescore(
             &IncrementalInputs {
+                volume_id: ROOT_VOLUME_ID,
                 writer: &self.writer,
                 weights: &Weights::default(),
                 home: HOME,

@@ -409,6 +409,8 @@ pub(super) struct ScoringInputs<'a> {
 
 /// The inputs to an incremental rescore, bundled like [`RecomputeInputs`].
 pub(super) struct IncrementalInputs<'a> {
+    /// The volume being rescored, so the Spotlight sample can find its folders on disk.
+    pub(super) volume_id: &'a str,
     pub(super) writer: &'a ImportanceWriter,
     pub(super) weights: &'a Weights,
     pub(super) home: &'a str,
@@ -492,7 +494,7 @@ pub(super) fn incremental_rescore(
             .take(crate::importance::last_used::SAMPLE_CAP)
             .map(|(_, path)| path.clone())
             .collect();
-        crate::importance::last_used::sample_last_used(&subset_paths)
+        crate::importance::last_used::sample_last_used(inputs.volume_id, &subset_paths)
     } else {
         HashMap::new()
     };

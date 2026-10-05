@@ -208,6 +208,7 @@ fn wide_tree(projects: usize, subs: usize) -> Vec<String> {
 fn rescore(writer: &ImportanceWriter, home: &str, folders: &mut WalkedFolders, changed: &[String]) -> usize {
     incremental_rescore(
         &IncrementalInputs {
+            volume_id: ROOT_VOLUME_ID,
             writer,
             weights: &Weights::default(),
             home,
@@ -413,6 +414,7 @@ fn incremental_rescore_rescopes_and_preserves_untouched_generation() {
     let changed = vec![format!("{}/Downloads", home.home)];
     let count = incremental_rescore(
         &IncrementalInputs {
+            volume_id: ROOT_VOLUME_ID,
             writer: &writer,
             weights: &weights,
             home: &home.home,

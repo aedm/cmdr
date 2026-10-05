@@ -185,6 +185,13 @@ impl IndexPathSpace {
         }
     }
 
+    /// The inverse of [`index_relative`](Self::index_relative): where an index-relative
+    /// path sits on disk. Identity for the boot disk, the mount root joined on for a
+    /// mount-rooted volume.
+    pub(crate) fn absolute_of(&self, relative: &str) -> String {
+        join_volume_relative(&self.volume_root_string(), relative)
+    }
+
     /// Resolve a canonical absolute path (from [`absolute`](Self::absolute)) to its
     /// index entry id, applying the mount-relative strip for a mount-rooted volume.
     ///
@@ -198,6 +205,24 @@ impl IndexPathSpace {
             None => Ok(None),
         }
     }
+}
+
+/// Rebuild an absolute path from a volume root and an index-relative one. The
+/// boot disk's index-relative paths are already absolute, so its root (`/`) has to
+/// not double up the separator.
+pub(crate) fn join_volume_relative(volume_root: &str, relative: &str) -> String {
+    let trimmed_root = volume_root.trim_end_matches('/');
+    let trimmed_relative = relative.trim_start_matches('/');
+    if trimmed_relative.is_empty() {
+        // The volume root itself, spelled without a trailing slash like every other
+        // absolute path the pipeline hands around.
+        return if trimmed_root.is_empty() {
+            "/".to_string()
+        } else {
+            trimmed_root.to_string()
+        };
+    }
+    format!("{trimmed_root}/{trimmed_relative}")
 }
 
 #[cfg(test)]

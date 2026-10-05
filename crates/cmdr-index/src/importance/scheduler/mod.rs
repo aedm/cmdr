@@ -496,7 +496,7 @@ impl ImportanceScheduler {
         // 500 of them would cost one heap `String` per folder for nothing.
         let last_used = if available.last_used_available {
             let paths = folders.first_paths(super::last_used::SAMPLE_CAP);
-            super::last_used::sample_last_used(&paths)
+            super::last_used::sample_last_used(volume_id, &paths)
         } else {
             HashMap::new()
         };
@@ -606,6 +606,7 @@ impl ImportanceScheduler {
 
         let outcome = incremental_rescore(
             &IncrementalInputs {
+                volume_id,
                 writer: &writer,
                 weights: &self.weights,
                 home: &home,

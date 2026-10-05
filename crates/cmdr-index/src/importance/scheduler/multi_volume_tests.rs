@@ -49,6 +49,7 @@ fn incremental_deletes_rows_that_become_floored() {
     let changed = vec!["/Users/test/proj".to_string()];
     let outcome = incremental_rescore(
         &IncrementalInputs {
+            volume_id: ROOT_VOLUME_ID,
             writer: &writer,
             weights: &Weights::default(),
             home,
@@ -148,6 +149,7 @@ fn incremental_scores_rows_that_stop_being_floored() {
     let changed = vec!["/Users/test/proj".to_string()];
     incremental_rescore(
         &IncrementalInputs {
+            volume_id: ROOT_VOLUME_ID,
             writer: &writer,
             weights: &Weights::default(),
             home,
