@@ -43,7 +43,9 @@ window shows the backend's answer.
 - The "Managed by your organization" card (`ManagedPolicySummary.svelte`) tops Settings › Updates & privacy while no
   search is active, so a help desk has one place to check the profile took. `managedPolicySummary(view)` builds its
   lines in a fixed order (usage stats, reports, updates, AI), one per area the view restricts, from the view's typed
-  fields only (❌ never a key name or setting value). It renders nothing on an unmanaged Mac.
+  fields only (❌ never a key name or setting value). It renders nothing on an unmanaged Mac. Each row's "Off" is its
+  own key (`settings.managed.summary.usageStatsOff` and siblings): one shared value can't agree in gender and number
+  with four different labels, so es and zh-Hant drifted from their switch's "Off" until it split.
 - AI: `AiSection`'s provider radios disable what `lockAllowsWrite` rules out; a narrowed lock adds a visible line under
   the row (`settings-ai-provider-managed`). The consent switch locks from `CloudAiConsentStatus.managed`, the service
   pickers from `cloud_ai_host_verdicts` (`$lib/ai-provider-setup/DETAILS.md`), onboarding skips step 2 when the lock

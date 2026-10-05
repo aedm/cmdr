@@ -2094,21 +2094,33 @@
   "@settings.managed.summary.usageStats": {
     "sourceHash": "4e0483c"
   },
+  "settings.managed.summary.usageStatsOff": "Off",
+  "@settings.managed.summary.usageStatsOff": {
+    "sourceHash": "ca7981b"
+  },
   "settings.managed.summary.reports": "Krasch- och felrapporter",
   "@settings.managed.summary.reports": {
     "sourceHash": "ef409c3"
   },
+  "settings.managed.summary.reportsOff": "Off",
+  "@settings.managed.summary.reportsOff": {
+    "sourceHash": "ca7981b"
+  },
   "settings.managed.summary.updates": "Uppdateringar",
   "@settings.managed.summary.updates": {
     "sourceHash": "22e2bad"
+  },
+  "settings.managed.summary.updatesOff": "Off",
+  "@settings.managed.summary.updatesOff": {
+    "sourceHash": "ca7981b"
   },
   "settings.managed.summary.ai": "AI",
   "@settings.managed.summary.ai": {
     "sourceHash": "11fb682",
     "sameAsSourceJustification": "'AI' is the Swedish term too (catalog: settings window section Inställningar > AI, 'AI är avstängt'). Deliberately identical."
   },
-  "settings.managed.summary.off": "Av",
-  "@settings.managed.summary.off": {
+  "settings.managed.summary.aiOff": "Off",
+  "@settings.managed.summary.aiOff": {
     "sourceHash": "ca7981b"
   },
   "settings.managed.summary.upTo": "Upp till {ceiling}",

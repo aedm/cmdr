@@ -2085,21 +2085,33 @@
   "@settings.managed.summary.usageStats": {
     "sourceHash": "4e0483c"
   },
+  "settings.managed.summary.usageStatsOff": "Off",
+  "@settings.managed.summary.usageStatsOff": {
+    "sourceHash": "ca7981b"
+  },
   "settings.managed.summary.reports": "崩溃和错误报告",
   "@settings.managed.summary.reports": {
     "sourceHash": "ef409c3"
   },
+  "settings.managed.summary.reportsOff": "Off",
+  "@settings.managed.summary.reportsOff": {
+    "sourceHash": "ca7981b"
+  },
   "settings.managed.summary.updates": "更新",
   "@settings.managed.summary.updates": {
     "sourceHash": "22e2bad"
+  },
+  "settings.managed.summary.updatesOff": "Off",
+  "@settings.managed.summary.updatesOff": {
+    "sourceHash": "ca7981b"
   },
   "settings.managed.summary.ai": "AI",
   "@settings.managed.summary.ai": {
     "sourceHash": "11fb682",
     "sameAsSourceJustification": "\"AI\" stays Latin in zh UI: the catalog writes AI throughout (云端 AI, 本地 AI, AI 功能, the settings section “设置 › AI”), as Apple zh-CN does for Apple Intelligence copy."
   },
-  "settings.managed.summary.off": "关闭",
-  "@settings.managed.summary.off": {
+  "settings.managed.summary.aiOff": "Off",
+  "@settings.managed.summary.aiOff": {
     "sourceHash": "ca7981b"
   },
   "settings.managed.summary.upTo": "最高到 {ceiling}",

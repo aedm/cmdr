@@ -17,19 +17,29 @@ export interface ManagedSummaryLine {
 
 /** The restricted areas, in a fixed order; an area the policy leaves alone has no line. */
 export function managedPolicySummary(view: ManagedPolicyView): ManagedSummaryLine[] {
-  const off = tString('settings.managed.summary.off')
+  // Each row words its own "Off", so a language can agree it with that row's label.
   const lines: ManagedSummaryLine[] = []
-  if (view.usageStatsDisabled) lines.push({ label: tString('settings.managed.summary.usageStats'), value: off })
-  if (view.reportsDisabled) lines.push({ label: tString('settings.managed.summary.reports'), value: off })
-  const updates = describeUpdates(view.updates, off)
+  if (view.usageStatsDisabled) {
+    lines.push({
+      label: tString('settings.managed.summary.usageStats'),
+      value: tString('settings.managed.summary.usageStatsOff'),
+    })
+  }
+  if (view.reportsDisabled) {
+    lines.push({
+      label: tString('settings.managed.summary.reports'),
+      value: tString('settings.managed.summary.reportsOff'),
+    })
+  }
+  const updates = describeUpdates(view.updates)
   if (updates !== null) lines.push({ label: tString('settings.managed.summary.updates'), value: updates })
-  const ai = describeAi(view.ai, off)
+  const ai = describeAi(view.ai)
   if (ai !== null) lines.push({ label: tString('settings.managed.summary.ai'), value: ai })
   return lines
 }
 
-function describeUpdates(updates: ManagedPolicyView['updates'], off: string): string | null {
-  if (updates.kind === 'disabled') return off
+function describeUpdates(updates: ManagedPolicyView['updates']): string | null {
+  if (updates.kind === 'disabled') return tString('settings.managed.summary.updatesOff')
   const { automaticChecks, ceiling } = updates
   if (ceiling !== null) {
     return automaticChecks
@@ -39,10 +49,10 @@ function describeUpdates(updates: ManagedPolicyView['updates'], off: string): st
   return automaticChecks ? null : tString('settings.managed.summary.manualChecksOnly')
 }
 
-function describeAi(ai: ManagedPolicyView['ai'], off: string): string | null {
+function describeAi(ai: ManagedPolicyView['ai']): string | null {
   switch (ai.mode) {
     case 'off':
-      return off
+      return tString('settings.managed.summary.aiOff')
     case 'localOnly':
       return tString('settings.managed.summary.onDeviceOnly')
     case 'allowed':

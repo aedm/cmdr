@@ -2525,21 +2525,33 @@
   "@settings.managed.summary.usageStats": {
     "description": "Row label in the 'Managed by your organization' card: the anonymous usage statistics Cmdr can send. The value beside it says what the organization set (for example 'Off'). Short, sentence case."
   },
+  "settings.managed.summary.usageStatsOff": "Off",
+  "@settings.managed.summary.usageStatsOff": {
+    "description": "Value beside the row label 'Usage stats' (the anonymous usage statistics Cmdr can send) in the 'Managed by your organization' card (Settings > Updates & privacy). The organization turned this off. Each row has its own 'Off' key so the word can agree in gender and number with that row's label: use the form your language's macOS Settings shows for a switched-off feature, agreeing with the label where your grammar asks for it. One or two words."
+  },
   "settings.managed.summary.reports": "Crash and error reports",
   "@settings.managed.summary.reports": {
     "description": "Row label in the 'Managed by your organization' card: the crash reports and error reports Cmdr can send to its developer. The value beside it says what the organization set (for example 'Off'). Short, sentence case."
+  },
+  "settings.managed.summary.reportsOff": "Off",
+  "@settings.managed.summary.reportsOff": {
+    "description": "Value beside the row label 'Crash and error reports' (the crash and error reports Cmdr can send to its developer) in the 'Managed by your organization' card (Settings > Updates & privacy). The organization turned this off. Each row has its own 'Off' key so the word can agree in gender and number with that row's label: use the form your language's macOS Settings shows for a switched-off feature, agreeing with the label where your grammar asks for it. One or two words."
   },
   "settings.managed.summary.updates": "Updates",
   "@settings.managed.summary.updates": {
     "description": "Row label in the 'Managed by your organization' card: Cmdr's own app updates. The value beside it says what the organization set (for example 'Off' or 'Up to 0.52'). Short, sentence case."
   },
+  "settings.managed.summary.updatesOff": "Off",
+  "@settings.managed.summary.updatesOff": {
+    "description": "Value beside the row label 'Updates' (Cmdr's own app updates, switched off entirely) in the 'Managed by your organization' card (Settings > Updates & privacy). The organization turned this off. Each row has its own 'Off' key so the word can agree in gender and number with that row's label: use the form your language's macOS Settings shows for a switched-off feature, agreeing with the label where your grammar asks for it. One or two words."
+  },
   "settings.managed.summary.ai": "AI",
   "@settings.managed.summary.ai": {
     "description": "Row label in the 'Managed by your organization' card: Cmdr's AI features. The value beside it says what the organization set (for example 'Off' or 'On-device only'). Keep it as short as the English."
   },
-  "settings.managed.summary.off": "Off",
-  "@settings.managed.summary.off": {
-    "description": "Value in the 'Managed by your organization' card, beside a row label: the organization turned that feature off. The SAME string sits beside 'Usage stats', 'Crash and error reports', 'Updates', and 'AI', which differ in grammatical gender and number in many languages, so pick a form that doesn't agree with the label (a status word like a switch's 'Off', not an adjective that inflects). One word if the language allows."
+  "settings.managed.summary.aiOff": "Off",
+  "@settings.managed.summary.aiOff": {
+    "description": "Value beside the row label 'AI' (Cmdr's AI features, switched off entirely) in the 'Managed by your organization' card (Settings > Updates & privacy). The organization turned this off. Each row has its own 'Off' key so the word can agree in gender and number with that row's label: use the form your language's macOS Settings shows for a switched-off feature, agreeing with the label where your grammar asks for it. One or two words."
   },
   "settings.managed.summary.upTo": "Up to {ceiling}",
   "@settings.managed.summary.upTo": {

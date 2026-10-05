@@ -2094,22 +2094,34 @@
   "@settings.managed.summary.usageStats": {
     "sourceHash": "4e0483c"
   },
+  "settings.managed.summary.usageStatsOff": "Off",
+  "@settings.managed.summary.usageStatsOff": {
+    "sourceHash": "ca7981b"
+  },
   "settings.managed.summary.reports": "Crash- en foutrapporten",
   "@settings.managed.summary.reports": {
     "sourceHash": "ef409c3"
+  },
+  "settings.managed.summary.reportsOff": "Off",
+  "@settings.managed.summary.reportsOff": {
+    "sourceHash": "ca7981b"
   },
   "settings.managed.summary.updates": "Updates",
   "@settings.managed.summary.updates": {
     "sourceHash": "22e2bad",
     "sameAsSourceJustification": "'Updates' is the Dutch loanword the catalog already uses for this section (settings.updates.card.updates, settings.advanced.card.updates -> Updates; terms.json update: noun update)."
   },
+  "settings.managed.summary.updatesOff": "Off",
+  "@settings.managed.summary.updatesOff": {
+    "sourceHash": "ca7981b"
+  },
   "settings.managed.summary.ai": "AI",
   "@settings.managed.summary.ai": {
     "sourceHash": "11fb682",
     "sameAsSourceJustification": "'AI' is the standard Dutch abbreviation the whole catalog uses (settings.ai.* section, ai.translateError.off.title -> AI is uitgeschakeld)."
   },
-  "settings.managed.summary.off": "Uit",
-  "@settings.managed.summary.off": {
+  "settings.managed.summary.aiOff": "Off",
+  "@settings.managed.summary.aiOff": {
     "sourceHash": "ca7981b"
   },
   "settings.managed.summary.upTo": "Tot en met {ceiling}",

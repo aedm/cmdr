@@ -1,7 +1,15 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import type { ManagedPolicyView } from '$lib/ipc/bindings'
+import { setLocale, _setCatalogForTests } from '$lib/intl/messages.svelte'
 import { UNMANAGED } from './managed-policy.svelte'
 import { managedPolicySummary } from './policy-summary'
+
+const TEST_LANG = 'zz'
+
+afterEach(() => {
+  setLocale(null)
+  _setCatalogForTests(TEST_LANG, null)
+})
 
 function view(overrides: Partial<ManagedPolicyView>): ManagedPolicyView {
   return { ...UNMANAGED, managed: true, ...overrides }
@@ -27,6 +35,27 @@ describe('managedPolicySummary', () => {
       { label: 'Updates', value: 'Off' },
       { label: 'AI', value: 'Off' },
     ])
+  })
+
+  // Each row's "Off" is its own key, so a language can agree the word with that row's label
+  // (es "Desactivadas" beside a feminine plural, "Desactivado" beside a masculine singular).
+  it('words each row’s Off from its own key', () => {
+    _setCatalogForTests(TEST_LANG, {
+      'settings.managed.summary.usageStatsOff': 'usage-off',
+      'settings.managed.summary.reportsOff': 'reports-off',
+      'settings.managed.summary.updatesOff': 'updates-off',
+      'settings.managed.summary.aiOff': 'ai-off',
+    })
+    setLocale(TEST_LANG)
+    const values = managedPolicySummary(
+      view({
+        usageStatsDisabled: true,
+        reportsDisabled: true,
+        updates: { kind: 'disabled' },
+        ai: { mode: 'off', allowedCloudHosts: null },
+      }),
+    ).map((line) => line.value)
+    expect(values).toEqual(['usage-off', 'reports-off', 'updates-off', 'ai-off'])
   })
 
   it('leaves out what the policy doesn’t touch', () => {

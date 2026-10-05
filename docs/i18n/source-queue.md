@@ -147,5 +147,3 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   `managed-by-organization`. (ru, zh-Hant)
 - `settings.managed.*`, `ai.managed.*`, `askCmdr.error.managedByOrganization`, `onboarding.stepBeta.analyticsManaged`:
   no screenshot of the managed card or the locked rows, so value widths are guesses. Capture them under a policy. (ru)
-- `settings.managed.summary.off`: one value beside four labels of different gender and number pushes es to `No` and
-  zh-Hant to `已關閉`, each diverging from its "Off" option label. Consider a per-row value. (pt, es, zh-Hant)
