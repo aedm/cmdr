@@ -636,9 +636,9 @@ in labels. `Solo verás este aviso una vez.`: names the notice, no gendered adje
 
 ## El original se quedó (`errors.write.sourceNotRemoved.*`, `errors.write.permissionDenied.*.source*`, `errors.write.deletePending.message`)
 
-- `en las dos ubicaciones`: `ubicación` doesn't agree with the item's gender. `elimina tú el original` avoids a gendered
-  `tú mismo`.
+- `en las dos ubicaciones` (agrees with nothing); `elimina tú el original` (❌ gendered `tú mismo`).
 
 ## Lo que gestiona tu organización (MDM) (`*.managed.*`)
 
-- No agreeing participle: title `Lo que gestiona…`, `sin permiso de…`, and `Off` → invariant `No`.
+- Nothing agrees with the reader (`Lo que gestiona…`); `*Off` agrees with its row (`Desactivadas`), as System Settings
+  does.

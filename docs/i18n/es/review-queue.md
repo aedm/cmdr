@@ -59,5 +59,3 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
   `página de información general` (Cloudflare's Overview), `pestaña Interoperabilidad` /
   `configuración de Cloud Storage` (Google), and `direccionamiento de estilo de ruta` (AWS's path-style) weren't checked
   against the live Spanish consoles; a reviewer with access should confirm them.
-- **`No`** (`settings.managed.summary.off`): the invariant `Off` value in the managed card, iOS-style; a native reader
-  should confirm it reads as a status beside `Actualizaciones` and `IA`, with `Sin activar` as the reserve.
