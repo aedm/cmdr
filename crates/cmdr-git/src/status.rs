@@ -204,6 +204,11 @@ fn run_full_repo_status(repo: &RepoHandle) -> Result<Vec<EntryStatus>, FriendlyG
             }
         }
     }
+    // gix only compared each submodule's commit (`submodule_status`); its own
+    // edits come from a walk with its filter drivers stripped.
+    for path in crate::repo::dirty_submodule_paths(&local) {
+        by_path.entry(path).or_insert(EntryStatusCode::Modified);
+    }
 
     let mut entries: Vec<EntryStatus> = by_path
         .into_iter()

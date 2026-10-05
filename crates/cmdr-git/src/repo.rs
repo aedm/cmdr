@@ -113,12 +113,13 @@ pub fn repo_info(handle: &RepoHandle, repo_root: &Path) -> Result<RepoInfo, Frie
     })
 }
 
-/// Whether anything is staged or changed in the worktree, untracked files aside.
+/// Whether anything is staged or changed in the worktree, untracked files aside,
+/// a submodule's own edits included.
 ///
 /// gix's own `Repository::is_dirty` asks submodules for their worktree status
 /// "as configured", which opens each one with its OWN config, filter drivers
 /// included ([`without_filter_drivers`]). This is the same question with
-/// [`submodule_status`].
+/// [`submodule_status`] plus [`dirty_submodule_paths`].
 fn is_dirty(repo: &gix::Repository) -> bool {
     let Ok(platform) = repo.status(gix::progress::Discard) else {
         return false;
@@ -131,13 +132,44 @@ fn is_dirty(repo: &gix::Repository) -> bool {
     else {
         return false;
     };
-    items.next().is_some_and(|item| item.is_ok())
+    items.next().is_some_and(|item| item.is_ok()) || !dirty_submodule_paths(repo).is_empty()
 }
 
-/// How far status looks into a submodule: its checked-out commit against the
-/// one the parent records, ❌ never its worktree. A worktree status hashes files,
-/// which runs that repo's filter drivers, and gix opens a submodule with its own
-/// config, out of reach of [`without_filter_drivers`].
+/// The worktree paths (`/`-separated, relative to `repo`'s) of submodules whose
+/// own worktree has changes, nested ones included.
+///
+/// Each is opened and then stripped by [`without_filter_drivers`] before its
+/// worktree is walked, which is what gix's built-in submodule status can't do.
+/// A submodule configured `ignore = dirty` or `all` is left out, as git would.
+pub(crate) fn dirty_submodule_paths(repo: &gix::Repository) -> Vec<String> {
+    let Ok(Some(modules)) = repo.submodules() else {
+        return Vec::new();
+    };
+    modules
+        .filter_map(|sm| {
+            let ignored = matches!(
+                sm.ignore(),
+                Ok(Some(
+                    gix::submodule::config::Ignore::Dirty | gix::submodule::config::Ignore::All
+                ))
+            );
+            if ignored {
+                return None;
+            }
+            let path = sm.path().ok()?.to_string();
+            // Opening reads config and runs nothing; the walk below is what could.
+            let opened = sm.open().ok()??;
+            let stripped = without_filter_drivers(opened.into_sync()).ok()?.to_thread_local();
+            is_dirty(&stripped).then_some(path)
+        })
+        .collect()
+}
+
+/// How far gix's status looks into a submodule: its checked-out commit against
+/// the one the parent records, ❌ never its worktree. A worktree status hashes
+/// files, which runs that repo's filter drivers, and gix opens a submodule with
+/// its own config, out of reach of [`without_filter_drivers`].
+/// [`dirty_submodule_paths`] answers the worktree half safely.
 pub(crate) fn submodule_status(check_dirty: bool) -> gix::status::Submodule {
     gix::status::Submodule::Given {
         ignore: gix::submodule::config::Ignore::Dirty,
