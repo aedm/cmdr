@@ -148,11 +148,11 @@ Prepare a release based on docs/guides/releasing.md.
      draft had a Fixed entry whose SHAs were a strict subset of an Added entry's.)
    - Strip internal symbol names, file paths, and enum variants that survived the first pass.
 
-4. **Only if `release.yml`'s `build.runs-on` is the self-hosted runner** (it is `macos-latest` today, so normally SKIP
-   this step): check the runner's Finder Automation permission so `bundle_dmg.sh` doesn't hang for ~2 minutes per matrix
-   job. Run it AFTER presenting the CHANGELOG draft for review (the user is at the keyboard anyway). See
-   `docs/guides/releasing.md` § "Which runner builds the release" and § "`bundle_dmg.sh` hangs ~2 minutes then fails on
-   every matrix job" for why this is needed, the `auth_value` codes, and how to recover.
+4. **Only if `release-pipeline.yml`'s `build.runs-on` is the self-hosted runner** (it is `macos-latest` today, so
+   normally SKIP this step): check the runner's Finder Automation permission so `bundle_dmg.sh` doesn't hang for ~2
+   minutes per matrix job. Run it AFTER presenting the CHANGELOG draft for review (the user is at the keyboard anyway).
+   See `docs/guides/releasing.md` § "Which runner builds the release" and § "`bundle_dmg.sh` hangs ~2 minutes then fails
+   on every matrix job" for why this is needed, the `auth_value` codes, and how to recover.
 
    ❌ **Resolve the REAL path, never `externals/`.** That's a symlink into `externals.<version>/`, tccd keys its rows on
    the resolved path, and the symlink path carries a stale `2` row of its own from earlier grants. Checking the symlink

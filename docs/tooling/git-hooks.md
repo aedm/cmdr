@@ -19,8 +19,8 @@ pnpm skips lifecycle scripts when an install has nothing to do ("Already up to d
 11.27.1, 2026-09-30), so a clone that was installed before the hooks existed needs `git config core.hooksPath .githooks`
 once. `git config --get core.hooksPath` says whether the hooks are on.
 
-`prepare` skips the setting when `$CI` is set: `release.yml` commits and pushes to `main`, and a hook stopping that push
-would break a release.
+`prepare` skips the setting when `$CI` is set: `release-pipeline.yml` commits and pushes to `main`, and a hook stopping
+that push would break a release.
 
 ## What each hook does
 

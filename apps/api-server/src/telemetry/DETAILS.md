@@ -432,7 +432,7 @@ Frontend counterpart: `apps/desktop/src/lib/feedback/CLAUDE.md`.
 - **The `/download/:version/:arch` redirect maps `x86_64` → `x64` in the filename.** `tauri-action` names the Intel DMG
   `Cmdr_<ver>_x64.dmg`, but the rest of the codebase (URL path, D1 telemetry, website data attrs, Rust target triple,
   `uname -m`) consistently uses `x86_64`. Mapping at the boundary keeps everything else canonical; the same convention
-  is in `.github/workflows/release.yml` when reading DMG sizes for `latest.json`.
+  is in `.github/workflows/release-pipeline.yml` when reading DMG sizes for `latest.json`.
 - **Validators for optional fields must tolerate both `null` and `undefined`.** serde `Option::None` serializes as JSON
   `null`, not as an absent key, and `#[serde(skip_serializing_if)]` is rejected by `specta`'s unified mode (the struct
   is part of a Tauri command surface). An old crash file read by a new client surfaces missing fields as `None`, the

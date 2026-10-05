@@ -32,8 +32,8 @@ signs and notarizes.
 
 ## Which runner builds the release
 
-**GitHub-hosted (`macos-26`) builds every release**, set in one line in `release.yml` (`build.runs-on`). This repo is
-public, so hosted macOS minutes are free. No self-hosted runner is registered, and nothing needs one.
+**GitHub-hosted (`macos-26`) builds every release**, set in one line in `release-pipeline.yml` (`build.runs-on`). This
+repo is public, so hosted macOS minutes are free. No self-hosted runner is registered, and nothing needs one.
 
 - **Why the image and not `macos-latest`**: an image carries exactly one Xcode major, so that line picks the macOS SDK
   the bundle links against, and Apple gates behavior changes on it. A build step asserts the SDK major and fails before
@@ -79,11 +79,11 @@ tagged. Beyond the version/CHANGELOG checks and `oxfmt --ci`, four are worth kno
   waits (~25 min), so `/release` pushes and starts it early to overlap it with changelog drafting. A flaky red run:
   `gh run rerun <id> --failed`, then re-run the release. The release commit itself (version bumps, CHANGELOG) lands
   after the gate; the `oxfmt --ci` gate and the post-tag CI run cover it.
-  - **`release.yml` enforces it again server-side** (the `ci-gate` job, which `build` and `sbom` wait on), so a tag
-    pushed by hand can't skip it. It looks for a successful `workflow_dispatch` run of `ci.yml` on the tagged commit, or
-    on its parent when the tagged commit is the `chore(release): vX.Y.Z` commit `release.sh` makes after the local gate.
-    It doesn't wait: the local gate already did. If it fails because the run was still going, wait for it, then "Re-run
-    failed jobs".
+  - **The release workflow enforces it again server-side** (the `ci-gate` job, which `build` and `sbom` wait on), so a
+    tag pushed by hand can't skip it. It looks for a successful `workflow_dispatch` run of `ci.yml` on the tagged
+    commit, or on its parent when the tagged commit is the `chore(release): vX.Y.Z` commit `release.sh` makes after the
+    local gate. It doesn't wait: the local gate already did. If it fails because the run was still going, wait for it,
+    then "Re-run failed jobs".
   - **Emergency bypass** for a hotfix while CI is red for reasons outside the repo: `RELEASE_SKIP_CI_GATE=1` locally,
     AND the repository variable `RELEASE_SKIP_CI_GATE_TAG` set to the exact tag (like `v0.51.1`) before pushing it. Same
     shape as `RELEASE_REPUBLISH_TAG`: it unblocks only the tag written in it. Clear it once the run finishes.
@@ -272,15 +272,15 @@ in the field, with no fallback in the app to recover.
 
 ## Provenance and SBOM attestations
 
-Two jobs in `release.yml`, beside the build-and-publish chain:
+Two jobs in `release-pipeline.yml`, beside the build-and-publish chain:
 
-- **`sbom`** (`needs: guard`, read-only token, no OIDC) runs beside the macOS builds. It generates the three SBOMs:
-  `cargo cyclonedx` (version pinned in the workflow, CycloneDX 1.5) on `apps/desktop/src-tauri/Cargo.toml` with default
-  features, once per target triple, and a frontend build with `CMDR_FRONTEND_SBOM=1` for the npm side, which lists the
-  packages the bundler actually put in the app (`apps/desktop/scripts/vite-frontend-sbom.ts`; `package.json` can't say,
-  since Svelte ships from devDependencies). It fails if a lockfile moved while resolving, or if an SBOM isn't CycloneDX,
-  doesn't name this version as its root, or lists too few components (100 for Rust, 30 for the frontend). It hands them
-  on as the `sboms` workflow artifact.
+- **`sbom`** (`needs: [guard, ci-gate]`, read-only token, no OIDC) runs beside the macOS builds. It generates the three
+  SBOMs: `cargo cyclonedx` (version pinned in the workflow, CycloneDX 1.5) on `apps/desktop/src-tauri/Cargo.toml` with
+  default features, once per target triple, and a frontend build with `CMDR_FRONTEND_SBOM=1` for the npm side, which
+  lists the packages the bundler actually put in the app (`apps/desktop/scripts/vite-frontend-sbom.ts`; `package.json`
+  can't say, since Svelte ships from devDependencies). It fails if a lockfile moved while resolving, or if an SBOM isn't
+  CycloneDX, doesn't name this version as its root, or lists too few components (100 for Rust, 30 for the frontend). It
+  hands them on as the `sboms` workflow artifact.
 - **`attest`** (`needs: [publish, sbom]`, holds `id-token: write` and `attestations: write`) downloads every asset back
   from the published release, uploads the SBOMs to it, and runs `actions/attest`: one SLSA provenance attestation
   covering every asset (SBOMs included), then one SBOM attestation per SBOM, bound to the builds it describes (each Rust
@@ -295,22 +295,30 @@ Why it's shaped this way:
   failed (its SBOM steps skip), so provenance never waits on SBOM tooling.
 - **The job that can sign runs no third-party code.** `cargo install` and `pnpm install` live in `sbom`, which has no
   OIDC grant; `attest` only downloads and calls `actions/attest`.
-- **The frontend SBOM includes dev dependencies**, marked `scope: excluded`. `--prod` would drop `svelte` and
-  `@sveltejs/kit`, which are devDependencies whose runtime the bundler compiles into the app. It's generated on the
-  Linux runner, so platform-specific optional packages (bundler binaries) show their Linux variants.
-- **SLSA Build Level 2, not 3**: the attestation is signed by `release.yml` itself, not by an isolated reusable
-  workflow. Don't claim L3 anywhere.
+- **Every job lives in a reusable workflow.** `release.yml` is only the `v*` tag trigger: one job that calls
+  `release-pipeline.yml` with the union of the jobs' permissions and `secrets: inherit`. So the attestation's signing
+  certificate names `release-pipeline.yml` as the signer workflow, which is GitHub's recipe for SLSA Build Level 3
+  (verified against GitHub's "Using artifact attestations and reusable workflows to achieve SLSA v1 Build Level 3",
+  2026-10-05). ❌ Don't move jobs back into `release.yml`. Inside the call, `github.*` and `vars.*` are the caller's
+  (the tag, this repo's variables), and job names show as `Release / <job>`.
+- **The public claim is still Level 2** until a real release passes the `--signer-workflow` check below. The first
+  release built through `release-pipeline.yml` hasn't happened yet.
 
 Checking a release (the `/release` command does this after the run):
 
 ```bash
 gh attestation verify Cmdr_X.Y.Z_aarch64.dmg --repo vdavid/cmdr \
-  --signer-workflow vdavid/cmdr/.github/workflows/release.yml
+  --signer-workflow vdavid/cmdr/.github/workflows/release-pipeline.yml
 gh attestation verify Cmdr_X.Y.Z_aarch64.dmg --repo vdavid/cmdr --predicate-type https://cyclonedx.org/bom
 ```
 
-The first checks provenance, the second the SBOM binding. The public instruction on `/trust` is the shorter
-`gh attestation verify <file> --repo vdavid/cmdr`.
+The first checks provenance and that the reusable workflow signed it, the second the SBOM binding. Earlier releases were
+signed by `release.yml` itself, so check those with `--signer-workflow` pointing at `release.yml`. The public
+instruction on `/trust` is the shorter `gh attestation verify <file> --repo vdavid/cmdr`.
+
+**Once the first check passes on a real release**, move the public claim to Level 3: the SLSA mentions on `/trust`
+(`apps/website/src/pages/trust.astro`, linking `slsa.dev/spec/v1.0/levels#build-l2`) and `/trust/development`
+(`apps/website/src/pages/trust/development.astro`), then this paragraph and the bullet above.
 
 ## How updates work
 
@@ -450,12 +458,12 @@ happened on the self-hosted runner:
   bundled dylibs before that. The runner's launchd service runs with `SessionCreate=true` (GitHub's `svc.sh` plist), so
   its jobs live in their own security session where the login keychain's private key isn't usable (the exact same
   `codesign` command works from a GUI shell), and every matrix job failed ~30 s in. A runner-service restart doesn't
-  help. The fix in `release.yml` ("Set up llama-server signing keychain") imports the cert into a dedicated keychain
-  that the Go script targets explicitly via `codesign --keychain` (`LLAMA_SIGN_KEYCHAIN`). The keychain must ALSO be in
-  the user keychain search list: `--keychain` alone fails with the same `errSecInternalComponent` for a keychain outside
-  the search list (verified empirically on this runner). The explicit `--keychain` is what keeps the login keychain's
-  copy of the identity from making resolution ambiguous; the "Restore keychain search list" cleanup step resets the list
-  afterwards.
+  help. The fix in `release-pipeline.yml` ("Set up llama-server signing keychain") imports the cert into a dedicated
+  keychain that the Go script targets explicitly via `codesign --keychain` (`LLAMA_SIGN_KEYCHAIN`). The keychain must
+  ALSO be in the user keychain search list: `--keychain` alone fails with the same `errSecInternalComponent` for a
+  keychain outside the search list (verified empirically on this runner). The explicit `--keychain` is what keeps the
+  login keychain's copy of the identity from making resolution ambiguous; the "Restore keychain search list" cleanup
+  step resets the list afterwards.
 
 The other two are about the **same Developer ID identity being reachable from more than one keychain in the search
 list** (ambiguous resolution):

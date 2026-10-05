@@ -583,11 +583,11 @@ the same rule and point here.
 
 **The form is a bare trailing group**: `- Some change (b626d7a4, 2d41cc14)`. The changelog stores hashes, never markdown
 links, and each renderer linkifies (website) or strips (What's new popup) on the way out. The third consumer, the GitHub
-release body that `release.yml` seds out of the section, leans on GitHub's own autolinking of a bare same-repo SHA
-(documented behavior, not yet observed on a real Cmdr release: confirm on the first release after 2026-08-03). Dropping
-the URLs cut the file by ~43% (206 KB to 117 KB); it was ~40% URL boilerplate, which every agent reading the file paid
-for and which wrapped entries across three or four lines. The check **fails on any `…/commit/<sha>` URL** so the linked
-form can't creep back.
+release body that `release-pipeline.yml` seds out of the section, leans on GitHub's own autolinking of a bare same-repo
+SHA (documented behavior, not yet observed on a real Cmdr release: confirm on the first release after 2026-08-03).
+Dropping the URLs cut the file by ~43% (206 KB to 117 KB); it was ~40% URL boilerplate, which every agent reading the
+file paid for and which wrapped entries across three or four lines. The check **fails on any `…/commit/<sha>` URL** so
+the linked form can't creep back.
 
 **Recognition is structural, not positional-guess:** rebuild each bullet entry from its wrapped source lines, then
 require that the entry ENDS with a parenthetical whose every comma-separated item is 6-40 lowercase hex chars. Anchoring
@@ -1836,9 +1836,9 @@ How it decides:
   here.
 - **Where it runs.** It needs a built Mach-O, so it skips where there is none, which is every CI runner (all ubuntu).
   Locally it reads `target/release/Cmdr` if there is one, else `target/debug/Cmdr`, so any Mac that has run the app is
-  covered. The gate that can't be skipped is `release.yml`, which points `CMDR_MACOS_BINARY` at the signed bundled
-  binary right after `tauri-action` builds it; that's the only run that sees what users actually get, which is also why
-  `ci-coverage` counts it as wired without a `ci.yml` step.
+  covered. The gate that can't be skipped is `release-pipeline.yml`, which points `CMDR_MACOS_BINARY` at the signed
+  bundled binary right after `tauri-action` builds it; that's the only run that sees what users actually get, which is
+  also why `ci-coverage` counts it as wired without a `ci.yml` step.
 
 ## macOS symbol floor
 
@@ -1871,8 +1871,8 @@ How it decides:
   AND version-gated at every call, so dyld binds it to null rather than aborting. A strongly-linked one can't be
   excused, and an entry needs David's consent.
 - **Where it runs**: it needs both a Mach-O and the SDK headers, so it skips on Linux CI and anywhere without a build.
-  `release.yml` runs it right after the framework check, against the signed bundled binary, which is the gate that can't
-  be skipped.
+  `release-pipeline.yml` runs it right after the framework check, against the signed bundled binary, which is the gate
+  that can't be skipped.
 
 ## Vendored credits
 

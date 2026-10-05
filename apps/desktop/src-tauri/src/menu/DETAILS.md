@@ -807,7 +807,7 @@ Cmdr SHIPS at SDK 26.5 (`otool -l | grep -A3 LC_BUILD_VERSION` on the bundle). â
 on the shipped SDK; it links whatever the installed Command Line Tools carry (27.0 since 2026-09-09 on
 David's Mac), so a dev build is where an image that skipped the opt-in shows up blank first. With every
 image behind the door, nothing in the menus depends on the SDK any more, which is the precondition for
-moving the release runner to an Xcode 27 image. Nothing pins that today: `release.yml` builds on
+moving the release runner to an Xcode 27 image. Nothing pins that today: `release-pipeline.yml` builds on
 `macos-latest`, which moves on GitHub's schedule with no commit of ours.
 
 #### Images on a CONTEXT menu

@@ -216,7 +216,7 @@ var macOSFrameworkFloorInputs = inputs(
 // lane fingerprinting it would miss on every rebuild while answering the same.
 // Neither is the SDK, for the same reason in the other direction: an Xcode update
 // can move a symbol's recorded availability under a cached pass. Both are why the
-// gate that decides a release reads the signed binary in `release.yml` rather than
+// gate that decides a release reads the signed binary in `release-pipeline.yml` rather than
 // trusting a local run.
 var macOSSymbolFloorInputs = inputs(
 	rustWorkspaceConfigInputs,
