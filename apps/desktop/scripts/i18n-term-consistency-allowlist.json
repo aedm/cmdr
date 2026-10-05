@@ -246,6 +246,10 @@
         "reason": "Number agreement, not drift: `Modificado` is a file's date column and filter, `Modificados` is the keyboard-shortcuts filter for the shortcuts the user changed (`shortcuts.section.filterModified`)."
       },
       {
+        "source": "Off",
+        "reason": "Gender and number agreement, not drift: an option label stays the unmarked `Desativado` (`settings.ai.provider.opt.off`, `…lowDiskSpaceNotifications.opt.off`), while each `settings.managed.summary.*Off` state agrees with its row label (`Estatísticas de uso` → `Desativadas`, `Relatórios…` → `Desativados`, `Atualizações` → `Desativadas`, `IA` → `Desativada`), as macOS pt-BR Notifications settings does (`NOTIFICATION_OFF` → `Desativadas`). `docs/i18n/pt/decisions.md` § What your organization manages (MDM)."
+      },
+      {
         "source": "Preview",
         "reason": "Noun vs verb, both Finder's: `Pré-visualização` labels a preview panel or sample (`askCmdr.renameReview.preview`, `settings.appearance.datePreviewLabel`), `Pré-visualizar` is the command (`commands.fileQuickLook.other.label`)."
       },

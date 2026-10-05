@@ -61,6 +61,3 @@ settled wording into `terms.json` (and `decisions.md` when the reason is worth k
   keeps the catalog's `ponto de extremidade`, though AWS pt-BR docs say `endpoint`. Confirm both.
 - **`Este arquivo está arquivado`** (`*.coldStorage*`, `fileExplorer.archivedFile.*`): cold storage → `arquivado` /
   `armazenamento frio` (MS terminology). `arquivo arquivado` is a known cacophony; confirm it reads fine to a Brazilian.
-- **`Desativado` beside feminine and plural labels** (`settings.managed.summary.off`): one value serves
-  `Estatísticas de uso`, `Relatórios…`, `Atualizações`, and `IA`. Read as an invariant switch state like Windows pt-BR
-  toggles; confirm it doesn't look like a broken agreement (fallback: `Não`).

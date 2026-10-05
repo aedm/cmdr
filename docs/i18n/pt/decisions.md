@@ -424,5 +424,5 @@ the installed macOS `pt_BR.lproj` bundles.
 
 ## What your organization manages (MDM) (`*.managed.*`, `updates.status.managedOff`/`heldByPolicy`)
 
-- No agreeing participle: `O que sua organização gerencia`, `Só verificação manual`. `Off` → invariant toggle-state
-  `Desativado` (review queue).
+- No agreeing participle: `O que sua organização gerencia`, `Só verificação manual`. `*Off` agrees with its row, as
+  macOS Notifications does.
