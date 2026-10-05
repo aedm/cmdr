@@ -702,12 +702,12 @@ fn an_idle_clears_every_unmount_pending_flag_and_wakes_the_start_waiting_it_out(
 }
 
 #[test]
-fn the_master_resume_and_a_search_cover_skip_a_leaving_drive_at_once() {
+fn the_background_starts_skip_a_leaving_drive_at_once() {
     let fx = fixture();
     fx.gate.set_unmount_pending(&ids(&[A, ROOT_VOLUME_ID]));
     fx.door.ejecting.lock_ignore_poison().insert(B.to_string());
 
-    for kind in [StartKind::MasterResume, StartKind::SearchCover] {
+    for kind in [StartKind::MasterResume, StartKind::SearchCover, StartKind::DriveRenamed] {
         for volume_id in [A, B] {
             assert_eq!(
                 fx.gate.start_blocking(volume_id, kind, || panic!("no start may run")),

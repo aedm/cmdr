@@ -24,6 +24,10 @@ mod mounts;
 mod nsurl;
 mod smb;
 
+mod rename;
+#[cfg(all(test, target_os = "macos"))]
+mod rename_real_image;
+
 use cmdr_fs::volume::published_locations::{PublishedLocation, dedupe_locations};
 use serde::{Deserialize, Serialize};
 use std::path::Path;

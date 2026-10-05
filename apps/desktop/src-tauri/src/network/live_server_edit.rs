@@ -16,7 +16,7 @@ use cmdr_fs::volume::{Volume, VolumeError};
 
 use super::saved_server_fields::SavedServerOutcome;
 use crate::file_system::volume::manager::{RootReplacement, VolumeManager};
-use crate::volume_broadcast::{self, VolumeRootChanged};
+use crate::volume_broadcast::{self, RootChangeKind, VolumeRootChanged};
 
 /// How long the live session gets to confirm the folders an edit names, shared
 /// by the root and the start folder. The IPC writes tier: a person is waiting on
@@ -115,6 +115,7 @@ pub async fn check(
         new_root: new_root.app_root().to_string_lossy().into_owned(),
         old_landing: old_landing.to_string_lossy().into_owned(),
         new_landing: new_landing.to_string_lossy().into_owned(),
+        kind: RootChangeKind::Edited,
     });
     Ok(AcceptedEdit {
         volume_id: place.volume_id.clone(),

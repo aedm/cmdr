@@ -1040,8 +1040,8 @@ pub fn builder() -> Builder<tauri::Wry> {
             VolumesChanged,
             VolumeMounted,
             VolumeUnmounted,
-            // A connected SFTP or WebDAV place's root or landing moved on an edit
-            // (network/live_server_edit.rs).
+            // A volume's root or landing moved: an edit to a connected SFTP or WebDAV
+            // place (network/live_server_edit.rs), or a renamed drive (volumes/watcher.rs).
             VolumeRootChanged,
             VolumesBusyChanged,
             // The volumes with an eject still running (file_system/volume/eject/in_flight.rs).

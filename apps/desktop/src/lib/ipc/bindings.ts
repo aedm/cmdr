@@ -12402,6 +12402,19 @@ export type RollbackRefusal =
  */
 export type RollbackState = 'notRollbackable' | 'rollbackable' | 'rollingBack' | 'rolledBack' | 'partiallyRolledBack'
 
+// Why a volume's root moved, which decides where a path inside the old root goes.
+export type RootChangeKind =
+  /**
+   *  Someone edited a saved place: the new root is a different folder, so a path
+   *  inside the old one has no counterpart under it and goes to the new landing.
+   */
+  | 'edited'
+  /**
+   *  The same tree is reached at a new root (a renamed drive): a path inside the
+   *  old root keeps its place under the new one.
+   */
+  | 'moved'
+
 // Which side of a named row to read: the one before it or the one after it.
 export type RowBeside = 'previous' | 'next'
 
@@ -16156,14 +16169,15 @@ export type VolumeMounted = {
 }
 
 /**
- *  Typed `volume-root-changed` Tauri event: saving an edit to a CONNECTED place
- *  moved its root, its start folder, or both, and the registry already serves
- *  the new root.
+ *  Typed `volume-root-changed` Tauri event: a volume's root, its start folder, or
+ *  both moved, and the registry already serves the new root. Two causes, named by
+ *  [`RootChangeKind`]: saving an edit to a CONNECTED place, or a mounted drive
+ *  being renamed.
  *
- *  Every path is an APP path (`sftp://ada@nas.local:22/srv/data`), and a landing
- *  is where opening the place lands: its start folder, else its root. Emitted
- *  only when the root or the landing actually moved. What a pane does with it:
- *  `network/DETAILS.md` § "Editing a connected place".
+ *  Every path is an APP path (`sftp://ada@nas.local:22/srv/data`, `/Volumes/New`),
+ *  and a landing is where opening the place lands: its start folder, else its root.
+ *  Emitted only when the root or the landing actually moved. What a pane does with
+ *  it: `network/DETAILS.md` § "Editing a connected place".
  */
 export type VolumeRootChanged = {
   // The place's volume id, which an edit never changes.
@@ -16176,6 +16190,8 @@ export type VolumeRootChanged = {
   oldLanding: string
   // Where it lands now.
   newLanding: string
+  // Why it moved, which decides where a path inside the old root goes.
+  kind: RootChangeKind
 }
 
 /**

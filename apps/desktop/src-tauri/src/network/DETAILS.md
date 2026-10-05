@@ -1073,7 +1073,7 @@ the edit, and the next connect dials it. ❗ Neither does one that disconnected 
 rides that instance's connection, and a fresh one keeps serving the place.
 
 **`volume-root-changed`** (`volume_broadcast::VolumeRootChanged`: `volumeId`, `oldRoot`, `newRoot`, `oldLanding`,
-`newLanding`) goes out after the install, only when the root or the landing moved. Every path is an APP path minted
+`newLanding`, and `kind: edited`; a renamed drive sends the same event as `moved`) goes out after the install, only when the root or the landing moved. Every path is an APP path minted
 from the place's own prefix (`cmdr_fs::volume::ids::sftp_app_root` or `webdav_app_root`), and a landing is the start
 folder, else the root. The old landing is the saved start folder only while the LIVE root holds it, so a store that
 drifted from the session reports the old root. It isn't debounced, unlike `volumes-changed`, so it reaches the panes

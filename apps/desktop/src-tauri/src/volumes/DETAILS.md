@@ -616,10 +616,13 @@ objects accumulate in a default pool that's never drained, leaking memory over h
 **Why**: With `queue: nil`, AppKit dispatches the block on the thread that posted the notification, and
 `diskarbitrationd` posts on the main thread. Keep the body cheap: `register_volume_with_manager` is microseconds,
 `try_upgrade_smb_mount` and `emit_volumes_changed` both `tauri::async_runtime::spawn`, and `app.emit` is non-blocking.
-Don't add blocking I/O here without moving it onto a background task.
+Don't add blocking I/O here without moving it onto a background task. The rename block does exactly that: following a
+rename derives an id (an NSURL read) and restarts the drive's index (a drain of up to seconds), so it hands
+`handle_volume_renamed` a thread of its own (`file_system/volume/DETAILS.md` § "A renamed drive").
 
 **Gotcha**: `userInfo` is downcast with `Retained::cast_unchecked` to `NSDictionary<NSString, NSURL>`.
-**Why**: AppKit documents the value under `NSWorkspaceVolumeURLKey` as an `NSURL`. The unchecked cast trades a runtime
+**Why**: AppKit documents the values under `NSWorkspaceVolumeURLKey` and, on a rename, `NSWorkspaceVolumeOldURLKey` as
+`NSURL`s, and those are the only keys read through the cast (the dictionary also carries localized-name `NSString`s). The unchecked cast trades a runtime
 type check for a hard contract on Apple's side. A safer alternative (`cast::<NSDictionary>` plus a per-value
 `downcast::<NSURL>`) costs an `isKindOfClass:` call per notification. We lean on the documented contract; revisit if a
 future macOS version breaks it.

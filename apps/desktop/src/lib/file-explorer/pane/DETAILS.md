@@ -529,7 +529,8 @@ no session behind it, so every listing on it would refuse until something dials.
 ### A place whose root moved under the pane
 
 `volume-root-follow.ts` answers `volume-root-changed`: saving an edit to a CONNECTED place moved its root, its start
-folder, or both (`apps/desktop/src-tauri/src/network/DETAILS.md` § "Editing a connected place"). Where each path goes is
+folder, or both (`apps/desktop/src-tauri/src/network/DETAILS.md` § "Editing a connected place"), or a mounted drive was
+renamed (`apps/desktop/src-tauri/src/file_system/volume/DETAILS.md` § "A renamed drive"). Where each path goes is
 `../navigation/root-change-follow.ts`; this module applies that rule, in one order:
 
 1. ❗ **The volume store's row moves first** (`applyVolumeRootChanged`). The event arrives before the debounced

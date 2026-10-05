@@ -762,7 +762,8 @@ start of a non-root index. Stops: the eject's pre-stop (`stop_index_blocking`), 
 ask (`volumes/unmount_approver/`, which also sets the unmount-pending flag and resumes what it stopped), and the
 `WillUnmount` / `DidUnmount` hooks (`volumes/watcher.rs`; BOTH stand down while the approver is installed, and stand in
 only for one that couldn't). Starts: `enable_drive_index` and `rescan_drive_index` (IPC and MCP), the master switch's
-resume loop in `set_indexing_enabled`, and a search's `Index::cover` (`search/execute/live_run.rs`). The user's
+resume loop in `set_indexing_enabled`, a search's `Index::cover` (`search/execute/live_run.rs`), and a renamed drive's restart
+(`Index::follow_volume_move`, `volumes/watcher.rs`). The user's
 `disable_drive_index` goes through it too. The boot disk's launch and FDA starts stay outside, and the gate passes `root`
 straight through: it never unmounts.
 
@@ -787,8 +788,8 @@ release's `LateStop`), a pending-resume flag, and an unmount-pending flag.
   returned, ❌ never at spawn. Every kind waits for a ticket in flight. A person's `UserEnable` / `UserRescan` also waits
   out `unmount_pending` and Cmdr's own eject in flight (`eject::is_ejecting`), bounded by `UNMOUNT_PENDING_WAIT` (30 s;
   the slowest refusal measured took 27.8 s). Past it, or when the drive left the mount table meanwhile, no start runs and
-  the command answers `EnableIndexingOutcome::DriveLeaving`. `MasterResume` and `SearchCover` skip a leaving drive at
-  once, and the search answers without it as for an unmounted drive. Past the wait with only another start in flight, the
+  the command answers `EnableIndexingOutcome::DriveLeaving`. `MasterResume`, `SearchCover`, and `DriveRenamed` skip a
+  leaving drive at once, and the search answers without it as for an unmounted drive. Past the wait with only another start in flight, the
   answer is `AnotherStartStillRunning`, which the command returns as its `Err`.
 - **`disable`** moves the epoch, waits for a ticket in flight, holds a `Disable` ticket through `Index::disable_volume`,
   and moves the epoch again before letting go: a disable always has the last word over a resume.
@@ -919,9 +920,9 @@ The rules over the set:
   panes stop pointing at a root that's no longer active.
 
 **What a promotion does NOT do**: it never calls `on_unmount` and never stops an index — the filesystem is still there,
-just addressed differently. An index instance keeps the mount root it captured at start, which is correct for the case
-this exists for (double mounts are network shares, and their indexes are `IndexVolumeKind::Smb`, torn down through
-their own path) and would need re-pointing if a `LocalExternal` disk ever showed up at two mount points.
+just addressed differently. A local-scanner index captured its mount root at start, so the unmount watcher's `Promoted`
+arm hands it to `Index::follow_volume_move` through the drive-release gate, the same restart a rename takes (§ "A
+renamed drive"). A share's index reads through its `Volume` and needs nothing.
 
 **Decision**: `register` replaces only at the SAME root; an identity conflict keeps the incumbent
 **Why**: replacing the volume at one root is routine (that's the SMB upgrade: an OS-mounted `LocalPosixVolume` becomes a direct `SmbVolume` at `/Volumes/naspi`, and a live transfer holding an `Arc` keeps working through it). Two DIFFERENT roots claiming one ID is not routine, and letting the last writer win made registration ORDER decide where the volume was rooted. A share mounted at both `/Volumes/naspi` and `/Volumes/naspi-1` derives one ID from both mounts, so the registry ended up rooted at `/Volumes/naspi-1` and a pane restoring a saved `/Volumes/naspi/…` path failed its listing. Keeping the incumbent makes the outcome deterministic without pretending the ambiguity is resolved: `report_identity_conflict` still logs it, because the honest answers (a cloned volume, a double mount) both deserve a human's attention. Discovery collapses double mounts before they reach here (`volumes/DETAILS.md` § "One volume ID publishes one mount root"); this is defense in depth, not the only guard. `is_identity_conflict` (root inequality) is what tells the two cases apart. Restoring a remembered registration in a test goes through `force_register`, which skips the guard, since putting back the previous value has to be unconditional.
@@ -993,6 +994,32 @@ that case wrong, silently:
 **Why the old root leaves the set**: a fallback root is a claim that another mount reaches the same filesystem. After a
 root edit it would make `find_by_root` keep answering for a path the place no longer covers.
 Pinned by `manager/root_replace_tests.rs`.
+
+### A renamed drive
+
+**Decision**: a drive renamed while mounted MOVES its root (`VolumeManager::move_root`, `manager/root_move.rs`), keeping
+its id. ❌ Not an unmount plus a mount.
+**Why**: renaming moves the mount point (`/Volumes/Old` → `/Volumes/New`) and nothing else, and macOS posts ONE
+`NSWorkspaceDidRenameVolumeNotification` naming both, no unmount or mount around it (verified on macOS 27.0, APFS and
+FAT32 disk images under a Swift `NSWorkspace` observer while `diskutil rename` ran, 2026-10-05). Before the handler, the
+registry stayed rooted at a path that no longer existed, so listings, the index, and the panes all failed until a
+restart. Unmount plus mount would stop the drive's index and send every pane on it home, for a drive that never left.
+
+What `volumes/watcher.rs::handle_volume_renamed` does with it:
+
+- **Only when the id survives.** The new root has to derive the same id the old one is registered under (a UUID-keyed
+  local volume does). A volume with no UUID keys on its path, so its rename IS a new id, and unmount plus mount is the
+  honest model for that one.
+- **The registry**: the active root moves via `Volume::rerooted`, the old root leaves the set, nothing is retired (the
+  same mount goes on). A fallback root moving only renames it in the set.
+- **The panes**: `volume-root-changed` with `RootChangeKind::Moved`, so a pane deep inside keeps its place under the new
+  root rather than being sent to the top (`navigation/root-change-follow.ts`).
+- **The index**: `Index::follow_volume_move` restarts a local-scanner drive's index at the new root, through the
+  drive-release gate as `StartKind::DriveRenamed` (§ "One release, one start"). Why a restart and what it costs:
+  `crates/cmdr-index/src/indexing/lifecycle/DETAILS.md` § "A drive whose mount point moved".
+
+Pinned by `manager/root_move_tests.rs` and, on real APFS and HFS+ images,
+`apps/desktop/src-tauri/src/volumes/rename_real_image.rs`.
 
 **Decision**: a caller that retires the incumbent asks `would_keep_incumbent` first
 **Why**: `register_replacing_predecessor` (the SMB upgrade's entry point) calls `on_superseded` on the volume it is displacing, which stops that volume's watcher. On a refused registration the registry keeps that same volume active, so retiring first left the ID pointing at a live share with no watcher: it stayed listed, and silently stopped seeing its own changes. `would_keep_incumbent(id, root)` answers the guard's question under the read lock so the caller can skip the retirement, and the ordering (retire, then register) is unchanged for the routine same-root swap, where two live watchers on one ID would double-feed the index. Covered by `a_registration_the_registry_refuses_leaves_the_incumbent_untouched`.

@@ -137,11 +137,14 @@ restored tab, a favorite, go-to-path, history) never comes through it, so it kee
   as arm 4. ❌ Passing the landing as the target instead reads as arm 1 (a favorite) and skips the other pane and the
   remembered path.
 
-### Following an edited place (`root-change-follow.ts`)
+### Following an edited place or a renamed drive (`root-change-follow.ts`)
 
-`pathAfterRootChange(path, change)` is where a path on a connected place goes after `volume-root-changed`, by whole
-components (❌ never a string prefix: `/srv/data-1` is a sibling of `/srv/data`):
+`pathAfterRootChange(path, change)` is where a path on a volume goes after `volume-root-changed`, by whole components
+(❌ never a string prefix: `/srv/data-1` is a sibling of `/srv/data`):
 
+0. A `moved` root (a renamed drive, `/Volumes/Old` → `/Volumes/New`) and a path at or under the old root → the same
+   place under the new root: it's the same tree at a new name. Only `edited` roots take the rules below, because an
+   edited root is a different folder with no counterpart for a path inside the old one.
 1. On the old root or the old landing → the new landing.
 2. Inside the new root → unchanged, so a pane that went deeper keeps its place.
 3. Anywhere else → the new landing, since the new root refuses it.
