@@ -33,7 +33,6 @@
 //! ([`error_report_url`], [`error_report_amend_url`]), plus the cached-settings and
 //! log-level-snapshot helpers shared between the two pipelines.
 
-#[cfg(debug_assertions)]
 use crate::config;
 use crate::logging;
 use crate::server_request::ServerRequestError;
@@ -593,17 +592,15 @@ pub async fn upload(
     }
 }
 
-/// Write the built bundle to the app data dir as `error-report-debug-<timestamp>.zip`.
-/// Gated on `debug_assertions` by the caller (see `commands/error_reporter.rs`).
-#[cfg(debug_assertions)]
+/// Write the built bundle to the app data dir as `error-report-<timestamp>.zip`.
 pub fn save_bundle_to_disk<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     bundle: &BuiltBundle,
 ) -> Result<std::path::PathBuf, String> {
     let dir = config::resolved_app_data_dir(app)?;
     let timestamp = Utc::now().format("%Y%m%dT%H%M%SZ");
-    let path = dir.join(format!("error-report-debug-{timestamp}.zip"));
-    std::fs::write(&path, &bundle.zip_bytes).map_err(|e| format!("write debug bundle: {e}"))?;
+    let path = dir.join(format!("error-report-{timestamp}.zip"));
+    std::fs::write(&path, &bundle.zip_bytes).map_err(|e| format!("write report bundle: {e}"))?;
     Ok(path)
 }
 

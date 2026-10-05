@@ -187,8 +187,9 @@ Under `DisableCrashAndErrorReports` nothing leaves: `upload` and `send_amend` ri
 (`Egress::ErrorReport` / `ErrorReportAmend`), which refuses with `ServerRequestError::BlockedByPolicy`. That's the
 guarantee; `send_error_report`, `send_crash_log_report`, and `amend_error_report` ask `server_request::check_policy`
 first only so no bundle gets built for nothing. The refusal reaches the dialog as `ErrorReportSendError::Server`, logs
-at info, and is never an error-level line (which would itself feed Flow B). `save_error_report_to_disk` stays allowed:
-nothing leaves the Mac.
+at info, and is never an error-level line (which would itself feed Flow B). `save_error_report_to_disk` stays allowed,
+in release builds too: nothing leaves the Mac, and it's what the dialog offers instead of Send (the person passes the
+zip on themselves, for example to their IT team).
 
 ## CI and E2E bypass
 
@@ -224,7 +225,9 @@ at a glance. Don't gate `upload()` on `cfg!(debug_assertions)`: that path makes 
 "Send report" silently no-op, which is confusing and unhelpful.
 
 The dialog has an extra "Save bundle to disk (debug)" button in dev that calls
-`save_error_report_to_disk` instead, writing the zip to the app data dir for inspection.
+`save_error_report_to_disk` instead, writing the zip to the app data dir for inspection. The
+command exists in every build: under `DisableCrashAndErrorReports` the dialog's only action is
+"Save to disk" (§ Managed policy).
 
 ## Bundle scope and cap
 

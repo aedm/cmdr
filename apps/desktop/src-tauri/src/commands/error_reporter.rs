@@ -218,12 +218,13 @@ pub async fn amend_error_report(
     Ok(AmendResult { id })
 }
 
-/// Debug-only escape hatch: build the bundle and write it to the app data dir as a `.zip`.
-/// Helpful when iterating on the redactor or the manifest format.
+/// Build the bundle and write it to the app data dir as a `.zip`; nothing leaves the Mac. Two
+/// callers: the dialog's Save to disk when the organization turned off sending reports (the person
+/// passes the file on themselves), and the dev-only button for iterating on the redactor or the
+/// manifest format.
 ///
-/// Takes the same `id` as [`send_error_report`] so the dev path can't drift from the real one:
-/// the zip on disk is the bundle the send would have shipped, id included.
-#[cfg(debug_assertions)]
+/// Takes the same `id` as [`send_error_report`] so this path can't drift from the real one: the
+/// zip on disk is the bundle the send would have shipped, id included.
 #[tauri::command]
 #[specta::specta]
 pub async fn save_error_report_to_disk(

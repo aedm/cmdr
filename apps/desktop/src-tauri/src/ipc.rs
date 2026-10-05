@@ -287,6 +287,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::error_reporter::send_error_report,
                     crate::commands::error_reporter::send_crash_log_report,
                     crate::commands::error_reporter::amend_error_report,
+                    crate::commands::error_reporter::save_error_report_to_disk,
                     crate::commands::error_reporter::record_breadcrumb,
                     // prepare_error_report_preview and get_auto_sent_report_preview stay excluded:
                     // BundleManifest has serde-elided optional fields, which specta splits into
@@ -904,7 +905,6 @@ macro_rules! ipc_command_manifest {
             // Debug-build helpers.
             cfg(debug_assertions) {
                 typed: [
-                    crate::commands::error_reporter::save_error_report_to_disk,
                     crate::commands::file_system::preview_friendly_error,
                 ]
                 dispatch_only: []

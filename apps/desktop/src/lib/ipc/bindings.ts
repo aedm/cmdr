@@ -1914,6 +1914,17 @@ export const commands = {
    */
   amendErrorReport: (userNote: string | null, email: string | null) =>
     typedError<AmendResult, ErrorReportSendError>(__TAURI_INVOKE('amend_error_report', { userNote, email })),
+  /**
+   *  Build the bundle and write it to the app data dir as a `.zip`; nothing leaves the Mac. Two
+   *  callers: the dialog's Save to disk when the organization turned off sending reports (the person
+   *  passes the file on themselves), and the dev-only button for iterating on the redactor or the
+   *  manifest format.
+   *
+   *  Takes the same `id` as [`send_error_report`] so this path can't drift from the real one: the
+   *  zip on disk is the bundle the send would have shipped, id included.
+   */
+  saveErrorReportToDisk: (userNote: string | null, email: string | null, id: string | null) =>
+    typedError<string, string>(__TAURI_INVOKE('save_error_report_to_disk', { userNote, email, id })),
   // Records one closed, diagnostic-safe event for the error-report manifest.
   recordBreadcrumb: (event: BreadcrumbEvent) => __TAURI_INVOKE<void>('record_breadcrumb', { event }),
   /**
@@ -4647,15 +4658,6 @@ export const commands = {
    */
   createDialogGalleryFixtures: () =>
     typedError<DialogGalleryFixtures, DeadlineError>(__TAURI_INVOKE('create_dialog_gallery_fixtures')),
-  /**
-   *  Debug-only escape hatch: build the bundle and write it to the app data dir as a `.zip`.
-   *  Helpful when iterating on the redactor or the manifest format.
-   *
-   *  Takes the same `id` as [`send_error_report`] so the dev path can't drift from the real one:
-   *  the zip on disk is the bundle the send would have shipped, id included.
-   */
-  saveErrorReportToDisk: (userNote: string | null, email: string | null, id: string | null) =>
-    typedError<string, string>(__TAURI_INVOKE('save_error_report_to_disk', { userNote, email, id })),
   /**
    *  Debug-only command that generates a real typed `ListingError` for the debug
    *  error pane preview.
