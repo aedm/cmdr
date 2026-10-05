@@ -724,7 +724,9 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
   - Onboarding's AI step writes nothing when its preselect came from the policy (a stored `cloud` read as `off`) and the
     person didn't pick; `isOverriddenByPolicy(id)` in the settings store says when that's the case.
   - `load_ask_cmdr_enabled` reads through `overlay`, as § Architecture said; the M4 note's "the overlaid
-    `askCmdr.enabled` answers `askCmdrOff` first" now holds in the backend too.
+    `askCmdr.enabled` answers `askCmdrOff` first" now holds in the backend too. So under `DisableAI` the wake loop's
+    readiness is `AskCmdrOff`, which drops the stored backlog (supersedes M4's "keeping the stored backlog"; David to
+    confirm that's wanted). Under `DisableCloudAI` or a host list the backlog stays.
   - The model download reads the policy with `for_egress()` at start and again before its post-download server start,
     and `spawn_and_track_server` (every start's lowest function) refuses under `DisableAI`.
   - The client backstop's mid-turn refusal stays typed: `AgentLlmError::Managed` →

@@ -72,7 +72,9 @@ Privacy posture:
   fire a debounced auto-send (60 s window with ±10 s jitter to avoid lock-step reporting under global outages). The
   toast surfaces the send with **View** (opens the same preview as Flow A) and **Change settings**.
 
-Flow A is unconditional. Flow B is opt-in only.
+Flow A is unconditional. Flow B is opt-in only. An organization's managed `DisableCrashAndErrorReports` stops both (and
+crash reports) before any bundle is built; saving a report to disk stays available
+(`apps/desktop/src-tauri/src/managed_policy/DETAILS.md` § Where the gates live).
 
 ### Shared redactor
 
@@ -215,6 +217,9 @@ description (the prompt and up to 240 names), MCP `ai_search`, and Ask Cmdr (det
   turns and suggestion streams at once. The disclosure (`ai.cloudConsent.*`) enumerates exactly what egresses; bump
   `CLOUD_AI_CONSENT_VERSION` when that set changes so users re-accept. MCP can't flip it. Depth:
   `apps/desktop/src-tauri/src/ai/DETAILS.md` § Cloud AI consent.
+- **An organization's policy comes before consent.** `resolve_backend` asks the managed policy first (AI off, on-device
+  only, or a cloud host list), the LLM client re-asks before every request and at every redirect hop, and no consent the
+  user gives can override it. Canonical: `apps/desktop/src-tauri/src/managed_policy/DETAILS.md`.
 
 Ask Cmdr is the widest of these, so the rest of this section is its detail. Ask Cmdr also has its own on/off switch
 (`askCmdr.enabled`); that's a feature switch, not consent.

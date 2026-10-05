@@ -24,4 +24,5 @@ per target); CI runs the same lane in `slow-checks.yml`.
   reported upstream, plus a guard in our wrapper when we can bound it.
 - **Not under `cargo deny`**: `libfuzzer-sys` is NCSA-licensed and never ships, so it stays out of the root graph.
 
-Targets, seeds, the reproduce-and-fix loop, findings so far, and what's deliberately not fuzzed: `DETAILS.md`.
+Targets, seeds, the reproduce-and-fix loop, findings so far, and what's deliberately not fuzzed: `DETAILS.md`. Read it
+before any non-trivial work here: editing, planning, reorganizing, or advising.

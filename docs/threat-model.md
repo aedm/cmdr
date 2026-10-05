@@ -9,7 +9,9 @@ there instead of restating it. Per-area privacy and hardening decisions are in `
 summary is the website's `/trust` page (`apps/website/src/lib/trust.ts`); the disclosure policy is the repo-root
 `SECURITY.md`.
 
-Verified against the code at `6b4bd4a2c` on 2026-10-05, by reading the code paths named below (not the docs alone).
+Verified against the code at `6b4bd4a2c` on 2026-10-05, by reading the code paths named below (not the docs alone); the
+security fixes, fuzzing, release environment, and managed-preferences mitigations re-checked at `218426862` the same
+day.
 
 ❗ This repo is public. Gaps an attacker could use before they're fixed are tracked in a private tracker, not here. This
 file names the boundary and says "tracked privately"; don't add exploit detail. A newly found gap goes to the private
@@ -154,9 +156,14 @@ risk.
     AI egress, the `inspect_file` item).
   - **Copy and delete** don't descend into symlinks, copy a link as a link, and write through temp+rename
     (`apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md`).
-  - **Git**: read-only by construction. Cmdr never fetches, pushes, or runs hooks (`crates/cmdr-git/CLAUDE.md`).
+  - **Git**: read-only by construction. Cmdr never fetches, pushes, or runs hooks, and strips a repo's `filter` config
+    before reading status, so a repo's own commands never run (`crates/cmdr-git/CLAUDE.md`).
+  - **Size caps before allocating**: the xz dictionary an archive asks for is capped, and a PDF page whose `Parent`
+    chain loops reads as unparseable instead of recursing (`crates/cmdr-archive/src/read/DETAILS.md` § Resource caps,
+    `apps/desktop/src-tauri/src/agent/tools/DETAILS.md`).
   - **Fuzzing**: fuzz targets cover archive names and indexes, PDF, image headers, and the S3, WebDAV, and ADB wire
-    parsers. They don't run in CI yet.
+    parsers, on demand (`pnpm check fuzz`) and in the slow CI lane every six days (`fuzz/DETAILS.md`, which also lists
+    the findings and the one open upstream issue).
 - **Residual risk**:
   - **Parsers run in Cmdr's process, unsandboxed, with Full Disk Access.** A memory-safety bug in a native dependency or
     Apple framework (ImageIO is a classic target) reached through a downloaded file would run with the user's full file
@@ -185,6 +192,13 @@ risk.
   - **WebDAV and S3**: TLS against the system trust store, redirects off so credentials never follow a cross-origin hop,
     and S3 requests SigV4-signed (`crates/cmdr-webdav/CLAUDE.md`, `crates/cmdr-s3/CLAUDE.md`).
   - **ADB and MTP**: each can be turned off in Settings > File systems; ADB talks only to a loopback server.
+  - **Peer-chosen lengths are capped before allocating**: ADB sync payloads and shell frames, WebDAV PROPFIND bodies,
+    and S3 answer bodies (`crates/cmdr-adb/DETAILS.md`, `crates/cmdr-webdav/DETAILS.md` § Bounded bodies,
+    `crates/cmdr-s3/DETAILS.md` § Responses).
+  - **A listed name can't escape the destination**: every cross-volume copy, move, and drag-out joins a name only as a
+    `ChildName` (one plain path component), whatever the backend
+    (`apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Listed names are
+    untrusted").
   - **Typed error policy per backend**, so a server's error text never decides control flow (`AGENTS.md` § Hard rules).
 - **Residual risk**:
   - **Plaintext is the user's call**: WebDAV and custom S3 endpoints accept `http://`, which sends WebDAV's Basic auth
@@ -228,15 +242,18 @@ risk.
     `apps/desktop/src/lib/updates/DETAILS.md`).
   - **Release builds are Developer ID signed and notarized** (`docs/guides/apple-signing-and-notarization.md`).
   - **The release pipeline**: release tags are SSH-signed and verified against `.github/release-signers` before a build
-    starts; only admins can create `v*` tags (a repository ruleset); the signing secrets live in a `release` environment
-    that only `v*` tags can deploy to; a release waits for a full, green CI run of its commit; every third-party action
-    is pinned to a commit SHA; each release publishes SHA-256 checksums, SLSA build provenance, and signed SBOMs
-    (`docs/guides/releasing.md`).
+    starts; only admins can create `v*` tags (a repository ruleset); the only job that signs runs in a `release`
+    environment that only `v*` tags can deploy to (six of the eight signing secrets are in it; the other two, and
+    repo-level copies of all eight, still exist until the move finishes, so today a branch workflow could still read
+    them: `docs/guides/releasing.md` § Signing secrets); a release waits for a full, green CI run of its commit; every
+    third-party action is pinned to a commit SHA; each release publishes SHA-256 checksums, SLSA build provenance, and
+    signed SBOMs (`docs/guides/releasing.md`).
   - **Account and key custody**: hardware-key 2FA on the GitHub account, and encrypted copies of every signing key
     outside GitHub and Cloudflare.
 - **Residual risk**:
-  - **One maintainer account can ship to every install**, and updates install automatically. The controls above raise
-    the bar, but there's no second-person approval. High impact, low likelihood. Already listed on `/trust`.
+  - **One maintainer account can ship to every install**, and updates install automatically (unless an organization
+    turns updates off or sets a version ceiling through managed preferences). The controls above raise the bar, but
+    there's no second-person approval. High impact, low likelihood. Already listed on `/trust`.
   - **No reproducible builds**, so a reviewer can't rebuild and compare a release.
   - **The minisign updater key can't be rotated** without a release signed by the old key; losing it strands installs on
     manual reinstall.
@@ -249,7 +266,8 @@ risk.
 - **Threats**: forged licenses (the production signing key leaking), and tampering with local status.
 - **Mitigations**: Ed25519 signatures checked offline against a public key per build mode; the production private key
   exists only as a Cloudflare Worker secret (`docs/security.md` § License signing keys,
-  `apps/desktop/src-tauri/src/licensing/DETAILS.md`).
+  `apps/desktop/src-tauri/src/licensing/DETAILS.md`). `/activate` and `/validate` are rate-limited per IP, so short
+  codes can't be guessed at speed (`apps/api-server/src/licensing/DETAILS.md`).
 - **Residual risk**: a leaked production key mints licenses every shipped build accepts, and revocation needs a new
   binary. The license gates no feature (it decides which reminder a user sees), so local tampering is accepted as having
   no security impact.
@@ -270,8 +288,9 @@ risk.
   - **Prompt injection is mitigated, not solved.** Injected text can make the agent read more than the user meant (and
     so send it to the provider), propose a harmful operation (which the user still has to approve), or save a note that
     rides along on every later turn. Medium likelihood, medium impact. The approval step is the hard boundary.
-  - **What reaches the provider is governed by the provider's terms**, not Cmdr's. Organizations can't yet disable cloud
-    AI centrally (`docs/specs/mdm-managed-preferences-plan.md`).
+  - **What reaches the provider is governed by the provider's terms**, not Cmdr's. An organization can turn AI off,
+    allow only on-device AI, or allow only listed cloud hosts through managed preferences, enforced in the backend at
+    every request and redirect hop (`apps/desktop/src-tauri/src/managed_policy/DETAILS.md`).
 
 ### 9. The backend, report data, and subprocessors
 
@@ -283,7 +302,8 @@ risk.
 - **Mitigations**:
   - **On the Mac**: report bundles are redacted before they leave, and usage stats carry a random install id that can't
     be joined to diagnostics (`docs/security.md` § Error reports, `apps/desktop/src-tauri/src/analytics/CLAUDE.md`).
-  - **On the server**: per-IP rate limits and body caps on the report endpoints; webhooks are HMAC-verified; admin
+  - **On the server**: per-IP rate limits and body caps on the report endpoints; webhooks are HMAC-verified, and a
+    Paddle webhook signed more than five minutes off is refused, so a captured one can't be replayed later; admin
     endpoints need a bearer token compared in constant time; error-report storage is size-capped; retention sweeps run
     daily (`apps/api-server/DETAILS.md`).
   - **Toward subprocessors**: Discord never gets an email address, and error-report links expire after 24 hours
@@ -335,9 +355,9 @@ Impact × likelihood, highest first. Gaps tracked privately aren't ranked here.
    NTLMv2 to a spoofed Bonjour name (boundary 4). Impact: medium. Likelihood: medium on untrusted networks.
 5. **Personal data in reports**: free-text file names in error reports, opt-out usage stats, data leaving the EU
    (boundary 9). Impact: medium (privacy, compliance). Likelihood: medium.
-6. **No central policy for enterprises**: IT can't turn off cloud AI, telemetry, or auto-update, and system proxy and
-   PAC settings aren't read (boundaries 5, 8, and 9). Impact: medium (compliance). Planned in
-   `docs/specs/mdm-managed-preferences-plan.md`.
+6. **Enterprise network policy isn't honored**: system proxy and PAC settings aren't read (boundary 5). Impact: medium
+   (compliance, availability). IT can turn off cloud AI, telemetry, and updates through managed preferences
+   (`apps/desktop/src-tauri/src/managed_policy/DETAILS.md`).
 7. **A malicious dependency** past the age window and review (boundary 10). Impact: high. Likelihood: low.
 8. **Local data at rest isn't encrypted by Cmdr** (boundary 11). Impact: medium. Likelihood: low with FileVault on.
 9. **A missed escape at a new `{@html}` site** gives script full IPC (boundary 1). Impact: high. Likelihood: low.

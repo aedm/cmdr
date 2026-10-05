@@ -223,6 +223,9 @@ All under `apps/desktop/src-tauri/src/`.
   See `apps/desktop/src-tauri/src/analytics/CLAUDE.md`
 - `send_schedule.rs`: the persisted throttle the heartbeat and the update check share (one success per interval, a retry
   floor after a failure)
+- `server_request.rs`: the one way a request reaches Cmdr's own api server (heartbeat, crash and error reports, the
+  update check and download, the S3 price list). Each caller names its `Egress`, which is also the managed-policy gate,
+  and gets a typed `ServerRequestError` back. Contract in the module doc
 - `update_schedule.rs`: when the frontend's background update check is due, persisted across relaunches. See
   `apps/desktop/src/lib/updates/DETAILS.md` § The schedule
 - `install_id.rs`: Two Rust-owned per-install random ids (`anal_` for analytics, `diag_` for diagnostics) that never
@@ -365,7 +368,9 @@ audits landed on. The two dev CLIs and the vendored fork are ordinary members.
   data types, `FileEntry`, typed error classification (`ListingError` / `ListingErrorReason` / `ErrorCategory`, errno →
   reason mapping, provider detection over 18 providers), `InMemoryVolume`, File Provider domain detection (the index
   scanner's "is this a domain root?" and the sync badge's "is any ancestor one?"), thread QoS, process-memory readers,
-  poison-free locking. The app re-exports all of it from the original paths. See `crates/cmdr-fs/CLAUDE.md`
+  poison-free locking, and `ChildName`, the proof that a name a backend listed is one plain path component, which every
+  cross-volume join takes (`apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` §
+  "Listed names are untrusted"). The app re-exports all of it from the original paths. See `crates/cmdr-fs/CLAUDE.md`
   - `src/volume/host/`: the seams a storage backend reaches its host through — pane listings, the runtime handle, typed
     connection events, credentials, index notification, settings, user activity, analytics. What a backend crate is
     written against; the app answers them from `apps/desktop/src-tauri/src/volume_host.rs`. See
@@ -474,6 +479,9 @@ audits landed on. The two dev CLIs and the vendored fork are ordinary members.
   own crate because `operation_log` is an app module, so this is the one dev tool that depends on `cmdr`
 - `crates/fsevent-stream/`: vendored fork of the FSEvents stream crate (published as `cmdr-fsevent-stream`), giving the
   drive watcher event IDs and `sinceWhen` replay. macOS-only
+- `fuzz/` (repo root, outside the workspace): libFuzzer targets for the parsers that read bytes someone else chose (ADB,
+  WebDAV, S3, archives, PDF, image headers), reached through each crate's `fuzzing` feature. Run by `pnpm check fuzz`
+  and the slow CI lane. See `fuzz/CLAUDE.md`
 
 ## Other apps
 
@@ -486,7 +494,9 @@ audits landed on. The two dev CLIs and the vendored fork are ordinary members.
   for drafting posts
 - `apps/website/public/hero/`: Hero illustration assets (frame + pane cutouts, dark/light)
 - `apps/desktop/packaging/homebrew/`: Homebrew cask shape source-of-truth and tap-bump flow
-- `scripts/check/`: Go unified check runner (~40 checks, parallel with dependency graph)
+- `scripts/check/`: Go unified check runner (~140 checks, parallel with dependency graph)
+- `.github/workflows/`: CI, plus the release: `release.yml` takes the `v*` tag and calls the reusable
+  `release-pipeline.yml`, which builds, signs, and publishes. See `tooling/ci.md` and `guides/releasing.md`
 
 ## Search
 
@@ -577,6 +587,12 @@ runs, so downloads attribute to a channel without a consent banner:
 `[a-z0-9._:-]`; the link-code/UTM sanitizer keeps `[a-z0-9._-]`. Every surface's sanitizer must normalize identically,
 or a stored value and a pass-through value diverge and attribution corrupts. The api-server is the source of truth and
 re-sanitizes; clients sanitize to reject bad input before a round-trip.
+
+## Security
+
+- `threat-model.md`: the whole-app view: assets, actors, trust boundaries with their mitigations, and the ranked
+  residual risks
+- `security.md`: the per-area mechanisms the threat model points to (entitlements, redaction, cloud AI egress, keys)
 
 ## Tooling and infrastructure
 

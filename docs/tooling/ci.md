@@ -15,6 +15,10 @@ How the GitHub workflows fit together, and the invariants that keep them honest.
 | `release.yml`           | `v*` tags                               | Only calls `release-pipeline.yml` (so attestations name the reusable workflow as signer).            |
 | `release-pipeline.yml`  | Called by `release.yml`                 | Builds, signs, and publishes the desktop app on macOS runners. `docs/guides/releasing.md`            |
 
+`slow-checks.yml` also runs the fuzz smoke job (120 s per target, findings uploaded as `fuzz-artifacts`;
+`fuzz/CLAUDE.md`). `ci.yml`'s `Full run (run_all)` job runs only on a `run_all` dispatch: both release gates match it by
+name to prove a run was full, so renaming it breaks releases (`docs/guides/releasing.md`).
+
 The website deploy is a job inside `ci.yml` (gated on the website checks passing), NOT a standalone workflow. There used
 to be a standalone `deploy-website.yml` on the same path filters; it deployed a second time per push and didn't wait for
 checks, so it could deploy a broken site. Don't reintroduce it.
