@@ -249,7 +249,9 @@ Backend events fire at success chokepoints; frontend events ride `track_event`.
   inline because the media path is an early return and the text path has a dozen `?`s.
 - `update_check` (frontend, `$lib/updates/update-analytics.ts`, once per finished check, from every exit of
   `checkForUpdates()`): `trigger` (what set it going: `startup` / `poll` / `auto_check_on` / `command` / `settings`),
-  `outcome` (`up_to_date` / `staged` / `already_staged` / `blocked` / `failed`), `failure` (the
+  `outcome` (`up_to_date` / `staged` / `already_staged` / `blocked` / `failed`, plus the organization's answers
+  `updates_disabled_by_policy` / `held_by_policy` / `automatic_checks_disabled_by_policy` / `blocked_by_policy`, none of
+  which carries the held or ceiling version), `failure` (the
   typed kind, or `none`: `check` / `download` / `install` for a phase that didn't get there, `translocated` /
   `read_only_volume` for a bundle that can't be written), and `staged_version`, the release sitting in the bundle
   waiting for a restart (one of our own release numbers, or `none`). ❌ Never a URL, a bundle path, or the text of a

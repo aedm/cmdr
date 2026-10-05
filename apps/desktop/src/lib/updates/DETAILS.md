@@ -127,6 +127,9 @@ here is where each one is raised:
 - `finishCheckWithStagedUpdate` → `staged`, carrying the version just written
 - `finishCheckWithUnwritableBundle` → `blocked`, with the arrangement as `failure`
 - `finishCheckWithFailure` → `failed`, with the phase as `failure`
+- `finishCheckWithManagedOutcome` → `updates_disabled_by_policy` or `held_by_policy` (no versions ride)
+- `finishRefusedAutomaticCheck` → `automatic_checks_disabled_by_policy`
+- `finishDownloadInstallRefusedByPolicy` → `blocked_by_policy`, with `download` or `install` as `failure`
 
 `trigger` names the entry point instead, and comes in as `checkForUpdates()`'s required first parameter so the finishers
 never have to guess:
@@ -143,6 +146,26 @@ anywhere (`error-string-match`).
 
 The event rides the analytics consent (`analytics.enabled`, default-on), NOT the crash/error-report consent. It carries
 no URL, no bundle path, and no failure text.
+
+## Managed policy (MDM)
+
+The backend applies the organization's update keys and answers typed outcomes (`src-tauri/src/updater/DETAILS.md` §
+Managed policy); this module only renders them. `checkForUpdate(trigger)` passes the analytics trigger through, which is
+how the backend tells a background check from a person asking.
+
+- **`updatesDisabledByPolicy` / `heldByPolicy`** → `finishCheckWithManagedOutcome`: status `idle`, `updateState.managed`
+  holds the outcome, and `formatUpdateStatus` words it (`updates.status.managedOff` / `updates.status.heldByPolicy`) in
+  Settings and in the menu check's toast. No failure, no report link, nothing above info in the log. A background check
+  raises no toast for it (the person can't act on a held release, and it would return every poll). A build already
+  staged stays `ready`: it's in the bundle and the restart applies it. `managed` clears when the next check starts.
+- **`automaticChecksDisabledByPolicy`** → `finishRefusedAutomaticCheck`: stops the poll loop and shows nothing. It's the
+  backstop: `locked_settings` pins `updates.autoCheck` off under `DisableAutomaticUpdateChecks`, and where the frontend
+  settings overlay applies that lock the loop never starts.
+- **A download or install refused with `blockedByPolicy`** (a profile arrived after the check) →
+  `finishDownloadInstallRefusedByPolicy`: quiet, back to `idle` (or `ready` on a staged build); the next check gets the
+  organization's answer. Read off the typed `UpdateDownloadFailure` / `UpdateInstallFailure`, ❌ never the message.
+- A managed answer still calls `recordUpdateCheck(true)`, so the schedule asks once per interval instead of every wake.
+- The Linux plugin path is out of scope: the policy source is macOS-only.
 
 ## When the bundle can't be written
 

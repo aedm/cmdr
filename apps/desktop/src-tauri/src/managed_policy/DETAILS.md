@@ -112,6 +112,11 @@ download, and the user-initiated feedback and beta signup.
   `overlay`, so a managed off is an ordinary opt-out and the heartbeat reports effective values plus a coarse
   `managedByOrganization` bool.
 - **Crash reports**: `check_pending_crash_report` discards the pending file unoffered under `DisableCrashAndErrorReports`.
+- **Updates**: `ManagedPolicy::update_to(version)` is the one version decision (`UpdateRefusal::Disabled` /
+  `AboveCeiling`). The updater asks `updates()` before a check (no request under `DisableUpdates`, none for a
+  background trigger under `DisableAutomaticUpdateChecks`), then `update_to` for the offered release, again before the
+  download and the install, and once more for the version the extracted archive names. `updater/DETAILS.md` § Managed
+  policy.
 
 ## Testing
 

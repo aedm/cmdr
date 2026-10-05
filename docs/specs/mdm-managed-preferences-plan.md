@@ -464,6 +464,25 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
   for each outcome's state and that the background loop doesn't call the command under `NoAutomaticChecks`.
 - **DONE**: each update rule behaves as specified with tests; the menu check under `DisableUpdates` shows the managed
   message instead of a check.
+- **Implementation notes** (M3 as built):
+  - One version decision, `ManagedPolicy::update_to(version) -> Result<(), UpdateRefusal { Disabled, AboveCeiling }>`,
+    asked at the check (held vs offered), before the download, before the install, and once more inside the installer.
+  - A fifth outcome, `AutomaticChecksDisabledByPolicy`: a background trigger refused under
+    `DisableAutomaticUpdateChecks` needed its own typed answer. `UpdateCheckTrigger` is now a Rust enum (snake_case, the
+    same analytics tokens), and the frontend's type aliases it.
+  - The install also judges the version the extracted `Info.plist` names (`installer::vet_staged_bundle`, after the
+    d7745e822 rollback check): `latest.json` isn't signed, so a manifest could offer a version under the ceiling and
+    serve a genuine signed release above it.
+  - `UpdateDownloadError` gained `NothingOffered` and `BlockedByPolicy`; `install_update` answers
+    `UpdateInstallError { BlockedByPolicy, NothingStaged, Failed { detail } }` as planned.
+  - The policy is asked BEFORE `skip_reason`, so a dev build with `CMDR_MANAGED_PREFS_FILE` shows the managed answer.
+  - Frontend: managed answers land in `updateState.managed` (a terminal phase); `formatUpdateStatus` words them with two
+    new keys (`updates.status.managedOff`, `updates.status.heldByPolicy`, the § Draft copy sentences), so Settings and
+    the menu check's toast already say it. M6 owns any further surface work. A refused background check stops the poll
+    loop (the backstop until M5's overlay keeps it from starting). Analytics outcomes: `updates_disabled_by_policy`,
+    `held_by_policy`, `automatic_checks_disabled_by_policy`, `blocked_by_policy`.
+  - A build already synced into the bundle (frontend `ready`) applies at the next restart whatever the policy says: on
+    macOS the install IS the sync, so "staged" in this milestone means downloaded-not-yet-installed.
 
 ### M4. AI enforcement
 

@@ -36,10 +36,38 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 - **The tarball download is typed too (`UpdateDownloadError`).** `fetch_verified_tarball` also goes through
   `crate::server_request`, so a 5xx maintenance page is a `Request { Refused }` rather than bytes that fail their
   signature. `SignatureMismatch` and `Disk` stay separate variants: the frontend logs those at error and a network
-  `Request` failure at warn. `install_update` stays a bare `String`: every install failure is local and logs at error.
+  `Request` failure at warn. `install_update` answers `UpdateInstallError` (`BlockedByPolicy`, `NothingStaged`,
+  `Failed { detail }`): every `Failed` is local and logs at error; `BlockedByPolicy` is quiet.
 - **Walk `reqwest::Error::source()` for log-friendly messages (`crate::server_request::describe_error_chain`).** `reqwest::Error`'s `Display`
   only prints the outermost layer, hiding the real cause (DNS, TCP connect timeout, TLS). Walking the source chain
   surfaces the underlying class without pulling in `anyhow`.
+
+## Managed policy (MDM)
+
+The organization's `DisableUpdates`, `DisableAutomaticUpdateChecks`, and `MaxUpdateVersion` (key catalog:
+`managed_policy/DETAILS.md`) apply at every step, each on a fresh read (`managed_policy::for_egress`):
+
+- **Check.** `check_for_update(trigger)` answers `UpdateCheckOutcome`: `UpToDate`, `Available { version }`,
+  `HeldByPolicy { available, ceiling }`, `UpdatesDisabledByPolicy`, or `AutomaticChecksDisabledByPolicy`. The last two
+  return before any request (so no `update-check` row either). `trigger` is the frontend's analytics token;
+  `startup` / `poll` / `auto_check_on` are automatic, `command` / `settings` are a person asking, which
+  `DisableAutomaticUpdateChecks` still allows. The policy is asked BEFORE `skip_reason`, so a dev build run with
+  `CMDR_MANAGED_PREFS_FILE` shows the managed answer.
+- **Offer.** Only `Available` stores the release (`UpdateInfo`: version, URL, signature) in `UpdateState.offered`; every
+  check clears the slot first, so a download can only fetch what the newest check offered under the newest policy.
+- **Download.** `download_update` takes no arguments: it fetches the offered URL, never one the frontend names, after
+  `ManagedPolicy::update_to(version)` on a fresh read (`BlockedByPolicy`, `NothingOffered`). The staged slot records the
+  version beside the tarball path.
+- **Install.** `install_update` re-asks `update_to` for the staged version on a fresh read, so a download staged before
+  a profile arrived doesn't install. Then `installer::vet_staged_bundle` asks again for the version the extracted
+  `Info.plist` names: the manifest isn't signed, so it could offer 0.52.1 under a `"0.52"` ceiling and serve a genuine,
+  signed 0.53.0. The rollback check (`refuse_unless_newer`) runs first, so an older archive is a `Failed`, not a policy
+  refusal.
+- **Already synced.** A build `install_update` already wrote into the bundle (frontend `ready`) applies at the next
+  restart whatever the policy says later: the sync is the install.
+- The ceiling compares the release core only (`UpdateCeiling::allows`), so `0.53.0-rc.1` doesn't pass `"0.52"`.
+- Out of scope: the Linux Tauri-plugin path (the frontend calls `@tauri-apps/plugin-updater` directly), since the policy
+  source is macOS-only.
 
 ## A bundle that can't be written
 
