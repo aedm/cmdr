@@ -143,8 +143,8 @@ Rules canonical elsewhere are one line here plus the pointer; the rest are canon
   census: `rust-heap-attribution-2026-09-23.md`.
 - **SMB sockets**: fixed in `smb2` 0.24.1, and pinned in Cmdr by a mount/unmount Docker cell:
   `smb2-socket-lifetime-2026-09-23.md`.
-- **mDNS log storm**: `vendor/mdns-sd` stops a multicast-join retry every 5 s on machines with a VM bridge:
-  `docs/notes/mdns-sd-multicast-join-retry-loop.md`.
+- **mDNS log storm**: fixed upstream in `mdns-sd` 0.21.5, which is Cmdr's floor:
+  `apps/desktop/src-tauri/src/network/DETAILS.md`.
 - **`memory_diagnostics` over MCP**, release builds included: `docs/tooling/memory-debugging.md`.
 - **Each CLIP tower loads on demand**, so enrichment never pays for the text tower:
   `crates/cmdr-index/src/media_index/clip/DETAILS.md` § "What holding the towers costs". **A rescan-anchor storm costs
@@ -208,8 +208,6 @@ Items that don't move the targets, each tracked in its own issue:
   stay low at the burst peak as well as at rest.
 - #317: the parked `bridge*` interface filter for mDNS (needs a decision).
 - #318: `SmbClient::close()` (LOGOFF) in `smb2`.
-- #319: drop the `vendor/mdns-sd` fork once upstream releases the fix (keepsimple1/mdns-sd#513, open). The guard that it
-  resolves from `vendor/` is `desktop-rust-vendor-patch-applied`.
 - #321: the CPU half of the diagnostics instrument (per-thread CPU and wakeups over MCP).
 - #323: a stuck-loop watchdog at the log sink, and third-party `log::error!` reaching Flow B.
 - #324: share lists prefetched for every discovered SMB host at launch.

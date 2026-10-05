@@ -16,9 +16,8 @@ import (
 // A `[patch]` applies only while the version a dependent asks for matches the
 // patched copy's. A bump past it (Renovate would do it) makes cargo resolve
 // crates.io again, park the patch under `[[patch.unused]]`, and say so in one
-// build warning nobody reads. For `vendor/mdns-sd` that quietly brings back a
-// failed multicast join every five seconds on every Mac with a VM bridge
-// (`docs/notes/mdns-sd-multicast-join-retry-loop.md`).
+// build warning nobody reads, and the bug the fork exists to fix quietly ships
+// again.
 //
 // The lockfile is the whole answer, so this reads it rather than asking cargo: a
 // path package carries no `source`, a crates.io one does. Three ways it fails:

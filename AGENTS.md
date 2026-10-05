@@ -118,9 +118,8 @@ Writing them:
   GitHub issues, ❌ not specs), `docs/notes/README.md`, `style-guide.md`, `design-principles.md`, `security.md`,
   `maintenance.md`.
 - `tools/`: dev tooling outside every workspace and check: `tools/intellij-plugin/`, `tools/privatesize-poc/README.md`.
-- `vendor/`: third-party crates we patch and swap in via `[patch.crates-io]`, byte-identical to their published source
-  apart from the fix. Not workspace members, and out of jurisdiction for repo-wide tooling. Today: `vendor/mdns-sd`
-  (`docs/notes/mdns-sd-multicast-join-retry-loop.md`).
+- `vendor/` (empty today): a third-party crate we patch goes here, swapped in via `[patch.crates-io]` and identical to
+  upstream apart from the fix. Tooling skips it; `desktop-rust-vendor-patch-applied` guards the patch.
 - `scripts/check/`: the Go check runner. `.github/workflows/`: CI.
 
 ## Dependencies
