@@ -141,13 +141,12 @@ mod send_schedule;
 // `Cmdr > Services`: what Cmdr tells AppKit it can hand a service, and what the selection is at the
 // moment one is picked. macOS only. An outer `///` here would merge with the module's own `//!`
 // header and break its intra-doc links (see the `rustdoc` check's hint).
+mod server_request;
 #[cfg(target_os = "macos")]
 pub mod services_menu;
 mod settings;
 // The saved-and-live SFTP and WebDAV servers, as volume rows. Gated with
 // `network`, whose stores it reads.
-/// One request to Cmdr's own api server, and the typed answer when it doesn't land.
-mod server_request;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod server_volumes;
 mod short_id;
