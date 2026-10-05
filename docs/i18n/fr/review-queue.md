@@ -61,9 +61,6 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
   (`settings.behavior.textEditorApp.label`), **`Vous ne verrez ce message qu’une seule fois.`**
   (`main.escapeFullScreenHint.*`), **`Le transfert n’avance plus.`** (the sentence shape).
 - **The online-only delete warnings** (`fileOperations.delete.cloudOnline*`): shipped as a draft, never read by a human.
-- **`Désactivé` as the managed card's shared Off value** (`settings.managed.summary.off`): it sits beside feminine and
-  plural labels (`Statistiques d’usage`, `Mises à jour`, `IA`). Read as an invariant switch state, the way Windows
-  French toggles and `settings.ai.provider.opt.off` write it; confirm it doesn't read as a missed agreement.
 
 ## Overflow (check against the `en-XA` pseudolocale)
 
