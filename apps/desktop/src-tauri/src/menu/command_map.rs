@@ -169,6 +169,9 @@ pub const SWITCH_PANE_ID: &str = "switch_pane";
 /// Menu item ID for Swap Panes.
 pub const SWAP_PANES_ID: &str = "swap_panes";
 
+/// Menu item ID for cloning the focused folder into the other pane.
+pub const CLONE_PANE_ID: &str = "clone_pane";
+
 /// Menu item ID for Calculate folder sizes (View menu, ⌥⇧⏎).
 pub const CALCULATE_FOLDER_SIZES_ID: &str = "calculate_folder_sizes";
 
@@ -366,6 +369,7 @@ pub fn menu_id_to_command(menu_id: &str) -> Option<(&'static str, CommandScope)>
         // Pane commands (file-scoped)
         SWITCH_PANE_ID => Some(("pane.switch", CommandScope::FileScoped)),
         SWAP_PANES_ID => Some(("pane.swap", CommandScope::FileScoped)),
+        CLONE_PANE_ID => Some(("pane.clone", CommandScope::FileScoped)),
         CALCULATE_FOLDER_SIZES_ID => Some(("view.calculateFolderSizes", CommandScope::FileScoped)),
 
         // Navigation commands (file-scoped)
@@ -490,6 +494,7 @@ pub fn command_id_to_menu_id(command_id: &str) -> Option<&'static str> {
         "cmdr.openOnboarding" => Some(OPEN_ONBOARDING_ID),
         "pane.switch" => Some(SWITCH_PANE_ID),
         "pane.swap" => Some(SWAP_PANES_ID),
+        "pane.clone" => Some(CLONE_PANE_ID),
         "view.calculateFolderSizes" => Some(CALCULATE_FOLDER_SIZES_ID),
         "nav.back" => Some(GO_BACK_ID),
         "nav.forward" => Some(GO_FORWARD_ID),
@@ -687,6 +692,7 @@ mod tests {
             "app.commandPalette",
             "pane.switch",
             "pane.swap",
+            "pane.clone",
             "view.calculateFolderSizes",
             "nav.back",
             "nav.forward",

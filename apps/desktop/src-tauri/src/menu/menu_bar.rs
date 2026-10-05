@@ -37,7 +37,7 @@ use super::menu_spec::{
 };
 use super::{
     ABOUT_ID, ACKNOWLEDGEMENTS_ID, APP_MENU_ID, ASK_CMDR_ID, CALCULATE_FOLDER_SIZES_ID, CHANGELOG_ID,
-    CHECK_FOR_UPDATES_ID, CLOSE_OTHER_TABS_ID, CLOSE_TAB_ID, COMMAND_PALETTE_ID, COMPARE_DIRECTORIES_ID,
+    CHECK_FOR_UPDATES_ID, CLONE_PANE_ID, CLOSE_OTHER_TABS_ID, CLOSE_TAB_ID, COMMAND_PALETTE_ID, COMPARE_DIRECTORIES_ID,
     COPY_FILENAME_ID, COPY_PATH_ID, DESELECT_ALL_ID, DESELECT_FILES_ID, EDIT_COPY_ID, EDIT_CUT_ID, EDIT_ID,
     EDIT_MENU_ID, EDIT_PASTE_ID, EDIT_PASTE_MOVE_ID, ENTER_LICENSE_KEY_ID, FAVORITES_ADD_ID, FAVORITES_OPEN_ID,
     FILE_COMPRESS_ID, FILE_COPY_ID, FILE_DELETE_ID, FILE_DELETE_PERMANENTLY_ID, FILE_DUPLICATE_ID, FILE_MENU_ID,
@@ -332,6 +332,7 @@ pub(crate) const MENU_BAR: &[BarMenu] = &[
             // Tab conflicts with GTK's own keyboard navigation, so Linux leaves it to JS dispatch.
             item(SWITCH_PANE_ID, "menu.view.switchPane", macos("Tab")),
             item(SWAP_PANES_ID, "menu.view.swapPanes", both("Cmd+U")),
+            item(CLONE_PANE_ID, "menu.view.clonePane", both("Cmd+Shift+C")),
             item(
                 CALCULATE_FOLDER_SIZES_ID,
                 "menu.view.calculateFolderSizes",

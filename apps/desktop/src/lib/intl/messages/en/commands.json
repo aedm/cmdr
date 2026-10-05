@@ -289,6 +289,14 @@
     "description": "Command name that swaps the contents of the left and right panes. \"Panes\" are the two side-by-side file lists. Appears in the command palette.",
     "screenshot": "settings-keyboard-shortcuts.png"
   },
+  "commands.paneClone.label": "Clone pane",
+  "@commands.paneClone.label": {
+    "description": "Command name that opens the focused pane's folder in the other pane too, so both panes show the same folder. \"Pane\" is one of the two side-by-side file lists. Appears in the command palette and the View menu."
+  },
+  "commands.paneClone.description": "Open this pane’s folder in the other pane too.",
+  "@commands.paneClone.description": {
+    "description": "Longer help text for the \"Clone pane\" command, shown as a secondary line in the command palette."
+  },
   "commands.paneLeftVolumeChooser.label": "Open left volume switcher",
   "@commands.paneLeftVolumeChooser.label": {
     "description": "Command name that opens the volume/location switcher for the LEFT pane. \"Volume\" is a disk or mounted location. Appears in the command palette. The key says “chooser” only because it mirrors a stored command id; the UI calls this the volume switcher.",

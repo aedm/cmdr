@@ -7,7 +7,9 @@
  * When the source pane is focused, the cursor refines the destination:
  * cursor-on-folder uses the folder's path; cursor-on-server (network browser)
  * sets the target's selected host; cursor-on-share (share browser) queues
- * auto-mount on the target. All navigation uses `source: 'mirror'`, which keeps
+ * auto-mount on the target. `followCursor: false` skips that refinement: Clone
+ * pane (`pane.clone`, ⌘⇧C, TC's "Target = Source") copies the location exactly.
+ * All navigation uses `source: 'mirror'`, which keeps
  * focus on the source pane (no focus shift, L1); `restoreFocus` re-anchors STORE
  * focus to wherever it was, so the user keeps working where they were.
  */
@@ -89,7 +91,7 @@ export function createPaneMirror(deps: PaneMirrorDeps): PaneMirror {
     restoreFocus(originalFocused)
   }
 
-  function copyPathBetweenPanes({ source, target }: CopyPathBetweenPanesArgs): void {
+  function copyPathBetweenPanes({ source, target, followCursor = true }: CopyPathBetweenPanesArgs): void {
     if (source === target) return
     const sourcePaneRef = deps.getPaneRef(source)
     if (!sourcePaneRef) return
@@ -98,7 +100,8 @@ export function createPaneMirror(deps: PaneMirrorDeps): PaneMirror {
     const sourcePath = deps.getPanePath(source)
     const sourceHistoryEntry = getCurrentEntry(deps.getPaneHistory(source))
     const sourceHost = sourceHistoryEntry.networkHost ?? null
-    const sourceFocused = deps.getFocusedPane() === source
+    // The cursor refines the destination only on a focused source, and only when asked.
+    const sourceFocused = followCursor && deps.getFocusedPane() === source
 
     // Normal listing on the source: cursor-on-folder refines the path.
     if (sourceVolumeId !== 'network') {

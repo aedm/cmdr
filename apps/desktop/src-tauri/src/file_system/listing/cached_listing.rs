@@ -313,8 +313,12 @@ impl CachedListing {
     /// ranges, stats, selection indices, and type-to-jump can never disagree
     /// about what the pane is showing.
     pub(crate) fn rows(&self, include_hidden: bool) -> VisibleRows<'_> {
-        self.visible_rows
-            .rows(&self.entries, include_hidden, self.name_filter.as_ref(), &self.scratch_projection)
+        self.visible_rows.rows(
+            &self.entries,
+            include_hidden,
+            self.name_filter.as_ref(),
+            &self.scratch_projection,
+        )
     }
 
     /// The pane's quick filter, if any.
@@ -332,7 +336,6 @@ impl CachedListing {
         }
         changed
     }
-
 
     /// Whether the pane showing this listing shows hidden entries.
     pub(crate) fn include_hidden(&self) -> bool {
@@ -367,7 +370,10 @@ impl CachedListing {
 
     pub(crate) fn shows(&self, entry: &FileEntry) -> bool {
         self.scratch_projection.shows(entry, self.include_hidden)
-            && self.name_filter.as_ref().is_none_or(|filter| filter.matches(&entry.name))
+            && self
+                .name_filter
+                .as_ref()
+                .is_none_or(|filter| filter.matches(&entry.name))
     }
 
     /// Commit projection drift BEFORE any consumer interprets old row indices.
@@ -382,7 +388,10 @@ impl CachedListing {
             let new: Vec<_> = self
                 .entries
                 .iter()
-                .filter(|e| next.shows(e, self.include_hidden) && self.name_filter.as_ref().is_none_or(|filter| filter.matches(&e.name)))
+                .filter(|e| {
+                    next.shows(e, self.include_hidden)
+                        && self.name_filter.as_ref().is_none_or(|filter| filter.matches(&e.name))
+                })
                 .collect();
             super::diff::diff_rows(&old, &new)
         };
@@ -395,7 +404,13 @@ impl CachedListing {
         let next = ScratchProjection::for_entries(&entries, &self.scratch_projection);
         let changes = {
             let old: Vec<_> = self.pane_rows().iter().collect();
-            let new: Vec<_> = entries.iter().filter(|e| next.shows(e, self.include_hidden) && self.name_filter.as_ref().is_none_or(|filter| filter.matches(&e.name))).collect();
+            let new: Vec<_> = entries
+                .iter()
+                .filter(|e| {
+                    next.shows(e, self.include_hidden)
+                        && self.name_filter.as_ref().is_none_or(|filter| filter.matches(&e.name))
+                })
+                .collect();
             super::diff::diff_rows(&old, &new)
         };
         self.scratch_projection = next;

@@ -71,6 +71,7 @@ const EXPECTED_NAMES: Record<string, string> = {
   'sort.set': 'Set pane sort',
   'pane.switch': 'Switch pane',
   'pane.swap': 'Swap panes',
+  'pane.clone': 'Clone pane',
   'pane.leftVolumeChooser': 'Open left volume switcher',
   'pane.rightVolumeChooser': 'Open right volume switcher',
   'pane.copyPathLeftToRight': 'Copy path from left to right pane',
@@ -203,6 +204,7 @@ const EXPECTED_DESCRIPTIONS: Record<string, string | undefined> = {
     'Add the focused pane’s current folder to your favorites, so the favorites menu can take you back to it.',
   'favorites.open': 'Open the favorites menu on the focused pane, and press a number to jump to that favorite.',
   'downloads.goToLatest': 'Open ~/Downloads and select the most recent file.',
+  'pane.clone': 'Open this pane’s folder in the other pane too.',
   'pane.copyPathLeftToRight':
     'Open the left pane’s location on the right. When the left pane is focused and the cursor is on a folder, that folder opens on the right instead.',
   'pane.copyPathRightToLeft':
