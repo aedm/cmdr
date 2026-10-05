@@ -199,7 +199,10 @@ reaches every window, and only this one has a corner).
 conversation id) plus the readiness gap. The turn stream carries a turn's PROGRESS to whoever is showing that thread;
 this carries a phase to a corner showing no thread at all, so folding them would subscribe the corner to every text
 delta of every rail send. The one read at startup is not redundant with the subscription: a wake already running when
-the window opened announced itself before anyone was listening, and so did a gate that closed before then.
+the window opened announced itself before anyone was listening, and so did a gate that closed before then. The
+subscription goes up first and the seed loses to any event that lands while its read is in flight (an event counter
+compared across the `await`): that event is newer, and applying the seed after it would put a just-started wake back to
+idle.
 
 ### What renders, and what does not
 
@@ -596,7 +599,8 @@ fake path — which never sets a real provider — needs the gate to treat the f
 - **Cost footer** (`AskCmdrCostFooter.svelte` + pure `ask-cmdr-cost.ts`): the active thread's cumulative tokens + cost,
   refetched (`ask_cmdr_conversation_cost`) when the thread changes or a turn finishes streaming. Honest miss-path: a
   local-only thread reads "free, on-device", an unpriced model reads "cost unknown", a priced thread shows "about
-  {amount}" — never a silent $0. Hidden until a metered turn exists.
+  {amount}" — never a silent $0. Hidden until a metered turn exists. A fetched total is keyed by the thread it was read
+  for: a thread switch hides it at once, and a slow read for a thread the user already left is dropped.
 - **Settings section** (`settings/sections/AskCmdrSection.svelte`, top-level `Ask Cmdr`): the `askCmdr.enabled` switch,
   a "cloud AI is off" hint plus an "Open AI settings" button when it's on over Cloud without consent, the provider hint
   (reads `ai.provider`) + the interactive-model row (`askCmdr.interactiveModel`), the two memory controls, and the
