@@ -1,6 +1,6 @@
-//! The ONE mapping from policy to settings-registry ids. The frontend overlay and MCP
-//! `set_setting` read [`locked_settings`]; backend readers of a raw `settings.json` map go through
-//! [`overlay`], its Rust twin.
+//! The ONE mapping from policy to settings-registry ids. The frontend overlay reads
+//! [`locked_settings`] and MCP `set_setting` asks [`refuses_write`]; backend readers of a raw
+//! `settings.json` map go through [`overlay`], its Rust twin.
 
 use serde::{Deserialize, Serialize};
 
@@ -101,6 +101,18 @@ pub fn locked_settings(policy: &ManagedPolicy) -> Vec<LockedSetting> {
         ]),
     }
     locked
+}
+
+/// Whether `policy` refuses writing `value` to setting `id`: a `Fixed` lock refuses every write, a
+/// `DisallowedValues` lock only its own values. MCP `set_setting` asks this before the round trip.
+pub fn refuses_write(policy: &ManagedPolicy, id: &str, value: &serde_json::Value) -> bool {
+    locked_settings(policy)
+        .into_iter()
+        .filter(|locked| locked.id == id)
+        .any(|locked| match locked.lock {
+            SettingLock::Fixed { .. } => true,
+            SettingLock::DisallowedValues { values, .. } => values.iter().any(|v| serde_json::Value::from(v) == *value),
+        })
 }
 
 /// Applies `policy`'s locks to a raw `settings.json` map in memory, so a backend reader sees the
@@ -257,6 +269,29 @@ mod tests {
             json,
             json!({ "id": "ai.provider", "lock": { "kind": "disallowedValues", "values": ["cloud"], "fallback": "off" } })
         );
+    }
+
+    #[test]
+    fn a_fixed_lock_refuses_every_write_and_a_disallow_lock_only_its_values() {
+        let off = ManagedPolicy {
+            usage_stats_disabled: true,
+            ..Default::default()
+        };
+        assert!(refuses_write(&off, "analytics.enabled", &json!(false)));
+        assert!(refuses_write(&off, "analytics.enabled", &json!(true)));
+        assert!(!refuses_write(&off, "updates.crashReports", &json!(true)));
+
+        let local_only = ManagedPolicy {
+            cloud_ai_disabled: true,
+            ..Default::default()
+        };
+        assert!(refuses_write(&local_only, "ai.provider", &json!("cloud")));
+        assert!(!refuses_write(&local_only, "ai.provider", &json!("local")));
+        assert!(!refuses_write(
+            &ManagedPolicy::default(),
+            "ai.provider",
+            &json!("cloud")
+        ));
     }
 
     #[test]

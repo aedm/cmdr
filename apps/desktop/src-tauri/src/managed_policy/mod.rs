@@ -22,7 +22,7 @@ pub use cache::{current, for_egress, init, refresh};
 pub use ceiling::UpdateCeiling;
 pub use egress::Egress;
 pub use hosts::HostPattern;
-pub use locked::{LockedSetting, locked_settings, overlay};
+pub use locked::{LockedSetting, locked_settings, overlay, refuses_write};
 pub use refusal::{AiDestination, ManagedAiRefusal};
 pub use view::{ManagedPolicyChanged, ManagedPolicyView};
 

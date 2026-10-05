@@ -166,7 +166,10 @@ provider-egress question and `CLOUD_AI_CONSENT_VERSION` are unchanged by this ti
   `notSettableOverMcp` refusal: the registry marks it `mcpSettable: false`, and the frontend bridge
   (`apps/desktop/src/lib/settings/mcp-main-bridge.ts`) reads that mark, ❌ never an id list. An AI client must never undo
   a consent answer. `askCmdr.enabled` is marked too: it isn't consent, but on Local it starts a proactive loop, so a
-  client mustn't switch it on. Every other setting, hidden ones included, stays settable.
+  client mustn't switch it on. A setting the organization's managed policy locks is refused in Rust BEFORE the round
+  trip, with `data.reason: "managedByOrganization"` (`managed_policy::refuses_write`, which reads `locked_settings`: a
+  `Fixed` lock refuses every write, a `DisallowedValues` lock only its values, so `ai.provider: "local"` still goes
+  through under `DisableCloudAI`). Every other setting, hidden ones included, stays settable.
 - Indexing (1): `indexing` (`action` = `enable` | `disable` | `rescan` | `forget`, `volumeId`). A thin
   adapter over `commands::indexing` (`enable_drive_index` / `disable_drive_index` / `rescan_drive_index` /
   `forget_drive_index`) — no FE dispatch, no invented ack (the `connect_to_server` precedent). `enable`/`rescan` map the

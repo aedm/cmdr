@@ -543,6 +543,10 @@ pub async fn execute_set_setting<R: Runtime>(app: &AppHandle<R>, params: &Value)
         .get("value")
         .ok_or_else(|| ToolError::invalid_params("Missing 'value' parameter"))?;
 
+    if let Some(refusal) = managed_write_refusal(id, value) {
+        return Err(refusal);
+    }
+
     mcp_round_trip(
         app,
         "mcp-set-setting",
@@ -550,6 +554,17 @@ pub async fn execute_set_setting<R: Runtime>(app: &AppHandle<R>, params: &Value)
         format!("OK: Set '{id}' to {value}"),
     )
     .await
+}
+
+/// The organization's policy refuses this write: checked here, before the round trip, so the
+/// frontend's own refusal is the backstop rather than the gate. `data.reason` is the contract.
+fn managed_write_refusal(id: &str, value: &Value) -> Option<ToolError> {
+    crate::managed_policy::refuses_write(&crate::managed_policy::current(), id, value).then(|| {
+        ToolError::invalid_params(format!(
+            "'{id}' is managed by the organization's policy on this Mac, so it can't be changed here, not even in Cmdr itself."
+        ))
+        .with_data(json!({ "reason": "managedByOrganization" }))
+    })
 }
 
 #[cfg(test)]
@@ -711,5 +726,29 @@ mod operation_await_tests {
             ]),
             "op-a=Paused, op-b=Done"
         );
+    }
+}
+
+#[cfg(test)]
+mod set_setting_tests {
+    use super::*;
+    use crate::managed_policy::testing::{DISABLE_CLOUD_AI, DISABLE_USAGE_STATS, forcing, override_for_test};
+
+    /// A setting the organization manages never reaches the frontend: the client gets a typed
+    /// reason it can relay, not a sentence to parse.
+    #[test]
+    fn a_managed_setting_is_refused_with_a_typed_reason() {
+        let _policy = override_for_test(forcing(&[DISABLE_USAGE_STATS]));
+        let err = managed_write_refusal("analytics.enabled", &json!(true)).expect("refused");
+        assert_eq!(err.code, ToolError::invalid_params("").code);
+        assert_eq!(err.data, Some(json!({ "reason": "managedByOrganization" })));
+    }
+
+    #[test]
+    fn only_the_disallowed_value_of_a_narrowed_setting_is_refused() {
+        let _policy = override_for_test(forcing(&[DISABLE_CLOUD_AI]));
+        assert!(managed_write_refusal("ai.provider", &json!("cloud")).is_some());
+        assert!(managed_write_refusal("ai.provider", &json!("local")).is_none());
+        assert!(managed_write_refusal("analytics.enabled", &json!(true)).is_none());
     }
 }
