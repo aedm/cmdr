@@ -188,8 +188,7 @@ the installed macOS `pt_BR.lproj` bundles.
   `varredura`.
 - Agreement is grammar, not drift; never unify `Ambos` / `Ambas`, `Revertida` / `Revertido`, `Modificado` /
   `Modificados`. Noun vs verb: `Pré-visualização` vs `Pré-visualizar`, `Busca` (a section) vs `Buscar`.
-- `Tentar novamente` on buttons (Finder), `tente de novo` in prose (about 100 values). ❌ Never sweep `de novo` →
-  `novamente`.
+- `Tentar novamente` on buttons (Finder), `tente de novo` in prose. ❌ Never sweep `de novo` → `novamente`.
 - `Em execução` (a running server) vs `Em andamento` (a task); `memória` (RAM) vs `anotações` (Ask Cmdr's memory).
 - `viewer.saveAs.defaultName` is `selecao` without the cedilla on purpose: it's a default file name.
 
@@ -299,13 +298,12 @@ the installed macOS `pt_BR.lproj` bundles.
 
 - sign in → `iniciar sessão` (`iniciar a sessão` in prose); signed out → `Sessão encerrada`, which agrees with the
   session, not the person. Disconnect a server, never `Ejetar`.
-- `servers.refusal.authMethodUnsupported` makes `O Cmdr` the subject: keeping the server there needs a clumsy `a que`.
+- `servers.refusal.authMethodUnsupported`: subject `O Cmdr` skips a clumsy `a que`.
 - `forgetServerConfirm` / `forgetShareConfirm` / `removeHostConfirm` / `forgetSecretConfirm` write the noun
   (`tira esse servidor` / `compartilhamento` / `host`, `a senha`), never a pronoun or participle on `{name}`: so
   `O Cmdr esqueceu {hostName}`, `O Cmdr salvou {name}`, `O Cmdr encontrou {name} por perto`.
 - "as {username}" / "as guest" → `como {username}` / `como convidado`, the `Conectar como convidado` frame; the button
-  is `Usar como convidado`. `notConnected` → `Não conectado a {name}`: `{name} não está conectado` would agree with the
-  name, and `Sem conexão` reads as a network fault (review queue).
+  is `Usar como convidado`. `notConnected` → `Não conectado a {name}` (why: review queue).
 
 ## Server hub (`servers.hub.*`, `commands.servers*`, `fileExplorer.navigation.serverPinnedToast`/`serverUnpinnedToast`/`pinRefusedToast`/`networkVolume`, `shortcuts.scope.servers`/`places`)
 
@@ -355,10 +353,9 @@ the installed macOS `pt_BR.lproj` bundles.
 
 ## Onboarding (`onboarding.moreAbout`, `onboarding.wizard.stepTooltip`, `onboarding.stepFda.why`/`.ifAllow`, `onboarding.stepAi.*`, `onboarding.stepBeta.checklist.*`/`.signup.*`/`.openBeta`, `onboarding.stepOptional.*.summary`)
 
-- GitHub star: the button is `Adicionar aos favoritos` (GitHub pt), the count is `estrelas`. Different words on purpose,
-  matching what the person sees on GitHub.
+- GitHub star: button `Adicionar aos favoritos` (GitHub pt), count `estrelas`, as GitHub shows them.
 - step → `etapa` everywhere in onboarding, never `passo`. `Rede Local` quoted exactly as the macOS privacy row, never
-  the paraphrase `Acesso à rede local`, which doesn't exist there.
+  `Acesso à rede local`.
 - The four `stepOptional.*.summary` lines have the switch as implied subject and must not wrap: same length or shorter
   than English. `processo nativo do macOS` over MS `manipulador`, matching the caption behind it.
 - `stepAi.local.tooltip` quotes `stepAi.cloud.label` byte for byte, and the signup status lines name `Salvar`: change
@@ -424,3 +421,8 @@ the installed macOS `pt_BR.lproj` bundles.
 
 - `apague o original por conta própria`: `você mesmo` would mark the masculine (`tentative`, nothing in the pile).
 - `deletePending.message` says `para ser apagado`, the `Apagar` family ruled for delete.
+
+## What your organization manages (MDM) (`*.managed.*`, `updates.status.managedOff`/`heldByPolicy`)
+
+- No agreeing participle: `O que sua organização gerencia`, `Só verificação manual`. `Off` → invariant toggle-state
+  `Desativado` (review queue).

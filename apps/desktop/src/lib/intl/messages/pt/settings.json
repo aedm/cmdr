@@ -1205,7 +1205,7 @@
   "@settings.updates.crashReports.description": {
     "sourceHash": "e726766"
   },
-  "settings.updates.errorReports.label": "Enviar relatórios de erro automaticamente",
+  "settings.updates.errorReports.label": "Enviar relatórios de problema automaticamente",
   "@settings.updates.errorReports.label": {
     "sourceHash": "471575d"
   },
@@ -2071,6 +2071,58 @@
   "settings.control.backToPresetsAriaLabel": "Voltar às predefinições",
   "@settings.control.backToPresetsAriaLabel": {
     "sourceHash": "1579f3f"
+  },
+  "settings.managed.rowNote": "Sua organização gerencia este ajuste.",
+  "@settings.managed.rowNote": {
+    "sourceHash": "891206b"
+  },
+  "settings.managed.sectionNote": "Sua organização gerencia alguns destes ajustes.",
+  "@settings.managed.sectionNote": {
+    "sourceHash": "ab52c49"
+  },
+  "settings.managed.summary.title": "O que sua organização gerencia",
+  "@settings.managed.summary.title": {
+    "sourceHash": "5450801"
+  },
+  "settings.managed.summary.usageStats": "Estatísticas de uso",
+  "@settings.managed.summary.usageStats": {
+    "sourceHash": "4e0483c"
+  },
+  "settings.managed.summary.reports": "Relatórios de falha e de problema",
+  "@settings.managed.summary.reports": {
+    "sourceHash": "ef409c3"
+  },
+  "settings.managed.summary.updates": "Atualizações",
+  "@settings.managed.summary.updates": {
+    "sourceHash": "22e2bad"
+  },
+  "settings.managed.summary.ai": "IA",
+  "@settings.managed.summary.ai": {
+    "sourceHash": "11fb682"
+  },
+  "settings.managed.summary.off": "Desativado",
+  "@settings.managed.summary.off": {
+    "sourceHash": "ca7981b"
+  },
+  "settings.managed.summary.upTo": "Até {ceiling}",
+  "@settings.managed.summary.upTo": {
+    "sourceHash": "8989a97"
+  },
+  "settings.managed.summary.manualChecksOnly": "Só verificação manual",
+  "@settings.managed.summary.manualChecksOnly": {
+    "sourceHash": "1969d26"
+  },
+  "settings.managed.summary.upToManualChecksOnly": "Até {ceiling}, só verificação manual",
+  "@settings.managed.summary.upToManualChecksOnly": {
+    "sourceHash": "c769ffd"
+  },
+  "settings.managed.summary.onDeviceOnly": "Só no dispositivo",
+  "@settings.managed.summary.onDeviceOnly": {
+    "sourceHash": "d4f8552"
+  },
+  "settings.managed.summary.cloudHostsOnly": "IA na nuvem só via {hosts}",
+  "@settings.managed.summary.cloudHostsOnly": {
+    "sourceHash": "00f1237"
   },
   "settings.sidebar.searchPlaceholder": "Buscar ajustes…",
   "@settings.sidebar.searchPlaceholder": {

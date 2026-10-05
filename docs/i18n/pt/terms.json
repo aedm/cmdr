@@ -1579,7 +1579,10 @@
       }
     ],
     "confidence": "confirmed",
-    "sources": "macOS Finder pt-BR; MS terminology pt-BR; NetAuthAgent"
+    "sources": "macOS Finder pt-BR; MS terminology pt-BR; NetAuthAgent",
+    "exceptions": {
+      "errorReporter.dialog.managedOff": "\"share it yourself\" is the verb (pass the report on), not a network share: compartilhá-lo por conta própria."
+    }
   },
   "new-file": {
     "chosen": "Novo arquivo",
@@ -1650,6 +1653,13 @@
     "confidence": "high",
     "sources": "shipped pt catalog"
   },
+  "on-device": {
+    "chosen": "no dispositivo",
+    "forms": "on-device AI → a IA no dispositivo; On-device only → Só no dispositivo; free, on-device → grátis, no dispositivo",
+    "confidence": "high",
+    "sources": "catalog (askCmdr.cost.free grátis, no dispositivo; ai.local.notInstalled roda inteiramente no seu dispositivo); no pile hit in the mined macOS pt-BR Finder / System Settings",
+    "decision": "What your organization manages (MDM)"
+  },
   "open": {
     "chosen": "Abrir",
     "accept": ["abr", "abert"],
@@ -1707,6 +1717,14 @@
     "accept": ["opção"],
     "confidence": "high",
     "sources": "shipped pt catalog"
+  },
+  "organization": {
+    "chosen": "organização",
+    "accept": ["organizações", "Organização"],
+    "forms": "your organization → sua organização (feminine); manages → gerencia (Sua organização gerencia este ajuste); your IT team → sua equipe de TI",
+    "confidence": "high",
+    "sources": "MS terminology pt-BR (organization → organização, BRA); catalog (licensing.about.fallbackOrg sua organização; errors equipe de TI; managed → gerenciado, style.md)",
+    "decision": "What your organization manages (MDM)"
   },
   "original": {
     "accept": ["originais"],
