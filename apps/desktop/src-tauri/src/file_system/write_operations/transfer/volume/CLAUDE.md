@@ -14,19 +14,17 @@ merge/staging engine (`strategy.rs`, `merge.rs`). File map: `DETAILS.md` § File
 - **Dir-vs-dir is NEVER a conflict**, and only for REAL dirs: ask `rename_merge::merges_as_a_directory` (an entry)
   or `Volume::entry_kind` (a path), ❌ never `is_directory` (it follows links). `transfer/DETAILS.md` § "Symlinks are
   opaque to a move".
-- **Overwrite means merge for dirs, replace for files**, enforced at the `apply_volume_conflict_resolution` call site,
-  ❌ not by `Volume::delete`; NOT reversible. A BLANKET Overwrite ❌ never crosses types (`../../CLAUDE.md`); an
-  answered one sets the dest ASIDE (`ResolvedConflict::displaced`).
+- **Overwrite merges dirs and replaces files**, enforced at `apply_volume_conflict_resolution`, ❌ not `Volume::delete`;
+  NOT reversible. A BLANKET one ❌ never crosses types (`../../CLAUDE.md`); an answered one sets the dest ASIDE.
 - **A MOVE's source sweep deletes the walk's LEDGER, ❌ never the tree** (`source_sweep.rs`): Skips, newcomers, and
   changed files stay.
 - **❌ Never fabricate a destination size for the conflict dialog**: `None` (a fake `0` makes "Overwrite all smaller"
   unconditional).
 - **Skip the dest pre-check ONLY for a dir THIS op created** (`DirectoryCreation::Created`), ❌ never one that looks
-  empty. Every name asks `landing.rs`: a look-alike is taken (by ITS bytes), only free names respell, and an
-  unanswerable probe fails the item.
-- **A listed name joins a destination ONLY as a `ChildName`** (`cmdr_fs::volume::ChildName`): a hostile server or
-  device lists `../x` or `/x`, and a raw `join` writes outside the folder. A refusal is `InvalidName`, failing the item
-  (`hostile_names_tests.rs`).
+  empty. Every name asks `landing.rs`, and an unanswerable probe fails the item. § "Look-alike names and new-name
+  spelling".
+- **A listed name joins a destination ONLY as a `ChildName`**, ❌ never a raw `join` (a hostile `../x` escapes).
+  § "Listed names are untrusted".
 
 ## Staging and cleanup
 
@@ -37,13 +35,12 @@ merge/staging engine (`strategy.rs`, `merge.rs`). File map: `DETAILS.md` § File
 - **Every file copy asks `Volume::copy_on_server` first**; the BACKEND picks its sources, ❌ never a path. Staged unless
   whole-publish; anything but a cancel or a taken name falls back to streaming.
 - **A same-volume move whose `rename_work` says copy takes the copy-then-delete engine**, ❌ never `rename`.
-- **A staged temp the destination won't release is REPORTED** on `CancelRollback::staged_leftovers`, ❌ never
-  `skips` or only a log.
-- **Only `cleanup.rs::remove_tree` recurses, its `TreeRemoval` naming who authorized it.** Cleanup and
-  rollback go through `delete_written_file` / `prune_created_dir_if_empty`, listing before deleting.
-- **An unknown "is this a directory?" is ❌ never guessed**: a missing `source_hints` entry is UNKNOWN, ❌ never
-  "file"; `strategy.rs::resolve_source_is_directory` answers. ❌ No `.unwrap_or(false)`, no `Default` on `SourceHint`,
-  no probing where a hint EXISTS.
+- **A staged temp the destination won't release is REPORTED** (`CancelRollback::staged_leftovers`), ❌ never only
+  logged.
+- **Only `cleanup.rs::remove_tree` recurses** (its `TreeRemoval` names who authorized it); cleanup and rollback list
+  before deleting.
+- **An unknown "is this a directory?" is ❌ never guessed**: a missing `source_hints` entry is UNKNOWN;
+  `strategy.rs::resolve_source_is_directory` answers. ❌ No `.unwrap_or(false)`, no probing where a hint EXISTS.
 - **A same-volume move that renames is a rename-merge with top-level hints only**, ❌ never a subtree walk.
 
 ## Concurrency and failures
@@ -58,4 +55,4 @@ merge/staging engine (`strategy.rs`, `merge.rs`). File map: `DETAILS.md` § File
 - **Two test traps**: a `*_tests.rs` here is a `#[path]` CHILD (`super::` one level shallower), and a
   `FaultyVolume` cell must **assert `fault_fired(op)`**.
 
-Semantics, flows, and the rollback ledger: `DETAILS.md`; read it first for non-trivial work.
+The rest: `DETAILS.md`; read it first for non-trivial work.

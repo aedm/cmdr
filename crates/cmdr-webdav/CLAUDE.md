@@ -10,7 +10,6 @@ The WebDAV backend: a `Volume` over one `reqwest` client with one account's Basi
   scoped by username.
 - `errors.rs`: `WebdavConnectError` and the status-code table (`map_status`, keyed by an `Attempted` context).
 - `transport.rs`: `WebdavClient`, URL building, PROPFIND, the connect probe. `propfind.rs`: the `multistatus` parser.
-  The silence watch, which tells a silent server from a slow one, is `cmdr_fs::volume::liveness`.
 - `volume/`: `mod.rs` (the volume, `connect_webdav_volume`, `send`), `paths.rs`, `query.rs`, `streams.rs` (GET),
   `writes.rs` (the PUT), `mutation.rs`, `copy.rs`, `scan.rs`, `state.rs` + `reconnect.rs`, `volume_impl.rs`,
   `testing.rs` (fixtures, `testing` feature).
@@ -28,8 +27,8 @@ The WebDAV backend: a `Volume` over one `reqwest` client with one account's Basi
   state once and starts the backoff. `DETAILS.md` § "Silent or slow".
 - ❗ **Every request goes out through `WebdavClient::send` or `propfind`**, and a body read counts its chunks as
   `heard`. A path that skips both looks silent to the watch however much it hears.
-- ❗ **A buffered body goes through `read_body` with a cap** (`MAX_LISTING_BODY`, `MAX_PROBE_BODY`), ❌ never `.text()`
-  / `.bytes()`: a hostile server can stream forever. Past the cap is a typed `PropfindOutcome::TooLarge`.
+- ❗ **A buffered body goes through `read_body` with a cap**, ❌ never `.text()` / `.bytes()`. `DETAILS.md` § "Bounded
+  bodies".
 - ❌ **No `read_timeout`, no `.timeout()` on the streaming PUT or GET, and never a timeout read as a lost server**: a
   long transfer or a slow listing would be cut or flicker `Disconnected`. `transport.rs` has why.
 - ❌ **One unattended authentication attempt, never a loop.** A 401 on the re-probe moves to `NeedsCredentials` and

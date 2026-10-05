@@ -21,9 +21,8 @@ chip, and the read-only `Volume` that turns `.git/branches/`, `tags/`, `commits/
 
 - **❌ Nothing here may name `tauri`, `tauri_specta`, or `cmdr`.** `cargo check -p cmdr-git --all-targets` is the whole
   verification loop, and `index-crate-isolation` proves the tree stays app-free.
-- **The public surface is capped** at what the app uses today, with no headroom: 11 root promises, and EVERY module is
-  private, so a host can name no path into this crate. A new `pub` needs David's say-so, like a `file-length` entry. The
-  item-by-item argument is in `DETAILS.md`.
+- **The public surface is capped** with no headroom: 11 root promises, EVERY module private. A new `pub` needs David's
+  say-so. Item by item: `DETAILS.md`.
 - **Everything mutable is a field on `GitPortal`**, ❌ never a static: the repo cache, the watcher registry, the sink.
   The app parks one and a test builds its own. Two memos stay static and `DETAILS.md` says why they may.
 - **❌ No English a user reads.** Every Size cell is a typed `GitEntryMeta` the host words from its catalog, and every
@@ -33,10 +32,8 @@ chip, and the read-only `Volume` that turns `.git/branches/`, `tags/`, `commits/
 - **The `.git/` landing listing is the HOST's, through `GitPortal::category_rows`.** ❌ Never serve those six rows from
   a `Volume`: the moment a copy scan or a delete walker sees a row with no inode behind it, a repo delete stops half-way
   with `.git/` still on disk.
-- **A repo's own commands never run.** `RepoCache::discover` drops every `filter.<driver>` section from the in-memory
-  config. gix's status looks into a submodule's commit only (`repo::submodule_status`), because gix opens it with ITS
-  config; `repo::dirty_submodule_paths` walks each worktree after stripping it the same way. ❌ Never call gix's
-  `Repository::is_dirty` or open a repo around the cache.
+- **A repo's own commands never run**: its `filter.<driver>` sections are stripped on open. ❌ Never call gix's
+  `Repository::is_dirty` or open a repo around the cache. `DETAILS.md` § "A repo's own commands never run".
 - **Every `gix` call runs on `VolumeHost::runtime().spawn_blocking`**, ❌ never on the caller's async worker.
 - **Anything a CONSUMER's test needs takes `any(test, feature = "testing")`, ❌ never `cfg(test)`**, which is off when
   the app compiles this crate as a dependency. `cfg(test)` alone is for doors only this crate's own cells open

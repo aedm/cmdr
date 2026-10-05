@@ -338,6 +338,21 @@ content- or mtime-addressed, so a second portal sharing one can only get an answ
 RESOURCE with a lifecycle (an open `gix` repository, evicted when the last subscriber leaves), so a static one would
 mean a test's evictions reaching the app's handles and back.
 
+## A repo's own commands never run
+
+A repository's config can name commands (`filter.<driver>.clean` / `process`), and gix trusts a repo the user owns in
+full, which covers one they downloaded or unzipped. Status hashes a file whose stat changed through the filter pipeline,
+so browsing such a repo would run its commands. Cmdr only reads, so a filter buys nothing:
+
+- `RepoCache::discover` opens every repo through `repo::without_filter_drivers`, which drops each `filter` section from
+  the in-memory config. Nothing is written to disk.
+- gix opens a submodule with its OWN, unstripped config, so gix's status looks only at a submodule's checked-out commit
+  (`repo::submodule_status`). `repo::dirty_submodule_paths` opens each submodule, strips it the same way, and walks its
+  worktree itself (nested submodules included, `ignore = dirty|all` respected); status marks those paths `Modified`, and
+  the chip's dirty check counts them.
+- ❌ Never call gix's `Repository::is_dirty` (it asks submodules "as configured") or open a repo around the cache.
+  `status_never_runs_a_repos_filter_driver` pins both paths.
+
 ## A miss is not a damaged repo
 
 Every portal lookup that can legitimately find nothing answers `Lookup<T>` (`Result<Option<T>, FriendlyGitError>`, in

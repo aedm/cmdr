@@ -459,6 +459,13 @@ Pinned by `copy_precheck_tests.rs` (end to end, against a destination that resol
 - **The behavior change is consistency, and it's accepted**: a deep child whose name only folds onto a destination name now costs one probe and can raise a prompt it didn't before. That is what the top level already does.
 - Pinned by `merge_case_fold_tests.rs` (case, normalization, a case-SENSITIVE destination keeping both spellings with no prompt, an unanswerable probe, a folded directory child merging into the directory that is there, and `an_ordinary_merge_costs_no_probes` for the cost side: a plain ASCII tree asks the destination nothing beyond the driver's own top-level pre-check). The same-volume engine's twin is `rename_merge.rs::late_detected_collision`.
 
+### Listed names are untrusted
+
+A source listing comes from whoever answers it: an SMB, SFTP, WebDAV, or S3 server, an MTP or ADB device, an archive. A hostile one can list `../x` or `/x`, and `dest_dir.join(name)` would then write outside the folder the user dropped onto. So a listed name reaches a destination path ONLY as a `cmdr_fs::volume::ChildName`, proven to be one plain path component (not empty, `.`, or `..`, no `/`, no NUL). A refusal is the typed `VolumeError::InvalidName`, which fails that item the way any unusable name does.
+
+- `landing.rs::where_it_lands` takes a `ChildName`, so the merge walk, the concurrent top-level copy, and the top-level pre-check all validate before joining; the same-volume rename-merge and the native drag-out fulfillment (`apps/desktop/src-tauri/src/native_drag/fulfillment.rs`) do too. One check under every backend, so a new backend can't forget it.
+- `InMemoryVolume::set_reported_name` models a source that lists a hostile name. Pinned by `hostile_names_tests.rs` and a drag-out cell in `apps/desktop/src-tauri/src/native_drag/fulfillment_test.rs`.
+
 ### Look-alike names and new-name spelling
 
 A byte-exact destination (an SMB share since paths reach it byte-for-byte, SFTP, a phone, `InMemoryVolume`) holds `café` composed and `café` decomposed as two entries and finds each only by its own bytes. So a copy asking about a name in the other spelling would hear "free" and write a second entry nobody can tell from the user's: Skip and Overwrite silently wouldn't apply (`ERR-VETBX`, `crates/cmdr-smb/DETAILS.md` § "SMB names are opaque bytes").

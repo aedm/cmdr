@@ -267,6 +267,15 @@ client is installed and marked `Connected` under ONE write guard, and `drop_dead
 non-`Connected` state, so the late task can never take the fresh one. The same pair as `crates/cmdr-sftp/DETAILS.md` §
 "Coming back".
 
+## Bounded bodies
+
+A hostile or broken server can stream an answer forever, so every buffered body reads through `WebdavClient::read_body`
+with a cap, ❌ never `.text()` / `.bytes()`. An announced `Content-Length` past the cap is refused before a byte is
+read; a streamed overrun stops at the cap. `MAX_LISTING_BODY` (128 MiB, about 200,000 children at 500–700 bytes each)
+bounds a PROPFIND; `MAX_PROBE_BODY` (1 MiB) bounds the connect probe's `Depth: 0`. A listing past its cap is a typed
+`PropfindOutcome::TooLarge`, which `volume/query.rs` answers as an `IoError`. Streaming reads and writes (GET, PUT) are
+never buffered, so they carry no cap.
+
 ## Silent or slow
 
 A server that goes SILENT (a NAS asleep, Wi-Fi gone, a VPN dropped) closes nothing, and HTTP has no keepalive, so a
