@@ -33,7 +33,7 @@ mod validity;
 
 #[cfg(test)]
 pub(crate) use bulk::start_bulk_rename;
-pub(crate) use bulk::{BulkRenameRow, start_renames};
+pub(crate) use bulk::{BulkRenameRow, RenameStartError, start_renames};
 #[cfg(test)]
 pub(crate) use validity::RenameByMove;
 pub(crate) use validity::{RenameValidityResult, check_rename_validity_impl, same_local_file};

@@ -65,6 +65,8 @@ pub(in crate::file_system::write_operations) use move_file::move_file_across_vol
 pub(in crate::file_system::write_operations) use source_sweep::{CarriedSource, stamp_source, sweep_carried_source};
 /// Pull a remote path down to a local scratch copy (remote zip edits).
 pub(in crate::file_system::write_operations) use strategy::pull_path_to_local;
+/// The same refusal for a source, reachable from outside the engine.
+pub(crate) use transfer_error::unregistered_source_error;
 /// The refusal for a volume id the registry had nothing for, shared by the
 /// transfer routing and the volume delete so both name an unconnected phone or
 /// server the same way.

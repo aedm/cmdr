@@ -40,7 +40,7 @@ use super::outcomes::{self, RejectSource};
 use super::store::AgentStoreError;
 use super::store::proposals::{
     ClaimOutcome, GroupIntent, NewGroup, NewOp, NewSweep, OpSnapshot, RejectOutcome, ReproposeOutcome,
-    claim_group_for_execution, count_ops, create_group, create_sweep, get_group, repropose_group,
+    claim_group_for_execution, count_ops, create_group, create_sweep, get_group, release_claim, repropose_group,
 };
 
 /// A sweep as created: its id and the ids of the groups inside it, in order.
@@ -124,6 +124,20 @@ pub fn approve(conn: &Connection, group_id: i64, now: i64) -> Result<ClaimOutcom
         changed::announce(conn, SuggestionChange::Approved, Some(group_id));
     }
     Ok(outcome)
+}
+
+/// Give a claimed group back to the user after the write engine refused to start it, and
+/// announce it so the badge and an open review see it pending again.
+///
+/// The approval metric stays as `approve` counted it: the user did say yes, and the refusal
+/// was the engine's. Nothing reaches the agent either, since nothing settled
+/// ([`crate::agent::outcomes`] hears an approval at SETTLE only).
+pub fn give_back(conn: &Connection, group_id: i64) -> Result<bool, AgentStoreError> {
+    let released = release_claim(conn, group_id)?;
+    if released {
+        changed::announce(conn, SuggestionChange::GivenBack, Some(group_id));
+    }
+    Ok(released)
 }
 
 /// Reject a group on the user's say-so, and report the rejection.

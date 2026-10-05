@@ -5283,7 +5283,10 @@ export type AppearedDuringMove = {
  *
  *  Every refusal is a typed variant rather than a sentence, because the recoveries genuinely
  *  differ: "somebody already answered this" closes the group, "the list changed" sends the user
- *  back to re-read it, and a missing drive is neither.
+ *  back to re-read it, and a refusal to START gives the group back with its reason under it.
+ *
+ *  The last three are that give-back: nothing ran, and the group is `pending` again (refused
+ *  before the claim, or released after it by the bridge), so the dialog keeps it on the list.
  */
 export type ApprovalResultView =
   // The ops are queued and running. The dialog closes and the queue takes over.
@@ -5294,10 +5297,23 @@ export type ApprovalResultView =
   | { kind: 'listChanged' }
   // No group with that id.
   | { kind: 'unknown' }
-  // The drive the sources live on isn't mounted any more.
-  | { kind: 'sourceVolumeGone'; volumeId: string }
-  // The group claimed, but the write engine wouldn't start it.
-  | { kind: 'couldNotStart'; detail: string }
+  /**
+   *  The write engine, or the volume check in front of it, refused. The error is the one a
+   *  clicked operation would have shown, so the dialog words it with the same copy: a phone
+   *  or server nobody connected is `source_not_connected`, a drive that left is
+   *  `source_no_longer_connected`.
+   */
+  | { kind: 'refused'; error: WriteOperationError }
+  /**
+   *  Every file was gone or unreadable by the time the user approved, so there was nothing
+   *  to run.
+   */
+  | { kind: 'nothingToRun' }
+  /**
+   *  The stored group can't become an operation (a target its verb needs is missing). Not
+   *  reachable through `GroupIntent`; the detail goes to the log, never to the dialog.
+   */
+  | { kind: 'couldNotStart' }
 
 // The archive-specific distinction a non-UI viewer consumer may act on.
 export type ArchiveFailureKind =
@@ -5686,11 +5702,14 @@ export type BulkRenameError =
       // What the propose layer reported, for the log.
       detail: string
     }
-  // The rename batch wouldn't start.
+  // The rename batch wouldn't start, and nothing was renamed.
   | {
       type: 'couldntStart'
-      // What the write-operations layer reported, for the log.
-      detail: string
+      /**
+       *  Why, typed: a volume refusal carries the `WriteOperationError` the transfer
+       *  dialogs already word.
+       */
+      reason: RenameStartError
     }
   // The preflight didn't finish inside the command's wait.
   | { type: 'timedOut' }
@@ -12101,6 +12120,29 @@ export type RenameProposalSnapshot = {
   rows: RenameProposalRowSnapshot[]
 }
 
+/**
+ *  Why a reviewed batch of renames wouldn't start. Nothing was renamed.
+ *
+ *  ❌ Not prose: each surface words its own variant, and a volume refusal rides as the
+ *  `WriteOperationError` the transfer dialogs already word.
+ */
+export type RenameStartError =
+  /**
+   *  No row is left to run: every source was dropped before the batch got here (unreadable
+   *  at preflight, or turned off in the review).
+   */
+  | { type: 'nothingToRename' }
+  /**
+   *  A row would move its file to another folder. Unreachable through a rename group, which
+   *  binds one shared parent, and refused rather than run as a move.
+   */
+  | { type: 'notInOneFolder' }
+  /**
+   *  The engine refused before anything ran: the volume isn't connected, or the batch's
+   *  move couldn't start.
+   */
+  | { type: 'engine'; error: WriteOperationError }
+
 // Result of a rename validity check.
 export type RenameValidityResult = {
   // Whether the new name is valid (passes filename validation).
@@ -14624,6 +14666,8 @@ export type SuggestionChange =
   | 'approved'
   // The user rejected a group.
   | 'rejected'
+  // An approval the write engine refused gave its group back: pending again, nothing ran.
+  | 'given_back'
 
 // The pending suggestion set changed.
 export type SuggestionsChanged = {

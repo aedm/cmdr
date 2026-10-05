@@ -234,6 +234,13 @@ pub(in crate::file_system::write_operations) async fn unregistered_volume_error(
     }
 }
 
+/// [`unregistered_volume_error`] for a SOURCE, for a caller outside the engine that checks the
+/// volume before it hands anything over (Ask Cmdr's approval bridge, a reviewed rename batch),
+/// so its refusal is worded exactly as a clicked copy's would be.
+pub(crate) async fn unregistered_source_error(volume_id: &str, path: &str) -> WriteOperationError {
+    unregistered_volume_error(volume_id, path, PathRole::Source).await
+}
+
 /// A move whose copy LANDED at `landed_at` but whose source `refused` to go. ❗ Not a failed
 /// move: the item is now in both places, and the bare refusal ("you don't have permission to
 /// move files here") made a user conclude nothing had happened (cmdr-reports#17). The refusal

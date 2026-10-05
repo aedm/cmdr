@@ -213,8 +213,9 @@ decisions"; the estimator in § "ETA + throughput"; `WriteSettledGuard` in § "S
   takes only backend-owned rows accepted by preflight and runs through `spawn_managed` as one lane-queued operation. Its
   dependency planner renames independent rows directly, peels acyclic chains from their free destination, uses one
   same-directory temporary per cycle, and retains one temporary for a case-only rename on a case-insensitive filesystem.
-  Local and remote drivers share the plan, so remote rename-as-copy backends don't duplicate every transfer.
-  Cancellation happens between components: a started cycle finishes or reverses before the driver observes cancellation
+  Local and remote drivers share the plan, so remote rename-as-copy backends don't duplicate every transfer. A batch
+  that won't start answers a typed `RenameStartError` (an unregistered volume is the `WriteOperationError` a clicked
+  copy would get, via `unregistered_source_error`), ❌ never a sentence. Cancellation happens between components: a started cycle finishes or reverses before the driver observes cancellation
   again. It journals one header and one final outcome per row. The Ask Cmdr command is the only caller, and it never
   receives paths or names from the frontend. On a non-root volume its destinations are new names: § "Look-alike
   names".
