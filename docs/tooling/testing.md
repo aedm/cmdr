@@ -74,6 +74,12 @@ consumer"), let proptest fuzz inputs. Patterns to copy: `indexing/aggregator/tes
 `search/query.rs` (glob_to_regex + scope parsing), `indexing/store/tests/path_resolution.rs` (platform_case_compare
 comparator laws). Keep properties **tight**: "function doesn't panic" is too weak.
 
+### `cargo-fuzz` (fuzzing the parsers that read untrusted bytes)
+
+libFuzzer targets for the ADB, WebDAV, S3, archive, PDF, and image parsers live in `fuzz/` (repo root, outside the
+workspace, pinned nightly). `pnpm check fuzz` runs every target for `CMDR_FUZZ_SECONDS` (default 60); CI runs it in
+`slow-checks.yml`. Targets, adding one, and the reproduce-and-fix loop: `fuzz/DETAILS.md`.
+
 ### `cargo-mutants` (mutation testing)
 
 Not in Cargo.toml: install with `cargo install --locked cargo-mutants`. Use ad-hoc on hot-spot modules to find behavior

@@ -118,6 +118,24 @@ var AllChecks = []CheckDefinition{
 		Inputs:      rustCompileInputs,
 		Run:         RunCargoUdeps,
 	},
+	// The fuzz smoke: every target in `fuzz/` for `CMDR_FUZZ_SECONDS` (default 60)
+	// on the pinned nightly. Minutes of CPU per run that can only go red on what
+	// random inputs happen to hit, so it gates nothing locally: CIOnly keeps it out
+	// of every local lane, IsSlow out of CI's default one, and its own job in
+	// `slow-checks.yml` is where it runs. `pnpm check fuzz` runs it on demand. It
+	// builds into `fuzz/target/`, so it holds no lock on the shared `target/`.
+	{
+		ID:          "desktop-rust-fuzz",
+		CpuWeight:   4,
+		Nickname:    "fuzz",
+		DisplayName: "fuzz smoke",
+		App:         AppDesktop,
+		Tech:        "🦀 Rust",
+		CIOnly:      true,
+		IsSlow:      true,
+		Inputs:      inputs(rustCompileInputs, []string{"fuzz/**"}),
+		Run:         RunFuzz,
+	},
 	{
 		ID:        "desktop-rust-module-cycles",
 		CpuWeight: 4,

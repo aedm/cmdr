@@ -1908,16 +1908,17 @@ Checks by app and tech:
   (`cargo doc --all-features --document-private-items` over every first-party member, with every doc lint in
   `rustdocDeniedLints` denied and any leftover warning failing the check too; the vendored fork is skipped because
   `--all-features` turns on two mutually exclusive arms there), cargo-audit, cargo-deny, cargo-machete, cargo-udeps
-  (CI-only), jscpd (the clone list, on a per-file-pair ratchet), log-error-macro, macos-availability (no call to a
-  selector newer than the bundle's `minimumSystemVersion`; § "macOS availability"), macos-framework-floor (no framework
-  in the BUILT binary's load commands newer than that same floor, which is the half no runtime gate can save; § "macOS
-  framework floor"), sqlite-open-direct (every SQLite connection opens through `crate::sqlite_util`, so the process-wide
-  shared page cache is always installed before SQLite initializes), error-string-match, write-ops-isolation (the write
-  engine may not name the `agent` module: an approved operation is an ordinary operation, and an engine that can see the
-  agent grows a second execution path; per-source outcomes reach a caller through the injected `OperationEventSink`
-  instead), lock-poison (two lanes: an error-level one for an acquisition that records no poison-handling choice, and a
-  warn-only one for a failure that's silently discarded, on a per-file ratchet), test-sleep (flags a fixed
-  `thread::sleep` / `tokio::time::sleep` in test code, where a condition-based `wait_until` belongs; opt out a genuine
+  (CI-only), fuzz (CI-only and slow: every target in `fuzz/` for `CMDR_FUZZ_SECONDS`, `fuzz/DETAILS.md`), jscpd (the
+  clone list, on a per-file-pair ratchet), log-error-macro, macos-availability (no call to a selector newer than the
+  bundle's `minimumSystemVersion`; § "macOS availability"), macos-framework-floor (no framework in the BUILT binary's
+  load commands newer than that same floor, which is the half no runtime gate can save; § "macOS framework floor"),
+  sqlite-open-direct (every SQLite connection opens through `crate::sqlite_util`, so the process-wide shared page cache
+  is always installed before SQLite initializes), error-string-match, write-ops-isolation (the write engine may not name
+  the `agent` module: an approved operation is an ordinary operation, and an engine that can see the agent grows a
+  second execution path; per-source outcomes reach a caller through the injected `OperationEventSink` instead),
+  lock-poison (two lanes: an error-level one for an acquisition that records no poison-handling choice, and a warn-only
+  one for a failure that's silently discarded, on a per-file ratchet), test-sleep (flags a fixed `thread::sleep` /
+  `tokio::time::sleep` in test code, where a condition-based `wait_until` belongs; opt out a genuine
   sleep-is-the-subject site with `// allowed-test-sleep: <reason>`), fixed-temp-dir (flags a test fixture built on
   `std::env::temp_dir()`, where every process on the machine shares the path and two suite runs delete each other's live
   fixtures; the sanctioned fixture is `crate::test_support::TestDir`, and a site where the temp root is load bearing
@@ -2170,7 +2171,8 @@ lacks it (reading `rustup toolchain list`, rather than classifying a cargo failu
 nightly toolchain" step asks the check tool for the version via `./scripts/check/check --print-nightly`, so the date
 exists in exactly one place. Renovate can't track it: dated Rust nightlies aren't a Renovate datasource (there's no
 registry of nightly dates to query, and the `rust`/`rust-version` datasources cover stable releases only), so the bump
-is a maintenance task instead, listed in `docs/maintenance.md`.
+is a maintenance task instead, listed in `docs/maintenance.md`. The fuzz lane (`desktop-rust-fuzz.go`) builds on the
+same pin, so one bump moves both.
 
 ### Bumping the pinned nightly
 
@@ -2178,8 +2180,9 @@ is a maintenance task instead, listed in `docs/maintenance.md`.
    exists: `curl -sI https://static.rust-lang.org/dist/<YYYY-MM-DD>/channel-rust-nightly.toml` returns `200`.
 2. Edit `nightlyToolchain` in `checks/desktop-rust-cargo-udeps.go`. That's the only place the date appears.
 3. Run `pnpm check cargo-udeps` (it installs the toolchain if needed) and fix whatever new lints the newer nightly
-   surfaces. Nightly lints are usually genuine (the `unused_imports` tightening flagged real redundant imports), so fix
-   the code rather than reaching for an `allow`.
+   surfaces, then `CMDR_FUZZ_SECONDS=10 pnpm check fuzz` to prove the fuzz targets still build on it. Nightly lints are
+   usually genuine (the `unused_imports` tightening flagged real redundant imports), so fix the code rather than
+   reaching for an `allow`.
 
 **Decision**: `cargo-deny` checks advisories over the macOS graph only; `cargo-audit` sweeps the full graph. **Why**:
 Tauri's Linux GTK3 stack carries unmaintained-crate advisories no macOS build links, which once got the whole advisory
