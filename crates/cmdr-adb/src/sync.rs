@@ -140,6 +140,7 @@ impl SyncSession {
         let len = self.conn.read_u32_le().await? as usize;
         if len > MAX_DATA_CHUNK {
             return Err(AdbError::Protocol(format!(
+                // allowed-pluralize-noun: `len` is past the cap here, so never 1.
                 "sync payload of {len} bytes exceeds the {MAX_DATA_CHUNK}-byte maximum"
             )));
         }

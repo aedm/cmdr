@@ -115,6 +115,7 @@ pub(crate) async fn read_frames(conn: &mut AdbConnection, max_stdout: Option<usi
         let len = conn.read_u32_le().await? as usize;
         if len > MAX_FRAME_PAYLOAD {
             return Err(AdbError::Protocol(format!(
+                // allowed-pluralize-noun: `len` is past the cap here, so never 1.
                 "shell frame of {len} bytes exceeds the {MAX_FRAME_PAYLOAD}-byte maximum"
             )));
         }

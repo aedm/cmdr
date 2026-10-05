@@ -34,6 +34,7 @@ impl WebdavVolume {
                 raw_os_error: None,
             }),
             PropfindOutcome::TooLarge { limit } => Err(VolumeError::IoError {
+                // allowed-pluralize-noun: `limit` is a cap in mebibytes, never 1.
                 message: format!("the server's listing ran past {limit} bytes"),
                 raw_os_error: None,
             }),
