@@ -42,6 +42,19 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
   only prints the outermost layer, hiding the real cause (DNS, TCP connect timeout, TLS). Walking the source chain
   surfaces the underlying class without pulling in `anyhow`.
 
+## Who may check
+
+`skip_reason` allows a check only from a real user's production install. Two conditions: the exe must sit inside a
+`.app` bundle (`installer::is_running_from_app_bundle`), and none of `crate::prod_instance::NON_PROD_ENV_VARS` may be
+set. Outside a bundle the updater can't work and would spam noisy errors into the auto error reporter; a tooling
+instance that slips through writes an `update_checks` row the dashboard counts as an active install. Don't loosen
+either. `crate::prod_instance` is the one definition of the env-var list, shared with the analytics gate so the two
+can't disagree about what a real install is.
+
+The manifest URL (`https://api.getcmdr.com/update-check/{version}?arch={arch}`) is built at runtime from the
+compile-time version and arch; the API server logs the check to D1 for active-user counting, then 302-redirects to
+`https://getcmdr.com/latest.json`.
+
 ## Managed policy (MDM)
 
 The organization's `DisableUpdates`, `DisableAutomaticUpdateChecks`, and `MaxUpdateVersion` (key catalog:

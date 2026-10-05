@@ -18,9 +18,8 @@ platforms use the Tauri updater plugin and the frontend calls the plugin API dir
 
 ## Must-knows
 
-- **Sync into the bundle, never replace the `.app` directory.** ❌ The reason is NOT that replacing loses the FDA grant
-  — a grant follows the code signature, not the path or inode, and survives a replace (measured; `DETAILS.md`). It's
-  that the per-file atomic rename below needs a bundle to sync into, and the install path can't work without one.
+- **Sync into the bundle, never replace the `.app` directory**, because the per-file atomic rename below needs a bundle
+  to sync into. ❌ NOT because replacing loses the FDA grant: it doesn't (measured; `DETAILS.md`).
 - **Per-file writes use atomic rename (temp + `rename()`), not in-place `fs::copy`.** `fs::copy` keeps the same inode;
   macOS's kernel code-signing cache keys on inode and validates the new binary against the old cached code directory,
   causing `SIGKILL (Code Signature Invalid)` on launch. A new inode forces fresh validation. The admin path (`rsync -a`)
@@ -28,12 +27,9 @@ platforms use the Tauri updater plugin and the frontend calls the plugin API dir
 - **Staging dir is per-instance: `<tmp>/cmdr-update-staging-{CMDR_INSTANCE_ID}`** (`installer::staging_dir`; production
   with no env var lands at `…-default`). Don't make it shared: concurrent `Cmdr` processes (main + a worktree) race on
   one path and trip `ENOTEMPTY`.
-- **Only a real user's production install may check** (`skip_reason`). Two conditions: the exe must sit inside a `.app`
-  bundle (`installer::is_running_from_app_bundle`), and none of `crate::prod_instance::NON_PROD_ENV_VARS` may be set.
-  Outside a bundle the updater can't work and would spam noisy errors into the auto error reporter; a tooling instance
-  that slips through writes an `update_checks` row the dashboard counts as an active install. Don't loosen either, and
-  ❌ never keep a second copy of the env-var list here: `crate::prod_instance` is the one definition, shared with the
-  analytics gate so the two can't disagree about what a real install is.
+- **Only a real user's production install may check** (`skip_reason`): inside a `.app` bundle, and none of
+  `crate::prod_instance::NON_PROD_ENV_VARS` set. Otherwise it spams the error reporter or inflates active installs.
+  ❌ Never keep a second copy of the env-var list here. `DETAILS.md` § Who may check.
 - **A read-only bundle is EROFS, not EPERM, and no amount of admin fixes it.** App Translocation (Cmdr opened from
   `~/Downloads`) and a mounted `.dmg` both put the bundle on a read-only mount, which refuses root as flatly as the
   user. `installer::install` and the frontend both gate on `bundle_location::classify` BEFORE the download, ❌ never by
@@ -50,9 +46,8 @@ platforms use the Tauri updater plugin and the frontend calls the plugin API dir
   the frontend name a URL or version again. `DETAILS.md` § Managed policy.
 - **Manifest fetch is bounded** (`connect_timeout` 10 s, overall `timeout` 30 s); download/install paths are
   intentionally NOT timed out (they run with user attention). Don't add timeouts there.
-- **Manifest URL routes through the API server** (`https://api.getcmdr.com/update-check/{version}?arch={arch}`), which
-  logs the check to D1 for active-user counting, then 302-redirects to `https://getcmdr.com/latest.json`. Built at
-  runtime from the compile-time version and arch.
+- **Manifest URL routes through the API server** (`api.getcmdr.com/update-check/{version}?arch={arch}`, which counts
+  the check, then 302s to `getcmdr.com/latest.json`).
 
 Full details (sync order, deletion pass, minisign rationale, privilege escalation, error-chain logging,
 dependencies): `DETAILS.md`.
