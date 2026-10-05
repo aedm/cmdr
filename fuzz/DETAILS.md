@@ -46,9 +46,14 @@
 - **PDF, `pdf-extract` 0.12.0, guarded in our wrapper**: a page that is its own `Parent` with no `Resources` recursed
   forever in `get_inherited` (stack overflow, uncontainable). `parent_chain_ends` in `inspect/pdf.rs` skips such pages.
   Worth reporting upstream.
-- **xz, `lzma-rust2` 0.18.1, open**: a 25-byte `.tar.xz` whose block header asks for a ~3 GiB LZMA2 dictionary makes
-  `XzReader` allocate it up front. `XzReader` has no memory limit to set. Input (base64, with the target's format byte):
-  `BP03elhaAAAE5ta0RgCezuxft9v//+Al`. Until it's bounded, `archive_index` stops on it within seconds.
+- **xz dictionary, `lzma-rust2`, bounded in our wrapper**: a block header names its LZMA2 dictionary and the decoder
+  allocated and zeroed it up front (4 GiB from 40 bytes). `lzma-rust2` 0.21.0 added `XzReader::new_mem_limit`;
+  `format::XZ_MEMORY_LIMIT_KIB` sets it (`crates/cmdr-archive/src/read/DETAILS.md` § DoS caps).
+- **xz index, `lzma-rust2` 0.21.0, open upstream**: the index's record count is a varint the reader passes straight to
+  `try_reserve_exact` (`src/xz.rs`, still on upstream main 2026-10-05), so 23 bytes reserve ~3 GiB. Reserved, never
+  touched, and released on the error that follows, so it costs address space rather than RAM; libFuzzer's malloc limit
+  still flags it. Input (base64, with the target's format byte): `BP03elhaAAAE5ta0RgCezuxft9v//+Al`. Until upstream
+  bounds the reservation (by the bytes left, say), `archive_index` stops on it within seconds.
 
 ## Deliberately not fuzzed here
 

@@ -110,6 +110,13 @@ directory can expand into a huge tree — a browse-time DoS. Two caps bound it o
   too. Tested via `build_tree`'s injectable cap (`tree_building_fails_when_node_count_exceeds_the_cap`) rather than a
   multi-million-node fixture.
 
+A third cap sits in a decoder, not the tree: **an xz block's LZMA2 dictionary** (`format::XZ_MEMORY_LIMIT_KIB`, 256 MiB
+plus 1 MiB). The block header names the dictionary and `lzma-rust2` allocates and zeroes it up front, so 40 hostile
+bytes asked for 4 GiB of real memory. `XzReader::new_mem_limit` refuses before allocating with
+`io::ErrorKind::OutOfMemory`, which `From<io::Error>` types as `TooLarge`. The constant's doc carries why 256 MiB (4×
+the largest preset). 7z has no equivalent knob: `sevenz-rust2` hardcodes an unlimited decoder memory limit (verified on
+0.23.0, 2026-10-05).
+
 ## Zip Slip guarantee (`sanitize_entry_name`)
 
 Entry names are attacker-controlled. `sanitize_entry_name` is the **single choke point** every entry passes before it
