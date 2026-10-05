@@ -101,6 +101,12 @@ pub fn init(app: &AppHandle) {
     let _ = APP.set(app.clone());
     let policy = current();
     log::info!(target: "managed_policy", "Managed policy at launch: {}", summary(&policy));
+    #[cfg(any(debug_assertions, feature = "playwright-e2e", test))]
+    if let Some(path) = std::env::var_os(OVERRIDE_ENV) {
+        // The file stands in for the whole managed layer, so its own watch is the trigger that
+        // matters; the macOS ones below only re-read the same file.
+        super::override_watch::start(std::path::PathBuf::from(path));
+    }
     #[cfg(target_os = "macos")]
     super::watch::start();
 }

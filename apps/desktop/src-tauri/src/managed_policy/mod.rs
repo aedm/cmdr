@@ -12,6 +12,8 @@ mod egress;
 mod hosts;
 pub(crate) mod keys;
 mod locked;
+#[cfg(any(debug_assertions, feature = "playwright-e2e", test))]
+mod override_watch;
 #[cfg(test)]
 mod public_docs_test;
 mod refusal;

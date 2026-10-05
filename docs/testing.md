@@ -847,6 +847,10 @@ E2E test hooks split along two axes:
   (`search-walk-handoff.spec.ts`). Background scans are never throttled. Read in
   `crates/cmdr-index/src/indexing/scanner/mod.rs` (`cover_walk_throttle`) rather than `crate::test_mode`, because the
   index crate can't reach the app; it's cached in a `LazyLock`, so an unset var costs one deref per walk.
+- **`CMDR_MANAGED_PREFS_FILE`** (debug and `playwright-e2e` builds only, never a plain release): a plist that replaces
+  the organization's managed preferences (MDM policy). The macOS lane points every shard at `managed-prefs.plist` in its
+  data dir, which doesn't exist (no policy) until `managed-policy.spec.ts` writes it; the app watches the file and
+  re-reads it on change. `apps/desktop/src-tauri/src/managed_policy/DETAILS.md` § Testing.
 - **`CMDR_PLAYWRIGHT_SOCKET`**: Override the plugin's Unix socket path (one socket per shard).
 - **`CMDR_SHOTS_PID` / `CMDR_SHOTS_OUT_DIR` / `CMDR_SHOTS_BROWSE_ROOT`**: read by the marketing capture's spec, never by
   the app, so they stay out of `crate::test_mode`. The orchestrator passes its own app pid (nothing exposes it over the

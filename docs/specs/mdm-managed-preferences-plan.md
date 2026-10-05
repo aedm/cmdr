@@ -599,6 +599,28 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
   `CMDR_MANAGED_PREFS_FILE` that opens Settings › Updates & privacy and asserts the locked rows and notes (read
   `test/e2e-playwright/CLAUDE.md` first).
 - **DONE**: each telemetry and update key is visible and explained everywhere a user would look.
+- **Implementation notes** (M6 as built):
+  - Decision 5 is in: a read-only "Managed by your organization" card (`managed-policy/ManagedPolicySummary.svelte`,
+    worded by the pure `policy-summary.ts` from `ManagedPolicyView`) at the TOP of Settings › Updates & privacy, shown
+    only on a managed Mac and hidden while a search is active (a static search entry would hit on every unmanaged Mac).
+    Updates & privacy over About: it's the page that already holds most locked rows and the section line, so a help-desk
+    person lands on the summary and the locked rows together; About is a compact modal about the build and license.
+  - Under `DisableUpdates` the Check for updates button is disabled up front with the managed sentence as its status
+    line (`aria-describedby`), rather than inviting a press that can only say so. The ceiling sentence still comes from
+    a check (`updateState.managed`), as M3 built it; the menu toast already rendered both outcomes, now covered by
+    tests.
+  - Error-report dialog under `reportsDisabled`: the managed line replaces the explanation, Send and attach-email go,
+    and "Save to disk" is the primary button; amend mode shows the line and a lone Close. ❗ `save_error_report_to_disk`
+    was `cfg(debug_assertions)`, which would have made "You can still save one to disk" false in release, so it's now a
+    command in every build (local only; the file is `error-report-<timestamp>.zip` in the app data dir).
+  - `StepBeta` keys off `isSettingLocked('analytics.enabled')` / `('updates.crashReports')`, never the view's bools.
+    With usage stats pinned off, the row shows the managed line and keeps disclosing on-by-default crash reports
+    (`crashReportsNoteAlone`) unless those are pinned off too; with only crash reports pinned off, the tip drops its
+    "crash reports are on too" sentence.
+  - E2E: the macOS lane gives every shard `CMDR_MANAGED_PREFS_FILE=<data dir>/managed-prefs.plist` (absent = no policy),
+    and `managed_policy/override_watch.rs` (debug and E2E builds) re-reads it on change, so specs push and remove a
+    policy live. `managed-policy.spec.ts` (verified passing on a hand-launched E2E build) skips when the variable is
+    unset, which includes the Linux Docker lane for now.
 
 ### M7. Feature surfaces: AI
 

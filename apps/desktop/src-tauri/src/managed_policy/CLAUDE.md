@@ -7,6 +7,7 @@ What an organization's configuration profile restricts: telemetry, updates, and 
 
 - `mod.rs`: `ManagedPolicy` and its typed answers (`updates()`, `ai()`, `ai_destination()`, …). `cache.rs`: `current()`,
   `refresh()`, `for_egress()`, `init()`, and `apply_change`. `watch.rs`: activation and folder-watch triggers (macOS).
+  `override_watch.rs`: the live re-read of the `CMDR_MANAGED_PREFS_FILE` plist (debug and E2E builds).
 - `keys.rs`: key names and the one parse. `source.rs`: CFPreferences, the test-build plist file, the fake.
 - `ceiling.rs`, `hosts.rs`: `MaxUpdateVersion` and `AllowedCloudAIHosts`. `egress.rs`: `allows(Egress)`. `refusal.rs`:
   `ManagedAiRefusal`. `locked.rs`: `locked_settings`, `refuses_write`, and `overlay`. `view.rs`: `ManagedPolicyView`,

@@ -69,8 +69,15 @@ pub struct PlistFileSource {
 
 #[cfg(any(debug_assertions, feature = "playwright-e2e", test))]
 impl PlistFileSource {
-    /// Reads `path` now. A missing or malformed file reads as an empty policy, with a warning.
+    /// Reads `path` now. A missing file is an empty policy, quietly: it's how an E2E run starts,
+    /// unmanaged until a spec writes one. A malformed one reads as empty too, with a warning.
     pub fn read(path: &std::path::Path) -> Self {
+        if !path.exists() {
+            log::debug!(target: "managed_policy", "{} doesn't exist; reading no policy", path.display());
+            return Self {
+                values: plist::Dictionary::new(),
+            };
+        }
         let values = match plist::Value::from_file(path) {
             Ok(plist::Value::Dictionary(values)) => values,
             Ok(_) => {

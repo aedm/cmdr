@@ -149,7 +149,11 @@ download, and the user-initiated feedback and beta signup.
   value in the user's own layer isn't reported, and a `PlistFileSource` round trip. `view.rs` tests
   `get_managed_policy` end to end through `CMDR_MANAGED_PREFS_FILE`.
 - Dev and E2E: `CMDR_MANAGED_PREFS_FILE=/path/to/policy.plist pnpm dev` (debug and `playwright-e2e` builds only). The
-  file is a plain plist dictionary of keys; every key in it counts as forced. Edit it and re-activate Cmdr to refresh.
+  file is a plain plist dictionary of keys; every key in it counts as forced. `override_watch.rs` watches the file's
+  folder and re-reads on any event naming the file, so an edit applies live; write it atomically (temp + rename) or a
+  read can catch half a plist (it reads as no policy, with a warning, until the next event). A missing file is no
+  policy, quietly: the macOS E2E lane points every shard at one that doesn't exist, and `managed-policy.spec.ts` writes
+  and removes it.
 - Real managed preferences need `sudo`, so an agent can't run them:
   `sudo defaults write "/Library/Managed Preferences/com.veszelovszki.cmdr" DisableUsageStats -bool true`, then
   re-activate Cmdr (or rely on the folder watch). If `IsForced` doesn't see it, make the file `root:wheel` `0644` like a
