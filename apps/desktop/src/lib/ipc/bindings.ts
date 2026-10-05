@@ -44,13 +44,19 @@ export const commands = {
   cancelListing: (listingId: string) => __TAURI_INVOKE<void>('cancel_listing', { listingId }),
   listDirectoryEnd: (listingId: string) => __TAURI_INVOKE<void>('list_directory_end', { listingId }),
   /**
+   *  The panes' heartbeat: keeps the named listings safe from the orphan reaper and
+   *  returns the ids no longer cached, which the frontend re-lists.
+   *  See `file_system::listing::operations::keep_listings_alive`.
+   */
+  keepListingsAlive: (listingIds: string[]) => __TAURI_INVOKE<string[]>('keep_listings_alive', { listingIds }),
+  /**
    *  Tells the backend the pane showing `listing_id` now shows (or hides) hidden
    *  files. Its `directory-diff` events speak that pane's rows, and skip changes
    *  to rows it doesn't show, so the pane calls this before re-reading its rows
    *  after the hidden-files toggle.
    */
   setListingIncludeHidden: (listingId: string, includeHidden: boolean) =>
-    typedError<null, string>(__TAURI_INVOKE('set_listing_include_hidden', { listingId, includeHidden })),
+    typedError<null, ListingLookupError>(__TAURI_INVOKE('set_listing_include_hidden', { listingId, includeHidden })),
   /**
    *  Re-reads a directory listing, emitting any diff.
    *
@@ -91,7 +97,9 @@ export const commands = {
   refreshListing: (listingId: string, force: boolean) =>
     __TAURI_INVOKE<TimedOut<null>>('refresh_listing', { listingId, force }),
   getFileRange: (listingId: string, start: number, count: number, includeHidden: boolean) =>
-    typedError<FileEntry[], string>(__TAURI_INVOKE('get_file_range', { listingId, start, count, includeHidden })),
+    typedError<FileEntry[], ListingLookupError>(
+      __TAURI_INVOKE('get_file_range', { listingId, start, count, includeHidden }),
+    ),
   getFileAt: (listingId: string, index: number, includeHidden: boolean) =>
     typedError<
       {
@@ -237,7 +245,7 @@ export const commands = {
          */
         inColdStorage: boolean
       } | null,
-      string
+      ListingLookupError
     >(__TAURI_INVOKE('get_file_at', { listingId, index, includeHidden })),
   /**
    *  The entry immediately before or after the one named `name`, in one call.
@@ -391,14 +399,14 @@ export const commands = {
          */
         inColdStorage: boolean
       } | null,
-      string
+      ListingLookupError
     >(__TAURI_INVOKE('get_file_beside', { listingId, name, side, includeHidden })),
   /**
    *  Gets full FileEntry objects at specific backend indices from a cached listing.
    *  Callers are responsible for any parent offset adjustment before passing indices.
    */
   getFilesAtIndices: (listingId: string, selectedIndices: number[], includeHidden: boolean) =>
-    typedError<FileEntry[], string>(
+    typedError<FileEntry[], ListingLookupError>(
       __TAURI_INVOKE('get_files_at_indices', { listingId, selectedIndices, includeHidden }),
     ),
   /**
@@ -406,11 +414,11 @@ export const commands = {
    *  extraction). Handles the parent ".." offset internally; callers pass frontend indices.
    */
   getPathsAtIndices: (listingId: string, selectedIndices: number[], includeHidden: boolean, hasParent: boolean) =>
-    typedError<string[], string>(
+    typedError<string[], ListingLookupError>(
       __TAURI_INVOKE('get_paths_at_indices', { listingId, selectedIndices, includeHidden, hasParent }),
     ),
   getTotalCount: (listingId: string, includeHidden: boolean) =>
-    typedError<number, string>(__TAURI_INVOKE('get_total_count', { listingId, includeHidden })),
+    typedError<number, ListingLookupError>(__TAURI_INVOKE('get_total_count', { listingId, includeHidden })),
   /**
    *  Returns the widest filename's text-only width (in px) per Brief-mode column.
    *
@@ -439,9 +447,11 @@ export const commands = {
       __TAURI_INVOKE('get_brief_column_text_widths', { listingId, itemsPerColumn, hasParent, fontId, includeHidden }),
     ),
   findFileIndex: (listingId: string, name: string, includeHidden: boolean) =>
-    typedError<number | null, string>(__TAURI_INVOKE('find_file_index', { listingId, name, includeHidden })),
+    typedError<number | null, ListingLookupError>(
+      __TAURI_INVOKE('find_file_index', { listingId, name, includeHidden }),
+    ),
   findFileIndices: (listingId: string, names: string[], includeHidden: boolean) =>
-    typedError<{ [key in string]: number }, string>(
+    typedError<{ [key in string]: number }, ListingLookupError>(
       __TAURI_INVOKE('find_file_indices', { listingId, names, includeHidden }),
     ),
   /**
@@ -475,7 +485,7 @@ export const commands = {
     selectedIndices: number[] | null,
     allSelected: boolean | null,
   ) =>
-    typedError<ResortResult, string>(
+    typedError<ResortResult, ListingLookupError>(
       __TAURI_INVOKE('resort_listing', {
         listingId,
         sortBy,
@@ -1086,7 +1096,7 @@ export const commands = {
     } | null>('destination_root_echo', { destVolumeId, destPath }),
   // Returns total file/dir counts and sizes, plus selection stats if `selected_indices` is given.
   getListingStats: (listingId: string, includeHidden: boolean, selectedIndices: number[] | null) =>
-    typedError<ListingStats, string>(
+    typedError<ListingStats, ListingLookupError>(
       __TAURI_INVOKE('get_listing_stats', { listingId, includeHidden, selectedIndices }),
     ),
   /**
@@ -9334,6 +9344,17 @@ export type ListingIndexSizesChanged = {
   // The listing's own folder reading, when `current_dir_changed`.
   currentDir: DirStats | null
 }
+
+/**
+ *  Why a listing accessor couldn't answer: the listing it names isn't cached.
+ *
+ *  Typed so the frontend can tell a pane whose listing went away (and re-list it)
+ *  from any other failure, without reading a message. It's the accessors' only
+ *  failure: the cache lock recovers from poison rather than refusing.
+ */
+export type ListingLookupError =
+  // Ended by its pane, never started, or reclaimed by the orphan reaper.
+  { type: 'gone'; listingId: string }
 
 // Opening event payload (emitted just before read_dir starts - the slow part for network folders)
 export type ListingOpeningEvent = {

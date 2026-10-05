@@ -48,6 +48,8 @@ interface PaneState {
   finalizingCount: number | undefined
   volumeRootFromEvent: string | undefined
   cursorIndex: number
+  /** The name of the entry under the cursor, as the pane's selection info knows it. */
+  cursorName: string | undefined
   selectedIndices: number[]
   /** What a pending Back / Forward restore hands the next load of its path. */
   historyCursor: { path: string; cursor: HistoryCursor | undefined } | null
@@ -77,6 +79,7 @@ export function makeHarness(over: Partial<PaneState> = {}) {
     finalizingCount: undefined,
     volumeRootFromEvent: undefined,
     cursorIndex: 0,
+    cursorName: undefined,
     selectedIndices: [],
     historyCursor: null,
     ...over,
@@ -166,6 +169,7 @@ export function makeHarness(over: Partial<PaneState> = {}) {
       state.volumeRootFromEvent = r
     },
     getCursorIndex: () => state.cursorIndex,
+    getCursorName: () => state.cursorName,
     takeHistoryCursor: (path) => {
       const pending = state.historyCursor
       state.historyCursor = null

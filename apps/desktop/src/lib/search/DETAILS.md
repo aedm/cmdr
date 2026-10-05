@@ -797,9 +797,9 @@ cursor row alone for a while, so Cmd+A then delete took one file (ERR-Q373S). Wi
   PERMANENT delete.
 - **No operation snapshot is taken**, because `entries-snapshot::fetchSelectedNames` returns early on a pane with no
   listing id. The name snapshot exists to feed listing-diff-driven selection adjustment, which doesn't run here; the
-  path-based remap below does that job instead. Without the guard, `getFileAt('')` rejects with "Listing not found"
-  inside a `void`-ed call, so every F5 / F6 / F8 from a snapshot pane with a partial selection raises an unhandled
-  promise rejection.
+  path-based remap below does that job instead. Without the guard, `getFileAt('')` rejects as a gone listing
+  (`ListingLookupError::Gone`) inside a `void`-ed call, so every F5 / F6 / F8 from a snapshot pane with a partial
+  selection raises an unhandled promise rejection.
 - **Drag-out** uses the `'paths'` drag context in `lib/file-explorer/drag/drag-drop.ts`: when `FullList` is rendered
   with `staticEntries` and the user drags a selection, the FE builds a paths array from `getEntryAt(idx)` and routes
   through `start_drag_paths`. `SearchResultsView` hands `FullList` the snapshot's `volumeId`, so the drag records the

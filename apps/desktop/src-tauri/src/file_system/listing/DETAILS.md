@@ -127,6 +127,21 @@ watcher/notify cache patch (`insert_entry_sorted` / `remove_entries_by_paths` / 
 `refresh_listing_index_sizes` intentionally does NOT touch it: it's driven by background indexing, not user/FS activity,
 so touching there could keep a truly-orphaned listing alive indefinitely.
 
+**The pane heartbeat is what proves a listing live**, not access. A pane left on a quiet folder overnight makes no reads
+and gets no FS events, so access alone let the reaper take an on-screen `~/Downloads` listing after six idle hours: the
+pane kept stale rows, its watcher was gone (new downloads never appeared), and every F3–F6 failed on the missing listing.
+Every 30 min the frontend's `file-explorer/pane/listing-liveness.ts` names each LANDED listing through
+`keep_listings_alive`, which touches the ones cached and returns the ones it no longer holds. A leaked listing stops
+being named and is reaped as before.
+
+**A lookup on a missing listing is a typed `ListingLookupError::Gone { listing_id }`** (every accessor in
+`operations.rs`, and their commands). It's the accessors' only failure: they take the cache lock with
+`*_ignore_poison`. The frontend funnels every such refusal (`$lib/tauri-commands` `listing-gone.ts`), and every id the
+heartbeat returns, to the liveness registry, and the owning pane re-lists the same folder with the cursor on the same entry. A pane registers its
+listing only once it has landed, so a read racing a navigation (which also answers `Gone`) never triggers a re-list. The
+clipboard and drag commands still flatten it into their `String` errors; the pane recovers through its next read or
+heartbeat.
+
 #### Test isolation for `LISTING_CACHE`
 
 `cargo test` runs the crate's tests as threads in ONE process, so `LISTING_CACHE` is shared by every listing test at

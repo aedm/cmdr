@@ -359,6 +359,7 @@
             volumeRootFromEvent = root
         },
         getCursorIndex: () => cursorIndex,
+        getCursorName: () => selectionInfo.entry?.name,
         setCursorIndexRaw: (index) => {
             cursorIndex = index
         },

@@ -23,6 +23,8 @@ vi.mock('$lib/tauri-commands', () => ({
   listDirectoryStart: vi.fn().mockResolvedValue({ listingId: 'mock-listing', status: { status: 'ready' } }),
   cancelListing: vi.fn().mockResolvedValue(undefined),
   listDirectoryEnd: vi.fn().mockResolvedValue(undefined),
+  onListingGone: vi.fn(() => () => {}),
+  keepListingsAlive: vi.fn().mockResolvedValue([]),
   getFileRange: vi.fn().mockResolvedValue([]),
   getFileAt: vi.fn().mockImplementation((_listingId: string, index: number) => {
     if (index === 0) {

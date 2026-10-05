@@ -26,8 +26,8 @@ Backend directory reading, caching, sorting, and streaming: 100k+ entries, non-b
   (`streaming.rs`, `operations.rs`, the watcher's full refresh); miss one and a refresh strips them.
 - **A close notifies `crate::listing_lifecycle` AFTER the cache removal**, ❌ never before: an observer's detached arm
   reconciles against cache membership.
-- **The orphan reaper keys on `last_accessed_ms`, not `created_at`**: every read accessor and cache patch bumps it, or
-  it evicts a live pane. ❌ Never from `refresh_listing_index_sizes` (background work).
+- **The orphan reaper keys on `last_accessed_ms`**, bumped by reads, cache patches, and the panes'
+  `keep_listings_alive` heartbeat (idle panes make no reads). ❌ Never from `refresh_listing_index_sizes`.
 - **`read_directory_with_progress` holds a `priority::foreground` lease** for its whole body: ❌ never bind it to `_`.
 - ❌ **A listing never aborts a read**, on cancel or when a retry wins: detaching lets it unwind; aborting wedges an
   MTP phone. A read quiet for `stall_after` emits `listing-stalled` and keeps waiting, ❌ never a deadline that ends

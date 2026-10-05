@@ -64,6 +64,8 @@ vi.mock('$lib/tauri-commands', () => ({
   // `listing-loader.ts::abandonListing`), so both have to exist here.
   cancelListing: vi.fn().mockResolvedValue(undefined),
   listDirectoryEnd: vi.fn().mockResolvedValue(undefined),
+  onListingGone: vi.fn(() => () => {}),
+  keepListingsAlive: vi.fn().mockResolvedValue([]),
   openFile: vi.fn().mockResolvedValue(undefined),
   getIcons: vi.fn().mockResolvedValue({ data: {}, timedOut: false }),
   listen: vi.fn(() => Promise.resolve(() => {})),

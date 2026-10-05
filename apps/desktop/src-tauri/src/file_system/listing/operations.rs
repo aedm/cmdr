@@ -157,12 +157,12 @@ pub fn list_directory_end(listing_id: &str) {
 /// A change drops what's queued for the listing: it was numbered in the old row
 /// space, and the pane re-reads its count and rows after the toggle anyway. The
 /// cache already holds every one of those changes, so nothing is lost.
-pub fn set_listing_include_hidden(listing_id: &str, include_hidden: bool) -> Result<(), String> {
+pub fn set_listing_include_hidden(listing_id: &str, include_hidden: bool) -> Result<(), ListingLookupError> {
     let changed = {
-        let mut cache = LISTING_CACHE.write().map_err(|_| "Failed to acquire cache lock")?;
+        let mut cache = LISTING_CACHE.write_ignore_poison();
         let listing = cache
             .get_mut(listing_id)
-            .ok_or_else(|| format!("Listing not found: {}", listing_id))?;
+            .ok_or_else(|| ListingLookupError::gone(listing_id))?;
         listing.set_include_hidden(include_hidden)
     };
     if changed {
@@ -175,21 +175,71 @@ pub fn set_listing_include_hidden(listing_id: &str, include_hidden: bool) -> Res
 // On-demand virtual scrolling API (cache accessors)
 // ============================================================================
 
+/// Why a listing accessor couldn't answer: the listing it names isn't cached.
+///
+/// Typed so the frontend can tell a pane whose listing went away (and re-list it)
+/// from any other failure, without reading a message. It's the accessors' only
+/// failure: the cache lock recovers from poison rather than refusing.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum ListingLookupError {
+    /// Ended by its pane, never started, or reclaimed by the orphan reaper.
+    Gone { listing_id: String },
+}
+
+impl ListingLookupError {
+    fn gone(listing_id: &str) -> Self {
+        Self::Gone {
+            listing_id: listing_id.to_string(),
+        }
+    }
+}
+
+impl std::fmt::Display for ListingLookupError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Gone { listing_id } => write!(f, "listing {listing_id} isn't cached"),
+        }
+    }
+}
+
 /// Runs `f` against a cached listing, or reports that it's gone.
 ///
 /// Every read accessor below shares this preamble: take the cache read lock, find
 /// the listing, and stamp it so the six-hour orphan reaper knows a live pane is
 /// still behind it.
-fn with_listing<R>(listing_id: &str, f: impl FnOnce(&CachedListing) -> R) -> Result<R, String> {
-    let cache = LISTING_CACHE.read().map_err(|_| "Failed to acquire cache lock")?;
-
+fn with_listing<R>(listing_id: &str, f: impl FnOnce(&CachedListing) -> R) -> Result<R, ListingLookupError> {
+    let cache = LISTING_CACHE.read_ignore_poison();
     let listing = cache
         .get(listing_id)
-        .ok_or_else(|| format!("Listing not found: {}", listing_id))?;
+        .ok_or_else(|| ListingLookupError::gone(listing_id))?;
 
     listing.touch();
 
     Ok(f(listing))
+}
+
+/// The panes' heartbeat: stamps every listing in `listing_ids` as still on screen,
+/// and returns the ids this cache no longer holds.
+///
+/// A pane can sit on one folder for days with no reads and no FS events, so access
+/// alone can't tell the orphan reaper a listing is live. Each pane names its listing
+/// here well inside `ORPHAN_IDLE_WINDOW`; a listing whose pane leaked stops being
+/// named and is reaped as before. A returned id is a pane showing rows the backend
+/// can't serve, which the frontend answers by re-listing that folder.
+pub fn keep_listings_alive(listing_ids: &[String]) -> Vec<String> {
+    let cache = LISTING_CACHE.read_ignore_poison();
+    listing_ids
+        .iter()
+        .filter(|id| match cache.get(id.as_str()) {
+            Some(listing) => {
+                listing.touch();
+                false
+            }
+            None => true,
+        })
+        .cloned()
+        .collect()
 }
 
 /// Gets a range of entries from a cached listing.
@@ -198,7 +248,7 @@ pub fn get_file_range(
     start: usize,
     count: usize,
     include_hidden: bool,
-) -> Result<Vec<FileEntry>, String> {
+) -> Result<Vec<FileEntry>, ListingLookupError> {
     with_listing(listing_id, |listing| {
         let rows = listing.rows(include_hidden);
         let end = start.saturating_add(count).min(rows.len());
@@ -209,7 +259,7 @@ pub fn get_file_range(
 }
 
 /// Gets total count of entries in a cached listing.
-pub fn get_total_count(listing_id: &str, include_hidden: bool) -> Result<usize, String> {
+pub fn get_total_count(listing_id: &str, include_hidden: bool) -> Result<usize, ListingLookupError> {
     with_listing(listing_id, |listing| listing.rows(include_hidden).len())
 }
 
@@ -218,7 +268,11 @@ pub fn get_total_count(listing_id: &str, include_hidden: bool) -> Result<usize, 
 /// The name may come from outside this listing (a restored cursor, MCP, a reveal
 /// from Finder) and spell an accented name another way than the volume stores it,
 /// so a unique look-alike answers when the exact name doesn't (`row_of_any_spelling`).
-pub fn find_file_index(listing_id: &str, name: &str, include_hidden: bool) -> Result<Option<usize>, String> {
+pub fn find_file_index(
+    listing_id: &str,
+    name: &str,
+    include_hidden: bool,
+) -> Result<Option<usize>, ListingLookupError> {
     with_listing(listing_id, |listing| {
         listing.rows(include_hidden).row_of_any_spelling(name)
     })
@@ -246,7 +300,7 @@ pub fn get_file_beside(
     name: &str,
     side: RowBeside,
     include_hidden: bool,
-) -> Result<Option<FileEntry>, String> {
+) -> Result<Option<FileEntry>, ListingLookupError> {
     with_listing(listing_id, |listing| {
         let rows = listing.rows(include_hidden);
         let anchor = rows.row_of(name)?;
@@ -266,7 +320,7 @@ pub fn find_file_indices(
     listing_id: &str,
     names: &[String],
     include_hidden: bool,
-) -> Result<HashMap<String, usize>, String> {
+) -> Result<HashMap<String, usize>, ListingLookupError> {
     with_listing(listing_id, |listing| {
         let lookup: std::collections::HashSet<&str> = names.iter().map(|n| n.as_str()).collect();
         let mut result = HashMap::with_capacity(names.len());
@@ -282,7 +336,11 @@ pub fn find_file_indices(
 }
 
 /// Gets a single file at the given index.
-pub fn get_file_at(listing_id: &str, index: usize, include_hidden: bool) -> Result<Option<FileEntry>, String> {
+pub fn get_file_at(
+    listing_id: &str,
+    index: usize,
+    include_hidden: bool,
+) -> Result<Option<FileEntry>, ListingLookupError> {
     with_listing(listing_id, |listing| {
         let rows = listing.rows(include_hidden);
         let result = rows.get(index).cloned();
@@ -313,7 +371,7 @@ pub fn get_paths_at_indices(
     selected_indices: &[usize],
     include_hidden: bool,
     has_parent: bool,
-) -> Result<Vec<PathBuf>, String> {
+) -> Result<Vec<PathBuf>, ListingLookupError> {
     with_listing(listing_id, |listing| {
         let rows = listing.rows(include_hidden);
         let mut paths = Vec::with_capacity(selected_indices.len());
@@ -343,7 +401,7 @@ pub fn get_files_at_indices(
     listing_id: &str,
     selected_indices: &[usize],
     include_hidden: bool,
-) -> Result<Vec<FileEntry>, String> {
+) -> Result<Vec<FileEntry>, ListingLookupError> {
     with_listing(listing_id, |listing| {
         let rows = listing.rows(include_hidden);
         selected_indices
@@ -385,12 +443,12 @@ pub fn resort_listing(
     include_hidden: bool,
     selected_indices: Option<&[usize]>,
     all_selected: bool,
-) -> Result<ResortResult, String> {
-    let mut cache = LISTING_CACHE.write().map_err(|_| "Failed to acquire cache lock")?;
+) -> Result<ResortResult, ListingLookupError> {
+    let mut cache = LISTING_CACHE.write_ignore_poison();
 
     let listing = cache
         .get_mut(listing_id)
-        .ok_or_else(|| format!("Listing not found: {}", listing_id))?;
+        .ok_or_else(|| ListingLookupError::gone(listing_id))?;
 
     listing.touch();
 
@@ -537,7 +595,7 @@ pub fn get_listing_stats(
     listing_id: &str,
     include_hidden: bool,
     selected_indices: Option<&[usize]>,
-) -> Result<ListingStats, String> {
+) -> Result<ListingStats, ListingLookupError> {
     with_listing(listing_id, |listing| {
         listing_stats(listing.rows(include_hidden), selected_indices)
     })

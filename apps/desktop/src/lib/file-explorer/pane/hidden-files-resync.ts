@@ -23,7 +23,7 @@
  *
  * Either way this run's answers describe rows the pane no longer shows, so it
  * stops at the next await and writes nothing. A read that REJECTS once overtaken
- * is the expected "Listing not found" for the listing just ended; the caller is a
+ * is the expected gone-listing refusal for the listing just ended; the caller is a
  * fire-and-forget `void`, so it would otherwise escape the window as an unhandled
  * rejection (seen on an MCP `select_volume` followed at once by `nav_to_path`).
  *

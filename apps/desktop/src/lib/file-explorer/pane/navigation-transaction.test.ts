@@ -79,6 +79,8 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => {
     pathExistsChecked: vi.fn().mockResolvedValue({ data: true, timedOut: false }),
     listDirectoryStart: listDirectoryStartMock,
     listDirectoryEnd: vi.fn().mockResolvedValue(undefined),
+    onListingGone: vi.fn(() => () => {}),
+    keepListingsAlive: vi.fn().mockResolvedValue([]),
     cancelListing: vi.fn().mockResolvedValue(undefined),
     findFileIndex: vi.fn().mockResolvedValue(null),
     findFirstFuzzyMatch: vi.fn().mockResolvedValue(null),

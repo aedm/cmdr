@@ -66,6 +66,7 @@ import type { ListViewAPI } from './types'
 import type { VolumeCapabilities } from './volume-capabilities'
 import * as benchmark from '$lib/benchmark'
 import { isEventForCurrentLoad } from './listing-token'
+import { trackLiveListing, untrackLiveListing } from './listing-liveness'
 
 const log = getAppLogger('fileExplorer')
 
@@ -137,6 +138,8 @@ export interface ListingLoaderDeps {
   // Shared FilePane state the loader pokes (RAW setters — NOT the FilePaneAPI
   // `setCursorIndex`, which scrolls / ticks / syncs MCP; the loader does its own).
   getCursorIndex: () => number
+  /** The name of the entry under the cursor, so a re-list of a lost listing keeps the cursor on it. */
+  getCursorName: () => string | undefined
   setCursorIndexRaw: (index: number) => void
   /**
    * Takes the pending Back / Forward cursor restore when it's meant for `path`.
@@ -260,8 +263,32 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
    */
   function abandonListing(listingId: string) {
     if (!listingId) return
+    untrackLiveListing(listingId)
     void cancelListing(listingId)
     void listDirectoryEnd(listingId)
+  }
+
+  /**
+   * Keeps the landed `listingId` alive against the backend's orphan reaper, and
+   * re-lists the folder if the backend loses it anyway (`listing-liveness.ts`).
+   * Called only once a listing has landed: a load in flight
+   * also answers "gone" to a read that races its cache insert.
+   */
+  function trackLanded(listingId: string) {
+    if (listingId)
+      trackLiveListing(listingId, () => {
+        relistLostListing(listingId)
+      })
+  }
+
+  /**
+   * The backend no longer holds the listing this pane shows, so its rows can't be
+   * read and its watcher is gone. Re-list the same folder with the cursor on the
+   * same entry; the selection doesn't survive, as on any re-list.
+   */
+  function relistLostListing(listingId: string) {
+    if (isDestroyed || deps.getListingId() !== listingId) return
+    void loadDirectory({ path: loadedPath || deps.getCurrentPath(), selectName: deps.getCursorName() })
   }
 
   function resetLoadingState(errorMessage?: string, preserveTotalCount = false, friendly?: FriendlyError | null) {
@@ -628,6 +655,7 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
   // Handle listing completion event
   async function handleListingComplete(payload: ListingCompleteEvent, load: ListingLoad) {
     benchmark.logEventValue('listing-complete received, totalCount', payload.totalCount)
+    trackLanded(deps.getListingId())
     deps.setTotalCount(payload.totalCount)
     deps.setVolumeRootFromEvent(payload.volumeRoot)
 
@@ -796,8 +824,10 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
     // Set currentPath first so the initialPath $effect sees newPath === curPath and skips reload
     deps.setCurrentPath(state.currentPath)
 
-    // Adopt the listing identity
+    // Adopt the listing identity, and its liveness: the other pane tracked it until now
     deps.setListingId(state.listingId)
+    loadedPath = state.currentPath
+    trackLanded(state.listingId)
     deps.setTotalCount(state.totalCount)
     deps.setLastSequence(state.lastSequence)
 
@@ -832,6 +862,7 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
     // Clean up listing
     const listingId = deps.getListingId()
     if (listingId) {
+      untrackLiveListing(listingId)
       void cancelListing(listingId)
       void listDirectoryEnd(listingId)
       evictPerPathIconsForDir(loadedPath)

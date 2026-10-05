@@ -106,9 +106,10 @@ suite:
   all (`src-tauri/src/file_system/listing/DETAILS.md` § "Diffs speak the pane's rows"). It runs whenever a listing
   lands, not only on a toggle, and spans three IPC round trips, so it can be OVERTAKEN: by a navigation (which ends the
   old listing in the same tick it clears the pane's id) or by a newer resync. An overtaken run stops at its next await
-  and writes nothing, and a read that rejects once overtaken is the expected "Listing not found", swallowed. ❗
-  Overtaken is read off the pane's current listing id plus a per-pane run counter (`createHiddenFilesResync`), ❌ never
-  off the rejection's message; a failure on the listing the pane still shows keeps rejecting.
+  and writes nothing, and a read that rejects once overtaken is the expected gone-listing refusal
+  (`ListingLookupError::Gone`), swallowed. ❗ Overtaken is read off the pane's current listing id plus a per-pane run
+  counter (`createHiddenFilesResync`), ❌ never off the rejection's message; a failure on the listing the pane still
+  shows keeps rejecting.
 - `entries-snapshot.ts`: the Selection dialog's entry list and the operation's selected-names snapshot. Both adapt a
   search snapshot's rows; the Selection list keeps the search engine's BASENAME in `name` (a mask like `*.txt` has to
   mean the filename), unlike `SearchResultsView`'s own adapter, which synthesizes the `~`-shortened full path for the
@@ -1109,6 +1110,14 @@ continuation and `handleListingComplete`'s post-`await findFileIndex` cursor wri
 injected accessors (the `type-to-jump-controller` idiom, not a state-owning `.svelte.ts` factory). `getSwapState` /
 `adoptListing` share `loadGeneration`, so they live in the loader too. `cleanup()` (called from FilePane's `onDestroy`)
 owns the full listing teardown (`cancelListing` + `listDirectoryEnd` + `evictPerPathIconsForDir` + the six `unlisten*`).
+
+**A landed listing is tracked as live (`listing-liveness.ts`), and a lost one is re-listed.** `handleListingComplete`
+and `adoptListing` register the pane's listing; `abandonListing` and `cleanup` drop it. The registry heartbeats every
+tracked listing through `keepListingsAlive` every 30 min, so the backend's six-hour orphan reaper never takes a pane
+left idle on a quiet folder. When the heartbeat or any listing read (`onListingGone`) finds a tracked listing gone,
+`relistLostListing` re-lists `loadedPath` with the cursor on the same entry (the selection doesn't survive). Gotcha/Why:
+❌ don't track at `listDirectoryStart`. A read racing the backend's cache insert also answers `Gone`, which would make a
+loading pane re-list itself in a loop. Backend half: `src-tauri/src/file_system/listing/DETAILS.md` § "Backstop reaper".
 
 **Fast navigation never paints an empty loading frame.** `listing-presentation.svelte.ts` keeps the last settled
 `listingId`, row count, and `..` row (`parentRow`) for 100 ms after the next load starts. The `..` row belongs to the

@@ -23,6 +23,8 @@ const h = vi.hoisted(() => ({
   pathExistsChecked: vi.fn(),
   resolvePathVolume: vi.fn(),
   trackEvent: vi.fn(),
+  trackLiveListing: vi.fn(),
+  untrackLiveListing: vi.fn(),
   resolveValidPath: vi.fn(),
   getSetting: vi.fn(),
 }))
@@ -49,6 +51,10 @@ vi.mock('$lib/tauri-commands', () => ({
   pathExistsChecked: h.pathExistsChecked,
   resolvePathVolume: h.resolvePathVolume,
   trackEvent: h.trackEvent,
+}))
+vi.mock('./listing-liveness', () => ({
+  trackLiveListing: h.trackLiveListing,
+  untrackLiveListing: h.untrackLiveListing,
 }))
 vi.mock('./tag-sweep', () => ({ sweepListingTags: vi.fn() }))
 vi.mock('../navigation/path-resolution', () => ({ resolveValidPath: h.resolveValidPath }))

@@ -25,6 +25,7 @@ import type {
 } from '$lib/ipc/bindings'
 import type { TimedOut } from './ipc-types'
 import { throwIpcError } from './ipc-types'
+import { throwListingLookupError } from './listing-gone'
 import { throwMutationError } from '$lib/file-operations/mutation-error'
 import type { ListingDirectorySortMode } from '$lib/settings'
 
@@ -115,7 +116,7 @@ export async function resortListing(
     selectedIndices ?? null,
     allSelected ?? null,
   )
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwListingLookupError(res.error)
   return res.data
 }
 
@@ -133,7 +134,7 @@ export async function getFileRange(
   includeHidden: boolean,
 ): Promise<FileEntry[]> {
   const res = await commands.getFileRange(listingId, start, count, includeHidden)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwListingLookupError(res.error)
   return res.data as FileEntry[]
 }
 
@@ -144,7 +145,7 @@ export async function getFileRange(
  */
 export async function getTotalCount(listingId: string, includeHidden: boolean): Promise<number> {
   const res = await commands.getTotalCount(listingId, includeHidden)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwListingLookupError(res.error)
   return res.data
 }
 
@@ -156,7 +157,7 @@ export async function getTotalCount(listingId: string, includeHidden: boolean): 
  */
 export async function findFileIndex(listingId: string, name: string, includeHidden: boolean): Promise<number | null> {
   const res = await commands.findFileIndex(listingId, name, includeHidden)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwListingLookupError(res.error)
   return res.data
 }
 
@@ -170,7 +171,7 @@ export async function findFileIndices(
   includeHidden: boolean,
 ): Promise<Record<string, number>> {
   const res = await commands.findFileIndices(listingId, names, includeHidden)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwListingLookupError(res.error)
   return res.data
 }
 
@@ -201,7 +202,7 @@ export async function findFirstFuzzyMatch(
  */
 export async function getFileAt(listingId: string, index: number, includeHidden: boolean): Promise<FileEntry | null> {
   const res = await commands.getFileAt(listingId, index, includeHidden)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwListingLookupError(res.error)
   return res.data as FileEntry | null
 }
 
@@ -225,7 +226,7 @@ export async function getFileBeside(
   includeHidden: boolean,
 ): Promise<FileEntry | null> {
   const res = await commands.getFileBeside(listingId, name, side, includeHidden)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwListingLookupError(res.error)
   return res.data as FileEntry | null
 }
 
@@ -244,7 +245,7 @@ export async function getPathsAtIndices(
   hasParent: boolean,
 ): Promise<string[]> {
   const res = await commands.getPathsAtIndices(listingId, selectedIndices, includeHidden, hasParent)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwListingLookupError(res.error)
   return res.data
 }
 
@@ -261,7 +262,7 @@ export async function getFilesAtIndices(
   includeHidden: boolean,
 ): Promise<FileEntry[]> {
   const res = await commands.getFilesAtIndices(listingId, selectedIndices, includeHidden)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwListingLookupError(res.error)
   return res.data as FileEntry[]
 }
 
@@ -274,6 +275,15 @@ export async function listDirectoryEnd(listingId: string): Promise<void> {
 }
 
 /**
+ * The panes' heartbeat: keeps the named listings safe from the backend's orphan
+ * reaper and returns the ids it no longer holds. Driven by `file-explorer/pane/listing-liveness.ts`.
+ * @param listingIds - Every listing a pane currently shows.
+ */
+export async function keepListingsAlive(listingIds: string[]): Promise<string[]> {
+  return commands.keepListingsAlive(listingIds)
+}
+
+/**
  * Tells the backend whether the pane showing this listing shows hidden files. Its
  * `directory-diff` events number the pane's rows and skip rows it doesn't show.
  * @param listingId - The listing ID from listDirectoryStart.
@@ -281,7 +291,7 @@ export async function listDirectoryEnd(listingId: string): Promise<void> {
  */
 export async function setListingIncludeHidden(listingId: string, includeHidden: boolean): Promise<void> {
   const res = await commands.setListingIncludeHidden(listingId, includeHidden)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwListingLookupError(res.error)
 }
 
 /**
@@ -320,7 +330,7 @@ export async function getListingStats(
   selectedIndices?: number[],
 ): Promise<ListingStats> {
   const res = await commands.getListingStats(listingId, includeHidden, selectedIndices ?? null)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwListingLookupError(res.error)
   return res.data
 }
 

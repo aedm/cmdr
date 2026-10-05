@@ -41,7 +41,8 @@ pub async fn copy_files_to_clipboard(
     include_hidden: bool,
 ) -> Result<usize, String> {
     let indices = resolve_indices(&selected_indices, cursor_index, has_parent);
-    let paths = ops_get_paths_at_indices(&listing_id, &indices, include_hidden, has_parent)?;
+    let paths =
+        ops_get_paths_at_indices(&listing_id, &indices, include_hidden, has_parent).map_err(|e| e.to_string())?;
 
     if paths.is_empty() {
         return Err("No files to copy".to_string());
@@ -144,7 +145,8 @@ pub async fn cut_files_to_clipboard(
     include_hidden: bool,
 ) -> Result<usize, String> {
     let indices = resolve_indices(&selected_indices, cursor_index, has_parent);
-    let paths = ops_get_paths_at_indices(&listing_id, &indices, include_hidden, has_parent)?;
+    let paths =
+        ops_get_paths_at_indices(&listing_id, &indices, include_hidden, has_parent).map_err(|e| e.to_string())?;
 
     if paths.is_empty() {
         return Err("No files to cut".to_string());

@@ -90,7 +90,7 @@ export interface SelectedNamesInput {
 
 export async function fetchSelectedNames(input: SelectedNamesInput): Promise<string[] | 'all'> {
   // No backend listing, no operation snapshot. A search-results pane is the case
-  // that reaches here: `getFileAt('')` rejects with "Listing not found", and the
+  // that reaches here: `getFileAt('')` rejects as a gone listing, and the
   // caller starts this as `void snapshotSelectionForOperation()`, so the rejection
   // became an unhandled one on every operation started from a snapshot pane. The
   // snapshot would have nothing to feed anyway — the listing diff that consumes
@@ -115,7 +115,7 @@ export async function fetchSelectedNames(input: SelectedNamesInput): Promise<str
   } catch {
     // The listing died under us: the pane re-listed between the caller asking for
     // this snapshot and these reads, so the id is stale and the backend answers
-    // `Listing not found`. Same answer as the listing-less pane above — a dead
+    // `ListingLookupError::Gone`. Same answer as the listing-less pane above — a dead
     // listing has nothing to feed, and its diff won't run either. Returning []
     // rather than `names` on purpose: a PARTIAL list reads to the diff as rows the
     // user deselected. Swallowed here because the caller is a fire-and-forget

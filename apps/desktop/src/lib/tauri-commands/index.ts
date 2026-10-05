@@ -16,6 +16,7 @@ export {
   getPathsAtIndices,
   getFilesAtIndices,
   listDirectoryEnd,
+  keepListingsAlive,
   setListingIncludeHidden,
   refreshListing,
   getListingStats,
@@ -58,6 +59,8 @@ export type {
   ListingErrorEvent,
   ListingCancelledEvent,
 } from './file-listing'
+// A listing read that found its listing gone, for the pane that shows it to re-list.
+export { onListingGone } from './listing-gone'
 
 export { getDebugLogPath } from './logging'
 

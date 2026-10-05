@@ -3,14 +3,15 @@
 use crate::file_system::get_files_at_indices as ops_get_files_at_indices;
 use crate::file_system::get_paths_at_indices as ops_get_paths_at_indices;
 use crate::file_system::{
-    BriefColumnWidths, BriefColumnsIpcError, DirectorySortMode, FileEntry, ListingStats, ResortResult, RowBeside,
-    SortColumn, SortOrder, StreamingListingStartResult, cancel_listing as ops_cancel_listing,
+    BriefColumnWidths, BriefColumnsIpcError, DirectorySortMode, FileEntry, ListingLookupError, ListingStats,
+    ResortResult, RowBeside, SortColumn, SortOrder, StreamingListingStartResult, cancel_listing as ops_cancel_listing,
     compute_brief_column_text_widths as ops_compute_brief_column_text_widths, find_file_index as ops_find_file_index,
     find_file_indices as ops_find_file_indices,
     fuzzy_find_first_match_in_listing as ops_fuzzy_find_first_match_in_listing, get_file_at as ops_get_file_at,
     get_file_beside as ops_get_file_beside, get_file_range as ops_get_file_range,
     get_listing_stats as ops_get_listing_stats, get_total_count as ops_get_total_count,
-    list_directory_end as ops_list_directory_end, list_directory_start_streaming as ops_list_directory_start_streaming,
+    keep_listings_alive as ops_keep_listings_alive, list_directory_end as ops_list_directory_end,
+    list_directory_start_streaming as ops_list_directory_start_streaming,
     refresh_listing_index_sizes as ops_refresh_listing_index_sizes, resort_listing as ops_resort_listing,
     set_listing_include_hidden as ops_set_listing_include_hidden,
 };
@@ -333,7 +334,7 @@ pub async fn resort_listing(
     include_hidden: bool,
     selected_indices: Option<Vec<usize>>,
     all_selected: Option<bool>,
-) -> Result<ResortResult, String> {
+) -> Result<ResortResult, ListingLookupError> {
     ops_resort_listing(
         &listing_id,
         sort_by,
@@ -353,13 +354,13 @@ pub async fn get_file_range(
     start: usize,
     count: usize,
     include_hidden: bool,
-) -> Result<Vec<FileEntry>, String> {
+) -> Result<Vec<FileEntry>, ListingLookupError> {
     ops_get_file_range(&listing_id, start, count, include_hidden)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn get_total_count(listing_id: String, include_hidden: bool) -> Result<usize, String> {
+pub async fn get_total_count(listing_id: String, include_hidden: bool) -> Result<usize, ListingLookupError> {
     ops_get_total_count(&listing_id, include_hidden)
 }
 
@@ -401,7 +402,11 @@ pub async fn get_brief_column_text_widths(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn find_file_index(listing_id: String, name: String, include_hidden: bool) -> Result<Option<usize>, String> {
+pub async fn find_file_index(
+    listing_id: String,
+    name: String,
+    include_hidden: bool,
+) -> Result<Option<usize>, ListingLookupError> {
     ops_find_file_index(&listing_id, &name, include_hidden)
 }
 
@@ -411,7 +416,7 @@ pub async fn find_file_indices(
     listing_id: String,
     names: Vec<String>,
     include_hidden: bool,
-) -> Result<std::collections::HashMap<String, usize>, String> {
+) -> Result<std::collections::HashMap<String, usize>, ListingLookupError> {
     ops_find_file_indices(&listing_id, &names, include_hidden)
 }
 
@@ -432,7 +437,11 @@ pub async fn find_first_fuzzy_match(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn get_file_at(listing_id: String, index: usize, include_hidden: bool) -> Result<Option<FileEntry>, String> {
+pub async fn get_file_at(
+    listing_id: String,
+    index: usize,
+    include_hidden: bool,
+) -> Result<Option<FileEntry>, ListingLookupError> {
     ops_get_file_at(&listing_id, index, include_hidden)
 }
 
@@ -448,7 +457,7 @@ pub async fn get_file_beside(
     name: String,
     side: RowBeside,
     include_hidden: bool,
-) -> Result<Option<FileEntry>, String> {
+) -> Result<Option<FileEntry>, ListingLookupError> {
     ops_get_file_beside(&listing_id, &name, side, include_hidden)
 }
 
@@ -461,7 +470,7 @@ pub async fn get_paths_at_indices(
     selected_indices: Vec<usize>,
     include_hidden: bool,
     has_parent: bool,
-) -> Result<Vec<String>, String> {
+) -> Result<Vec<String>, ListingLookupError> {
     ops_get_paths_at_indices(&listing_id, &selected_indices, include_hidden, has_parent)
         .map(|paths| paths.into_iter().map(|p| p.to_string_lossy().into_owned()).collect())
 }
@@ -474,7 +483,7 @@ pub async fn get_files_at_indices(
     listing_id: String,
     selected_indices: Vec<usize>,
     include_hidden: bool,
-) -> Result<Vec<FileEntry>, String> {
+) -> Result<Vec<FileEntry>, ListingLookupError> {
     ops_get_files_at_indices(&listing_id, &selected_indices, include_hidden)
 }
 
@@ -484,13 +493,22 @@ pub async fn list_directory_end(listing_id: String) {
     ops_list_directory_end(&listing_id);
 }
 
+/// The panes' heartbeat: keeps the named listings safe from the orphan reaper and
+/// returns the ids no longer cached, which the frontend re-lists.
+/// See `file_system::listing::operations::keep_listings_alive`.
+#[tauri::command]
+#[specta::specta]
+pub async fn keep_listings_alive(listing_ids: Vec<String>) -> Vec<String> {
+    ops_keep_listings_alive(&listing_ids)
+}
+
 /// Tells the backend the pane showing `listing_id` now shows (or hides) hidden
 /// files. Its `directory-diff` events speak that pane's rows, and skip changes
 /// to rows it doesn't show, so the pane calls this before re-reading its rows
 /// after the hidden-files toggle.
 #[tauri::command]
 #[specta::specta]
-pub async fn set_listing_include_hidden(listing_id: String, include_hidden: bool) -> Result<(), String> {
+pub async fn set_listing_include_hidden(listing_id: String, include_hidden: bool) -> Result<(), ListingLookupError> {
     ops_set_listing_include_hidden(&listing_id, include_hidden)
 }
 
@@ -589,7 +607,7 @@ pub async fn get_listing_stats(
     listing_id: String,
     include_hidden: bool,
     selected_indices: Option<Vec<usize>>,
-) -> Result<ListingStats, String> {
+) -> Result<ListingStats, ListingLookupError> {
     ops_get_listing_stats(&listing_id, include_hidden, selected_indices.as_deref())
 }
 
