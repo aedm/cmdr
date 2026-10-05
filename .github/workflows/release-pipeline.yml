@@ -52,7 +52,11 @@ jobs:
         run: |
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
-          CURRENT=$(jq -r .version apps/website/public/latest.json)
+          # The live manifest is the copy on `main` (what `publish` commits and the website serves).
+          # ❌ Never the checkout's own copy: that's the tagged commit, which always predates its own
+          # `publish` commit, so it names the PREVIOUS release and an old or re-pushed tag sails past.
+          git fetch --quiet --depth=1 origin main
+          CURRENT=$(git show FETCH_HEAD:apps/website/public/latest.json | jq -r .version)
 
           if [ "$REPUBLISH" = "$TAG" ]; then
             echo "::warning::RELEASE_REPUBLISH_TAG names $TAG, so publishing $VERSION over $CURRENT is deliberate. Clear that variable once this run finishes."
