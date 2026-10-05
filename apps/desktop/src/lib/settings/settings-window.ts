@@ -110,6 +110,8 @@ export type SettingsSurface =
   | 'ai-translate-toast'
   /** The one-time "Escape left full screen" toast, deep-linking to its switch. */
   | 'escape-full-screen-toast'
+  /** The "local AI model didn't finish downloading" toast after onboarding, deep-linking to AI > Provider. */
+  | 'local-download-toast'
 
 /**
  * Opens the settings window, or focuses it if already open. When `section` is provided,

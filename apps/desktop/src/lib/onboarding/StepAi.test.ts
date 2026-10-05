@@ -185,6 +185,19 @@ vi.mock('$lib/logging/logger', () => ({
   }),
 }))
 
+// Where a genuine failure gets SAID (held until the wizard closes); its own tests cover the
+// holding. Lazy wrappers, same reason as the logger's.
+const noteLocalDownloadFailed = vi.fn<() => void>()
+const clearLocalDownloadFailure = vi.fn<() => void>()
+vi.mock('./local-download-notice', () => ({
+  noteLocalDownloadFailed: () => {
+    noteLocalDownloadFailed()
+  },
+  clearLocalDownloadFailure: () => {
+    clearLocalDownloadFailure()
+  },
+}))
+
 /** A start that stays pending until the test settles it, like a real download in flight. */
 function pendingStart(): { reject: (error: unknown) => void } {
   const handle = { reject: (_error: unknown): void => undefined }
@@ -252,6 +265,8 @@ describe('StepAi', () => {
     cancelAiDownload.mockClear()
     logWarn.mockClear()
     logInfo.mockClear()
+    noteLocalDownloadFailed.mockClear()
+    clearLocalDownloadFailure.mockClear()
     checkAiConnection.mockClear()
     saveAiApiKey.mockClear()
     getAiApiKeyStatus.mockReset()
@@ -417,6 +432,50 @@ describe('StepAi', () => {
 
     expect(logWarn).not.toHaveBeenCalled()
     expect(logInfo).toHaveBeenCalledOnce()
+  })
+
+  it('tells the user when the local model download stops while Local is still picked', async () => {
+    const start = pendingStart()
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'local')
+    await waitForAsync()
+
+    start.reject(new Error('HTTP 503'))
+    await waitForAsync()
+
+    expect(noteLocalDownloadFailed).toHaveBeenCalledOnce()
+  })
+
+  it('says nothing about a download the person stopped by switching away from Local', async () => {
+    const start = pendingStart()
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'local')
+    await waitForAsync()
+    pickChoice(mounted.target, 'cloud')
+    await waitForAsync()
+
+    start.reject(new Error('Download cancelled'))
+    await waitForAsync()
+
+    expect(noteLocalDownloadFailed).not.toHaveBeenCalled()
+  })
+
+  it('forgets an earlier failure once the person picks again', async () => {
+    const start = pendingStart()
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'local')
+    await waitForAsync()
+    start.reject(new Error('HTTP 503'))
+    await waitForAsync()
+    clearLocalDownloadFailure.mockClear()
+
+    pickChoice(mounted.target, 'off')
+    await waitForAsync()
+
+    expect(clearLocalDownloadFailure).toHaveBeenCalled()
   })
 
   it('Intel gate: when localAiSupported is false the local radio is disabled and ignored', async () => {

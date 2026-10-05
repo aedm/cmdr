@@ -146,9 +146,10 @@ boot-time answer on the second call and the popup would either double-show or ne
 `ListenerSetupContext`.
 
 **Wizard visibility moves in one place.** `setOnboardingVisible()` in `+page.svelte` writes `showOnboarding` AND
-`setOnboardingShowing()` (the updater's mirror, which holds the "restart to apply" toast back while onboarding is up).
-Every open and close goes through it, including `handleWizardComplete`; writing `showOnboarding` directly would let the
-two drift and leak an update toast over the wizard.
+`setOnboardingShowing()` (the updater's mirror, which holds the "restart to apply" toast back while onboarding is up)
+AND `setWizardShowingForDownloadNotice()` (the same for onboarding's failed local-AI download toast). Every open and
+close goes through it, including `handleWizardComplete`; writing `showOnboarding` directly would let them drift and leak
+a toast over the wizard, or hold one forever.
 
 ## Dispatch core
 

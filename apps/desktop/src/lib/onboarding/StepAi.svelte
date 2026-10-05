@@ -29,6 +29,7 @@
         type AiProvider,
     } from '$lib/settings'
     import { pushConfigToBackend } from '$lib/settings/ai-config'
+    import { clearLocalDownloadFailure, noteLocalDownloadFailed } from './local-download-notice'
     import { cloudAiBlocked, declineCloudConsent } from '$lib/ai/cloud-consent.svelte'
     import AiCloudConsentToggle from '$lib/ai/AiCloudConsentToggle.svelte'
     import InfoTip from '$lib/ui/InfoTip.svelte'
@@ -257,8 +258,8 @@
     /**
      * How a download this step started came to an end without finishing. Typed so the two
      * never blur: `cancelledByChoice` is the person switching away from Local, and `failed`
-     * is everything else (an HTTP status, a size check, a full disk). Only the log reads it
-     * today; whether onboarding should also SAY a genuine failure is an open product call.
+     * is everything else (an HTTP status, a size check, a full disk). A failure is also SAID,
+     * through `local-download-notice.ts`, which holds it until the wizard closes.
      */
     type LocalDownloadEnd = { kind: 'cancelledByChoice' } | { kind: 'failed'; error: unknown }
 
@@ -269,7 +270,7 @@
      */
     let currentDownload: { cancelledByChoice: boolean } | null = null
 
-    function logDownloadEnd(end: LocalDownloadEnd): void {
+    function reportDownloadEnd(end: LocalDownloadEnd): void {
         if (end.kind === 'cancelledByChoice') {
             log.info('The AI download stopped because the person switched away from Local')
         } else if (localAiErrorLogLevel(toLocalAiError(end.error)) === 'info') {
@@ -277,6 +278,7 @@
             log.info('The AI download stopped: {error}', { error: toLocalAiError(end.error) })
         } else {
             log.warn("Couldn't download the local AI model during onboarding: {error}", { error: end.error })
+            noteLocalDownloadFailed()
         }
     }
 
@@ -294,6 +296,8 @@
         choice = next
         pickedByPerson = true
         showResumeCue = false
+        // An earlier attempt's failure no longer describes what the user ends up with.
+        clearLocalDownloadFailure()
         if (next === 'local' && localAiSupported) {
             startBackgroundDownload()
         }
@@ -304,7 +308,7 @@
         const attempt = { cancelledByChoice: false }
         currentDownload = attempt
         void startAiDownload().catch((error: unknown) => {
-            logDownloadEnd(attempt.cancelledByChoice ? { kind: 'cancelledByChoice' } : { kind: 'failed', error })
+            reportDownloadEnd(attempt.cancelledByChoice ? { kind: 'cancelledByChoice' } : { kind: 'failed', error })
         })
     }
 

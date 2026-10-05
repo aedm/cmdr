@@ -257,11 +257,15 @@ Three pieces stacked top to bottom:
    in the background; switching away cancels (HTTP-Range resume picks up on switch-back). A start that ends without
    finishing is typed per attempt (`LocalDownloadEnd`): `cancelledByChoice` when the person switched away (logged at
    info, even if they already picked Local again by the time the rejection lands) and `failed` for everything else
-   (logged at warn). Nothing in the wizard says a genuine failure yet, and nothing else listens (`initAiState` skipped
-   its listeners at launch because the provider wasn't local); whether it should is an open product call. Intel Macs get
-   the local option disabled, with the reason ("Local LLM requires Apple silicon. Cloud works on Intel.",
-   `getAiRuntimeStatus().localAiSupported`) in VISIBLE text beside it: why an option is greyed out is the one thing the
-   user most needs to read, and a tooltip on a control they can't reach is the worst place to put it.
+   (logged at warn). A genuine failure is also SAID (David, 2026-09-25, #155): nothing else would, since `initAiState`
+   skipped its listeners at launch because the provider wasn't local, and the only clue was the Download button
+   reappearing in Settings. `local-download-notice.ts` raises a warning toast with a button to Settings › AI › Provider
+   (`LocalDownloadFailedToastContent.svelte`), but only once the wizard has closed, since a toast under the sheet goes
+   unseen; a failure while it's up is held until `setOnboardingVisible(false)`. Any new pick on the step clears a held
+   failure, which then no longer describes what the user ends up with. Intel Macs get the local option disabled, with
+   the reason ("Local LLM requires Apple silicon. Cloud works on Intel.", `getAiRuntimeStatus().localAiSupported`) in
+   VISIBLE text beside it: why an option is greyed out is the one thing the user most needs to read, and a tooltip on a
+   control they can't reach is the worst place to put it.
 
    They render through the house `RadioGroup`, not the bordered, tinted radio CARDS they used to be: on a page that
    already carries a banner and a comparison table, three filled blocks made the actual question the heaviest thing on

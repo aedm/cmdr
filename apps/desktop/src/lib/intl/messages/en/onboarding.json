@@ -433,6 +433,18 @@
     "description": "Helper text under the no-AI radio option, reassuring the user the app is fully usable without AI and AI can be enabled later. \"Cmdr\" is the product name; \"Settings\" is the app's settings screen.",
     "screenshot": "onboarding-ai.png"
   },
+  "onboarding.localDownloadFailed.title": "The local AI model didn’t finish downloading",
+  "@onboarding.localDownloadFailed.title": {
+    "description": "Bold first line of a warning toast shown in the main window right after the user finishes onboarding, when they picked the private on-device AI model and its background download stopped before it completed (for example, the network dropped or the disk filled up). It corrects the impression that the local model is ready. A statement, not a question."
+  },
+  "onboarding.localDownloadFailed.body": "Start it again from Settings › AI.",
+  "@onboarding.localDownloadFailed.body": {
+    "description": "Second line of the same toast, under \"The local AI model didn’t finish downloading\". Tells the user where to restart the download. \"Settings › AI\" is the app's own settings screen and its AI section: use the same names your translation uses for that window and section, keeping the › separator."
+  },
+  "onboarding.localDownloadFailed.openSettings": "Open Settings",
+  "@onboarding.localDownloadFailed.openSettings": {
+    "description": "Button on the same toast that opens the app's Settings window at the AI section, where the user can restart the local model download. A short verb phrase."
+  },
   "onboarding.stepBeta.footer.start": "Start using Cmdr!",
   "@onboarding.stepBeta.footer.start": {
     "description": "Secondary footer button on the open-beta step that finishes onboarding right away, skipping the final optional-setup step. Upbeat, with the exclamation mark. \"Cmdr\" is the product name and stays untranslated.",
