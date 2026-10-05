@@ -157,7 +157,9 @@ var rustWorkspaceConfigInputs = []string{
 // The disk-space emit gate's test reads the drive-figure table it shares with the
 // frontend (`space_poller/readout.rs`). The breadcrumb validator's generated
 // vocabulary and drift test read the frontend command-id tuple, so a registry edit
-// must invalidate every Rust lane that compiles or scans the app crate.
+// must invalidate every Rust lane that compiles or scans the app crate. The managed-policy
+// drift guard reads the public MDM files and the `/trust` key list
+// (`managed_policy/public_docs_test.rs`).
 //
 // A lane carries this whenever its own set covers the tree that does the
 // embedding, which is what `TestRustInputsCoverEveryEmbeddedFile` walks the whole
@@ -169,6 +171,8 @@ var rustEmbeddedInputs = []string{
 	"CHANGELOG.md",
 	"apps/desktop/src/lib/commands/command-ids.ts",
 	"apps/desktop/src/lib/units/drive-figure-cases.json",
+	"apps/website/public/mdm/**",
+	"apps/website/src/lib/trust.ts",
 }
 
 // rustScanInputs is what a Rust source scanner of the given jurisdiction reads:

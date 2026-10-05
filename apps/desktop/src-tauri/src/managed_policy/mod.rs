@@ -12,6 +12,8 @@ mod egress;
 mod hosts;
 pub(crate) mod keys;
 mod locked;
+#[cfg(test)]
+mod public_docs_test;
 mod refusal;
 mod source;
 pub(crate) mod view;

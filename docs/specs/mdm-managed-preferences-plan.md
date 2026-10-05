@@ -653,6 +653,23 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
   `plutil -lint`; website build and its checks.
 - **DONE**: the files are published under `/mdm/`, `/trust` documents every key, the gap line is gone, the guard is
   green.
+- **Implementation notes** (M8 as built):
+  - The guard is `managed_policy/public_docs_test.rs`: the profile's `com.veszelovszki.cmdr` payload (minus its
+    `Payload*` keys), the bare plist, and `managedPreferenceKeys` in `trust.ts` each equal `ALL_KEYS`; both files'
+    values parse with no warning and match each other. Its three files joined `rustEmbeddedInputs` AND ci.yml's `rust`
+    filter (a website-only push would otherwise skip the Rust job in CI too).
+  - Example values: `DisableUsageStats`, `DisableCrashAndErrorReports`, and `DisableAutomaticUpdateChecks` on; the rest
+    permissive (`false`, `MaxUpdateVersion` `"1"`, a four-entry host list including `localhost`/`127.0.0.1`), so an
+    unedited upload means "telemetry off", not "Cmdr frozen".
+  - The website host is nginx, not one with `_headers`, so a `location ^~ /mdm/` with a `types` block serves
+    `.mobileconfig` as `application/x-apple-aspen-config` and `.plist` as `application/x-plist` (`nginx -t` passes).
+  - `/trust` changes beyond the new section: the summary line, the "Turning updates off" and AI paragraphs, and
+    `/trust/development` lost their "IT can't yet" sentences; the network rows name the key that turns each one off, and
+    the license and S3 rows say why none does. Gaps: "No central administration" and "No central control over AI" are
+    gone, "No update control for IT" became "No update channels and no staged rollout", and a new gap names the traffic
+    no key covers. The `.pkg`/PPPC gap stays.
+  - ❗ Release timing: `/trust` describes the RELEASED app, and the website deploys on every push to `main`. A `DevTodo`
+    in the section says to publish it with the first release that ships managed preferences.
 
 ### M9. Close-out
 

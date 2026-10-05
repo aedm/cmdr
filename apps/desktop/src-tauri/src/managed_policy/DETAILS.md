@@ -3,6 +3,19 @@
 The canonical key catalog for Cmdr's MDM support. `/trust` and the sample profile mirror this file; the plan behind it
 is `docs/specs/mdm-managed-preferences-plan.md`.
 
+## The public mirror
+
+- `apps/website/public/mdm/cmdr-managed-preferences.mobileconfig` (a whole unsigned profile, one payload of type
+  `com.veszelovszki.cmdr`) and `apps/website/public/mdm/com.veszelovszki.cmdr.plist` (the bare key dictionary, for MDM
+  "preference file" uploads), served at `getcmdr.com/mdm/` with their own types (`apps/website/nginx.conf`).
+- `/trust#mdm` renders its key list from `managedPreferenceKeys` in `apps/website/src/lib/trust.ts`.
+- **Drift guard** (`public_docs_test.rs`): all three key sets equal `ALL_KEYS`, every example value parses without a
+  warning, and the two files carry the same values. A new key fails it until the files and `/trust` list it. The Rust
+  lanes and CI's `rust` filter list the three files as inputs, so editing only them isn't a cached pass.
+- Example values: the telemetry keys and background checks on, the rest at their permissive value (`false`,
+  `MaxUpdateVersion` `"1"`, a short host list), so an admin who uploads the file unchanged gets "telemetry off" and
+  nothing surprising.
+
 ## The preference domain
 
 - Domain: `com.veszelovszki.cmdr` (`config::BUNDLE_ID`), passed explicitly, never `kCFPreferencesCurrentApplication`, so
@@ -131,6 +144,7 @@ download, and the user-initiated feedback and beta signup.
 - Tests elsewhere put a policy in force with `testing::override_for_test(testing::forcing(&[KEY]))`: a guard that makes
   `current()` and `for_egress()` answer that policy on the test's own thread (a `#[tokio::test]` runs its tasks there),
   so parallel tests never see each other's policy.
+- `public_docs_test.rs` is the drift guard (§ The public mirror).
 - Unit tests run over `FakeSource`. `source.rs` has a scratch-domain CF test (`com.getcmdr.policytest.<tag>`) proving a
   value in the user's own layer isn't reported, and a `PlistFileSource` round trip. `view.rs` tests
   `get_managed_policy` end to end through `CMDR_MANAGED_PREFS_FILE`.
