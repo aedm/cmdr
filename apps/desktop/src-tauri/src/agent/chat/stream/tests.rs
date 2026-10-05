@@ -25,6 +25,7 @@ fn every_error_kind_maps_to_its_own_wire_kind() {
         AgentErrorKind::RepeatedToolCall,
         AgentErrorKind::UnfinishedReply,
         AgentErrorKind::Provider,
+        AgentErrorKind::ManagedByOrganization,
     ]
     .into_iter()
     .map(|kind| serde_json::to_value(AgentErrorKindView::from(kind)).expect("serializes"))
@@ -43,8 +44,20 @@ fn every_error_kind_maps_to_its_own_wire_kind() {
             "repeatedToolCall",
             "unfinishedReply",
             "provider",
+            "managedByOrganization",
         ]
     );
+}
+
+/// A mid-turn refusal from the LLM client's policy backstop ends the turn as the
+/// organization's "no", the same kind the slot refuses with, never as a provider failure.
+#[test]
+fn a_mid_turn_policy_refusal_ends_the_turn_as_managed() {
+    use crate::agent::llm::types::AgentLlmError;
+    use crate::managed_policy::ManagedAiRefusal;
+    let kind = AgentErrorKind::from(AgentLlmError::Managed(ManagedAiRefusal::CloudAiOff));
+    assert_eq!(kind, AgentErrorKind::ManagedByOrganization);
+    assert_eq!(kind.as_token(), AgentErrorKindView::ManagedByOrganization.as_token());
 }
 
 /// `AskCmdrOff` exists only on the wire: the backend refuses the send before a provider is

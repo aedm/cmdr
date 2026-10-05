@@ -155,8 +155,8 @@ pub enum AgentErrorKindView {
     /// Cloud AI is picked and the user hasn't allowed it ("Allow cloud AI" in Settings > AI).
     /// View-only: the slot refuses before a thread exists (`session::SlotRefusal`).
     NoCloudConsent,
-    /// The organization's managed policy refuses the provider or its host. View-only, like
-    /// `NoCloudConsent`: the slot refuses before a thread exists.
+    /// The organization's managed policy refuses the provider or its host: the slot refuses
+    /// before a thread exists, and the LLM client's backstop ends a running turn with it.
     ManagedByOrganization,
     /// The local server runs with a context window too small to hold one prompt, so the send
     /// was refused before it could be assembled against
@@ -180,7 +180,7 @@ impl AgentErrorKindView {
     /// [`AgentErrorKind::as_token`] for every variant the two enums have in common (a test
     /// pins that). Both feed the SAME `failure` prop on `ask_cmdr_turn`, so a gate that
     /// tokenized differently either side of the turn boundary would be two numbers for one
-    /// thing. `AskCmdrOff`, `NoCloudConsent`, `ManagedByOrganization`, and `LocalWindowTooSmall` are view-only: the
+    /// thing. `AskCmdrOff`, `NoCloudConsent`, and `LocalWindowTooSmall` are view-only: the
     /// runtime has no variant for them, because the send refuses ahead of the turn.
     pub fn as_token(self) -> &'static str {
         match self {
@@ -215,6 +215,7 @@ impl From<AgentErrorKind> for AgentErrorKindView {
             AgentErrorKind::RepeatedToolCall => Self::RepeatedToolCall,
             AgentErrorKind::UnfinishedReply => Self::UnfinishedReply,
             AgentErrorKind::Provider => Self::Provider,
+            AgentErrorKind::ManagedByOrganization => Self::ManagedByOrganization,
         }
     }
 }

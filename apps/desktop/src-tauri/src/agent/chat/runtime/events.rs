@@ -125,6 +125,9 @@ pub enum AgentErrorKind {
     UnfinishedReply,
     /// Any other provider-side problem; detail is logged, never carried in the type.
     Provider,
+    /// The organization's managed policy refused a request mid-turn (the LLM client's backstop).
+    /// The same wire kind the slot refuses with before a turn; not a failure.
+    ManagedByOrganization,
 }
 
 impl AgentErrorKind {
@@ -143,6 +146,7 @@ impl AgentErrorKind {
             AgentErrorKind::RepeatedToolCall => "repeated_tool_call",
             AgentErrorKind::UnfinishedReply => "unfinished_reply",
             AgentErrorKind::Provider => "provider",
+            AgentErrorKind::ManagedByOrganization => "managed_by_organization",
         }
     }
 }
@@ -159,6 +163,7 @@ impl From<crate::agent::llm::types::AgentLlmError> for AgentErrorKind {
             AgentLlmError::RateLimited(_) => AgentErrorKind::RateLimited,
             AgentLlmError::BudgetExhausted => AgentErrorKind::BudgetExhausted,
             AgentLlmError::Provider(_) => AgentErrorKind::Provider,
+            AgentLlmError::Managed(_) => AgentErrorKind::ManagedByOrganization,
         }
     }
 }

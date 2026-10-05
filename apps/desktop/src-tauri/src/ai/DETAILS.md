@@ -175,7 +175,9 @@ How the organization's MDM profile (`managed_policy/DETAILS.md`, the canonical k
   where the backend is built), and `chat_completion`, `chat_completion_stream`, and `exec_chat_stream_request` ask
   `for_egress()` (a fresh read) right before sending, refusing with `AiError::Managed`. An Ask Cmdr turn resolves its
   backend once and makes many requests, and `resolve_backend_with_model` rebuilds from a second config read, so only
-  this check makes "the next request stops" hold for them. Mid-turn it ends the turn as a provider failure.
+  this check makes "the next request stops" hold for them. Mid-turn the refusal stays typed:
+  `AgentLlmError::Managed` → `AgentErrorKind::ManagedByOrganization`, the same wire kind the slot refuses with (and a
+  background wake logs it at info).
 - **Redirects.** Remote backends send through `policy_guarded_http_client` (`genai::ClientBuilder::with_reqwest`), whose
   redirect policy stops at any hop the (cached) policy refuses. Without it, a 3xx from an allowed host reaches any host.
   The connection probe (`check_ai_connection`) uses the same policy (`client::policy_guarded_redirects`, one function):
