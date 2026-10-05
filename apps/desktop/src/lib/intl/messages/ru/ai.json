@@ -227,6 +227,14 @@
   "@ai.translateError.unknownProvider.body": {
     "sourceHash": "7042a75"
   },
+  "ai.translateError.managed.title": "Функциями ИИ в Cmdr управляет ваша организация",
+  "@ai.translateError.managed.title": {
+    "sourceHash": "12f8233"
+  },
+  "ai.translateError.managed.body": "В вашем ИТ-отделе подскажут, какими сервисами ИИ можно пользоваться.",
+  "@ai.translateError.managed.body": {
+    "sourceHash": "cb7e811"
+  },
   "ai.cloud.serviceAria": "Облачный сервис ИИ",
   "@ai.cloud.serviceAria": {
     "sourceHash": "7dec1e0"
@@ -463,5 +471,25 @@
   "ai.secretError.removeKeychainBody": "Откройте приложение «Связка ключей», найдите запись «Cmdr» и удалите ее там.",
   "@ai.secretError.removeKeychainBody": {
     "sourceHash": "4e3abe7"
+  },
+  "ai.managed.aiOff": "Ваша организация выключила ИИ в Cmdr.",
+  "@ai.managed.aiOff": {
+    "sourceHash": "25b7aef"
+  },
+  "ai.managed.cloudAiOff": "Ваша организация разрешает только ИИ на устройстве.",
+  "@ai.managed.cloudAiOff": {
+    "sourceHash": "894c53d"
+  },
+  "ai.managed.hostNotAllowed": "Ваша организация не разрешает этот сервис ИИ. В вашем ИТ-отделе подскажут, какими сервисами можно пользоваться.",
+  "@ai.managed.hostNotAllowed": {
+    "sourceHash": "845a19f"
+  },
+  "ai.managed.localOnlyUnsupported": "Ваша организация разрешает только ИИ на устройстве, а на этом Mac такой ИИ работать не может.",
+  "@ai.managed.localOnlyUnsupported": {
+    "sourceHash": "b760ca4"
+  },
+  "ai.managed.serviceNotAllowed": "не разрешено вашей организацией",
+  "@ai.managed.serviceNotAllowed": {
+    "sourceHash": "026e7e3"
   }
 }

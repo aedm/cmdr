@@ -2987,7 +2987,10 @@
     "sources": "macOS live Sharing.appex SHAREPOINT_TABLE_TITLE → «Общие папки», Dock SpecialFolderShared → «Общая папка»; MS share (noun) and file share → «общая папка»; KDE Dolphin «совместно используемых сетевых ресурсов» (outvoted)",
     "note": "macOS's Connect to Server sheet calls the shares on a server «тома» once mounted; keep «общая папка» for the share on the server and «том» for what appears in the volume list.",
     "proseAccept": ["сетев"],
-    "decision": "Network share"
+    "decision": "Network share",
+    "exceptions": {
+      "errorReporter.dialog.managedOff": "\"share it yourself\" is the verb (pass the saved report on), not an SMB share; rendered «передать самостоятельно»."
+    }
   },
   "new-file": {
     "chosen": "Новый файл",

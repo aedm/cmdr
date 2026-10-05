@@ -387,6 +387,14 @@
   "@onboarding.stepBeta.crashReportsNote": {
     "sourceHash": "9be0be1"
   },
+  "onboarding.stepBeta.analyticsManaged": "Ваша организация выключила статистику использования.",
+  "@onboarding.stepBeta.analyticsManaged": {
+    "sourceHash": "49484ee"
+  },
+  "onboarding.stepBeta.crashReportsNoteAlone": "Отчеты о сбоях включены: при сбое Cmdr отправляет версию приложения, версию macOS и место, где остановился код.\nВаши файлы никогда не отправляются.\nОтчеты можно отключить в настройках в любой момент.",
+  "@onboarding.stepBeta.crashReportsNoteAlone": {
+    "sourceHash": "5084dd0"
+  },
   "onboarding.stepBeta.emailTitle": "Будем на связи (необязательно)",
   "@onboarding.stepBeta.emailTitle": {
     "sourceHash": "cf691fa"

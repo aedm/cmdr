@@ -220,6 +220,10 @@
   "@askCmdr.error.noCloudConsent": {
     "sourceHash": "cd2af1d"
   },
+  "askCmdr.error.managedByOrganization": "Ваша организация не разрешает этот сервис ИИ. В вашем ИТ-отделе подскажут, какими сервисами можно пользоваться.",
+  "@askCmdr.error.managedByOrganization": {
+    "sourceHash": "845a19f"
+  },
   "askCmdr.error.localWindowTooSmall": "Cmdr нужно контекстное окно больше, чем у вашей локальной модели. Выберите не менее 32 768 токенов в настройках, в разделе «ИИ».",
   "@askCmdr.error.localWindowTooSmall": {
     "sourceHash": "8ac7452"

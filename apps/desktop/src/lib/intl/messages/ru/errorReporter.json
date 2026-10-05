@@ -80,6 +80,14 @@
   "@errorReporter.dialog.saveToDisk": {
     "sourceHash": "36d6589"
   },
+  "errorReporter.dialog.managedOff": "Ваша организация выключила отправку отчетов. Отчет все равно можно сохранить на диск и передать самостоятельно.",
+  "@errorReporter.dialog.managedOff": {
+    "sourceHash": "9309a39"
+  },
+  "errorReporter.dialog.saveToDiskManaged": "Сохранить на диск",
+  "@errorReporter.dialog.saveToDiskManaged": {
+    "sourceHash": "5a5d775"
+  },
   "errorReporter.dialog.cancel": "Отменить",
   "@errorReporter.dialog.cancel": {
     "sourceHash": "19766ed"
