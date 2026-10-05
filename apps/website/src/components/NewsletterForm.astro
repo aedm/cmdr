@@ -151,6 +151,12 @@ const uniqueId = `newsletter-${variant}-${Math.random().toString(36).slice(2, 8)
 </style>
 
 <script>
+    function signupProblemText(status: number): string {
+        if (status === 400 || status === 422) return "That email address doesn't look right. Check it and try again?"
+        if (status === 429) return 'Lots of tries in a row. Wait a minute, then try again?'
+        return "Couldn't sign you up right now. Try again in a few minutes?"
+    }
+
     document.addEventListener('astro:page-load', () => {
         document.querySelectorAll<HTMLFormElement>('[data-newsletter-form]').forEach((form) => {
             // Skip forms that already have a listener attached
@@ -197,12 +203,12 @@ const uniqueId = `newsletter-${variant}-${Math.random().toString(36).slice(2, 8)
                         showFeedback('Check your inbox to confirm your subscription!', 'success')
                         emailInput.value = ''
                     } else {
-                        const data = await res.json().catch(() => null)
-                        const message = data?.message || 'Something went wrong. Try again?'
-                        showFeedback(message, 'error')
+                        // Never show Listmonk's own message: it's raw server wording ("Error processing
+                        // request"), and a 500 there usually means the opt-in mail didn't go out.
+                        showFeedback(signupProblemText(res.status), 'error')
                     }
                 } catch {
-                    showFeedback('Network error. Check your connection and try again.', 'error')
+                    showFeedback("Couldn't reach getcmdr.com. Check your connection and try again?", 'error')
                 } finally {
                     button.disabled = false
                     button.textContent = 'Sign up'
