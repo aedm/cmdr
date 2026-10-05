@@ -220,6 +220,10 @@
   "@askCmdr.error.noCloudConsent": {
     "sourceHash": "cd2af1d"
   },
+  "askCmdr.error.managedByOrganization": "Tổ chức của bạn không cho phép dịch vụ AI này. Bộ phận IT có thể cho bạn biết những dịch vụ nào bạn được dùng.",
+  "@askCmdr.error.managedByOrganization": {
+    "sourceHash": "845a19f"
+  },
   "askCmdr.error.localWindowTooSmall": "Cmdr cần cửa sổ ngữ cảnh lớn hơn mức mô hình cục bộ của bạn có. Hãy chọn 32.768 token trở lên trong cài đặt, ở phần AI.",
   "@askCmdr.error.localWindowTooSmall": {
     "sourceHash": "8ac7452"

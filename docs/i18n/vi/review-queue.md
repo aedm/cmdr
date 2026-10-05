@@ -49,6 +49,9 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
   `.useGuest`): natural with `khách`, slightly formal after a person's name; alternative `dưới tên`. And
   `Không bắt buộc` for the Optional placeholder against the catalog's parenthesized `(tùy chọn)`.
 - **Spaces** (`shortcuts.system.spaces`): kept English, unverified whether macOS vi localizes it.
+- **`bộ phận IT`** for "your IT team" (`ai.translateError.managed.body`, `ai.managed.hostNotAllowed`,
+  `askCmdr.error.managedByOrganization`): no Tier 1 source (macOS says `quản trị viên`, "administrator"); confirm it
+  reads everyday over `đội IT` / `bộ phận CNTT`.
 - **List commas**: newer keys drop the comma before `và` / `hoặc`, older ones keep it. Decide a convention and sweep.
 - **S3 wording** (`servers.sheet.s3*`, `*coldStorage*`): `bộ chứa` (bucket, MS + Google vi) against the English `bucket`
   many Vietnamese devs say; `Lưu trữ lạnh` / `kho lưu trữ lạnh` for "Archived"; `tự triển khai` for self-hosted.

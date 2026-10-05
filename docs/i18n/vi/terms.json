@@ -1636,6 +1636,9 @@
     "chosen": "mục chia sẻ",
     "confidence": "high",
     "decision": "Tên tiện ích macOS, mục chia sẻ, liên kết mềm, beta công khai",
+    "exceptions": {
+      "errorReporter.dialog.managedOff": "English-sense: \"share it yourself\" is the verb (pass a saved report on), so `tự chia sẻ`, not the SMB noun."
+    },
     "forms": "a share → mục chia sẻ (also inside Settings); shared folder → thư mục chia sẻ; an S3 share link (a web address, another English sense) → liên kết chia sẻ",
     "sources": "macOS Finder (Thư mục được chia sẻ, chia sẻ); catalog (37 keys)"
   },
@@ -1675,6 +1678,13 @@
     "confidence": "high",
     "forms": "toast → thông báo nhỏ",
     "sources": "macOS/MS"
+  },
+  "on-device": {
+    "accept": ["cục bộ", "trên máy"],
+    "chosen": "trên thiết bị",
+    "confidence": "high",
+    "forms": "on-device AI → AI trên thiết bị; value On-device only → Chỉ trên thiết bị; the local-AI option keeps its own name (AI cục bộ, LLM cục bộ)",
+    "sources": "macOS live sweep 2026-10-05: ContentKit On-Device → Trên thiết bị, TranslationUI On-Device Translation → Bản dịch trên thiết bị, ImagePlaygroundInternal on-device image generation → tạo hình ảnh trên thiết bị; catalog ai.local.notInstalled (trên thiết bị của bạn)"
   },
   "onboarding": {
     "accept": ["thiết lập"],
@@ -1767,6 +1777,12 @@
     "chosen": "tùy chọn",
     "confidence": "high",
     "sources": "MS terminology"
+  },
+  "organization": {
+    "chosen": "tổ chức",
+    "confidence": "high",
+    "forms": "your organization → tổ chức của bạn; managed by your organization → do tổ chức của bạn quản lý; IT team → bộ phận IT (no Tier 1 source, see review-queue.md)",
+    "sources": "MS terminology (organization → tổ chức); macOS live sweep 2026-10-05: SoftwareUpdateSettingsExtension (This setting is currently managed by your organization → Cài đặt này hiện được tổ chức của bạn quản lý), DMCUtilities (tổ chức của bạn ×20); catalog licensing.about.fallbackOrg"
   },
   "original": {
     "accept": ["gốc"],

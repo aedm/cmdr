@@ -1985,6 +1985,10 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
+  "errors.serverRequest.blockedByPolicy": "Tổ chức của bạn đã tắt việc này cho Cmdr.",
+  "@errors.serverRequest.blockedByPolicy": {
+    "sourceHash": "9a27fb3"
+  },
   "errors.eject.busy": "Cmdr vẫn đang chuyển tệp ở đó. Hãy thử lại khi việc đó hoàn tất.",
   "@errors.eject.busy": {
     "sourceHash": "560c0db"
