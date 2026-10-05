@@ -86,7 +86,7 @@ export const networkConnections: NetworkConnection[] = [
     sends:
       "The license's transaction id, and a device id that's a one-way hash (SHA-256) of the Mac's hardware UUID. Activation sends the short license code.",
     control:
-      "Free personal-use installs never make this call. The license itself is checked offline with a signature. If the server can't be reached, the license keeps working for 30 days, then the app falls back to the free personal tier until a check succeeds. No managed preference turns it off, since a paid license has to stay checkable.",
+      "Free personal-use installs never make this call. The license itself is checked offline with a signature, and the check only learns whether a license was revoked, expired, or renewed. The server signs its answer, so nobody else can revoke your license. If the server can't be reached, nothing changes: a perpetual license keeps working forever, and a time-limited one runs to its end date. No managed preference turns it off, since a paid license has to stay checkable.",
   },
   {
     id: 'feedback',
@@ -324,7 +324,6 @@ export const notInPlaceYet: string[] = [
   '<strong>No third-party audit or penetration test, and no SOC 2 or ISO 27001.</strong>',
   '<strong>No fuzzing</strong>, although Cmdr parses untrusted input (network protocols, archives, PDFs, images).',
   "<strong>One person maintains Cmdr</strong> and holds all signing keys. There's no continuity clause in the terms and no written support commitment.",
-  "<strong>No offline license file.</strong> A commercial license that can't reach <code>api.getcmdr.com</code> for 30 days falls back to the free personal tier.",
   "<strong>Local data isn't encrypted by Cmdr</strong>, so it relies on FileVault. There's no option to exclude Cmdr's index from backups.",
   '<strong>Not tested behind a TLS-inspecting proxy</strong>, and PAC files are untested.',
   "<strong>No published security advisories yet</strong>, so there's no track record of how Cmdr handles a reported issue.",

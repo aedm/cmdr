@@ -268,14 +268,18 @@ risk.
 
 - **Entry points**: the license key the user enters; `api.getcmdr.com/activate` and `/validate`; the cached license
   status on disk.
-- **Threats**: forged licenses (the production signing key leaking), and tampering with local status.
+- **Threats**: forged licenses (the production signing key leaking), a forged or replayed "revoked" answer (a
+  TLS-intercepting proxy, or whoever holds a lapsed domain), and tampering with local status.
 - **Mitigations**: Ed25519 signatures checked offline against a public key per build mode; the production private key
   exists only as a Cloudflare Worker secret (`docs/security.md` § License signing keys,
-  `apps/desktop/src-tauri/src/licensing/DETAILS.md`). `/activate` and `/validate` are rate-limited per IP, so short
-  codes can't be guessed at speed (`apps/api-server/src/licensing/DETAILS.md`).
+  `apps/desktop/src-tauri/src/licensing/DETAILS.md`). `/validate` answers are signed with the same key over the app's
+  fresh nonce and the transaction id, and the app ignores anything else, so only our server can revoke a license
+  (`apps/desktop/src-tauri/src/licensing/DETAILS.md` § Signed validation answers). `/activate` and `/validate` are
+  rate-limited per IP, so short codes can't be guessed at speed (`apps/api-server/src/licensing/DETAILS.md`).
 - **Residual risk**: a leaked production key mints licenses every shipped build accepts, and revocation needs a new
-  binary. The license gates no feature (it decides which reminder a user sees), so local tampering is accepted as having
-  no security impact.
+  binary. Because unreachability never downgrades a license, a revoked or refunded key stays Commercial on any Mac that
+  can't (or is blocked from) reaching `api.getcmdr.com`. The license gates no feature (it decides which reminder a user
+  sees), so both that and local tampering are accepted as having no security impact.
 
 ### 8. Cloud AI providers and prompt injection
 

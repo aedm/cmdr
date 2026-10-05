@@ -51,6 +51,7 @@ Validation: POST /validate → dispatch on the transaction id's namespace
     → if device count >= 6 and not recently alerted: send alert email to legal@getcmdr.com
   anything else → D1 license_issuance row where source = 'manual' (see Manual licenses below)
     → HTTP 200 + ValidationResponse, or HTTP 502 if the ledger read throws
+  then, on a 200 with a valid nonce: + signedAnswer (see Key formats)
 ```
 
 ## Key formats
@@ -58,7 +59,16 @@ Validation: POST /validate → dispatch on the transaction id's namespace
 - **Short code:** `CMDR-XXXX-XXXX-XXXX` using 31 unambiguous chars (excludes 0/O/1/I/L). Rejection sampling avoids
   modulo bias (max unbiased byte = `256 - (256 % 31)`).
 - **License key:** `base64(JSON payload).base64(Ed25519 signature)`. Payload: email, transactionId, issuedAt, type,
-  organizationName.
+  organizationName, shortCode, and `expiresAt` on a hand-issued dated license only (signed in so the app enforces the
+  date offline; a renewing Paddle subscription has no fixed date to sign). The license email carries this full key
+  beside the short code, so a buyer can activate without `/activate`.
+- **Signed validation answer:** when the app sends a `nonce` (32 lowercase hex, `isValidNonce`), a 200 from `/validate`
+  also carries `signedAnswer: { payload, signature }`. `payload` is base64 JSON (`transactionId`, `nonce`, `status`,
+  `type`, `organizationName`, `expiresAt`, `signedAt`); `signature` is the license key's Ed25519 signature over
+  `validationAnswerSignaturePrefix` + the payload bytes, so it never verifies as a license key. The app trusts nothing
+  else, so this is what makes a revocation authentic. Why, and what the app does with it:
+  `apps/desktop/src-tauri/src/licensing/DETAILS.md` § Signed validation answers. ❌ Never sign without a valid nonce:
+  that answer could be replayed. A 502 is never signed.
 - **License types:** `commercial_subscription` | `commercial_perpetual`.
 - **Short ids:** `generateShortId(prefix, len)` produces `ERR-A2345`-shaped ids from the same unambiguous alphabet
   (`23456789ABCDEFGHJKMNPQRSTUVWXYZ`), rejection-sampled. The error-report route consumes it (`../telemetry/`).
@@ -158,6 +168,9 @@ when you're pasting it into a reply yourself.
   license nobody bought. ❌ Never let the subscription wording reach a dated license: a prospect forwards this mail to
   their IT department, and "will auto-renew" on an evaluation that simply stops is the sentence that ends a deal. Pinned
   by `../email/license.test.ts`.
+- **Every license email carries each seat's full key** ("Offline key") under its short code, and `/admin/generate`
+  returns `fullKey` (the mint script prints it). A Paddle resend reads the keys back from KV (`readStoredLicenses`); a
+  code missing there still goes out alone rather than holding the email back.
 
 **Revoking** (`/admin/revoke`) sets `revoked_at` and deletes the short codes from KV:
 
@@ -165,10 +178,12 @@ when you're pasting it into a reply yourself.
 node apps/api-server/scripts/revoke-license.js --code CMDR-XXXX-XXXX-XXXX
 ```
 
-The code stops activating immediately; machines already running on it fall back to Personal at their next revalidation
-(within seven days). Reinstating means minting a new license, there's no un-revoke. It takes `--transaction-id` too, and
-❌ refuses a `txn_` id rather than pretending: `/validate` resolves those against Paddle and never reads `revoked_at`,
-so cancel or refund a real purchase in Paddle instead.
+The code stops activating immediately; machines already running on it fall back to Personal at their next successful
+check (within seven days when online). The full key from the email still verifies offline, so a Mac that never reaches
+the server keeps the license: the app drops a license only on a signed `invalid`, never on silence. Reinstating means
+minting a new license, there's no un-revoke. It takes `--transaction-id` too, and ❌ refuses a `txn_` id rather than
+pretending: `/validate` resolves those against Paddle and never reads `revoked_at`, so cancel or refund a real purchase
+in Paddle instead.
 
 **Both scripts read `ADMIN_API_TOKEN`** from sops (`secret CMDR_ADMIN_API_TOKEN`) or the env var of the same name, never
 from an argument, so the credential stays out of shell history.
@@ -268,6 +283,15 @@ check on mismatch.
 **Price ID → license type mapping:** `getLicenseTypeFromPriceId()` (`paddle-api.ts`) maps Paddle price IDs (from
 `PRICE_ID_*` env vars) to license types. Unknown price IDs fall back to `commercial_subscription` for backwards
 compatibility.
+
+## Refunds
+
+**`/validate` doesn't see refunds of one-time purchases.** `getSubscriptionStatus` reads the transaction, and a refund
+in Paddle is an adjustment that leaves the transaction itself in place, so a refunded perpetual license keeps answering
+`active`. A refunded subscription does stop, through its subscription status. Closing this means recording the refund on
+our side (an `adjustment.created` / `adjustment.updated` webhook with action `refund`, setting `revoked_at` on the
+`license_issuance` row) and having the `txn_` path of `/validate` honor `revoked_at` in addition to asking Paddle. Not
+built: David's call (proposed 2026-10-05).
 
 **Validation error granularity:** `paddle-api.ts` throws `PaddleApiError` on network/5xx errors and returns `null` on
 404 (transaction not found). That's what lets `/validate` answer 200-invalid versus 502-upstream, and the desktop app

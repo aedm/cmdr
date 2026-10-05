@@ -30,8 +30,8 @@ leaves.
 - **A take-over is conditional** (`UPDATE ... WHERE claimed_at = <the value we read>`), so two deliveries finding the
   same stale claim can't both proceed.
 - **`/validate` separates "Paddle says invalid" (200 + `status: "invalid"`) from "Paddle is unreachable" (502 +
-  `upstream_error`).** The desktop app falls back to its cached status only on the 502, so collapsing the two would
-  overwrite a valid "active" cache during a Paddle outage.
+  `upstream_error`).** Collapsing the two would revoke working licenses during a Paddle outage. The app trusts only the
+  200's `signedAnswer` (signed over its nonce): DETAILS § Key formats.
 - **Device tracking never affects the validation response**: it's fire-and-forget, and the server never rejects a
   validation over device count. Alerts go to a human. DETAILS § Device tracking.
 - **Paddle preserves `custom_data` key casing**, so it's `organizationName`, ❌ never `organization_name`.
