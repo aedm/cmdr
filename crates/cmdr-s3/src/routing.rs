@@ -10,7 +10,7 @@
 //! names every bucket's region upfront (`BucketRegion`). The transport learns
 //! from all three and sends each bucket's requests to its own endpoint.
 //!
-//! Pure values: the transport owns the requests (`transport.rs`).
+//! Pure values: the transport owns the requests (`transport/`).
 
 use std::collections::HashMap;
 use std::sync::Mutex;

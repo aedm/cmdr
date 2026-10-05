@@ -236,7 +236,7 @@ async fn a_share_link_downloads_the_object_with_no_keys_at_all(service: FixtureS
         .into_url();
     // A plain client with no signer and no credentials, the way the person the
     // link goes to would fetch it. ❗ This is the one place outside
-    // `transport.rs` that speaks `reqwest`: it stands in for a browser.
+    // `transport/` that speaks `reqwest`: it stands in for a browser.
     let fetched = reqwest::get(&link).await.expect(FIXTURE);
     assert_eq!(fetched.status(), 200, "{}: the link opens", service.key);
     assert!(

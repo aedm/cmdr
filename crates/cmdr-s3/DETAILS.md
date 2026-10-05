@@ -13,6 +13,8 @@ server, makes folders, deletes one node or a batch, and renames one small file. 
 (`apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Renames that run as moves"). `cost/` prices a
 planned operation at list prices (§ "Cost estimates").
 
+Every dependency was already in `Cargo.lock` when the crate was built. Check `cargo tree -d` before adding one.
+
 ## The model: one volume per place
 
 The ACCOUNT is the endpoint plus the access key id; it owns the secret (store service `s3+<scheme>://<host>:<port>`,
@@ -701,6 +703,10 @@ and so is a cross-bucket copy where the provider copies within one bucket only (
 
 ## Responses
 
+- **A buffered answer is capped.** `transport/answer.rs::read_capped` reads an `Answer`'s body up to `MAX_ANSWER_BODY`
+  (16 MiB, against a ~1 MiB 1,000-key listing page) and refuses an announced or streamed overrun as a typed
+  `ExchangeError::BodyTooLarge`, so a hostile S3-compatible endpoint can't exhaust memory. A data read (`Opened`)
+  streams and is never buffered.
 - **The element tree** (`xml/mod.rs`): bodies are small, so each is read into a tree first, matched by local name (AWS
   uses a default namespace, some servers none). Text is kept untrimmed because keys may begin or end with spaces;
   `Element::value` trims for numbers, dates, and tokens. Entities resolve through `GeneralRef` (quick-xml 0.41 splits

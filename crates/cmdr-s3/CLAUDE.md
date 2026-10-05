@@ -8,8 +8,8 @@ Decisions and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
 
 - `sigv4.rs`, `encoding.rs`, `request.rs`, `ops.rs` (one builder per S3 call), `profile.rs` (preset → endpoint and what
   the provider enforces), `xml/`, `error.rs` (`S3Error`), `multipart.rs`, `metadata.rs`: pure values.
-- `params.rs`, `refusal.rs` (`S3ConnectError` + the probe's table), `transport.rs` (`S3Client`, the only `reqwest`
-  user), `routing.rs` (an AWS or Wasabi account root's per-bucket regions).
+- `params.rs`, `refusal.rs` (`S3ConnectError` + the probe's table), `transport/` (`S3Client`; `answer.rs` reads what
+  comes back; the only `reqwest` user), `routing.rs` (an AWS or Wasabi account root's per-bucket regions).
 - `volume/`: a file per job: `mod.rs` (connect), `query.rs` + `listing.rs`, `streams.rs` (GET), `writes.rs` (PUT),
   `multipart_upload.rs` (+ the sweep), `server_copy.rs`, `batch.rs`, `mutation.rs`, `paths.rs`, `state.rs` +
   `reconnect.rs`; `testing.rs` + `testing/` (fixtures, `S3Target`) and `live_*` (real accounts).
@@ -20,14 +20,13 @@ Decisions and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
 ## Must-knows
 
 - ❌ **Never classify by `<Message>`.** `<Code>` plus the status; a bodyless answer (every HEAD) by status alone.
-- ❗ **`reqwest` stays in `transport.rs`**, and every request goes out through it, inside `noting`: the operations are
-  the liveness detector.
+- ❗ **`reqwest` stays in `transport/`**, and every request goes out through it, inside `noting`: the operations are the
+  liveness detector.
 - ❗ **Every request costs the user money.** ❌ No HEAD per child, no watcher, no space poll, no index.
 - ❗ **A wrong secret is ambiguous**: Garage answers `AccessDenied`, so only `SignatureDoesNotMatch` /
   `InvalidAccessKeyId` (or R2's 401) are `KeysRejected`.
 - ❌ **No `.timeout()` on a GET or an upload, never a buffered body** beyond one part. A 200 to a ranged GET is skipped
-  locally. An `Answer`'s body reads through `read_capped` (`MAX_ANSWER_BODY`); past it is a typed
-  `ExchangeError::BodyTooLarge`.
+  locally. A buffered answer is capped (`read_capped`, `DETAILS.md` § "Responses").
 - ❗ **Parse every success body**: Complete, CopyObject, UploadPartCopy, DeleteObjects can fail inside `200 OK`.
 - ❗ **Keys are never trimmed**; a `.`/`..` segment is refused (`KeyError::DotSegment`).
 - ❗ **Writes go to the final key**. ❌ Nothing partial is ever published: bodies are buffered (≤ one part), a PUT holds
@@ -49,4 +48,3 @@ Decisions and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
   sign `UNSIGNED-PAYLOAD`.
 - ❌ **One unattended authentication attempt, never a loop.**
 - ❗ **A share link is a credential**: `cmdr_fs::volume::ShareLink`, ❌ never logged, never across IPC.
-- Every dependency was already in `Cargo.lock`. Check `cargo tree -d` before adding one.
