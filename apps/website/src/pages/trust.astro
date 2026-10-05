@@ -260,8 +260,13 @@ const toc = [
             a comment that's deleted on a schedule, and never to Discord.
         </li>
         <li>
-            Emails with license keys, and notification emails about reports and feedback, pass through Resend and Gmail
-            (both United States companies).
+            Emails with license keys, and notification emails about reports and feedback, pass through Resend (a United
+            States company).
+        </li>
+        <li>
+            Emails we send from @getcmdr.com addresses leave through SMTP2Go, a New Zealand company. The EU recognizes
+            New Zealand as giving adequate data protection, and SMTP2Go says it stores data of EEA customers only in
+            the EEA.
         </li>
         <li>
             Cloudflare runs the API server on its global network. Its database and file storage are placed in Eastern
@@ -271,8 +276,8 @@ const toc = [
         <li>If a user sets up cloud AI, their data goes to wherever that provider runs.</li>
     </ul>
     <p>
-        Usage stats (PostHog EU cloud), the website (Hetzner, Finland), and newsletter sending (AWS, Stockholm) stay in
-        the EU.
+        Usage stats (PostHog EU cloud), the website and the @getcmdr.com inbox (both self-hosted at Hetzner, Finland),
+        and newsletter sending (AWS, Stockholm) stay in the EU.
     </p>
 
     <h2 id="subprocessors">Subprocessors</h2>
@@ -335,8 +340,8 @@ const toc = [
         }
     </ul>
     <p>
-        Nothing in Cmdr's code deletes old Discord notifications, emails in the Gmail inbox, or Resend's delivery
-        logs.
+        Nothing in Cmdr's code deletes old Discord notifications, emails in the @getcmdr.com inbox, or Resend's and
+        SMTP2Go's delivery logs.
     </p>
     <DevTodo>
         The R2 bucket <code>cmdr-error-reports</code> has no 90-day lifecycle rule (only the default multipart-abort

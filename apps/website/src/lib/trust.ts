@@ -235,7 +235,7 @@ export const dataLocations: DataLocation[] = [
   },
   {
     name: 'Hetzner',
-    what: 'The website, self-hosted page analytics (Umami), the newsletter list (Listmonk), and blog comments (Remark42).',
+    what: 'The website, self-hosted page analytics (Umami), the newsletter list (Listmonk), blog comments (Remark42), and the self-hosted mail server (mailcow). Every email sent to an @getcmdr.com address, including security@, lands there, and so do the notification emails below.',
     where: 'Helsinki, Finland.',
     inEu: 'yes',
   },
@@ -258,10 +258,11 @@ export const dataLocations: DataLocation[] = [
     inEu: 'partly',
   },
   {
-    name: 'Google (Gmail)',
-    what: 'Every email sent to an @getcmdr.com address, including security@, lands in a Gmail inbox. So do the notification emails above.',
-    where: 'United States.',
-    inEu: 'no',
+    name: 'SMTP2Go',
+    what: 'Relays the emails we send from @getcmdr.com addresses, like replies to support and security emails, so it sees who they go to and what they say. Mail we receive never passes through it.',
+    where:
+      'New Zealand company, which the EU recognizes as giving adequate data protection. SMTP2Go says it stores data of EEA customers only in the EEA.',
+    inEu: 'partly',
   },
   {
     name: 'Paddle',

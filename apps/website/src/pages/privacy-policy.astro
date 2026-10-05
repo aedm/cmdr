@@ -5,7 +5,7 @@ import LegalLayout from '../layouts/LegalLayout.astro'
 <LegalLayout
     title="Privacy policy"
     description="How Cmdr collects, uses, and protects your personal data. GDPR compliant."
-    lastUpdated="2026-10-05"
+    lastUpdated="2026-10-06"
 >
     <p>
         Your privacy matters to us a lot. This policy explains what data we collect, why, and how we protect it. We've
@@ -262,15 +262,17 @@ import LegalLayout from '../layouts/LegalLayout.astro'
             >
         </li>
         <li>
-            <strong>Google Gmail</strong> (our inbox): email you send to any <code>@getcmdr.com</code> address lands in
-            a Gmail inbox, and so do the notification emails above. Google is a US company.
-            <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer"
-                >Google's privacy policy</a
+            <strong>SMTP2Go</strong> (outgoing email): relays the emails we send from <code>@getcmdr.com</code>
+            addresses, like our replies to you. SMTP2Go is a New Zealand company and says it stores data of EEA
+            customers only in the EEA.
+            <a href="https://www.smtp2go.com/privacy/" target="_blank" rel="noopener noreferrer"
+                >SMTP2Go's privacy policy</a
             >
         </li>
         <li>
-            <strong>Hetzner</strong> (our server): hosts the website, Umami, and Listmonk on a server in Helsinki,
-            Finland.
+            <strong>Hetzner</strong> (our server): hosts the website, Umami, Listmonk, and our mail server on a server
+            in Helsinki, Finland. Email you send to any <code>@getcmdr.com</code> address lands in our self-hosted
+            inbox there, and so do the notification emails above.
             <a href="https://www.hetzner.com/legal/privacy-policy/" target="_blank" rel="noopener noreferrer"
                 >Hetzner's privacy policy</a
             >
@@ -290,15 +292,16 @@ import LegalLayout from '../layouts/LegalLayout.astro'
 
     <h2>6. Where we store your data</h2>
     <p>
-        Page-level website analytics (Umami) and our newsletter system (Listmonk) are self-hosted on our own server at
-        Hetzner in Helsinki, Finland. Our license, telemetry, and report server runs on Cloudflare Workers on a global CDN, with its database
+        Page-level website analytics (Umami), our newsletter system (Listmonk), and our email inbox (mailcow) are
+        self-hosted on our own server at Hetzner in Helsinki, Finland. Our license, telemetry, and report server runs on Cloudflare Workers on a global CDN, with its database
         and file storage in Cloudflare's network. PostHog and Paddle are GDPR-compliant and have appropriate data
         processing agreements in place.
     </p>
     <p>
-        Discord, GitHub, Resend, and Google are US companies, so our Discord notifications, the downloads GitHub
-        serves, the license and notification emails Resend sends, and the email that lands in our Gmail inbox involve
-        a transfer outside the EU, under those companies' own data protection terms.
+        Discord, GitHub, and Resend are US companies, so our Discord notifications, the downloads GitHub serves, and
+        the license and notification emails Resend sends involve a transfer outside the EU, under those companies' own
+        data protection terms. SMTP2Go, which relays the emails we send, is a New Zealand company, a country the EU
+        recognizes as giving adequate data protection.
     </p>
 
     <h2>7. How long we keep your data</h2>
