@@ -42,7 +42,8 @@ pub enum DirectorySortMode {
     /// Directories sort by the same column as files (using recursive_size for Size column).
     #[default]
     LikeFiles,
-    /// Directories always sort by name, regardless of the active sort column.
+    /// Directories always sort by name, A→Z, regardless of the active sort column
+    /// and its direction. Only the Name column's arrow reverses them.
     AlwaysByName,
     /// Directories don't lead: they sort among the files by the same column ("Show
     /// folders first" off). Size ranks a directory by its `recursive_size`.
@@ -225,13 +226,16 @@ pub fn entry_comparator<E: SortableEntry + ?Sized>(
             _ => {}
         }
 
-        // For directories in AlwaysByName mode, sort by name regardless of column
-        if a.is_directory() && b.is_directory() && dir_sort_mode == DirectorySortMode::AlwaysByName {
-            let name_cmp = a.compare_name(b, &collator);
-            return match sort_order {
-                SortOrder::Ascending => name_cmp,
-                SortOrder::Descending => name_cmp.reverse(),
-            };
+        // AlwaysByName keeps directories A→Z under every other column, whatever
+        // the arrow says: Size, Modified, and Created default to descending, so
+        // following it showed Z→A folders, which reads as random (ERR-MJFJG). On
+        // the Name column the arrow IS the name order, so they follow it there.
+        if a.is_directory()
+            && b.is_directory()
+            && dir_sort_mode == DirectorySortMode::AlwaysByName
+            && sort_by != SortColumn::Name
+        {
+            return a.compare_name(b, &collator);
         }
 
         // For directories in LikeFiles mode sorting by Size, use recursive_size.
@@ -379,7 +383,8 @@ fn compare_by_column<E: SortableEntry + ?Sized>(
 ///
 /// `dir_sort_mode` controls where directories go:
 /// - `LikeFiles`: first, sorted by the same column as files (using `recursive_size` for Size)
-/// - `AlwaysByName`: first, always sorted by name, regardless of the active sort column
+/// - `AlwaysByName`: first, A→Z by name, regardless of the active sort column (the
+///   Name column's arrow still reverses them)
 /// - `MixedWithFiles`: among the files, by the same column
 ///
 /// Collates each name ONCE into a [`NameKey`] and sorts on those, rather than

@@ -354,7 +354,7 @@ mapping from "a row" to "what orders it" is decided, and that mapping is the thi
 the shared fields the contract and the generic monomorphizes, so the listing's hot path pays nothing.
 
 **`DirectorySortMode` decides whether directories lead.** `LikeFiles` and `AlwaysByName` put them first (by the column,
-or by name), and `MixedWithFiles` ("Show folders first" off, #291) drops that step: `compare_mixed` ranks a directory
+or A→Z by name whatever the direction, except on the Name column itself), and `MixedWithFiles` ("Show folders first" off, #291) drops that step: `compare_mixed` ranks a directory
 among the files by the same column. Size is the one column where the two kinds read different fields (a directory's
 `known_dir_size`, a file's `size`), so the mixed sort uses one rule for both, an unknown size LAST whatever the order,
 to stay transitive: per-kind rules (a file's unknown first, a directory's last) would cycle once mixed. The mode

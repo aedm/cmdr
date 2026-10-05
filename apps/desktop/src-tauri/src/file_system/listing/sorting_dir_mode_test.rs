@@ -206,11 +206,12 @@ fn test_dir_sort_always_by_name_ignores_modified() {
 }
 
 #[test]
-fn test_dir_sort_always_by_name_descending() {
+fn test_dir_sort_always_by_name_stays_a_to_z_when_size_descends() {
     let mut entries = vec![
-        make_dir_with_recursive_size("alpha_dir", Some(10000), None),
         make_dir_with_recursive_size("zebra_dir", Some(100), None),
-        make_entry("file.txt", false, Some(500), None),
+        make_dir_with_recursive_size("alpha_dir", Some(10000), None),
+        make_entry("small.txt", false, Some(100), None),
+        make_entry("big.txt", false, Some(500), None),
     ];
 
     sort_entries(
@@ -221,8 +222,52 @@ fn test_dir_sort_always_by_name_descending() {
     );
 
     let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
-    // Dirs sorted by name descending (sort order applies), then files by size descending
-    assert_eq!(names, vec!["zebra_dir", "alpha_dir", "file.txt"]);
+    // Dirs A→Z whatever the arrow says; only the files follow the descending size
+    assert_eq!(names, vec!["alpha_dir", "zebra_dir", "big.txt", "small.txt"]);
+}
+
+/// Regression anchor for ERR-MJFJG: Date modified defaults to descending, so a
+/// direction-following "Always by name" showed folders Z→A, which read as random.
+#[test]
+fn test_dir_sort_always_by_name_stays_a_to_z_when_modified_descends() {
+    let mut entries = vec![
+        make_dir_with_recursive_size("beta_dir", None, Some(1700000001)),
+        make_dir_with_recursive_size("zebra_dir", None, Some(1700000002)),
+        make_dir_with_recursive_size("alpha_dir", None, Some(1700000003)),
+        make_entry("old.txt", false, Some(500), Some(1700000001)),
+        make_entry("new.txt", false, Some(500), Some(1700000009)),
+    ];
+
+    sort_entries(
+        &mut entries,
+        SortColumn::Modified,
+        SortOrder::Descending,
+        DirectorySortMode::AlwaysByName,
+    );
+
+    let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+    assert_eq!(names, vec!["alpha_dir", "beta_dir", "zebra_dir", "new.txt", "old.txt"]);
+}
+
+#[test]
+fn test_dir_sort_always_by_name_follows_the_arrow_on_the_name_column() {
+    let mut entries = vec![
+        make_entry("alpha_dir", true, None, None),
+        make_entry("zebra_dir", true, None, None),
+        make_entry("a.txt", false, Some(1), None),
+        make_entry("z.txt", false, Some(1), None),
+    ];
+
+    sort_entries(
+        &mut entries,
+        SortColumn::Name,
+        SortOrder::Descending,
+        DirectorySortMode::AlwaysByName,
+    );
+
+    let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+    // Sorting by name IS the name order, so folders reverse along with the files
+    assert_eq!(names, vec!["zebra_dir", "alpha_dir", "z.txt", "a.txt"]);
 }
 
 #[test]

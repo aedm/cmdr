@@ -20,7 +20,10 @@ export const commands = {
     directorySortMode:
       // Directories sort by the same column as files (using recursive_size for Size column).
       | 'likeFiles'
-      // Directories always sort by name, regardless of the active sort column.
+      /**
+       *  Directories always sort by name, A→Z, regardless of the active sort column
+       *  and its direction. Only the Name column's arrow reverses them.
+       */
       | 'alwaysByName'
       /**
        *  Directories don't lead: they sort among the files by the same column ("Show
@@ -472,7 +475,10 @@ export const commands = {
     directorySortMode:
       // Directories sort by the same column as files (using recursive_size for Size column).
       | 'likeFiles'
-      // Directories always sort by name, regardless of the active sort column.
+      /**
+       *  Directories always sort by name, A→Z, regardless of the active sort column
+       *  and its direction. Only the Name column's arrow reverses them.
+       */
       | 'alwaysByName'
       /**
        *  Directories don't lead: they sort among the files by the same column ("Show
@@ -6739,7 +6745,10 @@ export type DirectoryDiff = {
 export type DirectorySortMode =
   // Directories sort by the same column as files (using recursive_size for Size column).
   | 'likeFiles'
-  // Directories always sort by name, regardless of the active sort column.
+  /**
+   *  Directories always sort by name, A→Z, regardless of the active sort column
+   *  and its direction. Only the Name column's arrow reverses them.
+   */
   | 'alwaysByName'
   /**
    *  Directories don't lead: they sort among the files by the same column ("Show

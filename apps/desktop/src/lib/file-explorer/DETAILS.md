@@ -142,7 +142,9 @@ Full history-stack contract and the volume-breadcrumb detail live in `navigation
 - **Directory sort mode**: setting `listing.directorySortMode` controls how dirs sort among themselves while they lead:
   - `likeFiles` (default): dirs sort by the active column (uses `recursive_size` for Size). Dirs with unknown size sort
     last.
-  - `alwaysByName`: dirs always sort by name, ignoring the active sort column.
+  - `alwaysByName`: dirs always sort A→Z by name, ignoring the active sort column and its direction (only the Name
+    column's arrow reverses them; Size, Modified, and Created default to descending, so following the arrow showed Z→A
+    folders, ERR-MJFJG).
 - **The wire mode folds both settings**: `reactive-settings.svelte.ts::getDirectorySortMode()` answers the Rust
   `DirectorySortMode` (`ListingDirectorySortMode` here): the "Sort directories" choice, or `mixedWithFiles` while "Show
   folders first" is off. The settings page greys "Sort directories" out then. Every listing, re-sort, and search-results
