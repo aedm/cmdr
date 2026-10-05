@@ -437,12 +437,11 @@ English contrasts packages with app bundles.
 
 - A date column heading carries the time noun: `上次使用时间` (Keychain Access); the bare `上次使用` is mid-sentence.
 - Type `类型` (protocol), never Finder's `种类` (file kind).
-- Status set `已连接` / `已保存` / `已退出登录`; found nearby `在附近发现` without `已` (the user didn't cause it);
-  signed out is never `被拒绝` / `认证失败`.
+- Signed out is never `被拒绝` / `认证失败` (the status-label rule itself is in `style.md`).
 - Waiting for you `等你核对主机密钥` over `等待用户确认` (reads like a system log). Never `从未`, not `永不` (a
   setting's "never again").
-- Show servers `显示服务器` (English Show → `显示`; `前往` only for Go to). Pin/unpin `固定/取消固定服务器`, slash
-  unspaced. Disconnect server `断开服务器连接`, never `推出`.
+- Show servers `显示服务器` (English Show → `显示`; `前往` only for Go to). Disconnect server `断开服务器连接`, never
+  `推出`.
 - The pin toasts don't say `固定`, like the English; the unpin toast's second sentence answers "was it deleted?".
 - A NAS "turn on" is power, `开机`.
 - The account suffix is a noun label, `身份：{username}` / `身份：客人` (`servers.hub.shareAccount`/`.guestAccount`):
@@ -450,8 +449,7 @@ English contrasts packages with app bundles.
 
 ## 添加服务器的模态表单、SSH 主机密钥确认、前往路径的预览行（`servers.sheet.*`、`servers.hostKey.*`、`servers.paneState.signedOut`/`.signIn`/`.hostKeyChanged*`、`goToPath.dialog.opensServer`/`.addsServer`、`commands.serversConnect.label`）
 
-- Save `保存`, never Apple's older `存储`. Sign in to X `登录 {name}`, no preposition; signed out
-  `已从 {name} 退出登录`.
+- Sign in to X `登录 {name}`, no preposition; signed out `已从 {name} 退出登录`.
 - Passphrase `密码短语`, so the key's is `密钥密码短语`: a bare `密码` would read as the account password.
 - Guest `客人` (macOS zh-CN; `来宾` is Microsoft's); `servers.sheet.connectAsGuest`,
   `fileExplorer.network.browser.status.guest`, and `errors.shareList.signingRequired` change together.
@@ -669,3 +667,8 @@ in prose.
 
 - Cmdr's failed step is `移除` (like `正在移除原文件…`); the user's is `删除`.
 - `什么都没丢失` repeats `deviceDisconnected.sided.destination.copy`, not `originalsKeptAside`'s "thrown away" line.
+
+## 组织管理的设置（`settings.managed.*`、`ai.managed.*`、`updates.status.managedOff`、`errorReporter.dialog.managedOff`）
+
+- Managed `由你的组织管理` (Apple MDM copy: `受…组织管理`); turned off `你的组织关闭了…`, a plain past act, no apology.
+- Card values stay terse: `关闭` (the switch word, `settings.ai.provider.opt.off`), `只限本地`, `只能手动检查`.
