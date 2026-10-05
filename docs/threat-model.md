@@ -248,6 +248,12 @@ risk.
     `docs/guides/releasing.md` § Signing secrets); a release waits for a full, green CI run of its commit; every
     third-party action is pinned to a commit SHA; each release publishes SHA-256 checksums, SLSA build provenance, and
     signed SBOMs (`docs/guides/releasing.md`).
+  - **The updater key signs on the maintainer's laptop, not in CI**, from the first release in `local` signing mode
+    (`docs/guides/releasing.md` § Who signs the update archives). CI builds, notarizes, and attests into a draft
+    release; the laptop verifies each update archive's build provenance (the release workflow, at the signed tag's
+    commit, on a GitHub-hosted runner), refuses anything that doesn't verify, signs with the key from its encrypted
+    store, checks each signature against the app's public key, and only then lets CI publish. The key's GitHub copies
+    are deleted once that first release ships, which is when a GitHub or CI compromise stops being able to read it.
   - **Account and key custody**: hardware-key 2FA on the GitHub account, and encrypted copies of every signing key
     outside GitHub and Cloudflare.
 - **Residual risk**:
@@ -260,8 +266,13 @@ risk.
     approval on the `release` environment, or a deployment-protection rule that verifies the signature outside the
     tagged commit) are tracked privately.
   - **No reproducible builds**, so a reviewer can't rebuild and compare a release.
+  - **A malicious build from inside the release pipeline still gets signed.** Signing locally checks where an archive
+    was built, not what went into it, so a compromised third-party action or dependency in the build job still ships to
+    every install. What local signing removes is the key itself leaking from GitHub, and an archive swapped on the
+    release.
   - **The minisign updater key can't be rotated** without a release signed by the old key; losing it strands installs on
-    manual reinstall.
+    manual reinstall. With local signing it lives on one laptop (encrypted, with Bitwarden copies), so a compromise of
+    that laptop could sign anything.
   - Some release-chain hardening is tracked privately.
 
 ### 7. Licensing
@@ -354,7 +365,8 @@ risk.
 Impact × likelihood, highest first. Gaps tracked privately aren't ranked here.
 
 1. **Maintainer account or release chain compromise ships code to every install** (boundary 6). Impact: critical.
-   Likelihood: low, after hardware keys, the release environment, signed and protected tags, and the CI gate.
+   Likelihood: low, after hardware keys, the release environment, signed and protected tags, the CI gate, and (once the
+   first `local`-mode release ships) an updater key that no longer lives on GitHub.
 2. **A parser bug in a dependency or Apple framework, reached by a downloaded file or a hostile server, runs with Full
    Disk Access** (boundaries 3 and 4). Impact: high. Likelihood: low. Cmdr isn't sandboxed and parses in process.
 3. **Prompt injection through file names or contents steers Ask Cmdr** into reading and sending more than intended,
