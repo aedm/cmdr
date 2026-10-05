@@ -206,7 +206,6 @@ Items that don't move the targets, each tracked in its own issue:
   ServerGuid + share name + volume serial after connecting, and adopt the existing index. Only on that setup.
 - #333: give burst-transient data (listing entries, search side tables) its own allocation region, dropped wholesale, to
   stay low at the burst peak as well as at rest.
-- #317: the parked `bridge*` interface filter for mDNS (needs a decision).
 - #318: `SmbClient::close()` (LOGOFF) in `smb2`.
 - #321: the CPU half of the diagnostics instrument (per-thread CPU and wakeups over MCP).
 - #323: a stuck-loop watchdog at the log sink, and third-party `log::error!` reaching Flow B.
