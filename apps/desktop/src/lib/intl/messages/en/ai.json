@@ -756,5 +756,35 @@
     "description": "Guidance shown below the remove-key error on macOS when the Keychain denied access, telling the user to delete the stored key by hand in Apple’s Keychain Access app. \"Keychain Access\" is the proper name of the macOS app (Apple ships it localized; use that localized name). “Cmdr” is the app name (a Keychain entry label) and must NOT be translated.",
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.managed.aiOff": "Your organization turned off AI in Cmdr.",
+  "@ai.managed.aiOff": {
+    "description": "Shown wherever AI is unavailable because the person's organization (their employer's IT team, through a device management profile) turned off every AI feature in Cmdr, local and cloud. The person can't change this in Cmdr. One calm sentence, no blame.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.managed.cloudAiOff": "Your organization allows only on-device AI.",
+  "@ai.managed.cloudAiOff": {
+    "description": "Shown wherever cloud AI is unavailable because the person's organization (their IT team, through a device management profile) allows only the AI model that runs on this Mac: under the AI provider choice, in onboarding, and in toasts. \"On-device\" means running on this computer, with nothing sent away. One calm sentence.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.managed.hostNotAllowed": "Your organization doesn’t allow this AI service. Your IT team can tell you which ones you can use.",
+  "@ai.managed.hostNotAllowed": {
+    "description": "Shown when the person picked or typed a cloud AI service (an endpoint) that their organization's IT team doesn't allow, through a device management profile. Nothing was sent to it. Points them to their IT team, since no setting in Cmdr changes it. Two short sentences.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.managed.localOnlyUnsupported": "Your organization allows only on-device AI, and this Mac can’t run it.",
+  "@ai.managed.localOnlyUnsupported": {
+    "description": "Shown under the AI provider choice on a Mac that can't run the on-device AI model (it needs Apple Silicon) when the person's organization allows only on-device AI, so no AI is available at all. One calm sentence.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.managed.serviceNotAllowed": "not allowed by your organization",
+  "@ai.managed.serviceNotAllowed": {
+    "description": "Short suffix after a cloud AI service's name in the service list, rendered as \"OpenAI — not allowed by your organization\", when the person's organization (their IT team, through a device management profile) doesn't allow that service. The row stays visible but can't be picked. Starts lowercase because it follows a dash; keep it short.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   }
 }
