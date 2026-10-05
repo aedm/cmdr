@@ -102,5 +102,9 @@
   "settings.managed.sectionNote": "Your organisation manages some of these settings.",
   "@settings.managed.sectionNote": {
     "sourceHash": "ab52c49"
+  },
+  "settings.managed.summary.title": "Managed by your organisation",
+  "@settings.managed.summary.title": {
+    "sourceHash": "5450801"
   }
 }

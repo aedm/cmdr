@@ -2517,6 +2517,59 @@
   "@settings.managed.sectionNote": {
     "description": "A line at the top of a settings page (for example Updates & privacy, or AI) when the person's organization locked one or more of the settings below it through device management (MDM). Screen-reader users hear it before reaching the disabled controls. 'Organization' means the employer or school that manages the Mac."
   },
+  "settings.managed.summary.title": "Managed by your organization",
+  "@settings.managed.summary.title": {
+    "description": "Title of a small read-only card in Settings > Updates & privacy, shown only when the person's organization (their employer's or school's IT team) restricts Cmdr through device management (MDM, a configuration profile). The card lists what is restricted, one line each, so a help-desk person can check it at a glance. Sentence case, no ending period."
+  },
+  "settings.managed.summary.usageStats": "Usage stats",
+  "@settings.managed.summary.usageStats": {
+    "description": "Row label in the 'Managed by your organization' card: the anonymous usage statistics Cmdr can send. The value beside it says what the organization set (for example 'Off'). Short, sentence case."
+  },
+  "settings.managed.summary.reports": "Crash and error reports",
+  "@settings.managed.summary.reports": {
+    "description": "Row label in the 'Managed by your organization' card: the crash reports and error reports Cmdr can send to its developer. The value beside it says what the organization set (for example 'Off'). Short, sentence case."
+  },
+  "settings.managed.summary.updates": "Updates",
+  "@settings.managed.summary.updates": {
+    "description": "Row label in the 'Managed by your organization' card: Cmdr's own app updates. The value beside it says what the organization set (for example 'Off' or 'Up to 0.52'). Short, sentence case."
+  },
+  "settings.managed.summary.ai": "AI",
+  "@settings.managed.summary.ai": {
+    "description": "Row label in the 'Managed by your organization' card: Cmdr's AI features. The value beside it says what the organization set (for example 'Off' or 'On-device only'). Keep it as short as the English."
+  },
+  "settings.managed.summary.off": "Off",
+  "@settings.managed.summary.off": {
+    "description": "Value in the 'Managed by your organization' card, beside a row label like 'Usage stats' or 'Updates': the organization turned that feature off. One word if the language allows."
+  },
+  "settings.managed.summary.upTo": "Up to {ceiling}",
+  "@settings.managed.summary.upTo": {
+    "description": "Value beside 'Updates' in the 'Managed by your organization' card: the organization lets Cmdr update only up to this version, never past it. Short.",
+    "placeholders": {
+      "ceiling": "the highest Cmdr version the organization allows, as its IT team wrote it (for example 0.52 or 0.52.3); not translated"
+    }
+  },
+  "settings.managed.summary.manualChecksOnly": "Checked by hand only",
+  "@settings.managed.summary.manualChecksOnly": {
+    "description": "Value beside 'Updates' in the 'Managed by your organization' card: the organization turned off Cmdr's automatic update checks, so updates arrive only when the person picks 'Check for updates' themselves. Short."
+  },
+  "settings.managed.summary.upToManualChecksOnly": "Up to {ceiling}, checked by hand only",
+  "@settings.managed.summary.upToManualChecksOnly": {
+    "description": "Value beside 'Updates' in the 'Managed by your organization' card, combining two rules: Cmdr may update only up to this version, and only when the person picks 'Check for updates' themselves (no automatic checks). Short.",
+    "placeholders": {
+      "ceiling": "the highest Cmdr version the organization allows, as its IT team wrote it (for example 0.52 or 0.52.3); not translated"
+    }
+  },
+  "settings.managed.summary.onDeviceOnly": "On-device only",
+  "@settings.managed.summary.onDeviceOnly": {
+    "description": "Value beside 'AI' in the 'Managed by your organization' card: the organization allows only the AI model that runs on this Mac, so nothing goes to a cloud AI service. Short."
+  },
+  "settings.managed.summary.cloudHostsOnly": "Cloud AI only through {hosts}",
+  "@settings.managed.summary.cloudHostsOnly": {
+    "description": "Value beside 'AI' in the 'Managed by your organization' card: the organization allows cloud AI only through these internet hosts (server addresses). Short.",
+    "placeholders": {
+      "hosts": "a list of host names joined in the UI language, for example 'api.openai.com and *.openai.azure.com'; the host names themselves are never translated"
+    }
+  },
   "settings.sidebar.searchPlaceholder": "Search settings…",
   "@settings.sidebar.searchPlaceholder": {
     "description": "Placeholder text in the settings sidebar's search box. The trailing ellipsis is stylistic; keep it.",
