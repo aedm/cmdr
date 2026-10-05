@@ -1030,6 +1030,23 @@ jobs:
             -d "$PAYLOAD"
 
   # ===========================================
+  # Full-run marker for the release gate
+  # ===========================================
+  # Runs only when `run_all` is on, so its success is how the release gate
+  # (`scripts/release-ci-gate.sh` and `release-pipeline.yml`'s `ci-gate`) tells a full run from a
+  # dispatch with `run_all` off, which the runs API can't show (it carries no inputs). The gates
+  # match this job's NAME, so ❌ don't rename it without updating both. It needs nothing, so it
+  # marks the MODE only; the gates read green-or-red from the run's own conclusion.
+  full-run:
+    name: Full run (run_all)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: inputs.run_all
+    steps:
+      - name: Mark this run as full
+        run: echo "run_all is on, so no lane skips on change detection."
+
+  # ===========================================
   # Summary job for branch protection
   # ===========================================
   ci-ok:
