@@ -103,8 +103,21 @@ download, and the user-initiated feedback and beta signup.
 - A change calls `apply_change` (cache.rs): today it logs and emits `managed-policy-changed`; the AI milestone adds the
   immediate stops there (cancel in-flight cloud work, stop `llama-server`, cancel a model download).
 
+## Where the gates live
+
+- **Api-server egress**: `server_request::send(Egress, request)` asks `allows` on a fresh read and refuses with
+  `ServerRequestError::BlockedByPolicy` before anything leaves. Every api-server sender goes through it, the heartbeat
+  included. Commands that build a bundle first ask the same decision through `server_request::check_policy`.
+- **Usage stats**: `analytics::send_permission` and the heartbeat's config shape read `settings.json` through
+  `overlay`, so a managed off is an ordinary opt-out and the heartbeat reports effective values plus a coarse
+  `managedByOrganization` bool.
+- **Crash reports**: `check_pending_crash_report` discards the pending file unoffered under `DisableCrashAndErrorReports`.
+
 ## Testing
 
+- Tests elsewhere put a policy in force with `testing::override_for_test(testing::forcing(&[KEY]))`: a guard that makes
+  `current()` and `for_egress()` answer that policy on the test's own thread (a `#[tokio::test]` runs its tasks there),
+  so parallel tests never see each other's policy.
 - Unit tests run over `FakeSource`. `source.rs` has a scratch-domain CF test (`com.getcmdr.policytest.<tag>`) proving a
   value in the user's own layer isn't reported, and a `PlistFileSource` round trip. `view.rs` tests
   `get_managed_policy` end to end through `CMDR_MANAGED_PREFS_FILE`.

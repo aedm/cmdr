@@ -421,6 +421,19 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
   effective values plus that one coarse bool, never which keys are set).
 - **DONE**: with `DisableUsageStats` / `DisableCrashAndErrorReports` forced, no request reaches `api.getcmdr.com`
   `/heartbeat`, `/crash-report`, or `/error-report` from any path, verified by tests.
+- **Implementation notes** (M2 as built):
+  - `server_request::check_policy(egress)` is the one decision; `send` calls it, and so do the commands that refuse
+    early (and Flow B's `take_window_to_send`). The early refusals surface as `BlockedByPolicy` too (nested in
+    `ErrorReportSendError::Server` for the error-report commands).
+  - Tests outside the module use `managed_policy::testing::override_for_test`, a per-thread override of `current()` and
+    `for_egress()`.
+  - `Settings.analytics_enabled` is removed: consent reads raw `settings.json` through `overlay`.
+  - `managedByOrganization` is always in the config shape (`false` when nothing is managed), like `fdaGranted`.
+  - Frontend: `serverRequestLogLevel` gained `'info'` for `blockedByPolicy`, and its callers log at info. The copy key
+    `errors.serverRequest.blockedByPolicy` is English plus the en-GB/en-AU spelling overlays; the other locales need the
+    translator (the `i18n-coverage` lane flags it until then).
+  - An update check or download under `DisableUpdates` now ends as `BlockedByPolicy` at `send` (logged at info); M3
+    replaces that with typed outcomes before the request.
 
 ### M3. Update enforcement
 
