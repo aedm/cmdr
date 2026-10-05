@@ -63,3 +63,6 @@ settled wording into `terms.json` (and `decisions.md` when the reason is worth k
   catalog keeps `存档` (Microsoft's tier word) so "Archived" has one rendering. Confirm it reads right to an S3 user.
 - **Google's console labels in `servers.sheet.s3GcsKeyHelp`** (`互操作性` tab, `Cloud Storage 设置`): written from
   memory of the Google Cloud zh-CN console, not verified live.
+- **On-device AI → `本地 AI`** (`ai.managed.cloudAiOff`, `ai.managed.localOnlyUnsupported`,
+  `settings.managed.summary.onDeviceOnly` = `只限本地`): reuses the local provider's word so the person recognizes it;
+  Apple Intelligence copy says `设备端`. Confirm `本地` reads as "runs on this Mac" to an IT-managed user.

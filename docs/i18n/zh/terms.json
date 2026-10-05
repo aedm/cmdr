@@ -1811,6 +1811,9 @@
     "chosen": "共享",
     "confidence": "confirmed",
     "decision": "服务器明确说没有这个共享",
+    "exceptions": {
+      "errorReporter.dialog.managedOff": "\"share it yourself\" is the verb (pass the saved report on), not an SMB share: 自己发给别人."
+    },
     "forms": "共享; network shares 网络共享; mounted shares 已装载的共享; SMB/Network shares section SMB/网络共享",
     "sources": "macOS Finder"
   },
@@ -1860,6 +1863,13 @@
     "confidence": "confirmed",
     "forms": "a toast or hint banner 提示; a system notification 通知",
     "sources": "macOS/MS"
+  },
+  "on-device": {
+    "chosen": "本地",
+    "confidence": "tentative",
+    "forms": "on-device AI 本地 AI (只允许使用本地 AI); the terse card value On-device only → 只限本地; free, on-device → 免费，本地运行",
+    "note": "Same word as the local provider's 本地 AI / 本地模型, so the managed copy names the AI the person sees in the provider choice. Apple Intelligence's 设备端 is a candidate a native reviewer may prefer (review-queue.md).",
+    "sources": "catalog (askCmdr.cost.free 本地运行; local: 本地 AI / 本地模型, 31 uses); MS terminology zh-Hans has no on-device entry"
   },
   "on-disk-size": {
     "avoid": [
@@ -1954,6 +1964,13 @@
     "chosen": "选项",
     "confidence": "high",
     "sources": "macOS"
+  },
+  "organization": {
+    "chosen": "组织",
+    "confidence": "high",
+    "forms": "the licensee 组织; the MDM-managing employer or school 你的组织, with managed → 由你的组织管理 (这项设置由你的组织管理)",
+    "note": "One word for both senses: Apple's own MDM enrollment copy says 你的组织 / 组织将能够远程管理此Mac, and the licensing labels already say 组织.",
+    "sources": "macOS 26 ConfigurationProfilesUI zh_CN (str_ADxE_MgmtWarningDeviceEnrollment, str_DEP_MIGRATION_DESCRIPTION, live loctable, 2026-10-05); MS terminology zh-Hans; catalog (licensing.*)"
   },
   "original": {
     "accept": ["原始", "原来", "原件"],

@@ -1984,6 +1984,10 @@
   "@errors.serverRequest.unexpected": {
     "sourceHash": "5be7ebd"
   },
+  "errors.serverRequest.blockedByPolicy": "你的组织在 Cmdr 中关闭了这项功能。",
+  "@errors.serverRequest.blockedByPolicy": {
+    "sourceHash": "9a27fb3"
+  },
   "errors.eject.busy": "Cmdr 还在那里读写文件。完成后再试一次。",
   "@errors.eject.busy": {
     "sourceHash": "560c0db"

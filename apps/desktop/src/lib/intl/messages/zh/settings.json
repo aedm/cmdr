@@ -2069,6 +2069,59 @@
   "@settings.control.backToPresetsAriaLabel": {
     "sourceHash": "1579f3f"
   },
+  "settings.managed.rowNote": "这项设置由你的组织管理。",
+  "@settings.managed.rowNote": {
+    "sourceHash": "891206b"
+  },
+  "settings.managed.sectionNote": "这里有些设置由你的组织管理。",
+  "@settings.managed.sectionNote": {
+    "sourceHash": "ab52c49"
+  },
+  "settings.managed.summary.title": "由你的组织管理",
+  "@settings.managed.summary.title": {
+    "sourceHash": "5450801"
+  },
+  "settings.managed.summary.usageStats": "使用统计",
+  "@settings.managed.summary.usageStats": {
+    "sourceHash": "4e0483c"
+  },
+  "settings.managed.summary.reports": "崩溃和错误报告",
+  "@settings.managed.summary.reports": {
+    "sourceHash": "ef409c3"
+  },
+  "settings.managed.summary.updates": "更新",
+  "@settings.managed.summary.updates": {
+    "sourceHash": "22e2bad"
+  },
+  "settings.managed.summary.ai": "AI",
+  "@settings.managed.summary.ai": {
+    "sourceHash": "11fb682",
+    "sameAsSourceJustification": "\"AI\" stays Latin in zh UI: the catalog writes AI throughout (云端 AI, 本地 AI, AI 功能, the settings section “设置 › AI”), as Apple zh-CN does for Apple Intelligence copy."
+  },
+  "settings.managed.summary.off": "关闭",
+  "@settings.managed.summary.off": {
+    "sourceHash": "ca7981b"
+  },
+  "settings.managed.summary.upTo": "最高到 {ceiling}",
+  "@settings.managed.summary.upTo": {
+    "sourceHash": "8989a97"
+  },
+  "settings.managed.summary.manualChecksOnly": "只能手动检查",
+  "@settings.managed.summary.manualChecksOnly": {
+    "sourceHash": "1969d26"
+  },
+  "settings.managed.summary.upToManualChecksOnly": "最高到 {ceiling}，只能手动检查",
+  "@settings.managed.summary.upToManualChecksOnly": {
+    "sourceHash": "c769ffd"
+  },
+  "settings.managed.summary.onDeviceOnly": "只限本地",
+  "@settings.managed.summary.onDeviceOnly": {
+    "sourceHash": "d4f8552"
+  },
+  "settings.managed.summary.cloudHostsOnly": "只能通过 {hosts} 使用云端 AI",
+  "@settings.managed.summary.cloudHostsOnly": {
+    "sourceHash": "00f1237"
+  },
   "settings.sidebar.searchPlaceholder": "搜索设置…",
   "@settings.sidebar.searchPlaceholder": {
     "sourceHash": "57054c5"

@@ -387,6 +387,14 @@
   "@onboarding.stepBeta.crashReportsNote": {
     "sourceHash": "9be0be1"
   },
+  "onboarding.stepBeta.analyticsManaged": "你的组织关闭了使用统计。",
+  "@onboarding.stepBeta.analyticsManaged": {
+    "sourceHash": "49484ee"
+  },
+  "onboarding.stepBeta.crashReportsNoteAlone": "崩溃报告已开启：如果 Cmdr 意外退出，它会发送应用版本、你的 macOS 版本，以及代码停下的位置。\n绝不包含你的文件。\n这一项你随时可以在设置中关闭。",
+  "@onboarding.stepBeta.crashReportsNoteAlone": {
+    "sourceHash": "5084dd0"
+  },
   "onboarding.stepBeta.emailTitle": "保持联系（可选）",
   "@onboarding.stepBeta.emailTitle": {
     "sourceHash": "cf691fa"
