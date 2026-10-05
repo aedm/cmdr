@@ -506,8 +506,12 @@ pub fn configure_ai<R: Runtime>(
                     m.server_starting = true;
                     Some((pid, port, cancel))
                 }
+                Err(super::server::LocalAiError::Managed { refusal }) => {
+                    log::info!("AI configure: the organization's policy refuses local AI ({refusal:?}), not starting");
+                    None
+                }
                 Err(e) => {
-                    crate::log_error!("AI configure: couldn't spawn server: {e}");
+                    crate::log_error!("AI configure: couldn't spawn server: {e:?}");
                     None
                 }
             }

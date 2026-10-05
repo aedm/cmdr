@@ -83,7 +83,8 @@ fn finish_download(m: &mut ManagerState) {
 #[tauri::command]
 #[specta::specta]
 pub async fn start_ai_download<R: Runtime>(app: AppHandle<R>) -> Result<(), LocalAiError> {
-    if let Err(refusal) = super::managed::local_ai_allowed(&crate::managed_policy::current()) {
+    // The model download is egress, so it reads the policy fresh.
+    if let Err(refusal) = super::managed::local_ai_allowed(&*crate::managed_policy::for_egress().await) {
         log::info!("AI download: the organization's policy refuses local AI ({refusal:?}), not downloading");
         return Err(LocalAiError::Managed { refusal });
     }
@@ -295,7 +296,15 @@ async fn do_download<R: Runtime>(app: &AppHandle<R>) -> Result<(), LocalAiError>
     let _ = AiInstalling.emit(app);
 
     // Start the server FIRST, then emit install complete.
-    // Spawn synchronously so PID is tracked immediately, then health-check async.
+    // Spawn synchronously so PID is tracked immediately, then health-check async. The transfer took
+    // minutes, so ask the policy fresh first; `spawn_and_track_server` asks again under the lock, on
+    // the cache this read just refreshed. The model stays installed either way.
+    if let Err(refusal) = super::managed::local_ai_allowed(&*crate::managed_policy::for_egress().await) {
+        log::info!(
+            "AI download: the organization's policy now refuses local AI ({refusal:?}), not starting the server"
+        );
+        return Err(LocalAiError::Managed { refusal });
+    }
     let (pid, port, cancel) = {
         let mut manager = MANAGER.lock_ignore_poison();
         let Some(ref mut m) = *manager else {

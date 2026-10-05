@@ -182,6 +182,10 @@ How the organization's MDM profile (`managed_policy/DETAILS.md`, the canonical k
   every HTTP client that talks to an AI endpoint must.
 - **Local model.** Under `DisableAI`, `configure_ai` treats `local` like switching away (stops a running server, never
   spawns), `start_ai_server` and `start_ai_download` refuse, and `compute_ai_status` never offers the download.
+  The download is egress: `start_ai_download` asks `for_egress()`, and so does `do_download` again before its
+  post-download server start (a transfer takes minutes). `spawn_and_track_server`, the lowest "start" function, asks the
+  cached policy under the `MANAGER` lock, so no caller can spawn `llama-server` under `DisableAI`: a change swaps the
+  cache before `apply_policy_change` takes that lock, so a spawn either sees it or is stopped right after.
   Both commands reject with the typed `LocalAiError` (`Managed { refusal }`, `Unsupported`, `Cancelled`,
   `Failed { detail }`; exported through `ipc.rs`'s `.typ`, since generic commands aren't collected). A download that
   ends with the cancel flag set is `Cancelled`, whoever set it, so a policy-driven cancel is never a failure. The

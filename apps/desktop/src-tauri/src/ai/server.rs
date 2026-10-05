@@ -101,7 +101,7 @@ pub fn start_ai_server<R: Runtime>(app: AppHandle<R>, ctx_size: u32) -> Result<(
                     m.server_starting = true;
                     Some((pid, port, cancel))
                 }
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(e),
             }
         } else {
             None
@@ -145,9 +145,16 @@ pub(super) fn handle_startup_outcome<R: Runtime>(outcome: StartupOutcome, pid: u
 /// Spawns llama-server and immediately tracks its PID in manager state.
 /// Must be called while holding the MANAGER lock.
 /// Returns (pid, port) for the caller to health-check asynchronously.
-pub(super) fn spawn_and_track_server(m: &mut ManagerState) -> Result<(u32, u16, CancellationToken), String> {
+pub(super) fn spawn_and_track_server(m: &mut ManagerState) -> Result<(u32, u16, CancellationToken), LocalAiError> {
+    // The lowest "start" function, so every caller shares this gate. The cache is current: a caller
+    // on an async path read it fresh first (`for_egress`), and a change swaps the cache BEFORE
+    // `apply_policy_change` takes this lock to stop the server, so a spawn either sees the new
+    // policy here or gets stopped right after.
+    if let Err(refusal) = super::managed::local_ai_allowed(&crate::managed_policy::current()) {
+        return Err(LocalAiError::Managed { refusal });
+    }
     let model = get_model_by_id(&m.state.installed_model_id).unwrap_or_else(get_default_model);
-    let port = find_available_port().ok_or("No available port")?;
+    let port = find_available_port().ok_or_else(|| String::from("No available port"))?;
 
     log::debug!(
         "AI server: starting llama-server on port {port} with context size {}",
@@ -283,6 +290,27 @@ mod tests {
     /// as an `i32`, so `kill(pid, 0)` reports "no such process" rather than the `-1` broadcast.
     const DEAD_PID: u32 = 999_999;
     const UNUSED_DIR: &str = "/nonexistent-cmdr-startup-test-dir";
+
+    /// The lowest "start" function asks the policy itself, so no caller (the installer's
+    /// post-download start, `configure_ai`, `start_ai_server`) can spawn `llama-server` under
+    /// `DisableAI`, however late the policy arrived.
+    #[test]
+    fn under_ai_off_nothing_spawns_the_server() {
+        use crate::managed_policy::ManagedAiRefusal;
+        use crate::managed_policy::testing::{self, DISABLE_AI};
+        let _policy = testing::override_for_test(testing::forcing(&[DISABLE_AI]));
+        let mut m = super::super::state::new_manager_state(
+            std::path::PathBuf::from(UNUSED_DIR),
+            super::super::AiState::default(),
+        );
+        assert_eq!(
+            spawn_and_track_server(&mut m).err(),
+            Some(LocalAiError::Managed {
+                refusal: ManagedAiRefusal::AiOff
+            })
+        );
+        assert_eq!(m.child_pid, None);
+    }
 
     /// A refusal is typed, so the frontend can log it at info: an error log can send an
     /// automatic report, and the organization's "no" isn't a failure.
