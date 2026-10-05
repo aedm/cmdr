@@ -915,7 +915,8 @@
     "confidence": "high",
     "sources": "catalog (errorReporter.dialog.title, menu.help.sendErrorReport)",
     "exceptions": {
-      "settings.updates.attachEmailToReports.description": "\"A crash or error report\" shares the head noun: un informe de fallos o de error."
+      "settings.updates.attachEmailToReports.description": "\"A crash or error report\" shares the head noun: un informe de fallos o de error.",
+      "settings.managed.summary.reports": "\"Crash and error reports\" shares the head noun: Informes de fallos y de error."
     },
     "decision": "Añadir a un informe ya enviado: el diálogo de la nota tardía"
   },
@@ -1627,7 +1628,8 @@
     "confidence": "high",
     "sources": "macOS (recurso compartido), NetAuthAgent (EINFO_NO_SHARES), MS",
     "exceptions": {
-      "settings.section.smbNetworkShares": "Settings sidebar title, shortened to SMB/Recursos de red."
+      "settings.section.smbNetworkShares": "Settings sidebar title, shortened to SMB/Recursos de red.",
+      "errorReporter.dialog.managedOff": "\"share it yourself\" is the verb (pass the report on), not a network share: compartirlo tú."
     },
     "decision": "Por qué no se monta un recurso compartido o no carga su lista"
   },
@@ -1698,6 +1700,13 @@
     "sources": "catalog (fileOperations.delete.cloudOnlineOnly*); no pile hit (macOS es has neither form in the mined Finder/AppKit)",
     "decision": "El aviso de contenido solo en línea"
   },
+  "on-device": {
+    "chosen": "en el dispositivo",
+    "forms": "on-device AI → la IA en el dispositivo; On-device only → Solo en el dispositivo; free, on-device → gratis, en el dispositivo",
+    "confidence": "high",
+    "sources": "catalog (askCmdr.cost.free gratis, en el dispositivo; settings.mediaIndex.clip.description un modelo de IA en el dispositivo); macOS es (Se conservará en el dispositivo)",
+    "decision": "Lo que gestiona tu organización (MDM)"
+  },
   "open": {
     "chosen": "Abrir",
     "accept": ["abr", "abiert", "apertura", "ábr"],
@@ -1742,6 +1751,14 @@
     "accept": ["opción"],
     "confidence": "high",
     "sources": "standard"
+  },
+  "organization": {
+    "chosen": "organización",
+    "accept": ["organizaciones", "Organización"],
+    "forms": "your organization → tu organización; managed by → gestiona (Tu organización gestiona este ajuste); your IT team → tu equipo de informática",
+    "confidence": "high",
+    "sources": "MS terminology (organization → organización, ESP); catalog (licensing.about.fallbackOrg tu organización; errors.listing.authRequiredEauth.suggestion tu equipo de informática); macOS es (iCloud Drive gestionado)",
+    "decision": "Lo que gestiona tu organización (MDM)"
   },
   "original": {
     "chosen": "originales",

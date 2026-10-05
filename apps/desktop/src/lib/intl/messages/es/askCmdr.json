@@ -220,6 +220,10 @@
   "@askCmdr.error.noCloudConsent": {
     "sourceHash": "cd2af1d"
   },
+  "askCmdr.error.managedByOrganization": "Tu organización no permite este servicio de IA. Tu equipo de informática puede decirte cuáles puedes usar.",
+  "@askCmdr.error.managedByOrganization": {
+    "sourceHash": "845a19f"
+  },
   "askCmdr.error.localWindowTooSmall": "Cmdr necesita una ventana de contexto más grande que la de tu modelo local. Elige 32 768 tokens o más en Ajustes, en IA.",
   "@askCmdr.error.localWindowTooSmall": {
     "sourceHash": "8ac7452"

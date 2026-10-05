@@ -366,5 +366,21 @@
   "settings.adb.pathPlaceholder": "Cmdr busca adb en los lugares habituales",
   "@settings.adb.pathPlaceholder": {
     "sourceHash": "68669b9"
+  },
+  "settings.managed.rowNote": "Tu organización administra esta configuración.",
+  "@settings.managed.rowNote": {
+    "sourceHash": "d89c614"
+  },
+  "settings.managed.sectionNote": "Tu organización administra parte de esta configuración.",
+  "@settings.managed.sectionNote": {
+    "sourceHash": "4fd755d"
+  },
+  "settings.managed.summary.title": "Lo que administra tu organización",
+  "@settings.managed.summary.title": {
+    "sourceHash": "6a4d7e4"
+  },
+  "settings.managed.summary.reports": "Reportes de fallos y de error",
+  "@settings.managed.summary.reports": {
+    "sourceHash": "44a9e49"
   }
 }

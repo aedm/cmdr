@@ -118,5 +118,13 @@
   "onboarding.cloudSetup.status.genericError": "Algo salió mal",
   "@onboarding.cloudSetup.status.genericError": {
     "sourceHash": "9a2d67e"
+  },
+  "onboarding.stepBeta.analyticsManaged": "Tu organización desactivó las estadísticas de uso.",
+  "@onboarding.stepBeta.analyticsManaged": {
+    "sourceHash": "44f4b62"
+  },
+  "onboarding.stepBeta.crashReportsNoteAlone": "Los reportes de fallos están activados: si Cmdr se cierra de golpe, envía la versión de la app, tu versión de macOS y el punto del código donde se detuvo.\nNunca tus archivos.\nPuedes desactivarlos en Configuración cuando quieras.",
+  "@onboarding.stepBeta.crashReportsNoteAlone": {
+    "sourceHash": "4351643"
   }
 }

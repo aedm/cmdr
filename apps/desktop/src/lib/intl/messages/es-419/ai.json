@@ -98,5 +98,13 @@
   "ai.secretError.removeTitle": "No se pudo quitar tu clave de API guardada.",
   "@ai.secretError.removeTitle": {
     "sourceHash": "b9fd27a"
+  },
+  "ai.translateError.managed.title": "Tu organización administra la IA en Cmdr",
+  "@ai.translateError.managed.title": {
+    "sourceHash": "35789b8"
+  },
+  "ai.managed.aiOff": "Tu organización desactivó la IA en Cmdr.",
+  "@ai.managed.aiOff": {
+    "sourceHash": "8db6399"
   }
 }

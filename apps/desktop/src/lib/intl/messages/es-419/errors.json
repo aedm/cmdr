@@ -734,5 +734,9 @@
   "errors.write.duplicateSourceNames.message": "Elegiste dos elementos llamados {name}, así que los dos acabarían en el mismo lugar: {first} y {second}.",
   "@errors.write.duplicateSourceNames.message": {
     "sourceHash": "38e20fc"
+  },
+  "errors.serverRequest.blockedByPolicy": "Tu organización desactivó esto para Cmdr.",
+  "@errors.serverRequest.blockedByPolicy": {
+    "sourceHash": "4ef1553"
   }
 }

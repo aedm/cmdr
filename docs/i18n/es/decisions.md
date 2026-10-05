@@ -397,9 +397,7 @@ The row covers Office documents AND app packages, so bare `paquetes`, broader th
 - key (SSH) → `clave`, ❌ not `llave` (macOS keeps it for passkeys and `llavero`).
 - compromised → `comprometida`: Apple's `filtrada` names a concrete leak, a `@revoked` mark isn't one.
 - trust → `confiar en`, with macOS and Cmdr as active subjects.
-- Try again as a BUTTON → `Reintentar`; in prose `inténtalo de nuevo` / `vuelve a intentarlo`.
 - Busy tooltips copy `ejectBusyTooltip` word for word; `…Busy` menu items add ` (ocupado)`.
-- Participles and clitics agree only with fixed nouns (`Sesión cerrada`, `Ábrelo` → el servidor), never `{name}`.
 - A forget confirmation names the type first (`¿Olvidar el recurso compartido {name}?`), so `lo` and `montado` agree
   with the noun. Forgetting a host is `olvidar` in the toasts too (`Cmdr ha olvidado {hostName}`), ❌ not the old
   `quitar`.
@@ -640,3 +638,7 @@ in labels. `Solo verás este aviso una vez.`: names the notice, no gendered adje
 
 - `en las dos ubicaciones`: `ubicación` doesn't agree with the item's gender. `elimina tú el original` avoids a gendered
   `tú mismo`.
+
+## Lo que gestiona tu organización (MDM) (`*.managed.*`)
+
+- No agreeing participle: title `Lo que gestiona…`, `sin permiso de…`, and `Off` → invariant `No`.
