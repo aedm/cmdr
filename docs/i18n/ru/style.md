@@ -220,8 +220,9 @@ Bugs that shipped this way:
 
 - `indexing.eta.*` started with a capital `Осталось`, but hosts embed them mid-line: `примерно Осталось 2 мин`,
   `95 %, Осталось 8 с`. A fragment that can land mid-line starts lowercase.
-- `queryUi.size.unit.bytes` was `байты`, shown after every number except 1: `5 байты`. A unit word after a free number
-  must fit every number: the abbreviation `Б`, or the genitive-plural-safe `байт`.
+- The byte unit word (now `common.sizeUnit.byte`, which carries a plural) was `байты`, shown after every number except
+  1: `5 байты`. A unit word after a free number must fit every number: the abbreviation `Б`, or the genitive-plural-safe
+  `байт`.
 - `settings.network.customTimeoutUnit` was `секунд` after a user-typed number: `1 секунд`. Use `сек.`.
 - `servers.paneState.retryTotal*` returned nominative durations into `в течение {duration}`, which needs the genitive.
   Recast the host so the duration fits (`Всего попытки продлятся {duration}`, with accusative branches

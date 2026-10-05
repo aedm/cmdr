@@ -33,5 +33,43 @@
     "description": "Hint shown when the downloads watcher lacks Full Disk Access. <settingsLink> wraps the inline action that opens System Settings.",
     "screenshot": "settings-behavior-notifications.png",
     "screenshotNote": "Settings > Behavior > Notifications, pictured here. Your string is the hint at the top of this section that appears only while Cmdr can’t watch the Downloads folder for lack of Full Disk Access, with a link that opens System Settings."
+  },
+
+  "common.sizeUnit.byte": "{count, plural, one {byte} other {bytes}}",
+  "@common.sizeUnit.byte": {
+    "description": "The byte unit word after a whole number of bytes, everywhere Cmdr shows a size below one kilobyte ('512 bytes') or an exact byte count ('(1,234,567 bytes)' in a size tooltip). The app writes the number and one space in front of it, so this is ONLY the word. Use your language's usual word or symbol for bytes (French 'octet' / 'octets'), and its own plural categories. Keep it short: it sits in narrow size columns.",
+    "placeholders": {
+      "count": "the number of bytes (drives the singular/plural form; not shown by this string)"
+    }
+  },
+
+  "common.sizeUnit.kilobyteBinary": "KB",
+  "@common.sizeUnit.kilobyteBinary": {
+    "description": "Unit symbol for a kilobyte when the user picked the binary size format (1 KB = 1,024 bytes; Settings > Appearance > File and folder sizes). Shown after a number in every file size ('1.50 KB'); the app adds the number and the space. English writes it with a capital K to set it apart from the decimal 'kB' (common.sizeUnit.kilobyteSi). Use your language's usual kilobyte symbol (French 'Ko'), and keep it distinct from your kilobyteSi if your language distinguishes the two. Symbol only, never the full word."
+  },
+
+  "common.sizeUnit.kilobyteSi": "kB",
+  "@common.sizeUnit.kilobyteSi": {
+    "description": "Unit symbol for a kilobyte when the user picked the decimal (SI) size format (1 kB = 1,000 bytes; Settings > Appearance > File and folder sizes). Shown after a number in every file size ('1.50 kB'); the app adds the number and the space. The lowercase k is the SI prefix. Use your language's usual symbol (French 'ko'). Symbol only, never the full word."
+  },
+
+  "common.sizeUnit.megabyte": "MB",
+  "@common.sizeUnit.megabyte": {
+    "description": "Unit symbol for a megabyte, shown after a number in every file size, free-space readout, and transfer speed ('83.59 MB', '12 MB/s'); the app adds the number and the space. Use your language's usual symbol (French 'Mo'). Symbol only, never the full word. Keep it in step with the other common.sizeUnit symbols."
+  },
+
+  "common.sizeUnit.gigabyte": "GB",
+  "@common.sizeUnit.gigabyte": {
+    "description": "Unit symbol for a gigabyte, shown after a number in every file size and free-space readout ('1.70 GB'); the app adds the number and the space. Use your language's usual symbol (French 'Go'). Symbol only, never the full word. Keep it in step with the other common.sizeUnit symbols."
+  },
+
+  "common.sizeUnit.terabyte": "TB",
+  "@common.sizeUnit.terabyte": {
+    "description": "Unit symbol for a terabyte, shown after a number in file sizes and drive capacities ('1.23 TB'); the app adds the number and the space. Use your language's usual symbol (French 'To'). Symbol only, never the full word. Keep it in step with the other common.sizeUnit symbols."
+  },
+
+  "common.sizeUnit.petabyte": "PB",
+  "@common.sizeUnit.petabyte": {
+    "description": "Unit symbol for a petabyte (1,000 or 1,024 terabytes), the largest unit Cmdr shows, after a number in a size ('1.00 PB'); the app adds the number and the space. Use your language's usual symbol (French 'Po'). Symbol only, never the full word. Keep it in step with the other common.sizeUnit symbols."
   }
 }

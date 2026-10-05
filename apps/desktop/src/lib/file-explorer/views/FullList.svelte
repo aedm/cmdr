@@ -73,7 +73,7 @@
     import { useShortenMiddle } from '$lib/utils/shorten-middle-action'
     import type { RenameState, RenameSessionId } from '../rename/rename-state.svelte'
     import type { RenameStepDirection } from '../rename/rename-step'
-    import { formatByteSize } from '$lib/units'
+    import { formatByteSizeTiered } from '$lib/units'
 
     interface Props {
         listingId: string
@@ -847,12 +847,12 @@
                                         file.recursiveFileCount ?? 0,
                                         file.recursiveDirCount ?? 0,
                                         isSizeUpdating(file),
-                                        formatByteSize,
+                                        formatByteSizeTiered,
                                         formatNumber,
                                         file.recursiveSizeComplete,
                                         file.recursiveSizeStale,
                                     )
-                                  : buildFileSizeTooltip(file.size, file.physicalSize, formatByteSize)}
+                                  : buildFileSizeTooltip(file.size, file.physicalSize, formatByteSizeTiered)}
                         >
                             {#if sizeOverride.override !== undefined}
                                 <span class="size-text">{sizeOverride.override}</span>
@@ -898,7 +898,7 @@
                                             file.recursiveFileCount ?? 0,
                                             file.recursiveDirCount ?? 0,
                                             dirUpdating,
-                                            formatByteSize,
+                                            formatByteSizeTiered,
                                             formatNumber,
                                             file.recursiveSizeComplete,
                                             file.recursiveSizeStale,

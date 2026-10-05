@@ -55,7 +55,7 @@ export function typeFilterToIsDirectory(typeFilter: TypeFilter): boolean | null 
  * Size unit. `B` (bytes) was added in round 2 (D10) so the list-style popover can let the
  * user pick a byte-level filter without leaving the popover. The byte unit's label varies
  * between `byte` / `bytes` depending on the selected count (see `byteUnitLabel`); KB/kB
- * follows the user's binary-vs-SI setting (`kiloByteLabel`).
+ * follows the user's binary-vs-SI setting (`unitLabel` in `$lib/units`).
  */
 export type SizeUnit = 'B' | 'KB' | 'MB' | 'GB'
 

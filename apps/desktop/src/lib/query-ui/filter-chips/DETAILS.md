@@ -33,8 +33,9 @@ cross-consumer state factory.
   body wraps it, threading `anchor` / `open` / `onClose` / `label`
 - **`filter-chip-state.ts`**: Pure helpers: `deriveSizeChip`, `deriveDateChip`, `deriveScopeChip`, `derivePatternChip`
   (testable in isolation)
-- **`filter-popover-helpers.ts`**: Pure: `SIZE_PRESETS`, `byteUnitLabel`, `kiloByteLabel`, `isSizeRangeDisabled`,
-  `showsUpperBound`, `isDateRangeDisabled`, `showsDateUpperBound`, `buildDatePresets`
+- **`filter-popover-helpers.ts`**: Pure: `SIZE_PRESETS`, `byteUnitLabel`, `isSizeRangeDisabled`, `showsUpperBound`,
+  `isDateRangeDisabled`, `showsDateUpperBound`, `buildDatePresets`. Unit words come from `$lib/units` (`bytesLabel`,
+  `unitLabel`), so the popover, the chips, and the file list read the same in every language
 
 Companion tests (colocated):
 

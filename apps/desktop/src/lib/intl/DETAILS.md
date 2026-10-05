@@ -207,8 +207,9 @@ halves of this split, and is the net if a refactor ever reaches for a shared `us
 ## Value↔unit spacing invariant
 
 Human-friendly sizes compose as `` `${value} ${unitLabel}` `` with an explicit ASCII space; we never adopt `Intl`'s
-`style: 'unit'`, which injects a narrow no-break space. `colorizeSizeString`/`tierClassForUnit` recover the unit via
-`lastIndexOf(' ')`, so a non-ASCII space there would break tier coloring.
+`style: 'unit'`, which injects a narrow no-break space and can't carry the binary `KB` vs SI `kB` distinction. The unit
+word itself is catalog copy in the UI language (`common.sizeUnit.*`, so French reads `Mo`), and tier coloring takes the
+tier from `formatTieredSize`, never from the text.
 
 ## Chinese list joins get Han–Latin spacing
 

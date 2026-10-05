@@ -1330,9 +1330,8 @@ passes its own, since "Copy command to clipboard" would be a lie to a screen rea
 decimal) and follows palette swaps via the `data-size-colors` attribute on `<html>` automatically.
 
 Use this in Svelte templates: `<Size bytes={entry.size} />`. For HTML string contexts (tooltips, error messages, prose
-that goes through `{@html}`), use `colorizeSizeString(text)` from
-`$lib/file-explorer/selection/selection-info-utils.ts`: pass an already-formatted size string (for example, from
-`formatByteSize` in `$lib/units`) and it wraps the value in the right tier span.
+that goes through `{@html}`), use `colorizeSize(formatByteSizeTiered(bytes))`: `colorizeSize` lives in
+`$lib/file-explorer/selection/selection-info-utils.ts` and wraps the size in the tier span its `TieredSize` names.
 
 Free-space displays (volume picker, status bar, usage-bar tooltip, transfer-dialog destination info) intentionally DON'T
 tier-color the numbers — for "free space" big-is-good, and red GB would falsely signal "low space". They use the plain

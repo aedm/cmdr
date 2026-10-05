@@ -525,14 +525,6 @@
   "@queryUi.size.comparator.between": {
     "sourceHash": "fbb27fb"
   },
-  "queryUi.size.unit.byte": "位元組",
-  "@queryUi.size.unit.byte": {
-    "sourceHash": "1c31626"
-  },
-  "queryUi.size.unit.bytes": "位元組",
-  "@queryUi.size.unit.bytes": {
-    "sourceHash": "277089d"
-  },
   "queryUi.size.customCell": "自訂⋯",
   "@queryUi.size.customCell": {
     "sourceHash": "564a4d3"

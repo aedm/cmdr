@@ -6,7 +6,6 @@ import {
   formatSizeTriads,
   formatSizeForDisplay,
   formatSizeText,
-  tierClassForUnit,
   formatDate,
   buildDateTooltip,
   getSizeDisplay,
@@ -14,10 +13,11 @@ import {
   sizeTierClasses,
   formatNumber,
   calculatePercentage,
-  colorizeSizeString,
+  colorizeSize,
 } from './selection-info-utils'
 import { formatDateForDisplay } from '$lib/settings/format-utils'
 import { _setLocaleForTests } from '$lib/intl/locale'
+import { _setCatalogForTests } from '$lib/intl/messages.svelte'
 import type { FileEntry } from '../types'
 
 // Helper to create a basic file entry
@@ -285,41 +285,31 @@ describe('sizeTierClasses', () => {
   })
 })
 
-describe('tierClassForUnit', () => {
-  it('maps bytes to size-bytes', () => {
-    expect(tierClassForUnit('bytes')).toBe('size-bytes')
-  })
-
-  it('maps KB and kB to size-kb', () => {
-    expect(tierClassForUnit('KB')).toBe('size-kb')
-    expect(tierClassForUnit('kB')).toBe('size-kb')
-  })
-
-  it('maps MB to size-mb', () => {
-    expect(tierClassForUnit('MB')).toBe('size-mb')
-  })
-
-  it('maps GB to size-gb', () => {
-    expect(tierClassForUnit('GB')).toBe('size-gb')
-  })
-
-  it('maps TB and PB to size-tb (capped)', () => {
-    expect(tierClassForUnit('TB')).toBe('size-tb')
-    expect(tierClassForUnit('PB')).toBe('size-tb')
+describe('colorizeSize', () => {
+  it('tiers a size by the tier it carries', () => {
+    expect(colorizeSize({ text: '1.02 MB', tier: 2 })).toBe('<span class="size-mb">1.02 MB</span>')
+    expect(colorizeSize({ text: '512 bytes', tier: 0 })).toBe('<span class="size-bytes">512 bytes</span>')
   })
 })
 
-describe('colorizeSizeString', () => {
-  it('tiers a plain en-US value by its unit suffix', () => {
-    expect(colorizeSizeString('1.02 MB')).toBe('<span class="size-mb">1.02 MB</span>')
-    expect(colorizeSizeString('512 bytes')).toBe('<span class="size-bytes">512 bytes</span>')
+describe('size-tier coloring in another language', () => {
+  // The tier rides beside the text, so a translated unit ("Mo") colors the
+  // same as "MB". Parsing the unit word back out of the text broke the moment
+  // a translator touched it.
+  afterEach(() => {
+    _setCatalogForTests('fr', null)
+    _setLocaleForTests(null)
   })
 
-  it('still tiers a localized (comma-decimal) value correctly', () => {
-    // The last-space parse must survive a German decimal comma in the value:
-    // the unit is still the last ASCII-space-separated token.
-    expect(colorizeSizeString('1,02 MB')).toBe('<span class="size-mb">1,02 MB</span>')
-    expect(colorizeSizeString('1.234,56 GB')).toBe('<span class="size-gb">1.234,56 GB</span>')
+  it('colors a French dynamic size by its magnitude', () => {
+    _setCatalogForTests('fr', { 'common.sizeUnit.megabyte': 'Mo', 'common.sizeUnit.gigabyte': 'Go' })
+    _setLocaleForTests('fr-FR')
+    expect(formatSizeForDisplay(3 * 1024 ** 2, { unit: 'dynamic', format: 'binary' })).toEqual([
+      { value: '3,00 Mo', tierClass: 'size-mb' },
+    ])
+    expect(formatSizeForDisplay(3 * 1024 ** 3, { unit: 'dynamic', format: 'binary' })).toEqual([
+      { value: '3,00 Go', tierClass: 'size-gb' },
+    ])
   })
 })
 

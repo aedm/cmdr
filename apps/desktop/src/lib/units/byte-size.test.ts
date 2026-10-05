@@ -3,7 +3,15 @@
  * `lib/settings/format-utils.test.ts`.
  */
 import { afterEach, describe, it, expect } from 'vitest'
-import { formatFileSizeWithFormat, formatDriveFigure, fixedUnitFor, dynamicTierIndex, unitLabel } from './byte-size'
+import {
+  formatFileSizeWithFormat,
+  formatDriveFigure,
+  formatTieredSize,
+  fixedUnitFor,
+  dynamicTierIndex,
+  unitLabel,
+} from './byte-size'
+import { _setCatalogForTests } from '$lib/intl/messages.svelte'
 import driveFigureCases from './drive-figure-cases.json'
 import type { FileSizeFormat } from '$lib/settings/types'
 import { _setLocaleForTests } from '$lib/intl/locale'
@@ -284,5 +292,56 @@ describe('formatDriveFigure', () => {
   it('writes the decimals the way the locale does', () => {
     _setLocaleForTests('de-DE')
     expect(formatDriveFigure(5_000_000_000, 16_000_000_000, 'binary')).toBe('4,7 GB')
+  })
+})
+
+describe('size units come from the catalog, in the UI language', () => {
+  // French writes "Mo" / "Go" (octets), so the unit is copy a translator owns,
+  // not a code literal. The stand-in catalog is what a French translator would write.
+  const frenchUnits = {
+    'common.sizeUnit.byte': '{count, plural, one {octet} other {octets}}',
+    'common.sizeUnit.kilobyteBinary': 'Ko',
+    'common.sizeUnit.kilobyteSi': 'ko',
+    'common.sizeUnit.megabyte': 'Mo',
+    'common.sizeUnit.gigabyte': 'Go',
+    'common.sizeUnit.terabyte': 'To',
+    'common.sizeUnit.petabyte': 'Po',
+  }
+
+  afterEach(() => {
+    _setCatalogForTests('fr', null)
+    _setLocaleForTests(null)
+  })
+
+  it('words every tier in the UI language', () => {
+    _setCatalogForTests('fr', frenchUnits)
+    _setLocaleForTests('fr-FR')
+    expect(formatFileSizeWithFormat(512, 'binary')).toBe('512 octets')
+    expect(formatFileSizeWithFormat(1536, 'binary')).toBe('1,50 Ko')
+    expect(formatFileSizeWithFormat(1500, 'si')).toBe('1,50 ko')
+    expect(formatFileSizeWithFormat(1024 ** 2, 'binary')).toBe('1,00 Mo')
+    expect(formatFileSizeWithFormat(1024 ** 3, 'binary', 'GB')).toBe('1,00 Go')
+    expect(formatFileSizeWithFormat(1024 ** 4, 'binary')).toBe('1,00 To')
+    expect(formatFileSizeWithFormat(1024 ** 5, 'binary')).toBe('1,00 Po')
+    expect(unitLabel('kB', 'si')).toBe('ko')
+    expect(formatDriveFigure(261 * 1000 ** 3, 1000 ** 4, 'si')).toBe('261 Go')
+  })
+
+  it('picks the byte word by the plural rules of the UI language', () => {
+    expect(formatFileSizeWithFormat(1, 'binary')).toBe('1 byte')
+    expect(formatFileSizeWithFormat(2, 'binary')).toBe('2 bytes')
+    // French counts zero as singular.
+    _setCatalogForTests('fr', frenchUnits)
+    _setLocaleForTests('fr-FR')
+    expect(formatFileSizeWithFormat(0, 'binary')).toBe('0 octet')
+  })
+
+  it('hands back the size-tier with the text, so coloring never parses a unit word', () => {
+    _setCatalogForTests('fr', frenchUnits)
+    _setLocaleForTests('fr-FR')
+    expect(formatTieredSize(3 * 1024 ** 2, 'binary')).toEqual({ text: '3,00 Mo', tier: 2 })
+    // A forced unit keeps the magnitude's tier, the same color dynamic mode would give.
+    expect(formatTieredSize(349, 'binary', 'MB')).toEqual({ text: '0,00 Mo', tier: 0 })
+    expect(formatTieredSize(1024 ** 5, 'binary').tier).toBe(4)
   })
 })

@@ -528,15 +528,6 @@
   "@queryUi.size.comparator.between": {
     "sourceHash": "fbb27fb"
   },
-  "queryUi.size.unit.byte": "byte",
-  "@queryUi.size.unit.byte": {
-    "sourceHash": "1c31626",
-    "sameAsSourceJustification": "Unit loanword 'byte'; kept verbatim in vi with no plural inflection (glossary: byte/bytes -> byte, high). Vietnamese UI uses the loanword 'byte'."
-  },
-  "queryUi.size.unit.bytes": "byte",
-  "@queryUi.size.unit.bytes": {
-    "sourceHash": "277089d"
-  },
   "queryUi.size.customCell": "tùy chỉnh…",
   "@queryUi.size.customCell": {
     "sourceHash": "564a4d3"

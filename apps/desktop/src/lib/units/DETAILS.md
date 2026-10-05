@@ -43,6 +43,23 @@ So: one implementation per quantity, and a lint that keeps it that way.
   gap per tick, so a real slowdown shows within about a second while single-tick jitter is damped. It's stateful, which
   is exactly why it is shared rather than reimplemented per window.
 
+## Unit words: the catalog for sizes, `Intl` for time
+
+- **Size units are catalog keys**
+  (`common.sizeUnit.{byte,kilobyteBinary,kilobyteSi,megabyte,gigabyte,terabyte,petabyte}`), resolved in the UI language
+  like any copy: French writes `Ko` / `Mo` / `Go`, and `octet` / `octets`. `Intl`'s `style: 'unit'` has CLDR's symbols
+  too, but it can't tell binary `KB` from SI `kB`, and it puts a no-break space between value and unit. The byte word is
+  an ICU plural on the count, so "1 byte" and French "0 octet" read right.
+- **The size tier travels with the text** (`TieredSize`, from `formatTieredSize` / `formatByteSizeTiered`). Coloring
+  once recovered the tier by parsing the unit word off the end of the string, which broke the moment a translator wrote
+  `Mo`.
+- **Every size-unit surface goes through here**: the file list, `<Size>`, tooltips (including the "(1,234 bytes)" line),
+  the Size filter popover and chips, and the Settings unit tiles. The popover's and chips' own `B` symbol is the one
+  exception left.
+- **Time units need no catalog.** CLDR's narrow units are what `formatDuration` already speaks, and `formatMilliseconds`
+  uses the same style through `formatNarrowMeasure` (`$lib/intl/duration-format`): unit from the UI language, digits
+  from the formatting locale ("1,4 Sek." in German, "1.4 s" for French on a US-formatted Mac).
+
 ## Type safety: how far, and why not further
 
 `ByteCount`, `BytesPerSecond`, and `Seconds` are zero-cost branded numbers. `Seconds` is **required** by

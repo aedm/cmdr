@@ -68,7 +68,7 @@ describe('deriveSizeChip', () => {
   })
 
   // The chip respects the user's `appearance.fileSizeFormat` setting — same
-  // `kiloByteLabel` mapping as the popover, piped through the `format` argument.
+  // `unitLabel` mapping as the popover, piped through the `format` argument.
   it('renders kB (lowercase k) when format is SI', () => {
     expect(deriveSizeChip('gte', '100', 'KB', '', 'KB', 'si').summary).toBe('> 100 kB')
     expect(deriveSizeChip('lte', '5', 'KB', '', 'KB', 'si').summary).toBe('< 5 kB')

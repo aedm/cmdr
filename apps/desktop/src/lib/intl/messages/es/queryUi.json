@@ -527,16 +527,6 @@
   "@queryUi.size.comparator.between": {
     "sourceHash": "fbb27fb"
   },
-  "queryUi.size.unit.byte": "byte",
-  "@queryUi.size.unit.byte": {
-    "sourceHash": "1c31626",
-    "sameAsSourceJustification": "'byte' stays 'byte' in Spanish: macOS es uses 'byte'/'bytes' verbatim (glossary: byte/bytes -> byte/bytes, macOS/MS keep these untranslated)."
-  },
-  "queryUi.size.unit.bytes": "bytes",
-  "@queryUi.size.unit.bytes": {
-    "sourceHash": "277089d",
-    "sameAsSourceJustification": "'bytes' stays 'bytes' in Spanish: macOS es uses 'byte'/'bytes' verbatim (glossary: byte/bytes -> byte/bytes, macOS/MS keep these untranslated)."
-  },
   "queryUi.size.customCell": "personalizado…",
   "@queryUi.size.customCell": {
     "sourceHash": "564a4d3"

@@ -284,7 +284,7 @@ The count can be the whole selection, so `часть выбранных объе
 The English is an estimate ("may", "up to"): `Возможно, в целевом месте недостаточно места`,
 `Может потребоваться до {required}`. ❌ No alarmist `только`; keep all three ideas of the suggestion.
 
-## Counts without a plural param (`queue.chip.ariaLabel`, `settings.network.customTimeoutUnit`, `queryUi.size.unit.bytes`, `queryUi.age.years`, `transfer.fileOnly.*`)
+## Counts without a plural param (`queue.chip.ariaLabel`, `settings.network.customTimeoutUnit`, `queryUi.age.years`, `transfer.fileOnly.*`)
 
 A noun or participle after a pre-formatted number can't agree (`1 процентов`, `1 секунд`, `5 байты`). Use a counted
 label colon (`готово {percentText} %`, `Скопировано: {n}, пропущено: {m}`), a unit that fits every number (`сек.`, `Б`,

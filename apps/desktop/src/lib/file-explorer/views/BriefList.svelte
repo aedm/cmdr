@@ -72,7 +72,7 @@
     import { escapeHtml, tooltip } from '$lib/tooltip/tooltip'
     import type { RenameState, RenameSessionId } from '../rename/rename-state.svelte'
     import type { RenameStepDirection } from '../rename/rename-step'
-    import { formatByteSize } from '$lib/units'
+    import { formatByteSizeTiered } from '$lib/units'
     import { isDoubleClick, type BriefListClick } from './brief-list-utils'
 
     interface Props {
@@ -845,7 +845,7 @@
             file.recursiveFileCount ?? 0,
             file.recursiveDirCount ?? 0,
             isSizeUpdating(file),
-            formatByteSize,
+            formatByteSizeTiered,
             formatNumber,
             file.recursiveSizeComplete,
             file.recursiveSizeStale,

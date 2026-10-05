@@ -528,14 +528,6 @@
   "@queryUi.size.comparator.between": {
     "sourceHash": "fbb27fb"
   },
-  "queryUi.size.unit.byte": "bájt",
-  "@queryUi.size.unit.byte": {
-    "sourceHash": "1c31626"
-  },
-  "queryUi.size.unit.bytes": "bájt",
-  "@queryUi.size.unit.bytes": {
-    "sourceHash": "277089d"
-  },
   "queryUi.size.customCell": "egyéni…",
   "@queryUi.size.customCell": {
     "sourceHash": "564a4d3"
