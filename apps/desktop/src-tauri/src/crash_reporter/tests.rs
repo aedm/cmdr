@@ -1120,3 +1120,30 @@ async fn a_send_the_policy_blocks_never_claims_or_uploads() {
     assert!(path.exists(), "nothing was claimed");
     assert!(!claimed_crash_path(&path, "CRASH-A2345").exists());
 }
+
+/// A crash report says what Cmdr actually ran with: the organization's locks over the stored
+/// choice, the same as the heartbeat's config shape. A stored `cloud` under on-device only ran as
+/// `off`; a provider nobody stored stays `None` (the default).
+#[test]
+fn active_settings_report_the_effective_ai_provider_under_a_managed_policy() {
+    use crate::managed_policy::testing::{self, DISABLE_AI, DISABLE_CLOUD_AI};
+    let stored = settings::loader::Settings {
+        ai_provider: Some("cloud".to_string()),
+        ..settings::loader::Settings::default()
+    };
+    let effective = |policy: &crate::managed_policy::ManagedPolicy| active_settings_from(&stored, policy).ai_provider;
+    assert_eq!(
+        effective(&testing::forcing(&[DISABLE_CLOUD_AI])).as_deref(),
+        Some("off")
+    );
+    assert_eq!(effective(&testing::forcing(&[DISABLE_AI])).as_deref(), Some("off"));
+    assert_eq!(
+        effective(&crate::managed_policy::ManagedPolicy::default()).as_deref(),
+        Some("cloud")
+    );
+    let unset = settings::loader::Settings::default();
+    assert_eq!(
+        active_settings_from(&unset, &testing::forcing(&[DISABLE_CLOUD_AI])).ai_provider,
+        None
+    );
+}

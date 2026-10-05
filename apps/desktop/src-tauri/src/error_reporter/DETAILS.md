@@ -56,7 +56,9 @@ Manifest fields (`BundleManifest`):
   pushed once at FE startup from `settings-store.ts::initializeSettings`) → hardcoded
   fallback in `ResolvedSettings::from_settings`. The hardcoded values are a safety
   net for "error fires before FE init" and unit tests; the registry stays the source
-  of truth at runtime.
+  of truth at runtime. Then the organization's locks apply on every bundle
+  (`ResolvedSettings::effective`, through `managed_policy::overlay`), so `aiProvider`,
+  `errorReportsEnabled`, and `crashReportsEnabled` say what Cmdr ran with, as the heartbeat's config shape does.
 - `logLevels`: `LogLevelSnapshot` with `stdoutDefault` (startup level), `stdoutCurrent`
   (live atomic), `fileChain` (always `"debug"`), and `stdoutModuleOverrides` (noise
   suppression + `RUST_LOG` directives in insertion order). Lets a triager tell whether

@@ -719,14 +719,33 @@ fn read_crash_report(path: &Path) -> Option<CrashReport> {
 /// the frontend registry owns the defaults. We pass through `None` as-is; the crash
 /// report consumer can interpret null as "default."
 fn cache_active_settings<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
-    let s = settings::load_settings(app);
-    let settings = ActiveSettings {
+    // Read here, at startup, never in the hook or the handler (they must not touch the policy).
+    let settings = active_settings_from(&settings::load_settings(app), &crate::managed_policy::current());
+    let _ = CACHED_SETTINGS.set(settings);
+}
+
+/// The snapshot a crash report carries: the organization's locks over the stored values (through
+/// the one `overlay`), so the report says what Cmdr ran with, as the heartbeat's config shape does.
+/// A value nobody stored stays `None` ("default").
+fn active_settings_from(
+    s: &settings::loader::Settings,
+    policy: &crate::managed_policy::ManagedPolicy,
+) -> ActiveSettings {
+    let mut map = serde_json::Map::new();
+    if let Some(provider) = &s.ai_provider {
+        map.insert("ai.provider".to_string(), serde_json::Value::from(provider.as_str()));
+    }
+    let mut map = serde_json::Value::Object(map);
+    crate::managed_policy::overlay(policy, &mut map);
+    ActiveSettings {
         indexing_enabled: s.indexing_enabled,
-        ai_provider: s.ai_provider,
+        ai_provider: map
+            .get("ai.provider")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string),
         mcp_enabled: s.developer_mcp_enabled,
         verbose_logging: s.verbose_logging,
-    };
-    let _ = CACHED_SETTINGS.set(settings);
+    }
 }
 
 // --- Helpers ---

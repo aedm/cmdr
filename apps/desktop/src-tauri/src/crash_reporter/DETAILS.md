@@ -222,6 +222,9 @@ all three; nextest never sees the race, so a test green only under nextest is th
    every launch. A send that races a newly arrived policy refuses with `BlockedByPolicy` BEFORE the claim, leaving the
    file in place for the next launch to discard. Capture (hook, handler, next-launch assembly) never reads the policy:
    it locks and talks to `cfprefsd`, neither of which is safe in a dying process.
+7. `activeSettings` carries the EFFECTIVE `aiProvider` (the organization's locks over the stored value, through
+   `managed_policy::overlay`), as the heartbeat's config shape does. It's computed once at startup
+   (`active_settings_from`, in `init`), never in the hook or handler, for the same reason as step 6.
 
 ### Released-build gates
 

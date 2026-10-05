@@ -117,7 +117,7 @@ pub async fn build_bundle<R: tauri::Runtime>(
         app_version: env!("CARGO_PKG_VERSION").to_string(),
         os_version: crate::platform::os_version(),
         arch: std::env::consts::ARCH.to_string(),
-        active_settings: cached_active_settings(app).clone(),
+        active_settings: cached_active_settings(app),
         log_levels: build_log_level_snapshot(),
         breadcrumbs: breadcrumbs::snapshot(),
         state_history: super::state_history::for_report(&redaction),

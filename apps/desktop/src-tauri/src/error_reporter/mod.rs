@@ -257,6 +257,28 @@ impl ResolvedSettings {
     ///    registry's default changes.
     /// 3. A hardcoded fallback. Used only before the FE has called `record_settings_defaults` (very
     ///    early errors, unit tests with no FE); it's a safety net, not the primary source.
+    /// The same snapshot with the organization's locks applied, through the one `overlay`: what
+    /// Cmdr actually ran with, as the heartbeat's config shape reports it. Only the lockable fields
+    /// here change; everything else keeps its stored value.
+    pub(crate) fn effective(mut self, policy: &crate::managed_policy::ManagedPolicy) -> Self {
+        let mut map = serde_json::json!({
+            "ai.provider": self.ai_provider,
+            "updates.errorReports": self.error_reports_enabled,
+            "updates.crashReports": self.crash_reports_enabled,
+        });
+        crate::managed_policy::overlay(policy, &mut map);
+        if let Some(provider) = map.get("ai.provider").and_then(serde_json::Value::as_str) {
+            self.ai_provider = provider.to_string();
+        }
+        if let Some(enabled) = map.get("updates.errorReports").and_then(serde_json::Value::as_bool) {
+            self.error_reports_enabled = enabled;
+        }
+        if let Some(enabled) = map.get("updates.crashReports").and_then(serde_json::Value::as_bool) {
+            self.crash_reports_enabled = enabled;
+        }
+        self
+    }
+
     fn from_settings(s: &crate::settings::loader::Settings) -> Self {
         Self {
             indexing_enabled: s
@@ -606,15 +628,19 @@ pub fn save_bundle_to_disk<R: tauri::Runtime>(
 
 // --- Helpers shared between bundle_builder and the manifest assembly ---
 
-/// Cached snapshot of active settings. Populated lazily from the settings loader the
-/// first time a bundle is built, then reused. Mirrors the crash reporter's cache but
-/// stays local to this module so we don't depend on init ordering.
-pub(crate) fn cached_active_settings<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> &'static ResolvedSettings {
+/// Snapshot of the active settings for a manifest. The stored values are loaded lazily the first
+/// time a bundle is built, then reused (mirrors the crash reporter's cache but stays local to this
+/// module so we don't depend on init ordering). The organization's locks apply on every call, so
+/// a profile that arrived since still shows as the effective value.
+pub(crate) fn cached_active_settings<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> ResolvedSettings {
     static CACHE: OnceLock<ResolvedSettings> = OnceLock::new();
-    CACHE.get_or_init(|| {
-        let s = crate::settings::load_settings(app);
-        ResolvedSettings::from_settings(&s)
-    })
+    CACHE
+        .get_or_init(|| {
+            let s = crate::settings::load_settings(app);
+            ResolvedSettings::from_settings(&s)
+        })
+        .clone()
+        .effective(&crate::managed_policy::current())
 }
 
 /// Build a [`LogLevelSnapshot`] from the live state of `logging::dispatch`. The static
