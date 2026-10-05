@@ -72,11 +72,11 @@ export const networkConnections: NetworkConnection[] = [
     destination: '<code>api.getcmdr.com/error-report</code>',
     when: 'When the user picks Help &gt; Send error report, which shows a preview first. Automatic sending exists but is off by default.',
     sends:
-      "A zip with the recent part of the app's log, the app and macOS version, and the user's note. Before it leaves the Mac, Cmdr replaces file and folder names in paths with placeholders, keeping only the extension and common folder names like Documents. <strong>Known gaps</strong>: a file name that appears in free text (outside a path) can get through, and so can words from AI search and AI selection: the log keeps the text of a select-by-description request and the keywords the AI picked out of a natural-language search.",
+      "A zip with the recent part of the app's log, the app and macOS version, and the user's note. Before it leaves the Mac, Cmdr replaces file and folder names in paths with placeholders, keeping only the extension and common folder names like Documents. <strong>Known gap</strong>: a file name that appears in free text (outside a path) can get through.",
     control:
       'Sent by hand only, by default. Automatic sending is Settings &gt; Updates &amp; privacy &gt; "Send error reports automatically", off by default.',
     devTodo:
-      'Close the gaps in the code: the redactor misses a file name in free text (<code>redact/CLAUDE.md</code> § Gotchas), <code>commands/selection.rs</code> logs <code>prompt=</code> verbatim at debug, and <code>ai/translate.rs</code> logs the raw LLM response (the search keywords) at debug; debug always reaches the file. The search query text itself no longer logs. Then drop the "Known gaps" sentence here, the matching gap in "Not in place yet", and the gap sentences in the privacy policy (section 2 and the intro).',
+      'Release timing: AI search and selection words stopped reaching the log in 3bfa0e246, which ships in the release after 0.50.0, so this narrowed wording is only true from then. Remaining: the redactor misses a file name in free text (<code>redact/CLAUDE.md</code> § Gotchas). Close it, then drop the "Known gap" sentence here, the matching gap in "Not in place yet", and the gap sentences in the privacy policy (section 2 and the intro).',
   },
   {
     id: 'license',
@@ -256,7 +256,7 @@ export const notInPlaceYet: string[] = [
   "<strong>Data leaves the EU</strong> (see above), and Cloudflare storage isn't locked to the EU jurisdiction.",
   '<strong>No data processing agreement (DPA)</strong> ready to sign.',
   "<strong>The 90-day deletion of error-report zips isn't active yet.</strong>",
-  '<strong>Error-report cleaning has known gaps</strong>: a file name in free text, or words from an AI search or AI selection, can be included.',
+  '<strong>Error-report cleaning has a known gap</strong>: a file name in free text can be included.',
   "<strong>No central control over AI.</strong> IT can't disable AI or limit which providers users can pick.",
   '<strong>No reproducible builds.</strong> Each release publishes SHA-256 checksums, signed build provenance, and signed SBOMs, and its tag is signed.',
   '<strong>No second-person code review.</strong> Cmdr has one maintainer, and development is AI-assisted. Automated checks stand in for a reviewer (<a href="/trust/development#review">details</a>).',
