@@ -21,7 +21,7 @@ import { mount, tick, unmount, flushSync } from 'svelte'
 
 // `vi.mock` calls are hoisted above module-level `const`s, so any value a factory closes
 // over must come from `vi.hoisted` (which runs first). The settings map + spies live here.
-const { betaSignupMock, settingsMap, setSetting, forceSaveMock } = vi.hoisted(() => {
+const { betaSignupMock, openExternalUrlMock, settingsMap, setSetting, forceSaveMock } = vi.hoisted(() => {
   const settingsMap: Record<string, unknown> = {
     'analytics.enabled': true,
     'analytics.email': '',
@@ -34,6 +34,7 @@ const { betaSignupMock, settingsMap, setSetting, forceSaveMock } = vi.hoisted(()
     betaSignupMock: vi.fn((): Promise<{ kind: 'subscribed' | 'invalidEmail' | 'softFailure' }> =>
       Promise.resolve({ kind: 'subscribed' }),
     ),
+    openExternalUrlMock: vi.fn((_url: string): Promise<void> => Promise.resolve()),
     settingsMap,
     // `setSetting` mutates the map AND records the call so we can assert which ids got written.
     setSetting: vi.fn((id: string, value: unknown) => {
@@ -50,7 +51,7 @@ const { betaSignupMock, settingsMap, setSetting, forceSaveMock } = vi.hoisted(()
 // corrupts the Svelte 5 reactive graph; see `lib/ipc/CLAUDE.md` § Test-mock upkeep).
 vi.mock('$lib/tauri-commands', async () => {
   const real = await vi.importActual<typeof import('$lib/tauri-commands')>('$lib/tauri-commands')
-  return { ...real, betaSignup: betaSignupMock }
+  return { ...real, betaSignup: betaSignupMock, openExternalUrl: openExternalUrlMock }
 })
 
 vi.mock('$lib/settings', async (importOriginal) => {
@@ -157,6 +158,8 @@ describe('StepBeta', () => {
     forceSaveMock.mockClear()
     betaSignupMock.mockClear()
     betaSignupMock.mockResolvedValue({ kind: 'subscribed' as const })
+    openExternalUrlMock.mockReset()
+    openExternalUrlMock.mockResolvedValue(undefined)
     // jsdom has no layout engine, so `scrollIntoView` doesn't exist. The blocked-click path
     // calls it; stub it so we can assert both that it ran and how it was asked to animate.
     scrollIntoViewSpy = vi.fn<(options?: boolean | ScrollIntoViewOptions) => void>()
@@ -307,12 +310,28 @@ describe('StepBeta', () => {
       const box = getChecklistCheckbox(mounted.target, 'Star the repo on GitHub')
       expect(box.checked).toBe(false)
       star?.click()
-      flushSync()
+      await waitForAsync()
       // Still unticked right after the click: the page has only just opened.
       expect(getChecklistCheckbox(mounted.target, 'Star the repo on GitHub').checked).toBe(false)
       vi.advanceTimersByTime(3_000)
       flushSync()
       expect(getChecklistCheckbox(mounted.target, 'Star the repo on GitHub').checked).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('never ticks a link row whose page did not open', async () => {
+    vi.useFakeTimers()
+    try {
+      openExternalUrlMock.mockRejectedValue(new Error('no default browser'))
+      mounted = mountStep()
+      await waitForAsync()
+      mounted.target.querySelector<HTMLAnchorElement>('a[href="https://github.com/vdavid/cmdr"]')?.click()
+      await waitForAsync()
+      vi.advanceTimersByTime(3_000)
+      flushSync()
+      expect(getChecklistCheckbox(mounted.target, 'Star the repo on GitHub').checked).toBe(false)
     } finally {
       vi.useRealTimers()
     }

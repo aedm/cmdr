@@ -109,20 +109,30 @@
      * would open on a checklist that ticks itself.
      */
     const tickTimers: number[] = []
+    /** Set on destroy, so a page that opens after the step is gone arms no timer to clear. */
+    let destroyed = false
 
     /**
      * Click handler for a checklist link: open the page, then tick the row once the user has
      * had time to act on it. Ticking on the click itself would claim they did something they
-     * hadn't yet even seen.
+     * hadn't yet even seen, and the timer starts only once the page opened: a link that never
+     * opened leaves nothing done to tick.
      */
     function openAndTick(url: string, item: BetaChecklistItem) {
-        const open = openLink(url)
         return (event: MouseEvent) => {
-            open(event)
-            tickTimers.push(
-                window.setTimeout(() => {
-                    setBetaChecklistItem(item, true)
-                }, CHECKLIST_TICK_DELAY_MS),
+            event.preventDefault()
+            openExternalUrl(url).then(
+                () => {
+                    if (destroyed) return
+                    tickTimers.push(
+                        window.setTimeout(() => {
+                            setBetaChecklistItem(item, true)
+                        }, CHECKLIST_TICK_DELAY_MS),
+                    )
+                },
+                (error: unknown) => {
+                    log.warn('openExternalUrl({url}) failed: {error}', { url, error })
+                },
             )
         }
     }
@@ -241,6 +251,7 @@
         // Clear the footer override so other steps' default buttons render again, and so a
         // teardown-then-remount doesn't leak stale closures.
         setFooterOverride(null)
+        destroyed = true
         for (const timer of tickTimers) window.clearTimeout(timer)
         tickTimers.length = 0
     })

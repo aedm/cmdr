@@ -412,9 +412,10 @@ on the same edges however far any of them wraps.
   `crashReportsNoteAlone`), and a pinned `updates.crashReports` drops the crash-report sentence, since those reports
   aren't on.
 - **Star the repo on GitHub** / **Like Cmdr on AlternativeTo** — the app can't see what happened in a browser, so the
-  row ticks itself `CHECKLIST_TICK_DELAY_MS` (3 s) after the click: long enough not to land while the page is still
-  opening. Both are real checkboxes too, so someone who starred it last week can just say so. The ticks live in
-  `onboarding-state`'s `betaChecklist`, ❌ not in the step, or a Back into step 2 would forget them.
+  row ticks itself `CHECKLIST_TICK_DELAY_MS` (3 s) after the page opened: long enough not to land while it's still
+  loading. The timer starts only once `openExternalUrl` resolves, so a link that never opened never ticks. Both are real
+  checkboxes too, so someone who starred it last week can just say so. The ticks live in `onboarding-state`'s
+  `betaChecklist`, ❌ not in the step, or a Back into step 2 would forget them.
 - **Email address** — an inline field plus a Save button.
 
 Each `<li>` carries `data-checklist-item="analytics" | "star" | "alternativeTo" | "email"`, the way
