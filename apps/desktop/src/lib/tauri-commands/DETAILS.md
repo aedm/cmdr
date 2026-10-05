@@ -163,6 +163,8 @@ commands, and notable non-obvious placements.
   `../../../src-tauri/src/dock/CLAUDE.md`.
 - **`crash-reporter.ts`**: next-launch crash preview, dismiss, and send. Send crosses IPC with the preview's report id
   and separately consented optional email only; the backend-owned pending file remains the payload authority.
+- **`managed-policy.ts`**: the organization's MDM policy for the UI: `getManagedPolicy` and `onManagedPolicyChanged`,
+  both carrying `ManagedPolicyView`. Its one caller loads the barrel lazily (`../managed-policy/CLAUDE.md`).
 
 ## Where to put new commands
 

@@ -7,6 +7,8 @@
     import Icon from '$lib/ui/Icon.svelte'
     import { onMount } from 'svelte'
     import { tString } from '$lib/intl/messages.svelte'
+    import { isSettingLocked } from '$lib/managed-policy/managed-policy.svelte'
+    import { registerSectionRow } from './section-rows.svelte'
 
     interface Props {
         id: SettingId
@@ -38,9 +40,9 @@
         id,
         label,
         description,
-        disabled = false,
-        disabledReason,
-        disabledNote,
+        disabled: sectionDisabled = false,
+        disabledReason: sectionDisabledReason,
+        disabledNote: sectionDisabledNote,
         requiresRestart = false,
         split = false,
         searchQuery = '',
@@ -48,6 +50,16 @@
         descriptionContent,
         labelTrailing,
     }: Props = $props()
+
+    // A setting the organization manages renders locked whatever the section passed: disabled,
+    // with ONE note (the managed one), no badge of the section's own, and no reset pip. The
+    // primitive inside picks the lock up too (disabled, described by this row's note).
+    const locked = $derived(isSettingLocked(id))
+    const disabled = $derived(locked || sectionDisabled)
+    const disabledReason = $derived(locked ? undefined : sectionDisabledReason)
+    const disabledNote = $derived(locked ? tString('settings.managed.rowNote') : sectionDisabledNote)
+
+    registerSectionRow(id)
 
     // Get highlighted label segments based on search query
     const labelSegments = $derived.by(() => {
@@ -85,7 +97,7 @@
                         >{:else}{segment.text}{/if}{/each}</label
             >
             {#if labelTrailing}{@render labelTrailing()}{/if}
-            {#if modified}
+            {#if modified && !locked}
                 <button
                     class="reset-button"
                     use:tooltip={tString('settings.control.resetToDefault')}

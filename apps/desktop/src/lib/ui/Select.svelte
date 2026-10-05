@@ -61,6 +61,8 @@
         disabled?: boolean
         placeholder?: string
         ariaLabel: string
+        /** Id of an element that explains the control, for example why it's disabled. */
+        ariaDescribedBy?: string
         /** Extra class on the `.select-content` element (for example `custom-highlighted`). */
         contentClass?: string
     }
@@ -73,6 +75,7 @@
         disabled = false,
         placeholder,
         ariaLabel,
+        ariaDescribedBy,
         contentClass = '',
     }: Props = $props()
 
@@ -227,7 +230,7 @@
         {disabled}
     >
         <Select.Control>
-            <Select.Trigger class="select-trigger" aria-label={ariaLabel}>
+            <Select.Trigger class="select-trigger" aria-label={ariaLabel} aria-describedby={ariaDescribedBy}>
                 {#if selectedIconUrl}
                     <img class="select-item-icon" src={selectedIconUrl} alt="" width="16" height="16" />
                 {/if}

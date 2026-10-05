@@ -18,6 +18,7 @@
         type SettingsValues,
     } from '$lib/settings'
     import { onMount } from 'svelte'
+    import { useSettingLock } from './setting-lock.svelte'
 
     interface Props {
         id: SettingId
@@ -35,6 +36,7 @@
     }
 
     const { id, disabled = false, labelOverrides, ariaDescribedBy }: Props = $props()
+    const lock = useSettingLock(id)
 
     const definition = getSettingDefinition(id)
     const label = definition?.label ?? id
@@ -71,6 +73,6 @@
     {options}
     onChange={handleChange}
     ariaLabel={label}
-    {ariaDescribedBy}
-    {disabled}
+    ariaDescribedBy={lock.describedBy(ariaDescribedBy)}
+    disabled={disabled || lock.locked}
 />

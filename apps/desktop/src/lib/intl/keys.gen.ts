@@ -3362,6 +3362,8 @@ export type MessageKey =
   | 'settings.logging.copied'
   | 'settings.logging.copyDiagnostics'
   | 'settings.logging.openLogFile'
+  | 'settings.managed.rowNote'
+  | 'settings.managed.sectionNote'
   | 'settings.mcp.checkPort'
   | 'settings.mcp.checkingPort'
   | 'settings.mcp.ephemeral'

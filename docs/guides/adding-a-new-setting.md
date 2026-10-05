@@ -77,6 +77,9 @@ Settings apply immediately, never on restart. A setting that changes Rust-side b
 command, (b) a typed wrapper in `$lib/tauri-commands/settings.ts`, (c) an `onSettingChange` case in
 `settings-applier.ts` that calls it. Pure frontend settings (read via `getSetting` where they're used) skip this.
 
+A setting an organization's MDM policy can lock gets its lock in `src-tauri/src/managed_policy/locked.rs`; the store,
+the row, and MCP `set_setting` pick it up from there (`apps/desktop/src/lib/managed-policy/CLAUDE.md`).
+
 ## 4. If you're adding a whole new section
 
 Register the route in `components/SettingsContent.svelte`, add the entry to `TOP_LEVEL_ORDER` in

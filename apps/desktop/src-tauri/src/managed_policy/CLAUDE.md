@@ -9,8 +9,8 @@ What an organization's configuration profile restricts: telemetry, updates, and 
   `refresh()`, `for_egress()`, `init()`, and `apply_change`. `watch.rs`: activation and folder-watch triggers (macOS).
 - `keys.rs`: key names and the one parse. `source.rs`: CFPreferences, the test-build plist file, the fake.
 - `ceiling.rs`, `hosts.rs`: `MaxUpdateVersion` and `AllowedCloudAIHosts`. `egress.rs`: `allows(Egress)`. `refusal.rs`:
-  `ManagedAiRefusal`. `locked.rs`: `locked_settings` and `overlay`. `view.rs`: `ManagedPolicyView`, the command, the
-  event.
+  `ManagedAiRefusal`. `locked.rs`: `locked_settings`, `refuses_write`, and `overlay`. `view.rs`: `ManagedPolicyView`,
+  the command, the event. Frontend half: `apps/desktop/src/lib/managed-policy/CLAUDE.md`.
 
 ## Must-knows
 

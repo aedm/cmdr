@@ -115,9 +115,6 @@
     "settings/components/SettingsSidebar.svelte": {
       "reason": "UI component, search logic tested via registry"
     },
-    "settings/mcp-main-bridge.ts": {
-      "reason": "MCP bridge, depends on Tauri event APIs (listen/emit)"
-    },
     "settings/reactive-settings.svelte.ts": {
       "reason": "Svelte reactive state, depends on settings store"
     },

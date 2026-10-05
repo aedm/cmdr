@@ -488,6 +488,9 @@ export type {
 export { checkPendingCrashReport, dismissCrashReport, sendCrashReport } from './crash-reporter'
 export type { CrashReport } from './crash-reporter'
 
+// Managed policy (MDM): what the organization locks, for the UI
+export { getManagedPolicy, onManagedPolicyChanged } from './managed-policy'
+
 // Error reporter (Flow A: user-initiated; Flow B: auto-send event)
 export {
   prepareErrorReportPreview,

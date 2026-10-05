@@ -84,6 +84,9 @@ download, and the user-initiated feedback and beta signup.
 - `locked_settings()` maps policy to settings-registry ids: `Fixed { value }` or `DisallowedValues { values, fallback }`.
   `LockedValue` is a typed `bool | string` because `serde_json::Value` can't cross IPC. The fallback rides along so
   neither the frontend nor `overlay()` decides the safe value.
+- `refuses_write(policy, id, value)` reads the same list for MCP `set_setting`, before its frontend round trip: a
+  `Fixed` lock refuses every write, `DisallowedValues` only its values. The frontend's settings store applies the list
+  the same way on reads and writes (`apps/desktop/src/lib/managed-policy/DETAILS.md`).
 - `overlay()` applies the locks to a raw `settings.json` map in memory. A missing or non-object file becomes an object
   holding just the pinned values when anything is locked, since its readers fall back to defaults (`analytics.enabled`
   defaults to on).

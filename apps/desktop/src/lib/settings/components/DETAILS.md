@@ -43,6 +43,28 @@ One setting rendered in two UI locations follows the parent's mirror pattern (`.
 guard has a worked reference in `../sections/DETAILS.md`, under the Notifications section
 (`behavior.fileSystemWatching.*`).
 
+## Managed rows
+
+A setting the organization's MDM policy pins (`fixed` lock) renders locked wherever its row appears, with nothing passed
+from the section. The policy and the store overlay are `../../managed-policy/DETAILS.md`.
+
+- **`SettingRow`** reads `isSettingLocked(id)`: the row disables, its note becomes "Your organization manages this
+  setting." (`settings.managed.rowNote`), and any `disabledNote` or `disabledReason` the section passed is dropped, so
+  the row carries one reason. The reset pip hides too: a reset is refused anyway, and the stored choice comes back when
+  the profile goes away.
+- **Every primitive** calls `useSettingLock(id)` (`setting-lock.svelte.ts`): `disabled={disabled || lock.locked}`, and
+  `lock.describedBy(own)` as the control's `aria-describedby`, the row's note while locked, else the section's own
+  target. `SettingSlider` puts it on the thumb (`thumbProps`), the focusable part. `SettingColorSwatchPicker` has no
+  disabled state; no lockable setting uses it.
+- **A narrowed setting** (`disallowedValues`, like `ai.provider` under `DisableCloudAI`) stays usable: the row isn't
+  disabled, and its own control rules out the values.
+- **`SettingsSection`** says "Your organization manages some of these settings." under its title when any row it holds
+  is managed, pinned or narrowed. Each `SettingRow` registers its id with the nearest section through context
+  (`section-rows.svelte.ts`) while mounted, so the line follows the rows actually rendered and no section keeps a list.
+  It's plain text in reading order because native `disabled` takes a control out of the Tab order: a keyboard or
+  VoiceOver user meets the reason before the controls.
+- Tests: `managed-lock.test.ts` (with `test/fixtures/managed-setting-section-fixture.svelte`).
+
 ## Slider vs number input
 
 A registry `component: 'slider'` row is a COARSE choice: `SettingSlider` renders `lib/ui/Slider` with a readout label

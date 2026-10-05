@@ -565,6 +565,25 @@ clippy included) before committing, and updates the `CLAUDE.md` / `DETAILS.md` o
   locked id); `mcp-main-bridge.test.ts` for the marker; Rust test for the `set_setting` refusal.
 - **DONE**: every setting `locked_settings` names renders locked with the note in Settings and can't be changed from the
   UI or MCP.
+- **Implementation notes** (M5 as built):
+  - The policy fetch lives in `initializeSettings` (full windows), not `initWindowSettings`: the main window's layout
+    calls `initReactiveSettings()` directly, and loading the policy before the store marks itself initialized is what
+    keeps the updater's first `updates.autoCheck` read and the first `pushConfigToBackend()` from ever seeing an
+    unlocked value. Every full window still reaches it through `initWindowSettings()`.
+  - Pinned vs narrowed: only a `Fixed` lock disables a row (note, no pip). A `DisallowedValues` lock (`ai.provider`
+    under `DisableCloudAI`) leaves the row usable; `setSetting` refuses just the ruled-out values, and M7's provider
+    control disables the `cloud` option. The section line counts both. `resetSetting` refuses only a `Fixed` setting.
+  - Under `DisableAI`, the `ai.provider` row renders locked with the note, but `AiSection`'s bespoke radios don't read
+    the lock yet (they're not a row primitive): a click is refused by `setSetting` and changes nothing. M7 owns that
+    control.
+  - The section line comes from rows registering with their `SettingsSection` through context, so it needs no section
+    path and no per-section list.
+  - MCP: Rust `managed_policy::refuses_write` (one decision over `locked_settings`) answers `set_setting` before the
+    round trip; the frontend bridge refuses too (`refusal: 'managedByOrganization'`), as the backstop for a policy
+    change racing the round trip. `cmdr://settings` marks managed ids `managed: true` beside the effective `value`.
+  - `managed-policy.svelte.ts` imports the `$lib/tauri-commands` barrel lazily (`await import`): the
+    `desktop-ipc-unused` check only counts barrel imports, and a static one would pull the whole IPC surface into the
+    settings store.
 
 ### M6. Feature surfaces: updates, privacy, reports, onboarding
 
