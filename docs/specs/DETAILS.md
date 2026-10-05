@@ -35,6 +35,9 @@ Read this before adding, wiping, or reorganizing a spec.
 - `db-first-listings-plan.md`: **Serve directory listings from the SQLite index instead of `readdir` + `stat`**, so
   first paint is a query. Blocked on a measurement first. Issues: [#244](https://github.com/vdavid/cmdr/issues/244),
   [#245](https://github.com/vdavid/cmdr/issues/245).
+- `mdm-managed-preferences-plan.md`: **IT can't turn off Cmdr's usage stats, crash reports, updates, or cloud AI for
+  everyone.** Managed preferences in the `com.veszelovszki.cmdr` domain, enforced in the backend, shown as locked in
+  Settings, with a published sample profile. Issue: [#118](https://github.com/vdavid/cmdr/issues/118).
 - `data-dir-rename-spec-draft.md`: **Plain data-directory names** (`cmdr/`, not `com.veszelovszki.cmdr/`). Cosmetic and
   low value; a timeboxed go/no-go comes first. Issues: [#282](https://github.com/vdavid/cmdr/issues/282),
   [#283](https://github.com/vdavid/cmdr/issues/283).
