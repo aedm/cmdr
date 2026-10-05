@@ -1,7 +1,17 @@
-# The whole release: guard, build, sign, publish, attest. Called only by `release.yml` on a `v*`
-# tag push, so `github.ref_name` and `vars` here are the caller's: the tag, and this repo's
-# variables. It's a reusable workflow so the provenance it signs names THIS file as the signer
-# (SLSA Build Level 3 on GitHub); see the `attest` job and `docs/guides/releasing.md`.
+# The whole release: guard, build, sign, publish, attest. Called only by `release.yml`, so
+# `github.ref_name`, `github.event_name`, and `vars` here are the caller's: the tag, the event, and
+# this repo's variables. It's a reusable workflow so the provenance it signs names THIS file as the
+# signer (SLSA Build Level 3 on GitHub); see the `attest` job and `docs/guides/releasing.md`.
+#
+# Who signs the update archives is one repository variable, `RELEASE_UPDATE_SIGNING`:
+# - `ci` (or unset): the tag push does everything, the `build` job signing with the updater key
+#   from the `release` environment.
+# - `local`: the tag push builds, notarizes, and attests into a DRAFT release, with no updater
+#   signatures and no manifest move. `scripts/release-finish.sh` on David's laptop verifies each
+#   archive's provenance, signs it with the key from sops, uploads the `.sig` files, then
+#   dispatches this workflow on the tag (`workflow_dispatch`), which runs only `guard`, `publish`,
+#   `attest`, and `bump-tap`. The updater key never reaches GitHub.
+# `docs/guides/releasing.md` § Who signs the update archives.
 name: Release pipeline
 
 on:
@@ -29,10 +39,34 @@ jobs:
   guard:
     name: Verify this release tag
     runs-on: ubuntu-latest
+    outputs:
+      update-signing: ${{ steps.signing.outputs.mode }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Pick who signs the update archives
+        id: signing
+        env:
+          MODE: ${{ vars.RELEASE_UPDATE_SIGNING }}
+        run: |
+          # Unset means `ci`, so the pipeline behaves as it always did until the variable says
+          # otherwise. Anything else fails here: a typo must not silently pick a mode.
+          case "${MODE:-ci}" in
+            ci | local) echo "mode=${MODE:-ci}" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "::error::RELEASE_UPDATE_SIGNING is '$MODE'; it must be 'ci', 'local', or unset."
+              exit 1
+              ;;
+          esac
+          # A dispatch is the second half of a `local` release, and it must name the tag it
+          # finishes (`gh workflow run release.yml --ref vX.Y.Z`), never a branch.
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ "$GITHUB_REF_TYPE" != tag ]; then
+            echo "::error::Dispatch this workflow on a release tag (--ref vX.Y.Z), not '$GITHUB_REF_NAME'."
+            exit 1
+          fi
+          echo "Event $GITHUB_EVENT_NAME, update archives signed in mode: ${MODE:-ci}"
 
       - name: Require a trusted tag signature
         run: |
@@ -86,6 +120,9 @@ jobs:
   # own. The local gate already waited for the run to finish, so there's nothing to wait for here.
   ci-gate:
     name: Require green CI on the released commit
+    # The tag push only. A dispatch finishes a release whose build this job already gated, and
+    # skipping it here also skips `build` and `sbom`, which need it.
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -140,9 +177,58 @@ jobs:
           echo "Emergency bypass: set the repository variable RELEASE_SKIP_CI_GATE_TAG to exactly '$TAG', re-run, then clear it. Procedure: docs/guides/releasing.md § Release gates that abort before tagging."
           exit 1
 
+  # `local` mode only: the draft release the three build jobs upload into. Created once, up front,
+  # because three parallel `tauri-action` runs each looking for a draft by tag (drafts can't be
+  # fetched by tag) can each find none and create one. Re-runs reuse the draft.
+  draft:
+    name: Create the draft release
+    needs: [guard, ci-gate]
+    if: needs.guard.outputs.update-signing == 'local'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      release-id: ${{ steps.draft.outputs.id }}
+
+    steps:
+      - name: Find or create the draft
+        id: draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          FOUND=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq '.[] | select(.tag_name == env.TAG) | "\(.id) \(.draft)"')
+          COUNT=$(printf '%s' "$FOUND" | grep -c . || true)
+          case "$COUNT" in
+            0)
+              ID=$(gh api -X POST "repos/$GITHUB_REPOSITORY/releases" -f tag_name="$TAG" \
+                -f name="Cmdr $TAG" -f body='See CHANGELOG.md for details.' -F draft=true --jq .id)
+              echo "Created draft release $ID for $TAG." ;;
+            1)
+              read -r ID IS_DRAFT <<< "$FOUND"
+              if [ "$IS_DRAFT" != true ]; then
+                echo "::error::$TAG already has a PUBLISHED release ($ID). Local signing builds into a draft, so this tag can't go through it."
+                exit 1
+              fi
+              echo "Reusing draft release $ID for $TAG." ;;
+            *)
+              echo "::error::$TAG has more than one release: $FOUND. Delete the extra drafts, then re-run."
+              exit 1 ;;
+          esac
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build (${{ matrix.arch }})
-    needs: [guard, ci-gate]
+    needs: [guard, ci-gate, draft]
+    # `ci` mode skips `draft`; `local` mode needs it, so a build never uploads into anything but
+    # the draft (an empty `releaseId` would make `tauri-action` create a release of its own).
+    if: >-
+      !cancelled() && needs.guard.result == 'success' && needs.ci-gate.result == 'success' && (
+        (needs.guard.outputs.update-signing == 'ci' && needs.draft.result == 'skipped') ||
+        (needs.guard.outputs.update-signing == 'local' && needs.draft.result == 'success'))
     # Two runners can build this: GitHub's hosted macOS images, and David's self-hosted M3 MBP
     # (`[self-hosted, macOS, ARM64]`). GitHub-hosted is the ACTIVE one; see
     # `docs/guides/releasing.md` § "Which runner builds the release" for the trade-offs and the
@@ -162,9 +248,10 @@ jobs:
     # jobs run in PARALLEL here rather than queueing on one machine, so wall-clock is one cold
     # build, not three. Apple's notarization sits inside this budget too.
     timeout-minutes: 90
-    # The only job that signs, notarizes, or updater-signs, so the only one in the `release`
-    # environment, which holds those secrets and deploys from `v*` tags alone. An environment
-    # secret wins over a same-named repo secret. See `docs/guides/releasing.md` § Signing secrets.
+    # The only job that signs, notarizes, or (in `ci` mode) updater-signs, so the only one in the
+    # `release` environment, which holds those secrets and deploys from `v*` tags alone. An
+    # environment secret wins over a same-named repo secret. See `docs/guides/releasing.md` §
+    # Signing secrets.
     environment: release
     strategy:
       fail-fast: false
@@ -266,7 +353,7 @@ jobs:
         run: |
           mkdir -p ~/private_keys
           echo -n "$APPLE_API_KEY_BASE64" | base64 --decode \
-            > ~/private_keys/AuthKey_${APPLE_API_KEY}.p8
+            > ~/private_keys/"AuthKey_${APPLE_API_KEY}.p8"
 
       - name: Detach stale Cmdr* DMG mounts
         # tauri-action's bundle_dmg.sh fails fast (~3 s) when the "Cmdr" volume name is already
@@ -283,12 +370,34 @@ jobs:
             fi
           done < <(mount | awk -F' on ' '/\/Volumes\/Cmdr/ { sub(/ \(.*$/, "", $2); print $2 }')
 
+      # `local` mode: the Tauri CLI refuses to bundle without an updater key once the config has a
+      # pubkey, and the updater archive must still come out of the bundler (byte-for-byte the shape
+      # `ci` mode ships). So it gets a key made here and thrown away with the runner: it only
+      # mismatches the pubkey (a warning), and its `.sig` files are never uploaded
+      # (`uploadUpdaterSignatures` below). The password must be non-empty, or the `||` fallback in
+      # the next step would hand the real secret to it.
+      - name: Make a throwaway updater key (local signing)
+        id: throwaway-key
+        if: needs.guard.outputs.update-signing == 'local'
+        working-directory: ./apps/desktop
+        run: |
+          PASSWORD=$(openssl rand -hex 24)
+          echo "::add-mask::$PASSWORD"
+          pnpm exec tauri signer generate --ci -p "$PASSWORD" -w "$RUNNER_TEMP/throwaway-updater.key" > /dev/null
+          {
+            echo "path=$RUNNER_TEMP/throwaway-updater.key"
+            echo "password=$PASSWORD"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build, sign, and notarize
         uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # The throwaway key in `local` mode; the step above is skipped in `ci` mode, so these
+          # fall through to the real key.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ steps.throwaway-key.outputs.path || secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD:
+            ${{ steps.throwaway-key.outputs.password || secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -311,10 +420,15 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Cmdr ${{ github.ref_name }}'
           releaseBody: 'See CHANGELOG.md for details.'
-          releaseDraft: false
+          # `local` mode uploads into the `draft` job's release (a set `releaseId` wins over
+          # `tagName`; empty in `ci` mode, which the action reads as unset). `releaseDraft` only
+          # backs it up: should the id ever be empty there, the action makes a draft, not a release.
+          releaseId: ${{ needs.draft.outputs.release-id }}
+          releaseDraft: ${{ needs.guard.outputs.update-signing == 'local' }}
           # The `.sig` assets are what the publish job reads to build `latest.json`, so this
           # default is load-bearing rather than incidental. Stated explicitly to keep it that way.
-          uploadUpdaterSignatures: true
+          # In `local` mode they're the throwaway key's, so they stay on the runner.
+          uploadUpdaterSignatures: ${{ needs.guard.outputs.update-signing != 'local' }}
           # ❌ Don't turn this back on. From v1 the action writes `latest.json` with GitHub API
           # asset URLs (`api.github.com/repos/.../releases/assets/<id>`), which only serve the
           # binary to a caller sending `Accept: application/octet-stream`. Cmdr's updater
@@ -470,9 +584,17 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  # Builds `latest.json` from the `.sig` assets and ships it. In `ci` mode it follows the builds;
+  # in `local` mode it's the dispatch that `scripts/release-finish.sh` starts once its signatures
+  # are on the draft, and its first act is publishing that draft. Same steps either way, so the
+  # manifest has one builder whoever signed.
   publish:
     name: Publish release
-    needs: [build]
+    needs: [guard, build]
+    if: >-
+      !cancelled() && needs.guard.result == 'success' && (
+        github.event_name == 'workflow_dispatch' ||
+        (needs.guard.outputs.update-signing == 'ci' && needs.build.result == 'success'))
     runs-on: ubuntu-latest
 
     steps:
@@ -505,6 +627,16 @@ jobs:
           NOTES=$(sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | sed '1d;$d' | sed '/./,$!d')
 
           printf '%s\n' "$NOTES" > /tmp/notes.txt
+
+      # `local` mode's draft goes public here, after the step above proved all three signatures
+      # are on it and before anything reads the release by tag (the tags API can't see a draft).
+      # `--latest` is safe because the guard proved this is the newest version. Idempotent on a
+      # re-run.
+      - name: Publish the draft release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ github.ref_name }}" --draft=false --latest
 
       - name: Generate latest.json
         env:
@@ -633,7 +765,7 @@ jobs:
   # workflow, the signing certificate names `release-pipeline.yml` as the signer, so
   # `--signer-workflow vdavid/cmdr/.github/workflows/release-pipeline.yml` pins it.
   #
-  # ❗ Runs AFTER `publish`, and nothing waits on it. Two reasons:
+  # ❗ In `ci` mode it runs AFTER `publish`, and nothing waits on it. Two reasons:
   # - It attests the assets AS PUBLISHED, downloaded back from the release, ❌ never the
   #   runner's `target/`: the digests have to be the exact bytes users get, after signing,
   #   notarization, stapling, and the upload.
@@ -641,10 +773,19 @@ jobs:
   #   release still ships exactly as it did before this job existed; the run goes red and
   #   "Re-run failed jobs" retries this job alone (the guard doesn't run again).
   # It runs even when `sbom` failed, so provenance never waits on the SBOM tooling.
+  #
+  # `local` mode runs it twice. The tag push attests the draft's build outputs right after the
+  # builds, and here the laptop DOES wait on it: `scripts/release-finish.sh` refuses to sign an
+  # archive without that provenance. (The draft's bytes are final, so "as published" holds.) The
+  # dispatch attests the published release again, which adds `latest.json` and `checksums.txt`;
+  # it skips the `.sig` files, which come from the laptop, not from this workflow.
   attest:
     name: Attest provenance and publish SBOMs
-    needs: [publish, sbom]
-    if: ${{ !cancelled() && needs.publish.result == 'success' }}
+    needs: [guard, build, publish, sbom]
+    if: >-
+      !cancelled() && (needs.publish.result == 'success' || (
+        github.event_name == 'push' && needs.guard.outputs.update-signing == 'local' &&
+        needs.build.result == 'success'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Job-scoped on purpose (`desktop-workflows-hardening` enforces it for `id-token`). A job
@@ -667,6 +808,11 @@ jobs:
           # including assets a future workflow change adds. SBOMs from an earlier run of
           # this job come along too; the step below overwrites them with this run's copies.
           gh release download "$TAG" -R "$GITHUB_REPOSITORY" -D release-assets
+          # A dispatch finishes a `local` release, whose signatures were made on the laptop, so
+          # provenance naming this workflow as their builder would be false.
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+              rm -f release-assets/*.sig
+          fi
           # The six files people and the updater actually fetch must be here, or this job
           # would attest a partial release and look green.
           for arch in aarch64 x64 universal; do

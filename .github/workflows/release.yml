@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*'
+  # The second half of a release whose update archives are signed on the laptop
+  # (`RELEASE_UPDATE_SIGNING=local`): `scripts/release-finish.sh` runs
+  # `gh workflow run release.yml --ref vX.Y.Z` once its signatures are on the draft. The pipeline's
+  # guard refuses a dispatch on anything but a tag.
+  workflow_dispatch:
 
 jobs:
   # Every job lives in `release-pipeline.yml`, a reusable workflow, so the build provenance the
