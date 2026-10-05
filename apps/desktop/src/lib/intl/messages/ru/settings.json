@@ -2083,7 +2083,7 @@
   "@settings.managed.summary.usageStats": {
     "sourceHash": "4e0483c"
   },
-  "settings.managed.summary.usageStatsOff": "Off",
+  "settings.managed.summary.usageStatsOff": "Выключена",
   "@settings.managed.summary.usageStatsOff": {
     "sourceHash": "ca7981b"
   },
@@ -2091,7 +2091,7 @@
   "@settings.managed.summary.reports": {
     "sourceHash": "ef409c3"
   },
-  "settings.managed.summary.reportsOff": "Off",
+  "settings.managed.summary.reportsOff": "Выключены",
   "@settings.managed.summary.reportsOff": {
     "sourceHash": "ca7981b"
   },
@@ -2099,7 +2099,7 @@
   "@settings.managed.summary.updates": {
     "sourceHash": "22e2bad"
   },
-  "settings.managed.summary.updatesOff": "Off",
+  "settings.managed.summary.updatesOff": "Выключены",
   "@settings.managed.summary.updatesOff": {
     "sourceHash": "ca7981b"
   },
@@ -2107,7 +2107,7 @@
   "@settings.managed.summary.ai": {
     "sourceHash": "11fb682"
   },
-  "settings.managed.summary.aiOff": "Off",
+  "settings.managed.summary.aiOff": "Выключен",
   "@settings.managed.summary.aiOff": {
     "sourceHash": "ca7981b"
   },
