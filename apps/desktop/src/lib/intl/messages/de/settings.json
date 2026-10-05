@@ -2094,7 +2094,7 @@
   "@settings.managed.summary.usageStats": {
     "sourceHash": "4e0483c"
   },
-  "settings.managed.summary.usageStatsOff": "Off",
+  "settings.managed.summary.usageStatsOff": "Aus",
   "@settings.managed.summary.usageStatsOff": {
     "sourceHash": "ca7981b"
   },
@@ -2102,7 +2102,7 @@
   "@settings.managed.summary.reports": {
     "sourceHash": "ef409c3"
   },
-  "settings.managed.summary.reportsOff": "Off",
+  "settings.managed.summary.reportsOff": "Aus",
   "@settings.managed.summary.reportsOff": {
     "sourceHash": "ca7981b"
   },
@@ -2111,7 +2111,7 @@
     "sourceHash": "22e2bad",
     "sameAsSourceJustification": "'Updates' is the kept loanword (standard DE UI, as in settings.section.updatesAndPrivacy 'Updates & Datenschutz'); spelled identically."
   },
-  "settings.managed.summary.updatesOff": "Off",
+  "settings.managed.summary.updatesOff": "Aus",
   "@settings.managed.summary.updatesOff": {
     "sourceHash": "ca7981b"
   },
@@ -2119,7 +2119,7 @@
   "@settings.managed.summary.ai": {
     "sourceHash": "11fb682"
   },
-  "settings.managed.summary.aiOff": "Off",
+  "settings.managed.summary.aiOff": "Aus",
   "@settings.managed.summary.aiOff": {
     "sourceHash": "ca7981b"
   },
