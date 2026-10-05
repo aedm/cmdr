@@ -3,13 +3,15 @@ import {
   generateLicenseKey,
   generateShortCode,
   isPaddleTransactionId,
+  isValidNonce,
   isValidShortCode,
+  signValidationAnswer,
   type LicenseType,
   type StoredLicense,
 } from './license'
 import { manualLicenses } from './manual-licenses'
 import { adminLicenses } from './admin-licenses'
-import { sendLicenseEmail } from '../email/license'
+import { sendLicenseEmail, type EmailedLicense } from '../email/license'
 import { sendDeviceCountAlert } from '../email/ops-alerts'
 import { verifyPaddleWebhookMulti } from './paddle'
 import {
@@ -104,10 +106,27 @@ licensing.post('/validate', async (c) => {
   const limited = await enforceIpRateLimit(c.env.VALIDATE_LIMITER, c.req)
   if (limited) return limited
 
-  const body = await c.req.json<{ transactionId?: string; deviceId?: string }>()
+  const body = await c.req.json<{ transactionId?: string; deviceId?: string; nonce?: unknown }>()
   const { response, trackingPromise } = await handleValidation(body.transactionId, body.deviceId, c.env)
   if (trackingPromise) {
     c.executionCtx.waitUntil(trackingPromise)
+  }
+  // Only an answer bound to the app's nonce gets signed: without one it could be replayed. Apps
+  // before signed answers send no nonce and read the plain fields, which stay beside it.
+  const { transactionId, nonce } = body
+  if (
+    response.status === 200 &&
+    'status' in response.body &&
+    typeof transactionId === 'string' &&
+    transactionId.length <= maxTransactionIdLength &&
+    isValidNonce(nonce)
+  ) {
+    const signedAnswer = await signValidationAnswer(
+      { ...response.body, transactionId, nonce },
+      c.env.ED25519_PRIVATE_KEY,
+      new Date(),
+    )
+    return c.json({ ...response.body, signedAnswer }, 200)
   }
   return c.json(response.body, response.status)
 })
@@ -402,9 +421,9 @@ async function processCompletedTransaction(payload: PaddleWebhookPayload, env: B
 
   // Mint only when this claim has no codes yet. A redelivery that inherited codes re-sends those,
   // so a lost email costs a duplicate message, never a second set of usable licenses.
-  let shortCodes = claim.shortCodes
-  if (shortCodes.length === 0) {
-    shortCodes = await mintLicenses({
+  let licenses: EmailedLicense[]
+  if (claim.shortCodes.length === 0) {
+    licenses = await mintLicenses({
       customerEmail: customer.email,
       transactionId: purchaseData.transactionId,
       quantity: purchaseData.quantity,
@@ -415,18 +434,21 @@ async function processCompletedTransaction(payload: PaddleWebhookPayload, env: B
     })
     await recordIssuedCodes(env.TELEMETRY_DB, {
       transactionId: purchaseData.transactionId,
-      shortCodes,
+      shortCodes: licenses.map((license) => license.shortCode),
       quantity: purchaseData.quantity,
       licenseType,
       customerEmail: customer.email,
       now: new Date(),
     })
+  } else {
+    licenses = await readStoredLicenses(env.LICENSE_CODES, claim.shortCodes)
   }
+  const shortCodes = licenses.map((license) => license.shortCode)
 
   await sendLicenseEmail({
     to: customer.email,
     customerName: customer.name ?? 'there',
-    licenseKeys: shortCodes,
+    licenses,
     productName: env.PRODUCT_NAME,
     supportEmail: env.SUPPORT_EMAIL,
     resendApiKey: env.RESEND_API_KEY,
@@ -517,8 +539,8 @@ async function mintLicenses(params: {
   organizationName: string | undefined
   privateKey: string
   kv: KVNamespace
-}): Promise<string[]> {
-  const licenseCodes: string[] = []
+}): Promise<EmailedLicense[]> {
+  const licenses: EmailedLicense[] = []
 
   for (let i = 0; i < params.quantity; i++) {
     // Generate the short code first so it can be embedded in the signed payload
@@ -544,10 +566,24 @@ async function mintLicenses(params: {
       // For subscriptions, server validation handles expiry
     })
 
-    licenseCodes.push(shortCode)
+    licenses.push({ shortCode, fullKey })
   }
 
-  return licenseCodes
+  return licenses
+}
+
+/**
+ * The full keys behind codes an earlier delivery minted, so a resent email carries them too. A code
+ * missing from KV still goes out on its own: holding back the whole email over it would leave the
+ * buyer with nothing.
+ */
+async function readStoredLicenses(kv: KVNamespace, shortCodes: string[]): Promise<EmailedLicense[]> {
+  return Promise.all(
+    shortCodes.map(async (shortCode) => {
+      const stored = await kv.get<StoredLicense>(shortCode, 'json')
+      return stored ? { shortCode, fullKey: stored.fullKey } : { shortCode }
+    }),
+  )
 }
 
 // Minting and revoking hand-issued licenses, and listing everything we've ever issued, are their own

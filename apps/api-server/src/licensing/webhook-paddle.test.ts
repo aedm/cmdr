@@ -198,6 +198,12 @@ function emailedKeys(): string[] {
   )
 }
 
+function storedFullKey(bindings: Bindings, code: string): string {
+  const stored = JSON.parse(bindings.LICENSE_CODES.store.get(code) ?? '{}') as { fullKey?: string }
+  if (!stored.fullKey) throw new Error(`No full key stored under ${code}`)
+  return stored.fullKey
+}
+
 beforeEach(() => {
   mockSend.mockClear()
   mockSend.mockImplementation(() => Promise.resolve(emailAccepted))
@@ -221,6 +227,10 @@ describe('POST /webhook/paddle idempotency', () => {
     expect(mintedCodes(bindings)).toHaveLength(3)
     expect(mockSend).toHaveBeenCalledTimes(1)
     expect(emailedKeys()).toEqual(mintedCodes(bindings))
+    // Each seat's full signed key travels too: the short code alone needs `/activate` to work.
+    for (const code of mintedCodes(bindings)) {
+      expect(mockSend.mock.lastCall?.[0].html).toContain(storedFullKey(bindings, code))
+    }
     const row = bindings.TELEMETRY_DB.rows.get(transactionId)
     expect(row?.emailed_at).toBeTruthy()
     expect(JSON.parse(row?.short_codes ?? '[]')).toEqual(mintedCodes(bindings))
@@ -260,6 +270,8 @@ describe('POST /webhook/paddle idempotency', () => {
     expect(retried.status).toBe(200)
     expect(mintedCodes(bindings)).toEqual(codesAfterFailure)
     expect(emailedKeys()).toEqual(codesAfterFailure)
+    // The resend reads the full key back from KV, so it still activates without our server.
+    expect(mockSend.mock.lastCall?.[0].html).toContain(storedFullKey(bindings, codesAfterFailure[0]))
     expect(bindings.TELEMETRY_DB.rows.get(transactionId)?.emailed_at).toBeTruthy()
   })
 
