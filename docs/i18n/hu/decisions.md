@@ -334,20 +334,18 @@ ours: `vedd ki a „Zárolt” pipát`, never Apple's `szüntesse meg a … kije
 
 `desktop-i18n-term-consistency` holds one Hungarian form per English value. Settled: Quit Cmdr → `Kilépés a Cmdrből`;
 Connect to server → `Kapcsolódás szerverre` (Finder `N84`, over `szerverhez`); Connected → `Kapcsolódva`, Connecting →
-`Csatlakozás…` (Apple's `SavePanel`); Retrying → `Újrapróbálás`; case-sensitive → `Kis- és nagybetűérzékeny`.
+`Csatlakozás…` (Apple's `SavePanel`); case-sensitive → `Kis- és nagybetűérzékeny`.
 
 ### A határvonalak, amiket NEM szabad elsimítani
 
-- **Cancel**: `Mégsem` dismisses a dialog, `Megszakítás` stops a running operation, `Leállítás` stops a service.
+- Cancel, put back, and scan split as `style.md` § Digest, top traps, says.
 - **View**: `Nézet` is the menu title, `Megtekintés` the verb that opens the viewer.
 - **Zoom**: `Nagyítás` is text zoom, `Méretezés` the window action.
 - **Select**: `Kijelölés` marks files, `Válassz` is a dropdown placeholder.
 - **Bytes**: `Bájtok` beside `Fájlok`, `Bájt` beside `kB` / `MB`.
 - **Purple**: `Bíbor` is Finder's tag color, `Lila` Cmdr's volume tint.
-- **Put back**: `visszaállítva` an old name, `visszahelyezve` from the Trash; English's one phrase is its own blur.
 - **Rolling back**: `Visszagörgetés…` titles the window, `Visszagörgetés folyamatban` is the log cell.
 - **Send report**: the title asks (`Elküldöd a jelentést?`), the button names (`Jelentés küldése`).
-- **Scan**: `átnézés` is the live folder walk, `átvizsgálás` the index and size scan, `keresés` the Search feature.
 - **memory**: `memória` is RAM, `jegyzet` Ask Cmdr's memory.
 
 ## Az angol önellentmondásainak magyar utóélete
@@ -785,3 +783,9 @@ share options → `Nincs megosztási lehetőség`.
 - secret access key → `titkos hozzáférési kulcs`; region → `régió` (both MS).
 - cold-storage archived → `archiválva van`, restore → `visszaállít`, console → `konzol`.
 - share link → `Megosztási link` (macOS `Link másolása`); the submenu stays nominal: `Lejárat hét nap múlva`.
+
+## Szervezeti kezelés, MDM (`*.managed.*`, `*managedOff`, `updates.status.heldByPolicy`, `errors.serverRequest.blockedByPolicy`)
+
+- manage → `kezel` (ms): `A szervezeted kezeli`; IT team → `IT-csapat`, the shipped `errors.*` form; the card's Off →
+  `Ki`, a switch state that agrees with no label.
+- `{ceiling}` sits in a colon slot (`legfeljebb ezt a verziót engedi: {ceiling}`): a version's article can't be known.

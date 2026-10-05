@@ -130,8 +130,8 @@ one thing. Hostname → `имя хоста`.
 
 ## Network share: общая папка over общий ресурс (`commands.shareSelectShare.label`, `settings.section.smbNetworkShares`, `fileExplorer.network.share.*`, `errors.shareList.*`, `servers.hub.forgetShare`, `fileExplorer.networkMount.shareFallback`)
 
-macOS's Sharing pane lists SMB shares as `Общие папки`, and MS's file-share noun is `общая папка`; `общий ресурс` is
-Windows networking phrasing. Prose may say `сетевая папка`; the mounted thing stays `том`.
+macOS's Sharing pane says `Общие папки`, MS `общая папка`; `общий ресурс` is Windows phrasing. Prose may say
+`сетевая папка`; the mounted thing stays `том`.
 
 ## Mounting line and its fallback (`fileExplorer.networkMount.mounting`, `fileExplorer.networkMount.shareFallback`)
 
@@ -314,6 +314,17 @@ Counts as `(скопировано: {done} из {total})`, since `из {total} �
 
 `Этой папкой управляет **{name}**` over the calqued passive `Эта папка управляется сервисом **{name}**`; the active
 keeps `{name}` nominative.
+
+## Managed by the organization (`settings.managed.*`, `ai.translateError.managed.title`, `updates.status.managedOff`)
+
+"Your organization manages X" → `<X in the instrumental> управляет ваша организация` (`Этим параметром управляет …`):
+fronting the object stops the indeclinable `ИИ` reading as the subject. The card title is
+`Под управлением вашей организации`.
+
+## IT team: ИТ-отдел (`ai.translateError.managed.body`, `ai.managed.hostNotAllowed`, `askCmdr.error.managedByOrganization`)
+
+The everyday word for an employer's or school's IT staff; MS's `ИТ-службы` reads institutional. "Can tell you" →
+`В вашем ИТ-отделе подскажут, …`.
 
 ## Retry durations (`servers.paneState.retryKeepsTrying`, `servers.paneState.retryTotalSeconds`/`.retryTotalMinutes`)
 
