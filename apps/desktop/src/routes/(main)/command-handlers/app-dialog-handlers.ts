@@ -20,6 +20,7 @@ import { openOperationLog } from '$lib/operation-log/operation-log-trigger.svelt
 import { openSuggestedOps } from '$lib/suggested-ops/suggested-ops-trigger.svelte'
 import { toggleRail } from '$lib/ask-cmdr/ask-cmdr-trigger.svelte'
 import { runMenuTriggeredCheck } from '$lib/updates/updater.svelte'
+import { detached } from './detached'
 import type { CommandHandlerRecord } from './types'
 
 export const appDialogHandlers = {
@@ -37,7 +38,7 @@ export const appDialogHandlers = {
 
   'app.settings': () => {
     // `openSettingsWindow` reports `settings_opened` itself, for every surface at once.
-    void openSettingsWindow('command')
+    detached(openSettingsWindow('command'))
   },
 
   'app.about': ({ ctx }) => {
@@ -49,15 +50,15 @@ export const appDialogHandlers = {
   },
 
   'help.openShortcuts': () => {
-    void openShortcutsWindow()
+    detached(openShortcutsWindow())
   },
 
   'queue.show': () => {
-    void openQueueWindow()
+    detached(openQueueWindow())
   },
 
   'help.viewDebugLog': () => {
-    void openDebugLog()
+    detached(openDebugLog())
   },
 
   'help.sendErrorReport': () => {
@@ -73,15 +74,15 @@ export const appDialogHandlers = {
   },
 
   'help.whatsNew': () => {
-    void openWhatsNew()
+    detached(openWhatsNew())
   },
 
   'log.operationLog': () => {
-    void openOperationLog()
+    detached(openOperationLog())
   },
 
   'suggestedOps.show': () => {
-    void openSuggestedOps()
+    detached(openSuggestedOps())
   },
 
   'askCmdr.toggle': () => {
@@ -89,7 +90,7 @@ export const appDialogHandlers = {
   },
 
   'app.checkForUpdates': () => {
-    void runMenuTriggeredCheck()
+    detached(runMenuTriggeredCheck())
   },
 
   'cmdr.openOnboarding': async ({ ctx }) => {

@@ -5,6 +5,7 @@
  * the adapter acks on real completion (the ack-timing contract).
  */
 import type { CommandArgs } from '$lib/commands'
+import { detached } from './detached'
 import type { CommandHandlerRecord } from './types'
 
 export const navHandlers = {
@@ -27,7 +28,7 @@ export const navHandlers = {
   'nav.goHome': ({ explorerRef }) => {
     // Fire-and-forget: `goHome` resolves the default volume before committing, but
     // nothing here awaits the landing (no MCP round-trip on this id).
-    void explorerRef?.goHome()
+    detached(explorerRef?.goHome())
   },
 
   'nav.home': ({ explorerRef }) => {
