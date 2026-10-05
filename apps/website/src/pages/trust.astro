@@ -278,8 +278,8 @@ const toc = [
         </li>
         <li>
             <strong>SBOMs</strong>: each release also includes software bills of materials in CycloneDX format, one
-            for the Rust dependencies of each processor type and one for the JavaScript dependencies. From the next
-            release on, they're signed and tied to the builds they describe, the same way.
+            for the Rust dependencies of each processor type and one for the JavaScript dependencies. They're signed and
+            tied to the builds they describe, the same way.
         </li>
         <li>
             <strong>Updates</strong>: the app downloads the new version from GitHub and checks its Ed25519 (minisign)
@@ -302,13 +302,6 @@ const toc = [
         The entitlements (none) and the code requirement above were read from the 0.47.0 release with
         <code>codesign -d --entitlements -</code> and <code>codesign -d -r-</code>. Nobody has tested a PPPC profile
         with it yet.
-    </DevTodo>
-    <DevTodo>
-        Provenance verified on the 0.47.0 DMG. Its SBOM attestations failed (the SBOMs lacked the
-        <code>serialNumber</code> the attest action requires, fixed in <code>release.yml</code> since). After the next
-        release, run the SBOM <code>gh attestation verify</code> from <code>docs/guides/releasing.md</code> § Provenance
-        and SBOM attestations, then drop "From the next release on" from the SBOM line here, on
-        <code>/trust/development</code>, and in the "Not in place yet" line in <code>src/lib/trust.ts</code>.
     </DevTodo>
 
     <h2 id="permissions">Sandbox and permissions</h2>

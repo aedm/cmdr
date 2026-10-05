@@ -315,7 +315,13 @@ const toc = [
             with write access to the repository.
         </li>
         <li>
-            <strong>A guard step</strong> refuses a tag that would offer users an older version than the current one.
+            <strong>Signed tags</strong>: the maintainer signs each release tag locally with an SSH key. Before any
+            build starts, a guard step checks that signature against the trusted key committed in
+            <code>.github/release-signers</code>, and refuses an unsigned tag. To check a tag yourself, run
+            <code>git -c gpg.ssh.allowedSignersFile=.github/release-signers verify-tag &lt;tag&gt;</code> in a clone.
+        </li>
+        <li>
+            <strong>A guard step</strong> also refuses a tag that would offer users an older version than the current one.
         </li>
         <li>
             <strong>Where it builds</strong>: GitHub-hosted macOS machines, a fresh one per build. The machine image
@@ -330,19 +336,15 @@ const toc = [
         <li>
             <strong>Provenance and SBOMs</strong>: once a release is published, a separate step downloads every file
             back from it and signs a build attestation for each one (SLSA Build Level 2). It also publishes CycloneDX
-            SBOMs (software bills of materials) for the Rust and JavaScript dependencies, which from the next release on
-            are signed and tied to the builds they describe. Check any download with
+            SBOMs (software bills of materials) for the Rust and JavaScript dependencies, signed and tied to the builds
+            they describe. Check any download with
             <code>gh attestation verify &lt;file&gt; --repo vdavid/cmdr</code>.
         </li>
         <li>
             <strong>Not in place</strong>: the signing keys are stored as GitHub repository secrets without a protected
-            environment, release tags aren't signed, and there's no reproducible build.
+            environment, and there's no reproducible build.
         </li>
     </ul>
-    <DevTodo>
-        After the next release, verify an SBOM attestation and drop "from the next release on" here and on
-        <code>/trust</code>. Commands: <code>docs/guides/releasing.md</code> § Provenance and SBOM attestations.
-    </DevTodo>
 
     <h2 id="updates">Update delivery</h2>
     <ul>
