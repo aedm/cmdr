@@ -2082,6 +2082,58 @@
   "@settings.control.backToPresetsAriaLabel": {
     "sourceHash": "1579f3f"
   },
+  "settings.managed.rowNote": "Votre organisation gère ce réglage.",
+  "@settings.managed.rowNote": {
+    "sourceHash": "891206b"
+  },
+  "settings.managed.sectionNote": "Votre organisation gère certains de ces réglages.",
+  "@settings.managed.sectionNote": {
+    "sourceHash": "ab52c49"
+  },
+  "settings.managed.summary.title": "Géré par votre organisation",
+  "@settings.managed.summary.title": {
+    "sourceHash": "5450801"
+  },
+  "settings.managed.summary.usageStats": "Statistiques d’usage",
+  "@settings.managed.summary.usageStats": {
+    "sourceHash": "4e0483c"
+  },
+  "settings.managed.summary.reports": "Rapports d’incident",
+  "@settings.managed.summary.reports": {
+    "sourceHash": "ef409c3"
+  },
+  "settings.managed.summary.updates": "Mises à jour",
+  "@settings.managed.summary.updates": {
+    "sourceHash": "22e2bad"
+  },
+  "settings.managed.summary.ai": "IA",
+  "@settings.managed.summary.ai": {
+    "sourceHash": "11fb682"
+  },
+  "settings.managed.summary.off": "Désactivé",
+  "@settings.managed.summary.off": {
+    "sourceHash": "ca7981b"
+  },
+  "settings.managed.summary.upTo": "Jusqu’à la version {ceiling}",
+  "@settings.managed.summary.upTo": {
+    "sourceHash": "8989a97"
+  },
+  "settings.managed.summary.manualChecksOnly": "Recherche manuelle uniquement",
+  "@settings.managed.summary.manualChecksOnly": {
+    "sourceHash": "1969d26"
+  },
+  "settings.managed.summary.upToManualChecksOnly": "Jusqu’à la version {ceiling}, recherche manuelle uniquement",
+  "@settings.managed.summary.upToManualChecksOnly": {
+    "sourceHash": "c769ffd"
+  },
+  "settings.managed.summary.onDeviceOnly": "En local uniquement",
+  "@settings.managed.summary.onDeviceOnly": {
+    "sourceHash": "d4f8552"
+  },
+  "settings.managed.summary.cloudHostsOnly": "IA dans le cloud uniquement via {hosts}",
+  "@settings.managed.summary.cloudHostsOnly": {
+    "sourceHash": "00f1237"
+  },
   "settings.sidebar.searchPlaceholder": "Rechercher dans les réglages…",
   "@settings.sidebar.searchPlaceholder": {
     "sourceHash": "57054c5"

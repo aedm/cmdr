@@ -220,6 +220,10 @@
   "@askCmdr.error.noCloudConsent": {
     "sourceHash": "cd2af1d"
   },
+  "askCmdr.error.managedByOrganization": "Votre organisation n’autorise pas ce service d’IA. Votre équipe informatique peut vous dire lesquels vous pouvez utiliser.",
+  "@askCmdr.error.managedByOrganization": {
+    "sourceHash": "845a19f"
+  },
   "askCmdr.error.localWindowTooSmall": "Cmdr a besoin d’une fenêtre de contexte plus grande que celle de votre modèle local. Choisissez 32 768 jetons ou plus dans les réglages, sous IA.",
   "@askCmdr.error.localWindowTooSmall": {
     "sourceHash": "8ac7452"

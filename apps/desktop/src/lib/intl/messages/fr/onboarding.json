@@ -387,6 +387,14 @@
   "@onboarding.stepBeta.crashReportsNote": {
     "sourceHash": "9be0be1"
   },
+  "onboarding.stepBeta.analyticsManaged": "Votre organisation a désactivé les statistiques d’usage.",
+  "@onboarding.stepBeta.analyticsManaged": {
+    "sourceHash": "49484ee"
+  },
+  "onboarding.stepBeta.crashReportsNoteAlone": "Les rapports d’incident sont activés : si Cmdr s’arrête brutalement, il envoie la version de l’app, votre version de macOS et l’endroit où le code s’est arrêté.\nJamais vos fichiers.\nVous pouvez désactiver les rapports d’incident dans les réglages quand vous voulez.",
+  "@onboarding.stepBeta.crashReportsNoteAlone": {
+    "sourceHash": "5084dd0"
+  },
   "onboarding.stepBeta.emailTitle": "Restons en contact (facultatif)",
   "@onboarding.stepBeta.emailTitle": {
     "sourceHash": "cf691fa"

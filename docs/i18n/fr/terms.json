@@ -1930,6 +1930,12 @@
     "forms": "identical to English on the popover and carries sameAsSourceJustification",
     "sources": "standard FR"
   },
+  "organization": {
+    "chosen": "organisation",
+    "confidence": "high",
+    "forms": "feminine; your organization → votre organisation (licence and device-management senses alike); manages → gère, managed by → géré par votre organisation; your IT team → votre équipe informatique (catalog: errors.listing.authRequiredEauth.suggestion)",
+    "sources": "MS terminology FRA (organization → organisation, feminine, ids 182657 / 2698193); catalog licensing.about.fallbackOrg"
+  },
   "original": {
     "accept": ["originaux"],
     "chosen": "original",
