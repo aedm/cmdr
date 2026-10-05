@@ -96,8 +96,10 @@ failure's message carries both.
   committed is unknown: "check the operation queue before you approve it again". Every other variant is a refusal that
   lands before the claim transaction commits, so nothing ran and "try again" is safe
   (`agent/suggested_ops/bridge/mod.rs::approve_and_execute`).
-- **Open product question:** Approve stays enabled while an expanded group's rows are loading or couldn't load (its
-  count comes from `COUNT(*)`). Whether it should wait for the first window is David's call, not decided here.
+- **Decision: Approve stays enabled while an expanded group's rows are loading or couldn't load** (David, 2026-09-25,
+  #155). Its count comes from `COUNT(*)`, so the button says exactly how many ops it approves even before any row shows,
+  and approval works per group. Waiting for the first window would leave a group whose rows can't load with no way to
+  approve it at all. ❌ Don't gate Approve on the op window.
 
 ## What isn't here yet
 
