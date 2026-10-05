@@ -243,9 +243,9 @@ risk.
   - **Release builds are Developer ID signed and notarized** (`docs/guides/apple-signing-and-notarization.md`).
   - **The release pipeline**: release tags are SSH-signed and verified against `.github/release-signers` before a build
     starts; only admins can create `v*` tags (a repository ruleset); the only job that signs runs in a `release`
-    environment that only `v*` tags can deploy to (six of the eight signing secrets are in it; the other two, and
-    repo-level copies of all eight, still exist until the move finishes, so today a branch workflow could still read
-    them: `docs/guides/releasing.md` § Signing secrets); a release waits for a full, green CI run of its commit; every
+    environment that only `v*` tags can deploy to (all eight signing secrets are in it; their repo-level copies stay
+    until the first release through the environment succeeds, so until then a branch workflow could still read them:
+    `docs/guides/releasing.md` § Signing secrets); a release waits for a full, green CI run of its commit; every
     third-party action is pinned to a commit SHA; each release publishes SHA-256 checksums, SLSA build provenance, and
     signed SBOMs (`docs/guides/releasing.md`).
   - **Account and key custody**: hardware-key 2FA on the GitHub account, and encrypted copies of every signing key
@@ -254,6 +254,11 @@ risk.
   - **One maintainer account can ship to every install**, and updates install automatically (unless an organization
     turns updates off or sets a version ceiling through managed preferences). The controls above raise the bar, but
     there's no second-person approval. High impact, low likelihood. Already listed on `/trust`.
+  - **The tag-signature check catches mistakes, not someone who already holds tag rights.** A tag push runs the workflow
+    and reads `.github/release-signers` from the tagged commit itself, so whoever can push a `v*` tag controls both.
+    What stops an attacker is who holds that right (admins only, behind hardware-key 2FA). Stronger options (a required
+    approval on the `release` environment, or a deployment-protection rule that verifies the signature outside the
+    tagged commit) are tracked privately.
   - **No reproducible builds**, so a reviewer can't rebuild and compare a release.
   - **The minisign updater key can't be rotated** without a release signed by the old key; losing it strands installs on
     manual reinstall.
