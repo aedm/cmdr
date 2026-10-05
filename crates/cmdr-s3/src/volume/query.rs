@@ -20,7 +20,7 @@ use crate::error::S3Error;
 use crate::metadata::{MTIME_HEADER, parse_mtime};
 use crate::ops::{self, ListObjectsParams};
 use crate::request::S3Request;
-use crate::transport::{Answer, QUERY_BUDGET, S3Client, map_transport_error};
+use crate::transport::{Answer, QUERY_BUDGET, S3Client, map_exchange_error};
 use crate::xml::{BodyError, StorageClass, parse_list_buckets, parse_list_objects};
 
 impl S3Volume {
@@ -30,7 +30,7 @@ impl S3Volume {
         let answer = client
             .exchange(request, QUERY_BUDGET)
             .await
-            .map_err(|e| map_transport_error(&e, self.volume_id(), path))?;
+            .map_err(|e| map_exchange_error(&e, self.volume_id(), path))?;
         if answer.status.is_success() {
             Ok(answer)
         } else {

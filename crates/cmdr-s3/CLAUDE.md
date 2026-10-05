@@ -26,7 +26,8 @@ Decisions and gotchas: `DETAILS.md`. Fixtures: `apps/desktop/test/s3-servers/`.
 - ❗ **A wrong secret is ambiguous**: Garage answers `AccessDenied`, so only `SignatureDoesNotMatch` /
   `InvalidAccessKeyId` (or R2's 401) are `KeysRejected`.
 - ❌ **No `.timeout()` on a GET or an upload, never a buffered body** beyond one part. A 200 to a ranged GET is skipped
-  locally.
+  locally. An `Answer`'s body reads through `read_capped` (`MAX_ANSWER_BODY`); past it is a typed
+  `ExchangeError::BodyTooLarge`.
 - ❗ **Parse every success body**: Complete, CopyObject, UploadPartCopy, DeleteObjects can fail inside `200 OK`.
 - ❗ **Keys are never trimmed**; a `.`/`..` segment is refused (`KeyError::DotSegment`).
 - ❗ **Writes go to the final key**. ❌ Nothing partial is ever published: bodies are buffered (≤ one part), a PUT holds

@@ -47,8 +47,71 @@ pub(crate) type UploadBody = Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Er
 /// the body read counts as heard.
 pub(crate) const COMPLETE_BUDGET: Duration = Duration::from_secs(15 * 60);
 
-/// What a request came back with. The body is read whole: every answer this
-/// carries is a small XML document or nothing (a HEAD).
+/// The most of an [`Answer`]'s body Cmdr holds. The biggest answer it asks for
+/// is a 1 000-key `ListObjectsV2` page, about 1 MiB of XML; past this the
+/// server is hostile or broken, and reading on would hold it all in memory.
+pub(crate) const MAX_ANSWER_BODY: usize = 16 * 1024 * 1024;
+
+/// Why an exchange didn't produce an [`Answer`].
+#[derive(Debug)]
+pub(crate) enum ExchangeError {
+    /// The request or the body read failed on the wire.
+    Transport(reqwest::Error),
+    /// The answer's body ran past `limit` bytes; the rest was never read.
+    BodyTooLarge { limit: usize },
+}
+
+impl From<reqwest::Error> for ExchangeError {
+    fn from(err: reqwest::Error) -> Self {
+        Self::Transport(err)
+    }
+}
+
+impl std::fmt::Display for ExchangeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Transport(err) => err.fmt(f),
+            Self::BodyTooLarge { limit } => write!(f, "the server's answer ran past {limit} bytes"),
+        }
+    }
+}
+
+impl std::error::Error for ExchangeError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Transport(err) => Some(err),
+            Self::BodyTooLarge { .. } => None,
+        }
+    }
+}
+
+/// `response`'s whole body, noting every chunk as heard, or `BodyTooLarge` once
+/// it runs past `limit` (or announces it will).
+async fn read_capped(
+    liveness: &Liveness,
+    mut response: reqwest::Response,
+    limit: usize,
+) -> Result<Vec<u8>, ExchangeError> {
+    if response
+        .content_length()
+        .is_some_and(|announced| announced > limit as u64)
+    {
+        return Err(ExchangeError::BodyTooLarge { limit });
+    }
+    let mut body = Vec::new();
+    while let Some(chunk) = response.chunk().await? {
+        liveness.heard();
+        if body.len() + chunk.len() > limit {
+            return Err(ExchangeError::BodyTooLarge { limit });
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
+}
+
+/// What a request came back with. The body is read whole, capped at
+/// [`MAX_ANSWER_BODY`]: every answer this carries is a small XML document or
+/// nothing (a HEAD).
 #[derive(Debug)]
 pub(crate) struct Answer {
     pub status: StatusCode,
@@ -410,7 +473,7 @@ impl S3Client {
     ///
     /// On a routed account root (AWS, Wasabi), a request that went to the wrong region goes
     /// once more, to the region the answer named ([`Self::route_each_bucket`]).
-    pub(crate) async fn exchange(&self, request: S3Request, budget: Duration) -> Result<Answer, reqwest::Error> {
+    pub(crate) async fn exchange(&self, request: S3Request, budget: Duration) -> Result<Answer, ExchangeError> {
         let Some(bucket) = self.routed_bucket(&request) else {
             let region = self.profile.region.clone();
             return self.send(request, &region, budget).await;
@@ -430,7 +493,7 @@ impl S3Client {
     }
 
     /// One signed exchange for `region`, as it is.
-    async fn send(&self, request: S3Request, region: &str, budget: Duration) -> Result<Answer, reqwest::Error> {
+    async fn send(&self, request: S3Request, region: &str, budget: Duration) -> Result<Answer, ExchangeError> {
         let time = AmzTime::new(SystemTime::now());
         let scope = Scope {
             credentials: &self.credentials,
@@ -463,16 +526,12 @@ impl S3Client {
             }
             Body::Empty | Body::Streamed { .. } => {}
         }
-        let mut response = builder.send().await?;
+        let response = builder.send().await?;
         self.liveness.heard();
         self.note_version(response.version());
         let status = response.status();
         let headers = response.headers().clone();
-        let mut body = Vec::new();
-        while let Some(chunk) = response.chunk().await? {
-            self.liveness.heard();
-            body.extend_from_slice(&chunk);
-        }
+        let body = read_capped(&self.liveness, response, MAX_ANSWER_BODY).await?;
         Ok(Answer { status, headers, body })
     }
 
@@ -488,7 +547,7 @@ impl S3Client {
     ///
     /// ❗ The body goes once, so on a routed account root a bucket's region is
     /// asked for first when nothing has named it yet.
-    pub(crate) async fn upload(&self, request: S3Request, body: UploadBody) -> Result<Answer, reqwest::Error> {
+    pub(crate) async fn upload(&self, request: S3Request, body: UploadBody) -> Result<Answer, ExchangeError> {
         let length = match request.body {
             Body::Streamed { length } => length,
             Body::Empty | Body::Bytes(_) => 0,
@@ -505,7 +564,7 @@ impl S3Client {
         };
         self.note_sent(&request);
         let signed = sign(request, &scope);
-        let mut response = self
+        let response = self
             .http
             .request(signed.method, signed.url)
             .headers(signed.headers)
@@ -517,16 +576,8 @@ impl S3Client {
         self.note_version(response.version());
         let status = response.status();
         let headers = response.headers().clone();
-        let mut answer = Vec::new();
-        while let Some(chunk) = response.chunk().await? {
-            self.liveness.heard();
-            answer.extend_from_slice(&chunk);
-        }
-        Ok(Answer {
-            status,
-            headers,
-            body: answer,
-        })
+        let body = read_capped(&self.liveness, response, MAX_ANSWER_BODY).await?;
+        Ok(Answer { status, headers, body })
     }
 
     /// Signs `request` now and sends it, handing back the answer with its body
@@ -701,7 +752,20 @@ fn operation_of(request: &S3Request) -> &'static str {
 ///
 /// A connection that couldn't be made or was cut mid-flight is the volume
 /// being gone, which is what starts the reconnect loop; a timeout is its own
-/// variant, ❌ never read as a lost server (a slow page isn't one).
+/// variant, ❌ never read as a lost server (a slow page isn't one). An answer
+/// past [`MAX_ANSWER_BODY`] is an `IoError`, like a body that won't parse.
+pub(crate) fn map_exchange_error(err: &ExchangeError, volume_id: &str, path: &str) -> VolumeError {
+    match err {
+        ExchangeError::Transport(err) => map_transport_error(err, volume_id, path),
+        ExchangeError::BodyTooLarge { .. } => VolumeError::IoError {
+            message: err.to_string(),
+            raw_os_error: None,
+        },
+    }
+}
+
+/// [`map_exchange_error`] for a `reqwest` failure on a path with no buffered
+/// answer (a streaming GET).
 pub(crate) fn map_transport_error(err: &reqwest::Error, volume_id: &str, path: &str) -> VolumeError {
     if err.is_timeout() {
         return VolumeError::ConnectionTimeout(path.to_string());
@@ -724,7 +788,12 @@ pub(crate) fn map_transport_error(err: &reqwest::Error, volume_id: &str, path: &
 /// A TLS refusal reaches here as a connect error whose source chain carries an
 /// `io::Error` of kind `InvalidData`, which is how `tokio-rustls` wraps every
 /// handshake refusal. ❗ Judged by the typed `ErrorKind`, ❌ never the message.
-pub(crate) fn classify_connect_error(err: &reqwest::Error) -> S3ConnectError {
+pub(crate) fn classify_connect_error(err: &ExchangeError) -> S3ConnectError {
+    let err = match err {
+        ExchangeError::Transport(err) => err,
+        // A probe answer past the cap isn't an S3 server answering it.
+        ExchangeError::BodyTooLarge { .. } => return S3ConnectError::Transport(err.to_string()),
+    };
     if err.is_timeout() {
         return S3ConnectError::TimedOut;
     }

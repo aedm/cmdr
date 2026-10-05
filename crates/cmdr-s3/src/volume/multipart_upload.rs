@@ -35,7 +35,7 @@ use crate::error::{S3Error, S3ErrorCode};
 use crate::multipart::{MAX_PARTS, PartPlan};
 use crate::ops;
 use crate::profile::{ConditionalOp, NoOverwrite};
-use crate::transport::{COMPLETE_BUDGET, QUERY_BUDGET, S3Client, map_transport_error};
+use crate::transport::{COMPLETE_BUDGET, QUERY_BUDGET, S3Client, map_exchange_error};
 use crate::xml::build::CompletedPart;
 use crate::xml::{parse_complete_multipart, parse_initiate_multipart};
 
@@ -277,7 +277,7 @@ impl PartJob {
                         continue;
                     }
                     Some(Halt::Stopped) => return Err(VolumeError::Cancelled(self.volume_id.clone())),
-                    None => map_transport_error(&e, &self.volume_id, &self.remote),
+                    None => map_exchange_error(&e, &self.volume_id, &self.remote),
                 },
             };
             let Some(wait) = retry_after(attempt) else {
@@ -623,7 +623,7 @@ impl S3Volume {
             let answer = client
                 .exchange(built.request, COMPLETE_BUDGET)
                 .await
-                .map_err(|e| map_transport_error(&e, self.volume_id(), target.remote))?;
+                .map_err(|e| map_exchange_error(&e, self.volume_id(), target.remote))?;
             if answer.status.is_success() {
                 return parse_complete_multipart(&answer.text())
                     .map(|completed| completed.etag)

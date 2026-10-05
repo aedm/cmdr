@@ -145,7 +145,7 @@ impl S3Volume {
         let answer = client
             .exchange(request, crate::transport::QUERY_BUDGET)
             .await
-            .map_err(|e| crate::transport::map_transport_error(&e, self.volume_id(), remote))?;
+            .map_err(|e| crate::transport::map_exchange_error(&e, self.volume_id(), remote))?;
         if answer.status.is_success() {
             debug!(target: "volume", "s3 folder marker written for {remote}");
             return Ok(());

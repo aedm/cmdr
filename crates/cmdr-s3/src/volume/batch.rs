@@ -216,7 +216,7 @@ impl S3Volume {
                     }
                     map_s3_error(&error, path)
                 }
-                Err(e) => crate::transport::map_transport_error(&e, self.volume_id(), path),
+                Err(e) => crate::transport::map_exchange_error(&e, self.volume_id(), path),
             };
             // Two more tries at most (1 s, then 2 s), then the batch fails.
             let Some(wait) = retry_after(attempt).filter(|_| attempt <= 2) else {

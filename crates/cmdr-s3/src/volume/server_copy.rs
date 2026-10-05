@@ -43,7 +43,7 @@ use crate::metadata::{MTIME_HEADER, WRITE_TOKEN_HEADER};
 use crate::multipart::{MAX_COPY_OBJECT_SIZE, PartPlan, TooLarge, plan_parts_with_floor};
 use crate::ops::{self, BuildError, CopySource, MetadataDirective, ObjectMetadata};
 use crate::profile::ConditionalOp;
-use crate::transport::{Answer, COMPLETE_BUDGET, S3Client, map_transport_error};
+use crate::transport::{Answer, COMPLETE_BUDGET, S3Client, map_exchange_error};
 use crate::xml::build::CompletedPart;
 use crate::xml::parse_copy_result;
 
@@ -196,11 +196,7 @@ impl PartCopy {
         let answer = match self.client.exchange(request, COMPLETE_BUDGET).await {
             Ok(answer) => answer,
             Err(e) => {
-                return Err(fail(
-                    map_transport_error(&e, &self.volume_id, &self.remote),
-                    false,
-                    true,
-                ));
+                return Err(fail(map_exchange_error(&e, &self.volume_id, &self.remote), false, true));
             }
         };
         if !answer.status.is_success() {
@@ -452,7 +448,7 @@ impl S3Volume {
             let answer = match client.exchange(built.request, COMPLETE_BUDGET).await {
                 Ok(answer) => answer,
                 Err(e) => {
-                    let failure = map_transport_error(&e, self.volume_id(), to_remote);
+                    let failure = map_exchange_error(&e, self.volume_id(), to_remote);
                     return self
                         .landed_after_all(client, &target, size, progress)
                         .await

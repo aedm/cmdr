@@ -55,7 +55,7 @@ use crate::error::S3Error;
 use crate::multipart::{PartPlan, ShortTail, TooLarge, plan_parts_with_floor};
 use crate::ops::{self, ObjectMetadata, Overwrite};
 use crate::request::{Body, S3Request};
-use crate::transport::{Answer, QUERY_BUDGET, S3Client, map_transport_error};
+use crate::transport::{Answer, QUERY_BUDGET, S3Client, map_exchange_error};
 
 /// How often an upload reports progress while its body is in flight.
 pub(super) const PROGRESS_TICK: Duration = Duration::from_millis(200);
@@ -476,7 +476,7 @@ impl S3Volume {
                             set_aside = true;
                             continue;
                         }
-                        (Some(Err(e)), None) => return Err(map_transport_error(&e, self.volume_id(), target.remote)),
+                        (Some(Err(e)), None) => return Err(map_exchange_error(&e, self.volume_id(), target.remote)),
                         _ => return Err(cancelled()),
                     }
                 }
@@ -762,7 +762,7 @@ impl S3Volume {
         let answer = client
             .exchange(request, QUERY_BUDGET)
             .await
-            .map_err(|e| map_transport_error(&e, self.volume_id(), &remote))?;
+            .map_err(|e| map_exchange_error(&e, self.volume_id(), &remote))?;
         if !answer.status.is_success() {
             let error = S3Error::from_response(answer.status, &answer.text());
             self.note_refused_condition(&client, &error, crate::profile::ConditionalOp::Put, conditional);

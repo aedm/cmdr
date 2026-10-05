@@ -250,6 +250,87 @@ fn an_objects_length_falls_back_to_the_stored_length_gcs_names() {
     assert_eq!(answer(&[]).object_length(), None);
 }
 
+/// A client pointed at a server that answers one request with a 200 whose
+/// body runs `size` bytes, framed by `Content-Length` or chunked.
+async fn serving_an_answer_of(size: usize, chunked: bool) -> (S3Client, String) {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.unwrap();
+        let mut buffer = Vec::new();
+        let mut chunk = [0u8; 4096];
+        while !buffer.windows(4).any(|w| w == b"\r\n\r\n") {
+            let read = socket.read(&mut chunk).await.unwrap();
+            if read == 0 {
+                break;
+            }
+            buffer.extend_from_slice(&chunk[..read]);
+        }
+        let framing = if chunked {
+            "transfer-encoding: chunked".to_string()
+        } else {
+            format!("content-length: {size}")
+        };
+        let head =
+            format!("HTTP/1.1 200 OK\r\ncontent-type: application/xml\r\n{framing}\r\nconnection: close\r\n\r\n");
+        let _ = socket.write_all(head.as_bytes()).await;
+        let piece = vec![b'x'; 64 * 1024];
+        let mut left = size;
+        while left > 0 {
+            let n = left.min(piece.len());
+            if chunked {
+                let _ = socket.write_all(format!("{n:x}\r\n").as_bytes()).await;
+            }
+            if socket.write_all(&piece[..n]).await.is_err() {
+                return;
+            }
+            if chunked {
+                let _ = socket.write_all(b"\r\n").await;
+            }
+            left -= n;
+        }
+        if chunked {
+            let _ = socket.write_all(b"0\r\n\r\n").await;
+        }
+        let _ = socket.shutdown().await;
+    });
+    let profile = ProviderProfile::from_preset(&Preset::Other {
+        endpoint: Url::parse(&format!("http://{addr}")).unwrap(),
+        region: None,
+        path_style: true,
+    })
+    .unwrap();
+    let host = profile.endpoint_host.clone();
+    (
+        S3Client::new(profile, Credentials::new("AKID", "secret")).unwrap(),
+        host,
+    )
+}
+
+/// ❗ A hostile or broken endpoint can answer a listing with a body that never
+/// ends: past `MAX_ANSWER_BODY` it's a typed `BodyTooLarge`, never a growing
+/// buffer, however the body is framed.
+#[tokio::test]
+async fn an_answer_past_the_cap_is_refused() {
+    for chunked in [false, true] {
+        let (client, host) = serving_an_answer_of(super::MAX_ANSWER_BODY + 1, chunked).await;
+        let request = S3Request::new(Method::GET, "http", &host, "/b".into()).query("list-type", "2");
+        let result = client.exchange(request, Duration::from_secs(30)).await;
+        assert!(
+            matches!(result, Err(super::ExchangeError::BodyTooLarge { .. })),
+            "chunked={chunked}: {result:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn an_answer_under_the_cap_is_read() {
+    let (client, host) = serving_an_answer_of(64 * 1024, true).await;
+    let request = S3Request::new(Method::GET, "http", &host, "/b".into()).query("list-type", "2");
+    let answer = client.exchange(request, Duration::from_secs(30)).await.unwrap();
+    assert_eq!(answer.body.len(), 64 * 1024);
+}
+
 /// ❗ This crate builds reqwest with `http2` itself, so its own tests and the
 /// live suite negotiate HTTP/2 the way the app does (the app gets the feature
 /// through `genai` anyway). `http2_prior_knowledge` exists only with the
