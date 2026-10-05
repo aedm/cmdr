@@ -14,7 +14,7 @@ hearts in KV), `link-codes.ts` (`GET /r-codes.json` plus the `/admin/r-codes` CR
   can't be used to enumerate addresses. A Listmonk failure is the one exception: a soft 502, so the user knows it didn't
   land.
 - **`/beta-signup` reads ONLY the email**: no `anal_`, no `diag_`, not in the request and not in the Discord ping. The
-  email and the analytics ids never co-occur on our servers.
+  email and the analytics ids never co-occur on our servers. The Discord ping carries no email either.
 - **`/likes/:slug` validates the slug BEFORE any KV touch.** `POST` is unauthenticated and creates the key it writes, so
   the blog's charset plus an 80-char cap plus `LIKES_LIMITER` are the only bound on KV growth (and on the bill).
 - **The likes pseudonym is salted with the post SLUG, ❌ never the daily salt telemetry uses**: it has to stay stable

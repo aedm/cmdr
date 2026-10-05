@@ -220,6 +220,17 @@ describe('POST /beta-signup Discord notification', () => {
     expect(embed.description).toContain('Listmonk sent them the confirmation email')
   })
 
+  it('keeps the signup email out of the Discord ping', async () => {
+    await postBetaSignup(
+      { email: 'tester@example.com' },
+      createBindings({ DISCORD_BETA_SIGNUP_WEBHOOK_URL: discordWebhook }),
+    )
+
+    const discord = findDiscordCall()
+    expect(discord).toBeDefined()
+    expect(JSON.stringify(discord?.body)).not.toContain('tester@example.com')
+  })
+
   it('does NOT ping Discord on a Listmonk 5xx failure', async () => {
     fetchMock.mockResolvedValueOnce(new Response('upstream down', { status: 500 }))
     const res = await postBetaSignup(

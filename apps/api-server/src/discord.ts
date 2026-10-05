@@ -37,14 +37,17 @@ export interface FeedbackNotification {
   buildMode: 'release' | 'debug'
   appVersion: string
   osVersion: string
-  /** Reply-to email the sender chose to attach; absent means they want to stay anonymous. */
-  email?: string
+  /**
+   * Whether the sender attached a reply-to address. Only the fact travels: ❌ no email address ever
+   * goes to Discord (the privacy policy promises it). The address itself lives in the D1 `feedback`
+   * row and the reports-repo comment.
+   */
+  hasReplyTo: boolean
   feedback: string
 }
 
+/** Carries no email on purpose: Discord never receives an address. The Listmonk link finds the subscriber. */
 export interface BetaSignupNotification {
-  /** The signup email, shown in full (same precedent as the feedback route's reply-to field). */
-  email: string
   /** When the signup landed, rendered as a Discord relative timestamp (`<t:…:R>`). */
   signupUnixSeconds: number
   /** Deep link to the Listmonk admin filtered to the beta list. */
@@ -151,8 +154,8 @@ export function buildFeedbackPayload(n: FeedbackNotification): unknown {
     { name: 'App version', value: n.appVersion, inline: true },
     { name: 'OS', value: n.osVersion, inline: true },
   ]
-  if (n.email) {
-    fields.push({ name: 'Reply to', value: n.email, inline: true })
+  if (n.hasReplyTo) {
+    fields.push({ name: 'Reply-to attached', value: 'Yes (address in the feedback table)', inline: true })
   }
 
   const titlePrefix = n.buildMode === 'debug' ? '[DEV] ' : '[PROD] '
@@ -182,7 +185,6 @@ export function buildBetaSignupPayload(n: BetaSignupNotification): unknown {
         description,
         color: BETA_SIGNUP_EMBED_COLOR,
         fields: [
-          { name: 'Email', value: n.email, inline: true },
           { name: 'When', value: `<t:${n.signupUnixSeconds.toString()}:R>`, inline: true },
           { name: 'Listmonk', value: `[Beta list subscribers](${n.listAdminUrl})` },
         ],

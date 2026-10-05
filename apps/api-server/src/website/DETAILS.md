@@ -45,9 +45,10 @@ returns the identical empty 204, so the response never reveals whether the addre
 **Discord ping:** a successful signup pings Discord (`DISCORD_BETA_SIGNUP_WEBHOOK_URL`, falling back to
 `DISCORD_WEBHOOK_URL` so it works before the `#beta-signups` channel exists) in `waitUntil` after the 204 ships,
 drop-on-failure. It fires ONLY when a beta subscription was newly established (a fresh 2xx, or the 409 add-to-list
-path), NEVER on a Listmonk failure and NEVER on a plain already-on-list 409. The embed carries the email (full, same
-precedent as the feedback reply-to) and the signup time, and states the honest consent status ("unconfirmed — Listmonk
-sent the confirmation email" for both paths). It carries no install id, by construction.
+path), NEVER on a Listmonk failure and NEVER on a plain already-on-list 409. The embed carries the signup time and a
+link to the Listmonk beta list, and states the honest consent status ("unconfirmed — Listmonk sent the confirmation
+email" for both paths). It carries no email and no install id, by construction: `BetaSignupNotification` has no field
+for either (root `DETAILS.md` § Discord webhooks).
 
 ## Blog likes
 

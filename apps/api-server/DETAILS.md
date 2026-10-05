@@ -197,6 +197,12 @@ other namespaces).
 `DISCORD_WEBHOOK_URL` posts notifications to the `#error-reports` channel of the **Cmdr** Discord server. The URL is the
 secret (anyone holding it can post to that channel), so it lives only as a wrangler secret, never in the repo.
 
+**No email address ever goes to Discord** (the privacy policy and `/trust` promise it). The notification types in
+`discord.ts` have no email field: feedback sends only `hasReplyTo` (the address stays in D1 and the reports-repo
+comment), and a beta signup sends the time plus the Listmonk link. Pinned by `feedback.test.ts` and
+`beta-signup.test.ts` on the outbound webhook body. The error-report embed carries the user's free-text note and a
+24-hour bundle link, and the bundle's manifest can hold a reply-to, so that link is personal data while it lives.
+
 **To create or rotate the webhook:**
 
 1. Open the Cmdr Discord server → right-click `#error-reports` → **Edit Channel** → **Integrations** → **Webhooks**.

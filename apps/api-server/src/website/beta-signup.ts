@@ -239,10 +239,9 @@ betaSignup.post('/beta-signup', async (c) => {
   if (outcome.kind === 'new' || outcome.kind === 'added-existing') {
     const webhookUrl = c.env.DISCORD_BETA_SIGNUP_WEBHOOK_URL ?? c.env.DISCORD_WEBHOOK_URL
     if (webhookUrl) {
-      // The email is the ONLY identity in the notification: no install id ever reaches this route, so
-      // the analytics/diagnostics streams stay unjoinable to the email (the route's whole point).
+      // No identity at all in the notification: no install id ever reaches this route, and the email
+      // stays out of Discord too. The Listmonk link is how to see who signed up.
       await pingDiscord(c, webhookUrl, {
-        email,
         signupUnixSeconds: Math.floor(Date.now() / 1000),
         listAdminUrl: `${listmonk.url}/admin/subscribers?lists=${String(listmonk.listId)}`,
         status: outcome.kind,
