@@ -109,7 +109,8 @@ test.describe('Managed AI policy (MDM)', () => {
     const page = settings
     try {
       expect(await page.evaluate<boolean>(clickProviderOptionJs('Cloud AI'))).toBe(true)
-      await page.waitForSelector(`${PROVIDER_SECTION} select option[value="anthropic"]`, waitBudget(5000))
+      // Poll the DOM, ❌ never `waitForSelector`: that waits for VISIBLE, and Ark's hidden select
+      // (sr-only, inside the `inert` setup card while Allow cloud AI is off) never is.
       await expect
         .poll(async () => (await page.evaluate<Record<string, boolean>>(SERVICE_OPTIONS_JS))['openai'], {
           timeout: waitBudget(5000),
