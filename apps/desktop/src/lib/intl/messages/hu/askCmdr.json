@@ -220,6 +220,10 @@
   "@askCmdr.error.noCloudConsent": {
     "sourceHash": "cd2af1d"
   },
+  "askCmdr.error.managedByOrganization": "A szervezeted nem engedélyezi ezt az AI-szolgáltatást. Az IT-csapatodtól megtudhatod, melyeket használhatod.",
+  "@askCmdr.error.managedByOrganization": {
+    "sourceHash": "845a19f"
+  },
   "askCmdr.error.localWindowTooSmall": "A Cmdrnek nagyobb kontextusablak kell, mint amekkora a helyi modellednek van. Válassz 32 768 tokent vagy többet a beállításokban, az AI résznél.",
   "@askCmdr.error.localWindowTooSmall": {
     "sourceHash": "8ac7452"

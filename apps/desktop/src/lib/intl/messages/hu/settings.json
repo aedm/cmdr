@@ -2071,6 +2071,59 @@
   "@settings.control.backToPresetsAriaLabel": {
     "sourceHash": "1579f3f"
   },
+  "settings.managed.rowNote": "Ezt a beállítást a szervezeted kezeli.",
+  "@settings.managed.rowNote": {
+    "sourceHash": "891206b"
+  },
+  "settings.managed.sectionNote": "Néhány itteni beállítást a szervezeted kezel.",
+  "@settings.managed.sectionNote": {
+    "sourceHash": "ab52c49"
+  },
+  "settings.managed.summary.title": "A szervezeted kezeli",
+  "@settings.managed.summary.title": {
+    "sourceHash": "5450801"
+  },
+  "settings.managed.summary.usageStats": "Használati statisztika",
+  "@settings.managed.summary.usageStats": {
+    "sourceHash": "4e0483c"
+  },
+  "settings.managed.summary.reports": "Összeomlás- és hibajelentések",
+  "@settings.managed.summary.reports": {
+    "sourceHash": "ef409c3"
+  },
+  "settings.managed.summary.updates": "Frissítések",
+  "@settings.managed.summary.updates": {
+    "sourceHash": "22e2bad"
+  },
+  "settings.managed.summary.ai": "AI",
+  "@settings.managed.summary.ai": {
+    "sourceHash": "11fb682",
+    "sameAsSourceJustification": "'AI' is the catalog's settled Hungarian word for the feature (terms.json cloud-ai/ai-feature: Felhő-AI, AI-funkciók; settings.ai section heading), so the row label matches English."
+  },
+  "settings.managed.summary.off": "Ki",
+  "@settings.managed.summary.off": {
+    "sourceHash": "ca7981b"
+  },
+  "settings.managed.summary.upTo": "Legfeljebb {ceiling}",
+  "@settings.managed.summary.upTo": {
+    "sourceHash": "8989a97"
+  },
+  "settings.managed.summary.manualChecksOnly": "Csak kézi ellenőrzéssel",
+  "@settings.managed.summary.manualChecksOnly": {
+    "sourceHash": "1969d26"
+  },
+  "settings.managed.summary.upToManualChecksOnly": "Legfeljebb {ceiling}, csak kézi ellenőrzéssel",
+  "@settings.managed.summary.upToManualChecksOnly": {
+    "sourceHash": "c769ffd"
+  },
+  "settings.managed.summary.onDeviceOnly": "Csak helyi",
+  "@settings.managed.summary.onDeviceOnly": {
+    "sourceHash": "d4f8552"
+  },
+  "settings.managed.summary.cloudHostsOnly": "Felhő-AI csak ezeken át: {hosts}",
+  "@settings.managed.summary.cloudHostsOnly": {
+    "sourceHash": "00f1237"
+  },
   "settings.sidebar.searchPlaceholder": "Beállítások keresése…",
   "@settings.sidebar.searchPlaceholder": {
     "sourceHash": "57054c5"

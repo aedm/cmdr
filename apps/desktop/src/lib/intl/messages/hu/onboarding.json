@@ -387,6 +387,14 @@
   "@onboarding.stepBeta.crashReportsNote": {
     "sourceHash": "9be0be1"
   },
+  "onboarding.stepBeta.analyticsManaged": "A szervezeted kikapcsolta a használati statisztikát.",
+  "@onboarding.stepBeta.analyticsManaged": {
+    "sourceHash": "49484ee"
+  },
+  "onboarding.stepBeta.crashReportsNoteAlone": "Az összeomlás-jelentések be vannak kapcsolva: ha a Cmdr összeomlik, elküldi az app verzióját, a macOS-verziódat és azt a pontot a kódban, ahol megállt.\nA fájljaidat soha.\nKikapcsolhatod őket a Beállításokban, amikor csak akarod.",
+  "@onboarding.stepBeta.crashReportsNoteAlone": {
+    "sourceHash": "5084dd0"
+  },
   "onboarding.stepBeta.emailTitle": "Maradjunk kapcsolatban (választható)",
   "@onboarding.stepBeta.emailTitle": {
     "sourceHash": "cf691fa"

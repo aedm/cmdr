@@ -2091,7 +2091,10 @@
     "accept": ["megoszt"],
     "forms": "network share → hálózati megosztás; SMB/Network shares → SMB-/hálózati megosztások; a runtime share name → ezt a megosztást: „{share}”, or Nincs „{share}” nevű megosztás",
     "confidence": "high",
-    "sources": "ms (network share → hálózati megosztás); macOS NetAuthAgent (EINFO_NO_SHARE)"
+    "sources": "ms (network share → hálózati megosztás); macOS NetAuthAgent (EINFO_NO_SHARE)",
+    "exceptions": {
+      "errorReporter.dialog.managedOff": "share it yourself is the verb, not an SMB share: magad oszthatod meg (the preverb splits off, so megoszt doesn't match)."
+    }
   },
   "new-file": {
     "chosen": "Új fájl",
@@ -2148,6 +2151,13 @@
     "forms": "user-facing → értesítés; toast as an internal or settings label → buborék",
     "confidence": "high",
     "sources": "descriptive; catalog (ui.toast.dismissAria = Értesítés elvetése)"
+  },
+  "on-device": {
+    "chosen": "helyi",
+    "accept": ["eszközön", "Macen"],
+    "forms": "on-device AI → helyi AI (accusative a helyi AI-t); On-device only (a card value) → Csak helyi; free, on-device → ingyenes, az eszközön",
+    "confidence": "high",
+    "sources": "catalog (helyi AI / helyi modell in 8 keys across ai, askCmdr, onboarding, settings; askCmdr.cost.free); concept local → helyi (ms, Total Commander Csak helyi fájlok); the hu pile has no Apple or ms on-device entry"
   },
   "onboarding": {
     "chosen": "bevezető",
