@@ -82,7 +82,9 @@ pub enum UpdatePolicy {
     },
 }
 
-/// Why the policy refuses an update to a given version.
+/// Why the policy refuses an update to a given version. Only the macOS updater asks (elsewhere
+/// the Tauri plugin updates and the policy source is macOS-only), so it exists only there.
+#[cfg(any(target_os = "macos", test))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UpdateRefusal {
     /// `DisableUpdates`: no version at all.
@@ -131,6 +133,7 @@ impl ManagedPolicy {
     /// The one version decision: may this Mac download or install `version`? `DisableUpdates`
     /// refuses every version; a ceiling refuses one past it, compared on the release core. The
     /// updater asks it when a check finds a release, and again before the download and the install.
+    #[cfg(any(target_os = "macos", test))]
     pub fn update_to(&self, version: &semver::Version) -> Result<(), UpdateRefusal> {
         match self.updates() {
             UpdatePolicy::Disabled => Err(UpdateRefusal::Disabled),
