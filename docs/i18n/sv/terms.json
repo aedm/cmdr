@@ -764,8 +764,8 @@
     "accept": ["avstängd", "avstängt", "avstängda", "stänger av", "stängs av", "inaktiv", "stängt av", "stänga av"],
     "chosen": "stäng av",
     "confidence": "high",
-    "forms": "state → är avstängd (agreeing with the noun); off toggle label Av; never är av",
-    "sources": "macOS (Stäng av iCloud), MS (disable → stänga av)"
+    "forms": "state → är avstängd (agreeing with the noun); off toggle label and bare status value beside a row label Av (macOS Settings); never är av",
+    "sources": "macOS (Stäng av iCloud; System Settings status Off → Av in Bluetooth, Network, Software Update loctables, macOS 27, 2026-10-05), MS (disable → stänga av)"
   },
   "disconnect": {
     "accept": ["kopplar från", "kopplades från", "frånkoppl", "kopplas från"],
