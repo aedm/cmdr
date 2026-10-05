@@ -92,6 +92,7 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 | POST    | `/error-report`            | IP rate-limit | Multipart upload (zip + meta) → R2, Discord notify. Also gated by the global intake budget         |
 | POST    | `/error-report/:id/amend`  | amend key     | Add a note or reply-to address to a report already in R2 (`.amend.json` sidecar + email)           |
 | POST    | `/beta-signup`             | IP rate-limit | Subscribe a contact email to the Listmonk beta list (NO install id)                                |
+| POST    | `/newsletter-signup`       | IP rate-limit | getcmdr.com's newsletter form → the Listmonk newsletter list (CORS: getcmdr.com)                   |
 | POST    | `/feedback`                | IP rate-limit | Ingest in-app feedback to D1, Discord notify                                                       |
 | GET     | `/update-check/:version`   | none          | Log update check to D1 (deduped), 302 → latest.json                                                |
 | GET     | `/likes/:slug`             | none          | Blog-post like count + whether this caller already liked it                                        |
@@ -131,14 +132,14 @@ Decisions.
 | `CRASH_NOTIFICATION_EMAIL`         | `david@getcmdr.com`              | Recipient email for crash alerts   |
 | `FEEDBACK_NOTIFICATION_EMAIL`      | unset (falls back)               | Optional feedback digest recipient |
 | `DISCORD_WEBHOOK_URL`              | Same webhook URL                 | Discord webhook for error reports  |
-| `DISCORD_BETA_SIGNUP_WEBHOOK_URL`  | Optional (falls back)            | Optional `#beta-signups` webhook   |
+| `DISCORD_BETA_SIGNUP_WEBHOOK_URL`  | Optional (falls back)            | Optional signups webhook (both)    |
 | `R2_ACCOUNT_ID`                    | Same account ID                  | For minting presigned R2 URLs      |
 | `R2_ACCESS_KEY_ID`                 | Same access key                  | R2 S3-compat access key (read OK)  |
 | `R2_SECRET_ACCESS_KEY`             | Same secret                      | Paired secret for R2 access key    |
 | `LISTMONK_API_URL`                 | `https://mail.getcmdr.com`       | Same base URL                      |
-| `LISTMONK_API_USER`                | Listmonk API user                | Same (least-privilege at deploy)   |
-| `LISTMONK_API_TOKEN`               | Listmonk API token               | Same (least-privilege at deploy)   |
-| `LISTMONK_BETA_LIST_ID`            | Beta-list numeric id             | Same id                            |
+| `LISTMONK_API_USER`                | Listmonk API user                | Funnel only (signups need none)    |
+| `LISTMONK_API_TOKEN`               | Listmonk API token               | Funnel only (signups need none)    |
+| `LISTMONK_*_LIST_ID` / `_UUID`     | Beta + newsletter list ids/UUIDs | Same ([vars], not secrets)         |
 | `IP_HASH_PEPPER`                   | Any random string                | Makes every stored IP hash one-way |
 | `HEALTHCHECKS_PING_URL`            | unset (skips the ping)           | healthchecks.io cron ping URL      |
 | `POSTHOG_PROJECT_KEY`              | unset (skips the forward)        | PostHog `phc_` key for the relay   |
@@ -156,7 +157,7 @@ verifies against whichever public key matches its build mode. Full rationale and
 | `ERROR_REPORT_META`          | KV namespace | Eviction bookkeeping + intake admission counters (key list below)                         |
 | `LINK_CODES`                 | KV namespace | One key (`codes`) holds the whole `?r=<code>` → UTM map (see the note below)              |
 | `HEARTBEAT_LIMITER`          | Rate limit   | Gates `POST /heartbeat` at 12 req/min/IP (`[[ratelimits]]`, type `RateLimit`)             |
-| `BETA_SIGNUP_LIMITER`        | Rate limit   | Gates `POST /beta-signup` at 5 req/min/IP (signups are rare; tighter than heartbeat)      |
+| `SIGNUP_LIMITER`             | Rate limit   | Gates both signup routes at 5 req/min/IP, one shared window (signups are rare)            |
 | `FEEDBACK_LIMITER`           | Rate limit   | Gates `POST /feedback` at 5 req/min/IP (real feedback is rare; spam loops aren't)         |
 | `ERROR_REPORT_LIMITER`       | Rate limit   | Gates `POST /error-report` at 3 req/min/IP (tightest: each request stores up to 10 MB)    |
 | `ERROR_REPORT_AMEND_LIMITER` | Rate limit   | Gates `POST /error-report/:id/amend` at 10 req/min/IP (a note, not a bundle)              |
@@ -201,8 +202,8 @@ secret (anyone holding it can post to that channel), so it lives only as a wrang
 
 **No email address ever goes to Discord** (the privacy policy and `/trust` promise it). The notification types in
 `discord.ts` have no email field: feedback sends only `hasReplyTo` (the address stays in D1 and the reports-repo
-comment), and a beta signup sends the time plus the Listmonk link. Pinned by `feedback.test.ts` and
-`beta-signup.test.ts` on the outbound webhook body. The error-report embed carries the user's free-text note and a
+comment), and a signup sends the list, the time, and the Listmonk link. Pinned by `feedback.test.ts` and
+`listmonk-signup.test.ts` on the outbound webhook body. The error-report embed carries the user's free-text note and a
 24-hour bundle link, and the bundle's manifest can hold a reply-to, so that link is personal data while it lives.
 
 **To create or rotate the webhook:**
@@ -223,10 +224,10 @@ comment), and a beta signup sends the time plus the Listmonk link. Pinned by `fe
 Rate limit: 30 messages/min per webhook. The Worker should retry once on `Retry-After`, then drop with a `console.error`
 We don't run our own queue infra for an internal channel.
 
-**Optional dedicated webhooks (`#beta-signups`, `#feedback`):** `POST /beta-signup` posts to
+**Optional dedicated webhooks (`#beta-signups`, `#feedback`):** both signup routes post to
 `DISCORD_BETA_SIGNUP_WEBHOOK_URL` and `POST /feedback` to `DISCORD_FEEDBACK_WEBHOOK_URL`. Both fall back to
 `DISCORD_WEBHOOK_URL` when unset, so the feature works before the dedicated channel exists (pings just land in
-`#error-reports`). To split beta-signup pings into their own channel:
+`#error-reports`). To split signup pings into their own channel:
 
 1. Create the channel `#beta-signups` in the Cmdr Discord server.
 2. Right-click `#beta-signups` → **Edit Channel** → **Integrations** → **Webhooks** → **New Webhook**. Name it "Cmdr

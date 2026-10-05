@@ -1,14 +1,14 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import {
-  buildBetaSignupPayload,
+  buildListSignupPayload,
   buildCronFailurePayload,
   buildErrorReportPayload,
   buildEvictionPayload,
   buildFeedbackPayload,
-  postBetaSignupNotification,
+  postListSignupNotification,
   postErrorReportNotification,
   postEvictionNotification,
-  type BetaSignupNotification,
+  type ListSignupNotification,
   type ErrorReportNotification,
   type FeedbackNotification,
 } from './discord'
@@ -149,15 +149,15 @@ describe('buildFeedbackPayload', () => {
   })
 })
 
-describe('buildBetaSignupPayload', () => {
-  const baseSignup: BetaSignupNotification = {
+describe('buildListSignupPayload', () => {
+  const baseSignup: ListSignupNotification = {
+    list: 'beta',
     signupUnixSeconds: 1_745_000_000,
     listAdminUrl: 'https://mail.getcmdr.com/admin/subscribers?lists=4',
-    status: 'new',
   }
 
-  it('produces a stable embed shape for a fresh signup', () => {
-    expect(buildBetaSignupPayload(baseSignup)).toMatchInlineSnapshot(`
+  it('produces a stable embed shape for a beta signup', () => {
+    expect(buildListSignupPayload(baseSignup)).toMatchInlineSnapshot(`
       {
         "embeds": [
           {
@@ -181,17 +181,16 @@ describe('buildBetaSignupPayload', () => {
     `)
   })
 
-  it('describes the existing-subscriber path honestly', () => {
-    const payload = buildBetaSignupPayload({ ...baseSignup, status: 'added-existing' }) as {
-      embeds: { description: string }[]
+  it('names the newsletter list for a newsletter signup', () => {
+    const payload = buildListSignupPayload({ ...baseSignup, list: 'newsletter' }) as {
+      embeds: { title: string; fields: { value: string }[] }[]
     }
-    expect(payload.embeds[0].description).toBe(
-      'Existing subscriber, added to the beta list — Listmonk sent them the confirmation email.',
-    )
+    expect(payload.embeds[0].title).toBe('New newsletter signup')
+    expect(payload.embeds[0].fields[1].value).toContain('[Newsletter subscribers]')
   })
 })
 
-describe('postBetaSignupNotification', () => {
+describe('postListSignupNotification', () => {
   let originalFetch: typeof fetch
   beforeEach(() => {
     originalFetch = globalThis.fetch
@@ -205,10 +204,10 @@ describe('postBetaSignupNotification', () => {
     const mock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })))
     globalThis.fetch = mock
 
-    await postBetaSignupNotification('https://discord/webhook', {
+    await postListSignupNotification('https://discord/webhook', {
+      list: 'beta',
       signupUnixSeconds: 1_745_000_000,
       listAdminUrl: 'https://mail.getcmdr.com/admin/subscribers?lists=4',
-      status: 'new',
     })
 
     expect(mock).toHaveBeenCalledOnce()

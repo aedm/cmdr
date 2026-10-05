@@ -80,11 +80,11 @@ namespace_id = "1001"
 limit = 12
 period = 60
 
-# Rate limit for POST /beta-signup, keyed by the caller IP (transient, never stored). Signups are
-# rare, so this is tighter than the heartbeat: 5/min/IP blocks a signup/confirmation-mail spam loop
+# Rate limit shared by POST /beta-signup and /newsletter-signup, keyed by the caller IP
+# (transient, never stored). Signups are rare, so this is tighter than the heartbeat: 5/min/IP blocks a signup/confirmation-mail spam loop
 # without touching real users. `period` must be 10 or 60. `namespace_id` is a per-account integer id.
 [[ratelimits]]
-name = "BETA_SIGNUP_LIMITER"
+name = "SIGNUP_LIMITER"
 namespace_id = "1002"
 
 [ratelimits.simple]
@@ -209,16 +209,17 @@ SUPPORT_EMAIL = "david@getcmdr.com"
 # which a later `wrangler deploy` would silently clobber back to this value.
 PADDLE_ENVIRONMENT = "live"
 
-# Listmonk beta-tester signup (POST /beta-signup). Non-secret config; only the API token is a
-# secret (set via `wrangler secret put LISTMONK_API_TOKEN`). The list id MUST be a TOML integer:
-# the route requires `typeof listId === 'number'`, so a string secret would disable signups.
+# Listmonk. The signup routes (POST /beta-signup, /newsletter-signup) subscribe by list UUID through
+# Listmonk's public endpoint, which needs no credentials; the UUIDs are public anyway (Listmonk's own
+# subscription form shows them). The API user + token (`wrangler secret put LISTMONK_API_TOKEN`) are
+# only for GET /admin/funnel. The list ids MUST be TOML integers: the funnel checks
+# `typeof === 'number'`, so a string would drop that list from its count.
 LISTMONK_API_URL = "https://mail.getcmdr.com"
 LISTMONK_API_USER = "agent"
 LISTMONK_BETA_LIST_ID = 4
-# Newsletter list id, read by GET /admin/funnel for its per-day signups column (it sums this list
-# plus the beta list). Same TOML-integer requirement as the beta list id (the funnel checks
-# `typeof === 'number'`, so a string would drop this list from the count).
+LISTMONK_BETA_LIST_UUID = "8ad332ca-ef4d-4663-b38f-933ec7e857c9"
 LISTMONK_NEWSLETTER_LIST_ID = 3
+LISTMONK_NEWSLETTER_LIST_UUID = "160d5cda-88f3-4f87-a8b3-82677f0b9157"
 
 # The PRIVATE GitHub repo that in-app error reports and feedback are filed into as issues, so triage
 # happens on one board instead of across Discord and an inbox. `owner/name`.
