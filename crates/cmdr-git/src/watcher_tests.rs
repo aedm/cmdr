@@ -9,8 +9,8 @@
 //! rather than a real FSEvents stream.
 //!
 //! Two cells pay for a real watcher, because what they prove is the operating
-//! system's rather than the registry's: the debounce is app-side
-//! (`file_system::git::wiring_tests::a_debounced_burst_reports_once_and_the_watch_survives_for_the_next_one`),
+//! system's rather than the registry's: delivery across git's renames is app-side
+//! (`file_system::git::wiring_tests::a_burst_reports_its_end_state_and_the_watch_survives_for_the_next_one`),
 //! and what a DELETED repository does to its own watch is
 //! [`a_deleted_repository_stops_reporting_and_still_gives_its_hold_back`] here.
 
@@ -187,53 +187,7 @@ fn the_same_state_after_the_window_is_news_again() {
     cleanup(&dir);
 }
 
-/// ❗ **Every watch target is a DIRECTORY**, so none of them can die the way a
-/// watch on `HEAD` or `index` does.
-///
-/// git never writes those in place: it writes `HEAD.lock` and renames it over the
-/// top. inotify watches an inode, so a watch on the file itself goes dead at the
-/// first rename and every later write in the burst is lost with no error. macOS
-/// FSEvents is path-based and tolerated it, so this only ever showed up on Linux
-/// CI, where the debounce cell timed out with nothing after the first commit
-/// (2026-09-06). A directory's inode survives the rename dance.
-#[test]
-fn every_watch_target_is_a_directory_no_rename_can_kill() {
-    let (dir, root, _fixture) = a_repo("watch_targets");
-    let git_dir = root.join(".git");
-
-    let targets = crate::watcher::watch_targets(&git_dir);
-    for (path, _) in &targets {
-        let name = path.file_name().expect("a target always names something");
-        assert!(
-            !crate::watcher::STATE_FILES.iter().any(|state| name == *state),
-            "{} is a file git renames over, ❌ never a watch target: {targets:?}",
-            path.display()
-        );
-        assert!(
-            path.is_dir() || !path.exists(),
-            "a target is a directory or absent, ❌ never a file: {}",
-            path.display()
-        );
-    }
-
-    let watched: Vec<PathBuf> = targets.iter().map(|(path, _)| path.clone()).collect();
-    for expected in [
-        &git_dir,
-        &git_dir.join("refs"),
-        &git_dir.join("logs"),
-        &git_dir.join("worktrees"),
-    ] {
-        assert!(
-            watched.contains(expected),
-            "{} is watched: {watched:?}",
-            expected.display()
-        );
-    }
-
-    cleanup(&dir);
-}
-
-/// The allowlist that pays for those directory watches: everything a `RepoInfo`,
+/// The allowlist that pays for the recursive gitdir watch: everything a `RepoInfo`,
 /// a category listing, or the status column reads counts, and the churn a commit
 /// makes beside it does not.
 #[test]
@@ -260,6 +214,10 @@ fn only_the_paths_a_snapshot_reads_are_worth_a_recompute() {
         "objects/ab/cdef",
         "hooks/pre-commit",
         "config",
+        // The per-ref reflogs: the gitdir watch is recursive, so these arrive too,
+        // and only `logs/HEAD` is read by anything.
+        "logs/refs/heads/main",
+        "modules/sub/HEAD",
     ] {
         assert!(!matters(path), "{path} is noise the directory watch delivers");
     }
@@ -283,7 +241,7 @@ fn only_the_paths_a_snapshot_reads_are_worth_a_recompute() {
 /// we watch. With only the path allowlist in front of it, the recompute became its
 /// own trigger: one report per debounce window, forever, each carrying the
 /// identical snapshot. macOS FSEvents reports no reads at all, so it only ever ran
-/// away on Linux (`a_debounced_burst_reports_once_and_the_watch_survives_for_the_next_one`
+/// away on Linux (`a_burst_reports_its_end_state_and_the_watch_survives_for_the_next_one`
 /// timed out there with 48 identical reports in 10 s, CI, 2026-09-06).
 #[test]
 fn the_watchers_own_reads_are_not_changes() {

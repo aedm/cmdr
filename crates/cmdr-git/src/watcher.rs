@@ -23,8 +23,8 @@ use std::time::{Duration, Instant};
 use cmdr_fs::ignore_poison::IgnorePoison;
 use cmdr_fs::volume::friendly_error::git::{FriendlyGitError, FriendlyGitErrorKind};
 use notify::event::{AccessKind, AccessMode};
-use notify::{EventKind, RecursiveMode};
-use notify_debouncer_full::{DebounceEventResult, new_debouncer};
+use notify::{EventKind, RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::{DebounceEventResult, NoCache, new_debouncer_opt};
 
 use crate::repo::{RepoCache, RepoHandle, RepoInfo, repo_info};
 use crate::state_sink::GitStateSink;
@@ -54,9 +54,9 @@ type LastReport = Arc<Mutex<Option<(Instant, RepoInfo)>>>;
 /// What a subscription arms so a repository's `.git/*` writes come back as one
 /// debounced report.
 ///
-/// A trait because arming a real FSEvents stream over ~10 paths is by far the
-/// most expensive thing a subscribe does, and every cell that asserts only the
-/// registry's bookkeeping has no use for it. Production always gets
+/// A trait because arming a real FSEvents stream is by far the most expensive
+/// thing a subscribe does, and every cell that asserts only the registry's
+/// bookkeeping has no use for it. Production always gets
 /// [`NotifyWatcherBackend`]; a test asks [`GitPortal::with_scripted_watcher`]
 /// for one it drives by hand.
 ///
@@ -80,8 +80,23 @@ pub(crate) trait GitWatcherBackend: Send + Sync {
     }
 }
 
-/// The real backend: one `notify` debouncer per repository, watching the
-/// `.git/*` paths a state change can touch.
+/// The real backend: one `notify` debouncer per repository, with ONE recursive
+/// watch on the gitdir.
+///
+/// ❗ **One path, ❌ never one per state directory.** On macOS `notify` stops and
+/// restarts the whole FSEvents stream for every `watch` call (joining its run-loop
+/// thread each time), so every extra path is another restart before the
+/// chip's handshake can start. FSEvents watches a path's whole subtree in the
+/// kernel either way, so the recursive gitdir costs nothing a narrower set saved.
+///
+/// ❗ **A directory, ❌ never `HEAD` or `index`.** git renames `HEAD.lock` over
+/// `HEAD`, and inotify watches an inode, so a watch on the file goes dead at the
+/// first rename (Linux CI, 2026-09-06). Directory watches survive it.
+///
+/// `NoCache`, like the listing watcher: the default `FileIdMap` walks and stats
+/// the whole watched tree at arm time (here, every object), to pair renames we
+/// never look at. [`is_repo_state_change`] drops `objects/`, `*.lock`, and the
+/// rest of the churn before anything opens the repository.
 pub(crate) struct NotifyWatcherBackend;
 
 impl GitWatcherBackend for NotifyWatcherBackend {
@@ -89,7 +104,7 @@ impl GitWatcherBackend for NotifyWatcherBackend {
         let git_dir = git_dir_path(repo_root);
         let filter_dir = git_dir.clone();
         let logged_root = repo_root.to_path_buf();
-        let mut debouncer = new_debouncer(DEBOUNCE, None, move |result: DebounceEventResult| match result {
+        let handler = move |result: DebounceEventResult| match result {
             Ok(events) => {
                 let touched_state = events.iter().any(|event| is_repo_state_change(&filter_dir, event));
                 trace_delivery(&logged_root, Ok(&events), touched_state);
@@ -113,18 +128,18 @@ impl GitWatcherBackend for NotifyWatcherBackend {
                 trace_delivery(&logged_root, Err(&errors), true);
                 on_change();
             }
-        })
+        };
+        let mut debouncer = new_debouncer_opt::<_, RecommendedWatcher, NoCache>(
+            DEBOUNCE,
+            None,
+            handler,
+            NoCache,
+            notify::Config::default(),
+        )
         .map_err(|e| FriendlyGitError::with_source(FriendlyGitErrorKind::CorruptRepo, e.to_string(), e))?;
-
-        for (path, mode) in watch_targets(&git_dir) {
-            // A missing target is ordinary (`logs/` with reflogs off, `worktrees/`
-            // until the first `git worktree add`). The non-recursive watch on the
-            // gitdir sees it appear, and the report that drives re-reads the
-            // repository rather than the directory that was missing.
-            if path.exists() {
-                let _ = debouncer.watch(&path, mode);
-            }
-        }
+        // A failed watch costs live updates, ❌ not the chip: the handshake still
+        // reads the repository, so the subscribe goes ahead without one.
+        let _ = debouncer.watch(&git_dir, RecursiveMode::Recursive);
         Ok(Box::new(debouncer))
     }
 }
@@ -449,51 +464,14 @@ fn git_dir_path(repo_root: &Path) -> PathBuf {
     dot_git
 }
 
-/// The direct children of the gitdir whose contents decide a [`RepoInfo`], as
-/// file NAMES rather than paths: the watch is on the directory, and this is what
-/// makes an event in it worth a recompute.
-pub(crate) const STATE_FILES: [&str; 6] = ["HEAD", "ORIG_HEAD", "MERGE_HEAD", "FETCH_HEAD", "packed-refs", "index"];
+/// The direct children of the gitdir whose contents decide a [`RepoInfo`].
+const STATE_FILES: [&str; 6] = ["HEAD", "ORIG_HEAD", "MERGE_HEAD", "FETCH_HEAD", "packed-refs", "index"];
 
 /// The directories under the gitdir whose whole subtree matters, as first path
-/// components: refs (every branch, tag, and remote), the reflog `logs/HEAD` the
-/// categories read, and each linked worktree's own `HEAD`.
-const STATE_DIRS: [&str; 3] = ["refs", "logs", "worktrees"];
-
-/// What the backend arms, as `(path, mode)` pairs.
-///
-/// ❗ **Directories, ❌ never the state FILES themselves.** git never writes
-/// `HEAD` or `index` in place: it writes `HEAD.lock` and renames it over the top.
-/// inotify watches an INODE, so a watch on the file itself goes dead at the first
-/// rename and every later write in the same burst is lost silently. A watch on
-/// the directory survives, because the directory's inode is what gets modified.
-/// macOS FSEvents is path-based and tolerated the file watches, which is why this
-/// only ever failed on Linux (`a_debounced_burst_reports_once_and_the_watch_survives_for_the_next_one`
-/// timed out there while passing here, 2026-09-06).
-///
-/// The cost of watching directories is events for things no snapshot reads
-/// (`COMMIT_EDITMSG`, `*.lock`, `objects/` churn) and, on Linux, an event for
-/// every file the recompute itself OPENS. [`is_repo_state_change`] drops both
-/// before anything opens the repository.
-pub(crate) fn watch_targets(git_dir: &Path) -> Vec<(PathBuf, RecursiveMode)> {
-    let mut targets = vec![
-        // The gitdir itself, non-recursively: every file in `STATE_FILES` is a
-        // direct child, so this one watch covers all of them plus their creation
-        // (no `MERGE_HEAD` exists until a merge starts).
-        (git_dir.to_path_buf(), RecursiveMode::NonRecursive),
-        // Refs live in a tree that grows (`refs/heads/feature/x`), so this one
-        // has to reach down.
-        (git_dir.join("refs"), RecursiveMode::Recursive),
-        // `logs/HEAD` is a direct child of `logs/`; the per-ref reflogs below it
-        // say nothing a `RepoInfo` or a category listing reads.
-        (git_dir.join("logs"), RecursiveMode::NonRecursive),
-    ];
-    // Each linked worktree keeps its own `HEAD` at `worktrees/<name>/HEAD`, and a
-    // `git worktree add` creates the directory. Recursive covers both the HEADs
-    // and worktrees that appear after this call, which the old per-worktree
-    // enumeration could not.
-    targets.push((git_dir.join("worktrees"), RecursiveMode::Recursive));
-    targets
-}
+/// components: refs (every branch, tag, and remote) and each linked worktree's
+/// own `HEAD`. ❗ Not `logs/`: only `logs/HEAD` is read, and the per-ref reflogs
+/// beside it change with every commit.
+const STATE_DIRS: [&str; 2] = ["refs", "worktrees"];
 
 /// Whether a delivered event is one the repository can have CHANGED behind.
 ///
@@ -513,7 +491,7 @@ pub(crate) fn is_repo_state_change(git_dir: &Path, event: &notify::Event) -> boo
 /// opens every one of them. Pass those on and each report becomes the trigger for
 /// the next, one per [`DEBOUNCE`] window, until the last subscriber leaves.
 /// macOS FSEvents reports no reads at all, so this only ever ran away on Linux
-/// (`a_debounced_burst_reports_once_and_the_watch_survives_for_the_next_one` timed
+/// (`a_burst_reports_its_end_state_and_the_watch_survives_for_the_next_one` timed
 /// out there with 48 identical reports in 10 s, CI, 2026-09-06).
 ///
 /// ❗ A write is never dropped here: it reaches us as `Modify`, `Create`,
@@ -529,9 +507,9 @@ fn is_a_read(kind: &EventKind) -> bool {
 
 /// Whether an event on `path` is worth recomputing the repository for.
 ///
-/// The allowlist half of the directory watches above: a `RepoInfo`, the six
-/// category listings, and the status column read [`STATE_FILES`] and
-/// [`STATE_DIRS`] and nothing else, so `COMMIT_EDITMSG`, `MERGE_MSG`, and the
+/// The allowlist half of the recursive gitdir watch: a `RepoInfo`, the six
+/// category listings, and the status column read [`STATE_FILES`], `logs/HEAD`,
+/// and [`STATE_DIRS`] and nothing else, so `COMMIT_EDITMSG`, `MERGE_MSG`, and the
 /// `objects/` writes a commit makes never reach the sink.
 ///
 /// ❗ `*.lock` is dropped on purpose. git's write dance is create-lock,
@@ -549,10 +527,13 @@ pub(crate) fn is_repo_state_path(git_dir: &Path, path: &Path) -> bool {
     let Some(std::path::Component::Normal(first)) = components.next() else {
         return false;
     };
-    if components.next().is_none() {
+    match components.next() {
         // A direct child of the gitdir: one of the state files, or one of the
         // state directories being created.
-        return STATE_FILES.iter().any(|name| first == *name) || STATE_DIRS.iter().any(|name| first == *name);
+        None => STATE_FILES.iter().any(|name| first == *name) || STATE_DIRS.iter().any(|name| first == *name),
+        Some(second) => {
+            STATE_DIRS.iter().any(|name| first == *name)
+                || (first == "logs" && second.as_os_str() == "HEAD" && components.next().is_none())
+        }
     }
-    STATE_DIRS.iter().any(|name| first == *name)
 }

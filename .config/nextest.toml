@@ -348,8 +348,8 @@ filter = '''
 slow-timeout = { period = "20s", terminate-after = 1 }
 
 [[profile.default.overrides]]
-# The git portal's ONE real-`.git/*` watcher cell. It arms a real `notify` debouncer over a
-# repository's four watched `.git` directories, writes two bursts of five commits plus a
+# The git portal's ONE real-`.git/*` watcher cell. It arms a real `notify` debouncer on a
+# repository's gitdir (one recursive watch), writes two bursts of five commits plus a
 # branch switch, and blocks on each debounced delivery — so it is squarely the
 # delivery-blocking class this group exists for. Measured on an M1 Max: 1.8 s idle with both
 # bursts (2026-09-06), against the global 8 s cap. 20 s puts the cap above its own two 10 s
@@ -361,7 +361,7 @@ slow-timeout = { period = "20s", terminate-after = 1 }
 # The second burst lives inside THIS cell for that reason; it proves the watch survives git's
 # rename over `HEAD`, which is what broke on Linux and what no scripted backend can stand in
 # for. `crates/cmdr-git/DETAILS.md` § "The watcher splits into bookkeeping and a backend".
-filter = 'test(a_debounced_burst_reports_once_and_the_watch_survives_for_the_next_one)'
+filter = 'test(a_burst_reports_its_end_state_and_the_watch_survives_for_the_next_one)'
 test-group = 'real-notify'
 slow-timeout = { period = "20s", terminate-after = 1 }
 

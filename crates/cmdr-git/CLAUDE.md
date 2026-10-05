@@ -38,13 +38,11 @@ chip, and the read-only `Volume` that turns `.git/branches/`, `tags/`, `commits/
 - **Anything a CONSUMER's test needs takes `any(test, feature = "testing")`, ❌ never `cfg(test)`**, which is off when
   the app compiles this crate as a dependency. `cfg(test)` alone is for doors only this crate's own cells open
   (`snapshot_dates::clear_cache`, `log::cancel_flag`).
-- **The `.git` watcher watches DIRECTORIES, ❌ never `HEAD` or `index`, and drops READ events.** git's lockfile rename
-  kills an inode-based inotify watch; and inotify reports `IN_OPEN`, so passing a read on makes each recompute trigger
-  the next, forever. Both bite on Linux only. `is_repo_state_change` gates on kind, then path. `DETAILS.md` § "Watcher
-  path set".
-- **A subscription cell builds `GitPortal::with_scripted_watcher`, ❌ never `new`.** Arming a real FSEvents stream over
-  a repo's ~10 `.git/*` paths is most of what a subscribe costs; `fire_watcher` stands in for the OS. Exactly one cell
-  in the repo pays for the real backend, and it's app-side (`wiring_tests`, for the debounce).
+- **The `.git` watcher is ONE recursive gitdir watch, ❌ never per path or on `HEAD`/`index`, and drops READs.** Each
+  extra path restarts the macOS FSEvents stream, git's lockfile rename kills an inotify FILE watch, and a passed-on
+  `IN_OPEN` makes each recompute trigger the next. `DETAILS.md` § "Watcher path set".
+- **A subscription cell builds `GitPortal::with_scripted_watcher`, ❌ never `new`.** Arming a real FSEvents stream on a
+  repo's gitdir is most of what a subscribe costs; `fire_watcher` stands in for the OS.
 - **`missing_docs` is denied.** Every `pub` item says what a caller must know, and specta copies these into
   `bindings.ts`.
 
