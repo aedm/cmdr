@@ -2093,7 +2093,7 @@
     },
     {
       "name": "lzma-rust2",
-      "version": "0.18.1",
+      "version": "0.21.0",
       "license": "Apache-2.0",
       "url": "https://github.com/hasenbanck/lzma-rust2/"
     },
@@ -3251,7 +3251,7 @@
     },
     {
       "name": "sevenz-rust2",
-      "version": "0.21.4",
+      "version": "0.23.0",
       "license": "Apache-2.0",
       "url": "https://github.com/hasenbanck/sevenz-rust"
     },
