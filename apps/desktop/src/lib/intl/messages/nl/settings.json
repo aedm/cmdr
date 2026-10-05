@@ -2078,6 +2078,60 @@
   "@settings.control.backToPresetsAriaLabel": {
     "sourceHash": "1579f3f"
   },
+  "settings.managed.rowNote": "Je organisatie beheert deze instelling.",
+  "@settings.managed.rowNote": {
+    "sourceHash": "891206b"
+  },
+  "settings.managed.sectionNote": "Je organisatie beheert een deel van deze instellingen.",
+  "@settings.managed.sectionNote": {
+    "sourceHash": "ab52c49"
+  },
+  "settings.managed.summary.title": "Beheerd door je organisatie",
+  "@settings.managed.summary.title": {
+    "sourceHash": "5450801"
+  },
+  "settings.managed.summary.usageStats": "Gebruiksstatistieken",
+  "@settings.managed.summary.usageStats": {
+    "sourceHash": "4e0483c"
+  },
+  "settings.managed.summary.reports": "Crash- en foutrapporten",
+  "@settings.managed.summary.reports": {
+    "sourceHash": "ef409c3"
+  },
+  "settings.managed.summary.updates": "Updates",
+  "@settings.managed.summary.updates": {
+    "sourceHash": "22e2bad",
+    "sameAsSourceJustification": "'Updates' is the Dutch loanword the catalog already uses for this section (settings.updates.card.updates, settings.advanced.card.updates -> Updates; terms.json update: noun update)."
+  },
+  "settings.managed.summary.ai": "AI",
+  "@settings.managed.summary.ai": {
+    "sourceHash": "11fb682",
+    "sameAsSourceJustification": "'AI' is the standard Dutch abbreviation the whole catalog uses (settings.ai.* section, ai.translateError.off.title -> AI is uitgeschakeld)."
+  },
+  "settings.managed.summary.off": "Uit",
+  "@settings.managed.summary.off": {
+    "sourceHash": "ca7981b"
+  },
+  "settings.managed.summary.upTo": "Tot en met {ceiling}",
+  "@settings.managed.summary.upTo": {
+    "sourceHash": "8989a97"
+  },
+  "settings.managed.summary.manualChecksOnly": "Alleen handmatig gecontroleerd",
+  "@settings.managed.summary.manualChecksOnly": {
+    "sourceHash": "1969d26"
+  },
+  "settings.managed.summary.upToManualChecksOnly": "Tot en met {ceiling}, alleen handmatig gecontroleerd",
+  "@settings.managed.summary.upToManualChecksOnly": {
+    "sourceHash": "c769ffd"
+  },
+  "settings.managed.summary.onDeviceOnly": "Alleen lokaal",
+  "@settings.managed.summary.onDeviceOnly": {
+    "sourceHash": "d4f8552"
+  },
+  "settings.managed.summary.cloudHostsOnly": "Cloud-AI alleen via {hosts}",
+  "@settings.managed.summary.cloudHostsOnly": {
+    "sourceHash": "00f1237"
+  },
   "settings.sidebar.searchPlaceholder": "Zoek in instellingen…",
   "@settings.sidebar.searchPlaceholder": {
     "sourceHash": "57054c5"

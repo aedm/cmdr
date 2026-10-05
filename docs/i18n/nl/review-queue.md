@@ -143,6 +143,8 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
   safer `een deel van de tekst`; `De fotozoekfunctie werkt net zo` vs `op dezelfde manier`.
 - **`Onleesbare map`** (`shortcuts.scope.errorScreen`) as a shortcuts group heading, and `helemaal geen` for "zero"
   (`onboarding.stepOptional.updates.desc`).
+- **The managed-policy card values** (`settings.managed.summary.*`): `Tot en met {ceiling}` for "Up to" (vs the shorter
+  `Maximaal {ceiling}`), `Alleen handmatig gecontroleerd` for "Checked by hand only", and `Alleen lokaal` beside `AI`.
 
 ## Layout (check against the pseudolocale)
 

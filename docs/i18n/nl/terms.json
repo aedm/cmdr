@@ -88,10 +88,20 @@
     "sources": "MS terminology (tool → hulpmiddel)"
   },
   "allow": {
-    "accept": ["toestaan", "toegestaan", "Sta alles toe", "Toestaan", "toestaat", "toe te staan", "Sta ", "mocht"],
+    "accept": [
+      "toestaan",
+      "toegestaan",
+      "Sta alles toe",
+      "Toestaan",
+      "toestaat",
+      "toe te staan",
+      "Sta ",
+      "mocht",
+      "staat "
+    ],
     "chosen": "Sta toe",
     "confidence": "high",
-    "forms": "button Sta toe / Sta alles toe; settings label <object> toestaan (Cloud-AI toestaan); Android's own dialog button is quoted as ‘Toestaan’",
+    "forms": "button Sta toe / Sta alles toe; settings label <object> toestaan (Cloud-AI toestaan); Android's own dialog button is quoted as ‘Toestaan’; finite separable verb in prose: je organisatie staat … (niet) toe",
     "sources": "macOS Finder (Allow Anyway → Sta toch toe), MS (allow → toestaan), AOSP SystemUI usb_debugging_allow = Toestaan"
   },
   "already-exists": {
@@ -1769,6 +1779,9 @@
     "chosen": "gedeelde map",
     "confidence": "high",
     "decision": "Waarom een gedeelde map niet aankoppelt of de lijst niet laadt",
+    "exceptions": {
+      "errorReporter.dialog.managedOff": "English \"share it yourself\" is the verb (pass the file on), not a network share: zelf delen."
+    },
     "forms": "in the pane, share lists, and mount messages → gedeelde map; \"not a network share\" and the error family → netwerkshare; compounds keep share (SMB-share, SMB-/netwerkshares)",
     "sources": "macOS Finder (Shared folder → Gedeelde map), MS (network share → netwerkshare)"
   },
@@ -1821,6 +1834,14 @@
     "confidence": "tentative",
     "forms": "closed compounds onboardingopties, onboardingwizard, Onboardingchecklist",
     "sources": "loanword kept (matches the untranslated app title Cmdr onboarding)"
+  },
+  "on-device": {
+    "accept": ["lokale AI", "lokaal", "op je Mac", "op deze Mac", "op het apparaat", "op dit apparaat"],
+    "chosen": "lokaal",
+    "confidence": "high",
+    "forms": "on-device AI → lokale AI (de-woord: refer back with die); the card value On-device only → Alleen lokaal; prose about where it runs may say op je Mac",
+    "note": "The catalog already names this same model lokale AI / Lokale LLM (settings.ai.tooltipLocalDisabled, ai.local.deleteConfirmMessage, settings.ai.provider.opt.local), so on-device reuses it.",
+    "sources": "catalog (Lokale AI, Lokale LLM); macOS System Settings CloudSync (alleen … op dit apparaat) for the device sense"
   },
   "online-only": {
     "avoid": [
@@ -1904,6 +1925,13 @@
       "commands.cmdrOpenOnboarding.description": "\"First-launch setup options\": de instellingen van de eerste start."
     },
     "sources": "macOS (Options → Opties)"
+  },
+  "organization": {
+    "accept": ["organisatie", "organisaties"],
+    "chosen": "organisatie",
+    "confidence": "high",
+    "forms": "your organization → je organisatie; managed by your organization → Beheerd door je organisatie; manages → beheert",
+    "sources": "MS terminology (organization → organisatie; managed → beheerd); catalog (licensing.about.fallbackOrg = je organisatie); macOS (degene die je computer beheert)"
   },
   "original": {
     "accept": ["originelen"],
