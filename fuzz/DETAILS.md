@@ -49,11 +49,16 @@
 - **xz dictionary, `lzma-rust2`, bounded in our wrapper**: a block header names its LZMA2 dictionary and the decoder
   allocated and zeroed it up front (4 GiB from 40 bytes). `lzma-rust2` 0.21.0 added `XzReader::new_mem_limit`;
   `format::XZ_MEMORY_LIMIT_KIB` sets it (`crates/cmdr-archive/src/read/DETAILS.md` § DoS caps).
-- **xz index, `lzma-rust2` 0.21.0, open upstream**: the index's record count is a varint the reader passes straight to
-  `try_reserve_exact` (`src/xz.rs`, still on upstream main 2026-10-05), so 23 bytes reserve ~3 GiB. Reserved, never
-  touched, and released on the error that follows, so it costs address space rather than RAM; libFuzzer's malloc limit
-  still flags it. Input (base64, with the target's format byte): `BP03elhaAAAE5ta0RgCezuxft9v//+Al`. Until upstream
-  bounds the reservation (by the bytes left, say), `archive_index` stops on it within seconds.
+- **xz index, `lzma-rust2` 0.21.0, known upstream issue**: the index's record count is a varint the reader passes
+  straight to `try_reserve_exact` (its `Index::parse`, still on upstream main 2026-10-05), so 23 bytes reserve ~3 GiB.
+  Reserved, never touched, and released on the error that follows, so it costs address space rather than RAM. Input
+  (base64, with the target's format byte): `BP03elhaAAAE5ta0RgCezuxft9v//+Al`. Not guarded in our wrapper on purpose:
+  the reader reaches an index front to back, before any footer, so a footer-based check is bypassable. Instead the lane
+  lifts `archive_index`'s per-allocation cap (`fuzzTargetOverrides` in `desktop-rust-fuzz.go`: `-malloc_limit_mb`, plus
+  ASan's `allocator_may_return_null=1` so a size past ASan's 1 TiB maximum comes back null as it would from the system
+  allocator), keeping the 2 GiB RSS limit so real memory use still fails; every other target keeps the default cap.
+  Reproducing one of its findings by hand needs the same two flags. An upstream issue is drafted for David. ❗ Drop the
+  override once `lzma-rust2` caps the reservation: it also hides any other single huge allocation in this target.
 
 ## Deliberately not fuzzed here
 

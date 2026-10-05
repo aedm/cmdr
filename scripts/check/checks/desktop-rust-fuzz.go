@@ -17,6 +17,30 @@ const cargoFuzzVersion = "0.13.2"
 // a smoke that drives every target past its seeds, not a hunt. Longer hunts set it.
 const defaultFuzzSeconds = 60
 
+// fuzzTargetOverride loosens one target's limits for a documented, known upstream
+// finding. Keep the map empty otherwise.
+type fuzzTargetOverride struct {
+	// libFuzzerArgs go after the shared flags.
+	libFuzzerArgs []string
+	// asanOptions is set as `ASAN_OPTIONS`; cargo-fuzz appends its own to it.
+	asanOptions string
+}
+
+// fuzzTargetOverrides: `archive_index`, because `lzma-rust2` 0.21.0 reserves an
+// xz index's record count before checking it, so 23 bytes reserve gigabytes of
+// address space that are never touched and are freed on the error that follows.
+// Lifting the per-allocation cap, and letting an impossible size come back null the
+// way the system allocator does (`try_reserve_exact` then errors cleanly), stops
+// counting that reservation; the default RSS limit (2 GiB) still fails any real
+// memory use. Drop it once `lzma-rust2` caps the reservation (`fuzz/DETAILS.md` §
+// Findings).
+var fuzzTargetOverrides = map[string]fuzzTargetOverride{
+	"archive_index": {
+		libFuzzerArgs: []string{"-malloc_limit_mb=1048576"},
+		asanOptions:   "allocator_may_return_null=1",
+	},
+}
+
 // RunFuzz builds the targets in `fuzz/` on the pinned nightly, then runs each one
 // for `CMDR_FUZZ_SECONDS` (default 60) over its committed seeds plus a local,
 // gitignored corpus that grows run to run. A crash, OOM, or hang fails the lane
@@ -69,13 +93,18 @@ func RunFuzz(ctx *CheckContext) (CheckResult, error) {
 		if err := os.MkdirAll(filepath.Join(fuzzDir, corpus), 0o755); err != nil {
 			return CheckResult{}, fmt.Errorf("failed to create %s: %w", corpus, err)
 		}
-		runCmd := exec.Command("cargo", fuzzArgs(
+		args := fuzzArgs(
 			"run", "-O", "-a", target, corpus, filepath.Join("seeds", target), "--",
 			"-max_total_time="+strconv.Itoa(seconds),
 			// A unit past 20 s is a hang: the slowest seed parses in milliseconds.
 			"-timeout=20",
-		)...)
+		)
+		override := fuzzTargetOverrides[target]
+		runCmd := exec.Command("cargo", append(args, override.libFuzzerArgs...)...)
 		runCmd.Dir = fuzzDir
+		if override.asanOptions != "" {
+			runCmd.Env = append(os.Environ(), "ASAN_OPTIONS="+override.asanOptions)
+		}
 		if output, err := RunCommand(runCmd, true); err != nil {
 			failures = append(failures, fmt.Sprintf("%s:\n%s", target, indentOutput(fuzzFindingReport(output))))
 		}
