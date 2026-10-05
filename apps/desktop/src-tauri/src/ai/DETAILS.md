@@ -167,7 +167,8 @@ How the organization's MDM profile (`managed_policy/DETAILS.md`, the canonical k
   `DisableAI` answers `Managed(AiOff)` even for `off`, and a caller names the organization's reason, not "turn AI on"),
   then the cloud endpoint (`client::remote_destination`, the exact URL `AiBackend::remote` will call), before consent,
   key, and endpoint checks. `Managed` maps to the `managed` translate kind (with the refusal), a quiet empty for
-  suggestions, `SlotRefusal::Managed` → `AgentErrorKindView::ManagedByOrganization` for Ask Cmdr, `ProviderGate::Off`
+  suggestions, `SlotRefusal::Managed` → `AgentErrorKindView::ManagedByOrganization` for Ask Cmdr (the refusal rides beside it as
+  `managed`, on the send refusal and the `failed` event), `ProviderGate::Off`
   for the wake loop (silent; the stored backlog stays), and MCP `ai_search`'s `data.reason` (`aiOff` / `cloudAiOff` /
   `hostNotAllowed`). A cloud-only feature on a non-cloud provider (AI selection) answers the organization's refusal
   when no cloud host is allowed at all (`any_cloud_refusal`).

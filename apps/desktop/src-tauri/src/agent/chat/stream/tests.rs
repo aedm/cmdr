@@ -25,7 +25,7 @@ fn every_error_kind_maps_to_its_own_wire_kind() {
         AgentErrorKind::RepeatedToolCall,
         AgentErrorKind::UnfinishedReply,
         AgentErrorKind::Provider,
-        AgentErrorKind::ManagedByOrganization,
+        AgentErrorKind::ManagedByOrganization(crate::managed_policy::ManagedAiRefusal::AiOff),
     ]
     .into_iter()
     .map(|kind| serde_json::to_value(AgentErrorKindView::from(kind)).expect("serializes"))
@@ -56,7 +56,10 @@ fn a_mid_turn_policy_refusal_ends_the_turn_as_managed() {
     use crate::agent::llm::types::AgentLlmError;
     use crate::managed_policy::ManagedAiRefusal;
     let kind = AgentErrorKind::from(AgentLlmError::Managed(ManagedAiRefusal::CloudAiOff));
-    assert_eq!(kind, AgentErrorKind::ManagedByOrganization);
+    assert_eq!(
+        kind,
+        AgentErrorKind::ManagedByOrganization(ManagedAiRefusal::CloudAiOff)
+    );
     assert_eq!(kind.as_token(), AgentErrorKindView::ManagedByOrganization.as_token());
 }
 
@@ -236,14 +239,27 @@ fn failed_carries_the_typed_kind_and_the_providers_own_wording_verbatim() {
             kind: AgentErrorKind::RateLimited,
             detail: Some("quota resets at 14:00".into()),
         }),
-        json!({ "type": "failed", "kind": "rateLimited", "detail": "quota resets at 14:00" })
+        json!({ "type": "failed", "kind": "rateLimited", "detail": "quota resets at 14:00", "managed": null })
     );
     assert_eq!(
         wire(AgentChatEvent::Failed {
             kind: AgentErrorKind::BudgetExhausted,
             detail: None,
         }),
-        json!({ "type": "failed", "kind": "budgetExhausted", "detail": null })
+        json!({ "type": "failed", "kind": "budgetExhausted", "detail": null, "managed": null })
+    );
+}
+
+/// A turn the organization's policy stopped mid-way names which rule, so the rail can word it.
+#[test]
+fn a_managed_failure_carries_the_organizations_reason() {
+    use crate::managed_policy::ManagedAiRefusal;
+    assert_eq!(
+        wire(AgentChatEvent::Failed {
+            kind: AgentErrorKind::ManagedByOrganization(ManagedAiRefusal::CloudAiOff),
+            detail: None,
+        }),
+        json!({ "type": "failed", "kind": "managedByOrganization", "detail": null, "managed": "cloudAiOff" })
     );
 }
 

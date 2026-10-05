@@ -127,7 +127,7 @@ pub enum AgentErrorKind {
     Provider,
     /// The organization's managed policy refused a request mid-turn (the LLM client's backstop).
     /// The same wire kind the slot refuses with before a turn; not a failure.
-    ManagedByOrganization,
+    ManagedByOrganization(crate::managed_policy::ManagedAiRefusal),
 }
 
 impl AgentErrorKind {
@@ -146,7 +146,16 @@ impl AgentErrorKind {
             AgentErrorKind::RepeatedToolCall => "repeated_tool_call",
             AgentErrorKind::UnfinishedReply => "unfinished_reply",
             AgentErrorKind::Provider => "provider",
-            AgentErrorKind::ManagedByOrganization => "managed_by_organization",
+            AgentErrorKind::ManagedByOrganization(_) => "managed_by_organization",
+        }
+    }
+
+    /// The organization's reason, for `ManagedByOrganization`: the wire kind is a unit variant,
+    /// so the reason rides beside it.
+    pub fn managed(self) -> Option<crate::managed_policy::ManagedAiRefusal> {
+        match self {
+            AgentErrorKind::ManagedByOrganization(refusal) => Some(refusal),
+            _ => None,
         }
     }
 }
@@ -163,7 +172,7 @@ impl From<crate::agent::llm::types::AgentLlmError> for AgentErrorKind {
             AgentLlmError::RateLimited(_) => AgentErrorKind::RateLimited,
             AgentLlmError::BudgetExhausted => AgentErrorKind::BudgetExhausted,
             AgentLlmError::Provider(_) => AgentErrorKind::Provider,
-            AgentLlmError::Managed(_) => AgentErrorKind::ManagedByOrganization,
+            AgentLlmError::Managed(refusal) => AgentErrorKind::ManagedByOrganization(refusal),
         }
     }
 }

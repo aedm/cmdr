@@ -5380,7 +5380,8 @@ export type ArchiveSubkind = 'compress' | 'edit' | 'extract'
  *  carries the same typed kinds a mid-turn failure does, so the rail renders one set of
  *  honest copy either way.
  *
- *  **Build one through [`AskCmdrSendRefusal::of`] or [`AskCmdrSendRefusal::detailed`], never
+ *  **Build one through [`AskCmdrSendRefusal::of`], [`AskCmdrSendRefusal::gated`], or
+ *  [`AskCmdrSendRefusal::detailed`], never
  *  as a struct literal.** Both constructors report the anonymous `ask_cmdr_turn` refusal, and
  *  these gates are the only account of the funnel's top: a send refused here never reaches
  *  `run_turn`, so a literal that skipped the report would make "AI is off" and "nobody opened
@@ -5393,6 +5394,11 @@ export type AskCmdrSendRefusal = {
    *  wouldn't open). Display only: the frontend branches on `kind`, never on this.
    */
   detail: string | null
+  /**
+   *  Which rule of the organization's policy refused, exactly when `kind` is
+   *  `managedByOrganization`, so the rail words that rule.
+   */
+  managed: ManagedAiRefusal | null
 }
 
 /**
@@ -5436,7 +5442,16 @@ export type AskCmdrStreamEvent =
    *  wording, shown verbatim under the typed headline so the user sees what to fix;
    *  display only — the frontend branches on `kind`, never on this string.
    */
-  | { type: 'failed'; kind: AgentErrorKindView; detail: string | null }
+  | {
+      type: 'failed'
+      kind: AgentErrorKindView
+      detail: string | null
+      /**
+       *  Which rule of the organization's policy stopped the turn, exactly when `kind` is
+       *  `managedByOrganization`, so the rail words that rule.
+       */
+      managed: ManagedAiRefusal | null
+    }
   /**
    *  The conversation's effective model changed since its previous turn; the persisted
    *  event row's identity rides along. The rail inserts the line BEFORE this turn's

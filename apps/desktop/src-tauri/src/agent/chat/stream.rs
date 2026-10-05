@@ -92,6 +92,9 @@ pub enum AskCmdrStreamEvent {
     Failed {
         kind: AgentErrorKindView,
         detail: Option<String>,
+        /// Which rule of the organization's policy stopped the turn, exactly when `kind` is
+        /// `managedByOrganization`, so the rail words that rule.
+        managed: Option<crate::managed_policy::ManagedAiRefusal>,
     },
     /// The conversation's effective model changed since its previous turn; the persisted
     /// event row's identity rides along. The rail inserts the line BEFORE this turn's
@@ -215,7 +218,7 @@ impl From<AgentErrorKind> for AgentErrorKindView {
             AgentErrorKind::RepeatedToolCall => Self::RepeatedToolCall,
             AgentErrorKind::UnfinishedReply => Self::UnfinishedReply,
             AgentErrorKind::Provider => Self::Provider,
-            AgentErrorKind::ManagedByOrganization => Self::ManagedByOrganization,
+            AgentErrorKind::ManagedByOrganization(_) => Self::ManagedByOrganization,
         }
     }
 }
@@ -291,6 +294,7 @@ pub fn to_wire_event(event: AgentChatEvent) -> AskCmdrStreamEvent {
         AgentChatEvent::Failed { kind, detail } => AskCmdrStreamEvent::Failed {
             kind: kind.into(),
             detail,
+            managed: kind.managed(),
         },
         AgentChatEvent::ModelChanged { message_id, seq, model } => {
             AskCmdrStreamEvent::ModelChanged { message_id, seq, model }

@@ -22,6 +22,7 @@
 import { getAppLogger } from '$lib/logging/logger'
 import { refreshRailGate } from './ask-cmdr-gate.svelte'
 import type { RailMessage } from './ask-cmdr-messages'
+import type { ManagedAiRefusal } from '$lib/ipc/bindings'
 import {
   discardStagedRenameProposals,
   openStagedRenameReview,
@@ -87,7 +88,7 @@ export function sendMessage(text: string): void {
         askCmdrState.conversationId = outcome.conversationId
         stoppedTurns.delete(outcome.conversationId)
       } else {
-        if (askCmdrState.streaming) applyFailed(outcome.kind, outcome.detail)
+        if (askCmdrState.streaming) applyFailed(outcome.kind, outcome.detail, outcome.managed)
         // A switch moved since the rail last looked (in Settings, or in another window).
         // Re-reading turns the rail back into its gate, which carries the way out.
         if (outcome.kind === 'askCmdrOff' || outcome.kind === 'noCloudConsent') void refreshRailGate()
@@ -248,7 +249,7 @@ function applyStreamEvent(event: TurnEvent): void {
       applyDone(event.messageId)
       return
     case 'failed':
-      applyFailed(event.kind, event.detail)
+      applyFailed(event.kind, event.detail, event.managed)
       return
     case 'modelChanged':
       insertBeforeCurrentTurn({ kind: 'modelChange', model: event.model })
@@ -373,9 +374,14 @@ function applyDone(messageId: number): void {
   openStagedRenameReview()
 }
 
-function applyFailed(kind: AskCmdrErrorKind, detail: string | null): void {
+function applyFailed(kind: AskCmdrErrorKind, detail: string | null, managed: ManagedAiRefusal | null = null): void {
   finalizeAssistant()
-  askCmdrState.messages.push({ kind: 'error', errorKind: kind, detail: detail ?? undefined })
+  askCmdrState.messages.push({
+    kind: 'error',
+    errorKind: kind,
+    detail: detail ?? undefined,
+    managed: managed ?? undefined,
+  })
   askCmdrState.streaming = false
   clearProgressWatchdog()
   // Whatever got staged before the failure is real and still the user's to answer.

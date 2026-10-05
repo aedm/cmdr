@@ -185,7 +185,7 @@ pub async fn ask_cmdr_send_message(
     let ask_cmdr = crate::settings::load_ask_cmdr_switch(&app);
     let (llm_kind, provider, model) = match admit_send(ask_cmdr, || resolve_agent_llm(&app, AgentSlot::Rail)) {
         Ok(resolved) => resolved,
-        Err(kind) => return Err(AskCmdrSendRefusal::of(kind)),
+        Err(gate) => return Err(AskCmdrSendRefusal::gated(gate)),
     };
 
     // Resolve the budget before a thread exists, so a local server too small to hold one
@@ -238,6 +238,7 @@ pub async fn ask_cmdr_send_message(
                     AskCmdrStreamEvent::Failed {
                         kind: AgentErrorKindView::Provider,
                         detail: Some(e.to_string()),
+                        managed: None,
                     },
                 );
                 cancel::unregister_cancel(conversation_id);
@@ -300,6 +301,7 @@ async fn drive_turn(
             AskCmdrStreamEvent::Failed {
                 kind: AgentErrorKindView::Provider,
                 detail: None,
+                managed: None,
             },
         );
         return;
@@ -332,6 +334,7 @@ async fn drive_turn(
             AskCmdrStreamEvent::Failed {
                 kind: AgentErrorKindView::Provider,
                 detail: Some(e.to_string()),
+                managed: None,
             },
         );
     }

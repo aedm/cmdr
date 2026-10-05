@@ -257,7 +257,7 @@ async fn run(app: AppHandle, slot: ResolvedSlot, turn: &BackgroundTurn) -> WakeC
         Ok(TurnResult::Answered { .. }) => record_outcome(turn.token("ran"), tier, folders, proposals),
         Ok(TurnResult::Cancelled) => record_outcome(turn.token("cancelled"), tier, folders, proposals),
         Ok(TurnResult::Failed(kind)) => {
-            if kind == AgentErrorKind::ManagedByOrganization {
+            if matches!(kind, AgentErrorKind::ManagedByOrganization(_)) {
                 log::info!(target: LOG_TARGET, "the organization's policy stopped the background turn");
             } else {
                 log::warn!(target: LOG_TARGET, "the background turn ended without an answer: {kind:?}");
@@ -297,7 +297,7 @@ fn completion_for_failure(kind: AgentErrorKind, ordinary: WakeCompletion) -> Wak
         | AgentErrorKind::Provider => ordinary,
         // A policy that arrived mid-turn: the change already refreshed the readiness, which now
         // keeps the loop quiet on its own.
-        AgentErrorKind::ManagedByOrganization => ordinary,
+        AgentErrorKind::ManagedByOrganization(_) => ordinary,
     }
 }
 
