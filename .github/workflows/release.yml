@@ -89,6 +89,10 @@ jobs:
     # jobs run in PARALLEL here rather than queueing on one machine, so wall-clock is one cold
     # build, not three. Apple's notarization sits inside this budget too.
     timeout-minutes: 90
+    # The only job that signs, notarizes, or updater-signs, so the only one in the `release`
+    # environment, which holds those secrets and deploys from `v*` tags alone. An environment
+    # secret wins over a same-named repo secret. See `docs/guides/releasing.md` § Signing secrets.
+    environment: release
     strategy:
       fail-fast: false
       matrix:

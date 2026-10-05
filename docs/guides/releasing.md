@@ -8,7 +8,27 @@ Related guides for the signing and distribution steps: `apple-signing-and-notari
 
 ## Prerequisites
 
-- `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in GitHub secrets
+- The signing secrets in the `release` GitHub environment (next section).
+
+## Signing secrets
+
+The secrets that sign, notarize, and updater-sign a build live in the `release` environment on `vdavid/cmdr`, and only
+the `build` job declares `environment: release`. The environment's deployment policy admits `v*` tags only, with no
+required reviewers (releases run unattended), so once the repo-level copies are gone (below), a workflow on a branch
+can't reach them. Where each value comes from: the vault note `projects/Cmdr/workflow/Cmdr signing keys.md`.
+
+- **In the environment** (set 2026-10-05): `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`,
+  `APPLE_API_KEY`, `APPLE_API_KEY_BASE64`, `APPLE_API_ISSUER`, `APPLE_SIGNING_IDENTITY`. The updater key was checked
+  against the app's key ID `A2601F36BB168C0A` and the notarization trio against Apple's notary API before setting.
+- **Still repo-level only**: `APPLE_CERTIFICATE` and `APPLE_CERTIFICATE_PASSWORD`. Their only copy outside GitHub is in
+  Bitwarden, which agents can't reach. Set them from there:
+  `gh secret set APPLE_CERTIFICATE --env release -R vdavid/cmdr` (it prompts for the value), same for the password.
+- **Repo-level copies still exist** for all eight. A job in an environment sees both, and the environment value wins on
+  a name clash, so nothing breaks while the move is partial.
+
+**Follow-up once the first release through the environment succeeds** (with all eight in the environment): delete the
+repo-level copies, `gh secret delete <NAME> -R vdavid/cmdr` for each of the eight, then confirm the next release still
+signs and notarizes.
 
 ## Which runner builds the release
 
