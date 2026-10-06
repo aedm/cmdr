@@ -1418,9 +1418,12 @@ for reading its output:
 
 ## The Linux Docker lanes share an image and a build cache
 
-`desktop-rust-clippy-linux` and `desktop-rust-tests-linux` answer CI's two Linux questions (clippy, then the suite) from
-a Mac. Both run from one image and build into one per-worktree volume (`desktop-rust-linux-container.go`), so a warm run
-compiles only what changed. Order: `clippy` → `clippy-linux` → `rust-tests-linux`.
+`desktop-rust-clippy-linux` and `desktop-rust-tests-linux` answer CI's three Linux questions (clippy and rustdoc, then
+the suite) from a Mac. The clippy lane runs `cargo doc` in the same container once clippy passes, under the host rustdoc
+lane's lint contract (`rustdocArgs` for `linux`), because a link to an item gated to macOS resolves on a Mac and breaks
+only on ubuntu: 27 CI runs went red that way in three months (`docs/notes/ci-health-2026-10.md`). Both run from one
+image and build into one per-worktree volume (`desktop-rust-linux-container.go`), so a warm run compiles only what
+changed. Order: `clippy` → `clippy-linux` → `rust-tests-linux`.
 
 - **The image is the provisioning**: `cmdr-rust-linux:<sha256[0..12]>` of the rendered Dockerfile plus
   `rust-toolchain.toml`, built on a miss and the older tags pruned (the E2E lane's `cmdr-e2e-base:<hash>` pattern). It
@@ -1954,8 +1957,8 @@ Checks by app and tech:
   one cell lived its whole life that way, and it was the sole caller of the crate extraction's one sanctioned
   public-surface widening — see § "Fixture lane coverage"), tests, integration-tests (Docker network fixtures),
   disk-images (slow, macOS only, not in CI; the real-image tests on synthetic APFS and HFS+ disk images, see § "The
-  disk-image lane"), clippy-linux (slow, not in CI; CI's clippy command against the Linux target, run from a Mac in
-  Docker), tests-linux (slow; both in § "The Linux Docker lanes share an image and a build cache")
+  disk-image lane"), clippy-linux (slow, not in CI; CI's clippy and rustdoc commands against the Linux target, run from
+  a Mac in Docker), tests-linux (slow; both in § "The Linux Docker lanes share an image and a build cache")
 
 Four of those scanners share one region tracker, `rustTestModState` / `advanceTestModRegion`
 (`desktop-rust-test-sleep.go`), in opposite polarities: test-sleep and fixed-temp-dir scan ONLY inside an inline test

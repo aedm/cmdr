@@ -815,11 +815,11 @@ var AllChecks = []CheckDefinition{
 		ID:          "desktop-rust-clippy-linux",
 		CpuWeight:   8,
 		Nickname:    "clippy-linux",
-		DisplayName: "clippy (Linux)",
+		DisplayName: "clippy and rustdoc (Linux)",
 		App:         AppDesktop,
 		Tech:        "🦀 Rust",
 		IsSlow:      true,
-		NotInCI:     "CI's desktop-rust job already runs the same clippy natively on a Linux runner; this check exists to lint the Linux target from a Mac",
+		NotInCI:     "CI's desktop-rust job already runs the same clippy and rustdoc natively on a Linux runner; this check exists to lint the Linux target from a Mac",
 		// After the host clippy, whose `--fix` may still be rewriting shared sources.
 		DependsOn: []string{"desktop-rust-clippy"},
 		Inputs:    inputs(rustCompileInputs, []string{"clippy.toml"}),

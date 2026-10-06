@@ -26,6 +26,38 @@ func TestLinuxClippyAsksCIsQuestion(t *testing.T) {
 	}
 }
 
+// The lane's second question is CI's `desktop-rust-rustdoc --ci` on ubuntu: the same doc
+// build under the same denied lints, over the members that build on Linux. A link to an
+// item gated to macOS resolves on a Mac and breaks only there, which is how 27 CI runs
+// went red on rustdoc between 2026-07 and 2026-10 (`docs/notes/ci-health-2026-10.md`).
+func TestLinuxRustdocAsksCIsQuestion(t *testing.T) {
+	root := repoRootForTest(t)
+	members, err := WorkspaceMembers(root)
+	if err != nil {
+		t.Fatalf("WorkspaceMembers: %v", err)
+	}
+	args, documented := rustdocArgs(members, "linux")
+	if documented == 0 {
+		t.Fatal("expected Linux to document at least one member")
+	}
+	script := linuxRustdocScript(args)
+
+	for _, want := range []string{
+		"RUSTDOCFLAGS='-D rustdoc::broken_intra_doc_links",
+		"-A rustdoc::private_intra_doc_links'",
+		"cargo 'doc' '--no-deps' '--all-features' '--document-private-items' '--locked'",
+		"'-p' 'cmdr'",
+	} {
+		if !strings.Contains(script, want) {
+			t.Errorf("the Linux rustdoc command must contain %q, got:\n%s", want, script)
+		}
+	}
+	// macOS-only and vendored members don't document on Linux, same as the host lane's rule.
+	if strings.Contains(script, "'cmdr-fsevent-stream'") {
+		t.Errorf("the macOS-only vendored fork must stay out of the Linux doc build:\n%s", script)
+	}
+}
+
 // A red lint has to name the file and line; the progress around it is noise.
 func TestTrimCargoProgressKeepsTheDiagnostic(t *testing.T) {
 	input := `    Checking cmdr-fs v0.1.0 (/repo/crates/cmdr-fs)

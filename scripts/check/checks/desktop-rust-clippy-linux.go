@@ -6,10 +6,11 @@ import (
 	"strings"
 )
 
-// RunClippyLinux lints the workspace for the Linux target, from a Mac, with the command
-// CI's "Desktop (Rust)" job runs natively on ubuntu. The host `clippy` lane only ever
-// sees macOS's `cfg`s, so a lint in a `#[cfg(target_os = "linux")]` module (all of
-// `volumes_linux/`, the GTK paths) reached `main` unlinted and turned CI red.
+// RunClippyLinux lints the workspace for the Linux target, from a Mac, with the clippy
+// and rustdoc commands CI's "Desktop (Rust)" job runs natively on ubuntu. The host lanes
+// only ever see macOS's `cfg`s, so a lint in a `#[cfg(target_os = "linux")]` module (all
+// of `volumes_linux/`, the GTK paths), or a doc link to a macOS-only item, reached `main`
+// unchecked and turned CI red.
 //
 // It shares the tests lane's image and target volume (`desktop-rust-linux-container.go`):
 // clippy's units land in their own fingerprints, so the two don't thrash each other, and
@@ -42,9 +43,31 @@ func RunClippyLinux(ctx *CheckContext) (CheckResult, error) {
 		return CheckResult{}, fmt.Errorf("clippy found issues on Linux%s\n%s",
 			env.buildNote(), indentOutput(trimCargoProgress(output)))
 	}
-	result := clippySuccess(output, " on Linux")
-	result.Message += env.buildNote()
+	clippy := clippySuccess(output, " on Linux")
+
+	// Then CI's rustdoc question, in the same container: an intra-doc link to an item
+	// gated to macOS resolves on the host and breaks only on Linux.
+	members, err := WorkspaceMembers(ctx.RootDir)
+	if err != nil {
+		return CheckResult{}, err
+	}
+	docArgs, documented := rustdocArgs(members, "linux")
+	docOutput, docErr := dockerExec(container, linuxRustdocScript(docArgs))
+	docs, err := rustdocVerdict(docOutput, docErr, documented, " on Linux")
+	if err != nil {
+		return CheckResult{}, fmt.Errorf("%w%s", err, env.buildNote())
+	}
+
+	result := clippy
+	result.Message += "; " + docs.Message + env.buildNote()
 	return result, nil
+}
+
+// linuxRustdocScript is the host rustdoc lane's command for the container, under the
+// same lint contract. It shares the clippy target volume: `cargo doc` builds the
+// dependencies metadata-only, so the two don't invalidate each other's units.
+func linuxRustdocScript(args []string) string {
+	return "RUSTDOCFLAGS=" + shellQuote(rustdocLintFlags()) + " " + containerCargoScript(args...)
 }
 
 // linuxClippyArgs is CI's clippy invocation (`desktop-rust-clippy` under `--ci`) with the
