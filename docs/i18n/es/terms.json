@@ -440,6 +440,17 @@
     "confidence": "high",
     "sources": "macOS (Portapapeles, Contenido del portapapeles)"
   },
+  "clone-pane": {
+    "avoid": [
+      {
+        "form": "Duplicar",
+        "why": "Finder's Duplicate makes a file copy"
+      }
+    ],
+    "chosen": "Clonar panel",
+    "confidence": "high",
+    "sources": "MS terminology (clone → clonar) + the pane ruling (panel). TC 532 and DC name the same command Destino=Origen; Finder has none"
+  },
   "close": {
     "chosen": "Cerrar",
     "accept": ["cerr", "cierr", "ciérr"],
@@ -699,6 +710,13 @@
     "exceptions": {
       "settings.fileSystemWatching.clearIndexDescription": "Describes the Clear index button (Borrar el índice), so it keeps the button's verb."
     }
+  },
+  "delete-key": {
+    "chosen": "Suprimir",
+    "confidence": "high",
+    "forms": "la tecla Suprimir (⌫); forward delete is Suprimir (derecha)",
+    "note": "Pile mined 2026-10-07 (macOS 27.0.1 live bundles): VoiceOver SCRWorkspace.loctable deleteKey, Terminal keyDescriptions.loctable 007F, AccessibilitySharedSupport symbol names delete.backward.",
+    "sources": "macOS VoiceOver (Delete Key → Tecla Suprimir; Presses the delete key → Pulsa la tecla Suprimir), Terminal key descriptions (⌫ Delete → ⌫ Suprimir); the symbol names say retroceso, the Windows word"
   },
   "delete-permanently": {
     "chosen": "permanentemente",
@@ -1078,6 +1096,13 @@
     "forms": "File system watching → Vigilancia del sistema de archivos",
     "confidence": "high",
     "sources": "macOS AppKit DocumentDragging.loctable (en el sistema de archivos), macOS 26.6.2, 2026-09-06"
+  },
+  "filter": {
+    "accept": ["filtr"],
+    "chosen": "filtrar",
+    "confidence": "high",
+    "forms": "noun el filtro (filtro rápido); the typing-mode name and badge Filtrar (Filtrar: …), beside Saltar",
+    "sources": "macOS live (Filter → Filtrar 45×, Filtro 18×; Clear Filter → Borrar filtro); DC, MC (Filtro); catalog (selection.runHint)"
   },
   "finder": {
     "chosen": "Finder",
@@ -2023,6 +2048,11 @@
     "forms": "the criteria label Consulta:",
     "confidence": "high",
     "sources": "catalog"
+  },
+  "quick-filter": {
+    "chosen": "filtro rápido",
+    "confidence": "high",
+    "sources": "TC 3018/3019 (filtro rápido desactivado/activado); DC actQuickFilter (Filtro rápido)"
   },
   "quick-look": {
     "chosen": "Vista rápida",

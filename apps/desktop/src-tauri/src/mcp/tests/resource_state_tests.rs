@@ -287,6 +287,7 @@ fn test_build_pane_yaml() {
             },
         ],
         type_to_jump: None,
+        quick_filter: None,
         mount_error: None,
         listing: Default::default(),
     };
@@ -353,6 +354,7 @@ fn test_brief_cursor_detail_respects_loaded_window() {
         show_hidden: false,
         tabs: vec![],
         type_to_jump: None,
+        quick_filter: None,
         mount_error: None,
         listing: Default::default(),
     };
@@ -765,4 +767,24 @@ fn plain_pane_yaml_keeps_names() {
     };
     let yaml = build_pane_yaml_with_options(&state, "  ", &parse_state_options(None));
     assert!(yaml.contains("kapu méretek.jpg"), "{yaml}");
+}
+
+/// A filtered pane says so: its files and counts are the FILTERED rows, and an
+/// agent that doesn't know would read a hidden file as gone.
+#[test]
+fn a_filtered_pane_names_its_quick_filter() {
+    let filtered = PaneState {
+        path: "/tmp".to_string(),
+        quick_filter: Some("rep".to_string()),
+        ..PaneState::default()
+    };
+    let yaml = build_pane_yaml_with_options(&filtered, "  ", &StateOptions::default());
+    assert!(yaml.contains("quickFilter: \"rep\""), "{yaml}");
+
+    let plain = PaneState {
+        path: "/tmp".to_string(),
+        ..PaneState::default()
+    };
+    let yaml = build_pane_yaml_with_options(&plain, "  ", &StateOptions::default());
+    assert!(!yaml.contains("quickFilter"));
 }

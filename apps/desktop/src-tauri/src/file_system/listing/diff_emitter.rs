@@ -18,7 +18,7 @@ use std::time::Duration;
 use tauri_specta::Event as _;
 
 use crate::file_system::listing::diff::{DiffChange, DirectoryDiff};
-use crate::file_system::listing::increment_sequence;
+use crate::file_system::listing::sequence_changes;
 use crate::file_system::watcher::WATCHER_MANAGER;
 
 /// Trailing flush window. Below human perception for single events; at high
@@ -96,8 +96,9 @@ fn flush(listing_id: &str) {
         return;
     }
 
-    let Some(sequence) = increment_sequence(listing_id) else {
-        return; // listing gone
+    // Listing gone, or every change was read at a quick filter the pane has left.
+    let Some((sequence, changes)) = sequence_changes(listing_id, changes) else {
+        return;
     };
 
     let app_handle = match WATCHER_MANAGER.read() {

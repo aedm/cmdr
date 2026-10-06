@@ -475,6 +475,18 @@
     "forms": "clipboard content → klembordinhoud; Klembordafbeelding, Klembordtekst, Klembord-PDF (hyphen before an acronym)",
     "sources": "macOS AppKit (Clipboard → Klembord), MS"
   },
+  "clone-pane": {
+    "accept": ["kloon", "klonen"],
+    "avoid": [
+      {
+        "form": "Dupliceer",
+        "why": "Finder's Duplicate makes a file copy"
+      }
+    ],
+    "chosen": "Kloon paneel",
+    "confidence": "high",
+    "sources": "MS terminology (clone → klonen, kloon) + the pane ruling (paneel). TC (Vensters gelijkmaken, 532 Doel=Bron) and DC (Doel is bron) name the same command differently; Finder has none"
+  },
   "close": {
     "accept": ["sluiten", "gesloten"],
     "chosen": "Sluit",
@@ -711,6 +723,13 @@
     "confidence": "high",
     "forms": "button Verwijder; progress Bezig met verwijderen / Verwijderen…",
     "sources": "macOS Finder (Delete → Verwijder)"
+  },
+  "delete-key": {
+    "chosen": "Delete",
+    "confidence": "high",
+    "forms": "bare Delete (⌫) where English is bare; in a sentence de Delete-toets",
+    "note": "Pile mined 2026-10-07 (macOS 27.0.1 live bundles): VoiceOver SCRWorkspace.loctable deleteKey, Terminal keyDescriptions.loctable 007F, AccessibilitySharedSupport symbol names delete.backward.",
+    "sources": "macOS Terminal key descriptions (⌫ Delete → ⌫ Delete), VoiceOver (Delete Key → Delete-toets); symbol names backspace"
   },
   "delete-permanently": {
     "accept": ["voorgoed"],
@@ -1097,6 +1116,13 @@
     "confidence": "high",
     "forms": "File system watching (section) → Bestandssysteem volgen (tentative)",
     "sources": "macOS AppKit DocumentDragging.loctable (in het bestandssysteem)"
+  },
+  "filter": {
+    "accept": ["filteren", "gefilterd"],
+    "chosen": "filter",
+    "confidence": "high",
+    "forms": "noun and bare-stem button Filter (Filter wissen, snelfilter); verb filteren; the typing-mode name Filter, beside Ga naar",
+    "sources": "macOS live (Filter → Filter 63×; Clear Filter → Wis filter); DC, MC (Filter); catalog (Groottefilter actief)"
   },
   "finder": {
     "chosen": "Finder",
@@ -2172,6 +2198,11 @@
     "chosen": "zoekopdracht",
     "confidence": "high",
     "sources": "macOS Finder (zoekopdracht)"
+  },
+  "quick-filter": {
+    "chosen": "snelfilter",
+    "confidence": "high",
+    "sources": "TC 3018/3019 (snelfilter uit/aan); DC actQuickFilter (Snelfilter)"
   },
   "quick-look": {
     "accept": ["Geef snel weer"],

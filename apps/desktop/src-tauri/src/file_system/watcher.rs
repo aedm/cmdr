@@ -25,7 +25,7 @@ use tauri_specta::Event as _;
 use crate::file_system::listing::{
     DiffChange, FileEntry, OverlayRows, compute_diff, get_listing_entries, get_listing_volume_id_and_path,
     get_single_entry, has_entry, insert_entry_sorted, list_directory_core, listing_changed, remove_entries_by_paths,
-    update_entry_sorted, update_listing_entries,
+    replace_listing_entries, update_entry_sorted,
 };
 use crate::index_host::index;
 use cmdr_fs::firmlinks;
@@ -566,7 +566,7 @@ pub async fn handle_directory_change(listing_id: &str) {
     // The listing's sort params and its pane's hidden-files setting and quick
     // filter, taken once: the overlay pass between the enrich and the sort is
     // `async`, and the cache guard can't be held across it.
-    let (sort_params, include_hidden, name_filter) = {
+    let (sort_params, include_hidden, name_filter, read_at) = {
         use crate::file_system::listing::cached_listing::LISTING_CACHE;
 
         let listing_view = LISTING_CACHE.read().ok().and_then(|cache| {
@@ -575,13 +575,14 @@ pub async fn handle_directory_change(listing_id: &str) {
                     (l.sort_by, l.sort_order, l.directory_sort_mode),
                     l.include_hidden(),
                     l.name_filter().cloned(),
+                    l.filter_epoch(),
                 )
             })
         });
         // A listing gone by now takes no update below either, so the setting is moot.
         match listing_view {
-            Some((sort, hidden, filter)) => (Some(sort), hidden, filter),
-            None => (None, true, None),
+            Some((sort, hidden, filter, epoch)) => (Some(sort), hidden, filter, epoch),
+            None => (None, true, None, 0),
         }
     };
 
@@ -620,7 +621,7 @@ pub async fn handle_directory_change(listing_id: &str) {
     let changes = compute_diff(&old_entries, &new_entries, include_hidden, name_filter.as_ref());
 
     // Update the unified LISTING_CACHE with new entries.
-    update_listing_entries(listing_id, new_entries, overlay_rows);
+    let changes = replace_listing_entries(listing_id, new_entries, overlay_rows, read_at, changes);
 
     crate::file_system::listing::diff_emitter::enqueue_diff(listing_id, changes);
 }

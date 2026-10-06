@@ -20,6 +20,7 @@
     import { createTypeToJumpController } from './type-to-jump-controller.svelte'
     import TypeToJumpIndicator from './TypeToJumpIndicator.svelte'
     import { createQuickFilterController } from './quick-filter-controller.svelte'
+    import { maybeShowQuickFilterIntro } from './quick-filter-intro'
     import type { ViewMode } from '$lib/app-status-store'
     import type { CommandId } from '$lib/commands'
     import { tooltip } from '$lib/tooltip/tooltip'
@@ -302,7 +303,9 @@
         getHasParent: () => hasParent,
         getCursorFilename: () => selectionInfo.entry?.name,
         getSelectedIndices: () => selection.getSelectedIndices(),
-        apply: ({ totalCount: count, cursorIndex: cursor, selectedIndices }) => {
+        apply: ({ totalCount: count, cursorIndex: cursor, selectedIndices, sequence }) => {
+            // Diffs numbered up to the switch speak the old rows; the refetch below holds them.
+            if (sequence !== null) lastSequence = Math.max(lastSequence, sequence)
             totalCount = count
             selection.setSelectedIndices(selectedIndices)
             cacheGeneration++
@@ -938,7 +941,10 @@
         return quickFilter.isActive()
     }
     export function appendQuickFilter(char: string): void {
+        const starting = !quickFilter.isActive()
         quickFilter.append(char)
+        // The first time typing ever narrows a pane, say what happened and how to undo it.
+        if (starting && quickFilter.isActive()) maybeShowQuickFilterIntro()
     }
     export function backspaceQuickFilter(): void {
         quickFilter.backspace()
@@ -951,6 +957,14 @@
     $effect(() => {
         dependOn(listingId)
         untrack(() => { quickFilter.reset(); })
+    })
+
+    // Leaving Filter mode takes its pattern along: in Jump mode nothing could clear it.
+    $effect(() => {
+        const mode = getTypeToJumpMode()
+        untrack(() => {
+            if (mode !== 'filter') quickFilter.clear()
+        })
     })
 
     /** Find an item by name in network views. Returns index or -1. */
@@ -1383,6 +1397,7 @@
             indicatorStale: jump.indicatorStale,
         }),
         getLastJumpMatchedName: () => jump.lastMatchedName,
+        getQuickFilterPattern: () => quickFilter.pattern,
         getListing: () => paneListingOf({ hasError: Boolean(friendlyError || error), loading, stalled: stalled !== null }),
     })
     const syncPaneStateToMcp = mcpSync.syncPaneStateToMcp
@@ -2018,7 +2033,13 @@
             visible={jump.indicatorVisible}
             stale={jump.indicatorStale}
         />
-        <TypeToJumpIndicator buffer={quickFilter.pattern} visible={quickFilter.isActive()} stale={false} kind="filter" />
+        <TypeToJumpIndicator
+            buffer={quickFilter.pattern}
+            visible={quickFilter.isActive()}
+            stale={false}
+            kind="filter"
+            onClear={quickFilter.clear}
+        />
         {#if unreachable}
             <VolumeUnreachableBanner
                 originalPath={unreachable.originalPath}

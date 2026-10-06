@@ -91,7 +91,13 @@ export function createPaneMirror(deps: PaneMirrorDeps): PaneMirror {
     restoreFocus(originalFocused)
   }
 
-  function copyPathBetweenPanes({ source, target, followCursor = true }: CopyPathBetweenPanesArgs): void {
+  function copyPathBetweenPanes({ source, target, followCursor }: CopyPathBetweenPanesArgs): void {
+    // The cursor refines the destination only on a focused source, and only when asked.
+    const refineByCursor = followCursor !== false && deps.getFocusedPane() === source
+    mirrorPane(source, target, refineByCursor)
+  }
+
+  function mirrorPane(source: 'left' | 'right', target: 'left' | 'right', sourceFocused: boolean): void {
     if (source === target) return
     const sourcePaneRef = deps.getPaneRef(source)
     if (!sourcePaneRef) return
@@ -100,8 +106,6 @@ export function createPaneMirror(deps: PaneMirrorDeps): PaneMirror {
     const sourcePath = deps.getPanePath(source)
     const sourceHistoryEntry = getCurrentEntry(deps.getPaneHistory(source))
     const sourceHost = sourceHistoryEntry.networkHost ?? null
-    // The cursor refines the destination only on a focused source, and only when asked.
-    const sourceFocused = followCursor && deps.getFocusedPane() === source
 
     // Normal listing on the source: cursor-on-folder refines the path.
     if (sourceVolumeId !== 'network') {

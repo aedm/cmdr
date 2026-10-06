@@ -263,6 +263,10 @@
   "@menu.view.swapPanes": {
     "sourceHash": "cc29396"
   },
+  "menu.view.clonePane": "目標窗格 = 來源窗格",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
+  },
   "menu.view.commandPalette": "指令面板⋯",
   "@menu.view.commandPalette": {
     "sourceHash": "6b1c93d"

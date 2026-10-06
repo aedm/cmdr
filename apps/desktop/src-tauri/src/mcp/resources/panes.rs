@@ -255,6 +255,12 @@ pub(crate) fn build_pane_yaml_with_options(state: &PaneState, indent: &str, opts
     // Selected count
     lines.push(format!("{}selected: {}", indent, state.selected_indices.len()));
 
+    // Quick filter: only while one narrows the pane, which makes every row below
+    // a FILTERED row.
+    if let Some(ref pattern) = state.quick_filter {
+        lines.push(format!("{}quickFilter: {:?}", indent, pattern));
+    }
+
     // Type-to-jump state: only emitted while a buffer or visible indicator
     // exists, so the YAML stays clean during the common case.
     if let Some(ref ttj) = state.type_to_jump {

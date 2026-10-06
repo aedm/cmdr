@@ -236,6 +236,14 @@
   "@commands.paneSwap.label": {
     "sourceHash": "cc29396"
   },
+  "commands.paneClone.label": "Cloner le panneau",
+  "@commands.paneClone.label": {
+    "sourceHash": "74b2c7f"
+  },
+  "commands.paneClone.description": "Ouvrir aussi le dossier de ce panneau dans l’autre panneau.",
+  "@commands.paneClone.description": {
+    "sourceHash": "8a13dc9"
+  },
   "commands.paneLeftVolumeChooser.label": "Ouvrir le sélecteur de volume gauche",
   "@commands.paneLeftVolumeChooser.label": {
     "sourceHash": "6210f8e"

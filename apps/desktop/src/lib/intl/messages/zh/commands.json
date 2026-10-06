@@ -236,6 +236,14 @@
   "@commands.paneSwap.label": {
     "sourceHash": "cc29396"
   },
+  "commands.paneClone.label": "克隆窗格",
+  "@commands.paneClone.label": {
+    "sourceHash": "74b2c7f"
+  },
+  "commands.paneClone.description": "在另一个窗格中也打开这个窗格的文件夹。",
+  "@commands.paneClone.description": {
+    "sourceHash": "8a13dc9"
+  },
   "commands.paneLeftVolumeChooser.label": "打开左侧宗卷选择器",
   "@commands.paneLeftVolumeChooser.label": {
     "sourceHash": "6210f8e"

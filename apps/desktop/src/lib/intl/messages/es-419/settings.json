@@ -382,5 +382,9 @@
   "settings.managed.summary.reports": "Reportes de fallos y de error",
   "@settings.managed.summary.reports": {
     "sourceHash": "44a9e49"
+  },
+  "settings.fileExplorer.quickFilterIntroSeen.description": "Si ya se mostró el aviso que explica el primer filtro rápido.",
+  "@settings.fileExplorer.quickFilterIntroSeen.description": {
+    "sourceHash": "fa180c6"
   }
 }

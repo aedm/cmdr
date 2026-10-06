@@ -60,6 +60,9 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
 - **Rollback captions** (`operationLog.dialog.rollbackOf`, `.rollbackOfUnlisted`, `.latestRollback`):
   `Hoàn tác cho thao tác “…” lúc {time}` puts `thao tác` before the quote so `lúc {time}` binds to the undone operation,
   not the rollback row. Confirm it reads as a caption, not a command.
+- **`Khung đích = khung nguồn`** (`commands.paneClone.label`, `menu.view.clonePane`, tentative): Total Commander’s name
+  for Clone pane, because `nhân bản` is Duplicate and `sao chép` is Copy. Only TC has it (no Double Commander vi);
+  confirm a Vietnamese reader takes it as "show the same folder in the other pane".
 
 ## Layout
 

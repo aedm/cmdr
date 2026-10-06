@@ -1,6 +1,6 @@
 //! Quick filter: the pattern a pane narrows its rows to while the user types.
 //!
-//! The pane's rows are the entries [`visible_rows`](super::visible_rows) shows,
+//! The pane's rows are the entries [`visible_rows`] shows,
 //! so the filter is one more input to THAT predicate, never a second filter
 //! point: counts, ranges, selection indices, type-to-jump, and `directory-diff`
 //! rows all agree on what a filtered pane is showing.
@@ -11,6 +11,16 @@
 //! `Annual report.pdf`, and `*.pdf` (or just `.pdf`) finds every PDF.
 
 use std::borrow::Cow;
+use std::collections::HashMap;
+use std::sync::atomic::Ordering;
+
+use serde::{Deserialize, Serialize};
+
+use cmdr_fs::ignore_poison::RwLockIgnorePoison;
+
+use crate::file_system::listing::cached_listing::LISTING_CACHE;
+use crate::file_system::listing::operations::ListingLookupError;
+use crate::file_system::listing::visible_rows;
 
 use cmdr_fs::name_fold::fold_name;
 
@@ -82,4 +92,102 @@ fn contains_glob(text: &[char], pattern: &[char]) -> bool {
             _ => return false,
         }
     }
+}
+
+/// Where the pane's cursor and selection land after a quick-filter change, in
+/// the new row space.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NameFilterResult {
+    /// Whether the listing took the new pattern. `false` only when the caller
+    /// asked to refuse a pattern nothing matches: the listing then keeps its
+    /// previous filter, and the rest of this answer describes that one.
+    pub accepted: bool,
+    /// How many rows the pane shows under the new filter.
+    pub total_count: usize,
+    /// The row of the file that was under the cursor, or `None` when the new
+    /// filter leaves it out (or no file was given).
+    pub new_cursor_index: Option<usize>,
+    /// The rows of the previously selected files the new filter still shows. A
+    /// selected file the filter leaves out drops out of the selection, so no
+    /// operation ever acts on a row the user can't see.
+    pub new_selected_indices: Vec<usize>,
+    /// The diff sequence the new row space starts at, when the filter changed. Every
+    /// `directory-diff` numbered up to it describes the old rows: the pane takes it
+    /// as its last applied sequence and skips them. `None` when nothing changed.
+    pub sequence: Option<u64>,
+}
+
+/// Sets (or, with an empty or `None` pattern, clears) the pane's quick filter,
+/// and carries the cursor and selection into the new row space, all under ONE
+/// write lock so no diff or read can land between the old row space and the new.
+///
+/// With `refuse_empty`, a pattern that matches no row is refused and the old
+/// filter stays (`accepted: false`): Total Commander's rule that typing only
+/// ever narrows down to the last match, never past it. Deciding it here, under
+/// the same lock, is what makes the refusal exact; the frontend can't know the
+/// count before asking.
+///
+/// Like a hidden-files toggle, a change drops what's queued for the listing: it
+/// was numbered in the old row space, and the pane re-reads its rows after this.
+pub fn set_listing_name_filter(
+    listing_id: &str,
+    pattern: Option<&str>,
+    include_hidden: bool,
+    cursor_filename: Option<&str>,
+    selected_indices: &[usize],
+    refuse_empty: bool,
+) -> Result<NameFilterResult, ListingLookupError> {
+    let (changed, result) = {
+        let mut cache = LISTING_CACHE.write_ignore_poison();
+        let listing = cache
+            .get_mut(listing_id)
+            .ok_or_else(|| ListingLookupError::gone(listing_id))?;
+        listing.touch();
+
+        let selected_names: Vec<String> = {
+            let rows = listing.rows(include_hidden);
+            selected_indices
+                .iter()
+                .filter_map(|&row| rows.get(row).map(|entry| entry.name.clone()))
+                .collect()
+        };
+
+        let previous = listing.name_filter().cloned();
+        let next = pattern.and_then(NameFilter::new);
+        // Asked of every entry, not of the current rows: the new pattern needn't
+        // narrow the old one, so a row the old filter hides may be its only match.
+        let refused = refuse_empty
+            && next.is_some()
+            && next != previous
+            && !listing
+                .entries()
+                .iter()
+                .any(|entry| visible_rows::shows(entry, include_hidden, next.as_ref()));
+        let changed = !refused && listing.set_name_filter(next);
+        // Under the write lock, so no diff can be sequenced between the switch and this.
+        let sequence = changed.then(|| listing.sequence.fetch_add(1, Ordering::AcqRel) + 1);
+
+        let rows = listing.rows(include_hidden);
+        let names_to_rows: HashMap<&str, usize> = rows
+            .iter()
+            .enumerate()
+            .map(|(row, entry)| (entry.name.as_str(), row))
+            .collect();
+        let result = NameFilterResult {
+            accepted: !refused,
+            total_count: rows.len(),
+            new_cursor_index: cursor_filename.and_then(|name| names_to_rows.get(name).copied()),
+            new_selected_indices: selected_names
+                .iter()
+                .filter_map(|name| names_to_rows.get(name.as_str()).copied())
+                .collect(),
+            sequence,
+        };
+        (changed, result)
+    };
+    if changed {
+        crate::file_system::listing::diff_emitter::drop_pending(listing_id);
+    }
+    Ok(result)
 }

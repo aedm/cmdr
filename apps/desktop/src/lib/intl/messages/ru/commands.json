@@ -236,6 +236,14 @@
   "@commands.paneSwap.label": {
     "sourceHash": "cc29396"
   },
+  "commands.paneClone.label": "Клонировать панель",
+  "@commands.paneClone.label": {
+    "sourceHash": "74b2c7f"
+  },
+  "commands.paneClone.description": "Открыть папку этой панели и в другой панели.",
+  "@commands.paneClone.description": {
+    "sourceHash": "8a13dc9"
+  },
   "commands.paneLeftVolumeChooser.label": "Открыть переключатель томов левой панели",
   "@commands.paneLeftVolumeChooser.label": {
     "sourceHash": "6210f8e"

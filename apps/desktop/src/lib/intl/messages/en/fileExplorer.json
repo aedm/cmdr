@@ -435,7 +435,7 @@
   },
   "fileExplorer.quickFilter.prefix": "Filter: ",
   "@fileExplorer.quickFilter.prefix": {
-    "description": "Visible label before the typed characters in the quick-filter indicator, shown while typing narrows the file list to matching names (the typed text follows in its own styled span). Keep the trailing space."
+    "description": "Visible label before the typed characters in the quick-filter indicator, shown while typing narrows the file list to matching names (the typed text follows in its own styled span). Keep the gap before the typed text (a trailing space, or nothing after a full-width colon). It's the same word as the Filter option in Settings (settings.fileExplorer.typeToJump.mode.opt.filter)."
   },
   "fileExplorer.quickFilter.ariaLabel": "Showing names that contain {pattern}",
   "@fileExplorer.quickFilter.ariaLabel": {
@@ -2493,5 +2493,37 @@
       "countText": "the same number, formatted for display (for example 1,234)",
       "name": "the one item’s file or folder name, uncontrolled (any length, any language); only used when exactly one item didn’t arrive"
     }
+  },
+  "fileExplorer.quickFilter.clear": "Clear filter",
+  "@fileExplorer.quickFilter.clear": {
+    "description": "Accessible name and tooltip-less label of the small × on the \"Filter: …\" badge in a pane's corner. Clicking it shows every file again (same as Esc)."
+  },
+  "fileExplorer.quickFilter.intro.title": "Typing filtered this pane",
+  "@fileExplorer.quickFilter.intro.title": {
+    "description": "Title of an info toast. Shown once, the first time typing in a pane filters it (Filter is the default typing mode). The pane now hides the files whose names don't contain the typed letters."
+  },
+  "fileExplorer.quickFilter.intro.body": "You typed some letters, so the pane now shows only the files and folders whose names contain them.",
+  "@fileExplorer.quickFilter.intro.body": {
+    "description": "Body line of the same toast. Shown once, the first time typing in a pane filters it (Filter is the default typing mode)."
+  },
+  "fileExplorer.quickFilter.intro.escape": "Press Esc to see all your files again.",
+  "@fileExplorer.quickFilter.intro.escape": {
+    "description": "Emphasized line of the same toast: how to undo the filter. \"Esc\" is the Escape key; use the key name your macOS keyboard shows. Shown once, the first time typing in a pane filters it (Filter is the default typing mode)."
+  },
+  "fileExplorer.quickFilter.intro.jumpNote": "Prefer moving the cursor to a matching name without hiding anything? Switch to Jump, here or in Settings.",
+  "@fileExplorer.quickFilter.intro.jumpNote": {
+    "description": "Last line of the same toast, before its buttons. \"Jump\" is the other typing mode's name, the same word as the Jump option in Settings (settings.fileExplorer.typeToJump.mode.opt.jump). Shown once, the first time typing in a pane filters it (Filter is the default typing mode)."
+  },
+  "fileExplorer.quickFilter.intro.switchToJump": "Switch to Jump",
+  "@fileExplorer.quickFilter.intro.switchToJump": {
+    "description": "Button in the same toast: from now on typing in a pane moves the cursor to the best match instead of filtering. \"Jump\" is the mode's name, as in Settings. Shown once, the first time typing in a pane filters it (Filter is the default typing mode)."
+  },
+  "fileExplorer.quickFilter.intro.openSettings": "Settings…",
+  "@fileExplorer.quickFilter.intro.openSettings": {
+    "description": "Button in the same toast: opens Settings at the \"When you type in a pane\" option. Shown once, the first time typing in a pane filters it (Filter is the default typing mode)."
+  },
+  "fileExplorer.quickFilter.intro.gotIt": "Got it",
+  "@fileExplorer.quickFilter.intro.gotIt": {
+    "description": "Primary button in the same toast: closes it and keeps Filter mode. Shown once, the first time typing in a pane filters it (Filter is the default typing mode)."
   }
 }

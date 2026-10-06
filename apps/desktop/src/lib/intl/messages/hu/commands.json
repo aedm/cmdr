@@ -236,6 +236,14 @@
   "@commands.paneSwap.label": {
     "sourceHash": "cc29396"
   },
+  "commands.paneClone.label": "Panel klónozása",
+  "@commands.paneClone.label": {
+    "sourceHash": "74b2c7f"
+  },
+  "commands.paneClone.description": "Megnyitja ennek a panelnek a mappáját a másik panelen is.",
+  "@commands.paneClone.description": {
+    "sourceHash": "8a13dc9"
+  },
   "commands.paneLeftVolumeChooser.label": "Bal oldali kötetválasztó megnyitása",
   "@commands.paneLeftVolumeChooser.label": {
     "sourceHash": "6210f8e"

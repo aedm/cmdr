@@ -45,15 +45,29 @@ pub struct DiffChange {
     pub index: usize,
     /// Where the row sat before it moved. `Some` exactly on `Move`.
     pub previous_index: Option<usize>,
+    /// The listing's quick-filter epoch the rows were read at, when known. Backend
+    /// only: `diff_emitter` drops a change whose epoch the filter has moved past.
+    #[serde(skip)]
+    #[specta(skip)]
+    pub(crate) filter_epoch: Option<u64>,
 }
 
 impl DiffChange {
+    /// This change's rows were read at quick-filter epoch `epoch`.
+    pub(crate) fn read_at(self, epoch: u64) -> Self {
+        Self {
+            filter_epoch: Some(epoch),
+            ..self
+        }
+    }
+
     pub fn added(entry: FileEntry, index: usize) -> Self {
         Self {
             change_type: DiffChangeType::Add,
             entry,
             index,
             previous_index: None,
+            filter_epoch: None,
         }
     }
 
@@ -63,6 +77,7 @@ impl DiffChange {
             entry,
             index,
             previous_index: None,
+            filter_epoch: None,
         }
     }
 
@@ -72,6 +87,7 @@ impl DiffChange {
             entry,
             index,
             previous_index: None,
+            filter_epoch: None,
         }
     }
 
@@ -81,6 +97,7 @@ impl DiffChange {
             entry,
             index,
             previous_index: Some(previous_index),
+            filter_epoch: None,
         }
     }
 
@@ -91,13 +108,14 @@ impl DiffChange {
     /// Only for a patch of this ONE entry, where a row that differs means the entry
     /// itself changed places. A batch derives its moves with [`compute_diff`].
     pub(crate) fn for_pane(entry: FileEntry, rows: PaneRows) -> Option<Self> {
-        match (rows.before, rows.after) {
+        let change = match (rows.before, rows.after) {
             (None, None) => None,
             (Some(before), None) => Some(Self::removed(entry, before)),
             (None, Some(after)) => Some(Self::added(entry, after)),
             (Some(before), Some(after)) if before == after => Some(Self::modified(entry, after)),
             (Some(before), Some(after)) => Some(Self::moved(entry, before, after)),
-        }
+        };
+        change.map(|change| change.read_at(rows.epoch))
     }
 }
 
@@ -108,6 +126,8 @@ impl DiffChange {
 pub struct PaneRows {
     pub before: Option<usize>,
     pub after: Option<usize>,
+    /// The listing's quick-filter epoch both rows were read at.
+    pub epoch: u64,
 }
 
 /// `directory-diff` event sent to the frontend.

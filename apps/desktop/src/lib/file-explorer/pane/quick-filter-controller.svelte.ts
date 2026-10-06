@@ -27,6 +27,16 @@
  * pattern here snaps back to it. So the list narrows down to its last match and
  * a keystroke past that is dropped (Total Commander's rule). A shrinking pattern
  * (Backspace) is never refused: it can't match less than the longer one did.
+ * The snap-back drops only what extends the refused pattern (a longer pattern
+ * can't match more, since every match is "contains"): when the user cleared or
+ * backspaced while the refusal was in flight, their newer pattern stands.
+ *
+ * ## The new row space starts at a diff sequence
+ *
+ * A change of filter answers the `directory-diff` sequence its rows start at
+ * (`sequence`). The pane takes it as its last applied one, so a diff the
+ * backend numbered before the switch, which speaks the old rows, is skipped; the
+ * full refetch the switch triggers already holds its change.
  *
  * A pattern belongs to its listing. A new listing (navigation, tab switch)
  * starts unfiltered on the backend, so `reset()` drops the pattern without IPC,
@@ -43,6 +53,8 @@ export interface QuickFilterApplied {
   totalCount: number
   cursorIndex: number
   selectedIndices: number[]
+  /** The diff sequence the new row space starts at; `null` when the row space didn't change. */
+  sequence: number | null
 }
 
 export interface QuickFilterControllerDeps {
@@ -101,8 +113,9 @@ export function createQuickFilterController(deps: QuickFilterControllerDeps): Qu
     // The pane moved on while we waited: this answer describes rows it no longer shows.
     if (deps.getListingId() !== listingId) return
     if (!result.accepted) {
-      // Nothing matches: drop the keystroke(s), keep the rows as they are.
-      pattern = applied
+      // Nothing matches: drop the keystroke(s), keep the rows as they are. Unless the
+      // user moved off the refused pattern meanwhile (Esc, Backspace): that one stands.
+      if (pattern.startsWith(sent)) pattern = applied
       return
     }
     applied = sent
@@ -112,6 +125,7 @@ export function createQuickFilterController(deps: QuickFilterControllerDeps): Qu
       totalCount: result.totalCount,
       cursorIndex: result.newCursorIndex === null ? firstRow : result.newCursorIndex + offset,
       selectedIndices: result.newSelectedIndices.map((i) => i + offset),
+      sequence: result.sequence,
     })
   }
 

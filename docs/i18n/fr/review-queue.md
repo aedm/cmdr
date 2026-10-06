@@ -28,6 +28,9 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
 - **S3 bucket → `compartiment`** (AWS’s French console and MS FRA), while Google Cloud and Scaleway French say `bucket`:
   confirm French S3 users recognize it. Also `adressage de type chemin` (path-style), `stockage froid` (cold storage),
   and the Google console wording `onglet Interopérabilité des paramètres de Cloud Storage` (tentative).
+- **`Échap` vs `esc`** (`escape-key`, 8 keys incl. `settings.fileExplorer.typeToJump.mode.description`): the ruling
+  follows MS and TC, but macOS 27 French says `la touche esc` in Setup Assistant, Screen Sharing and VoiceOver (the
+  symbol name alone says `touche Échap`), and the Mac keycap reads esc. Decide whether to move the whole catalog.
 
 ## Phrasing
 

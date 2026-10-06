@@ -280,7 +280,8 @@ fn a_modify_rides_the_map_a_tag_sweep_built() {
         result
             == Some(PaneRows {
                 before: Some(ENTRY_COUNT - 1),
-                after: Some(ENTRY_COUNT - 1)
+                after: Some(ENTRY_COUNT - 1),
+                epoch: 0
             }),
         "the modify landed on {result:?}"
     );
@@ -298,6 +299,7 @@ fn an_inserts_duplicate_guard_rides_the_map_a_tag_sweep_built() {
     let mut inserted = Some(PaneRows {
         before: None,
         after: None,
+        epoch: 0,
     });
 
     let examined = examined_while(|| inserted = insert_entry_sorted(listing.id(), duplicate));

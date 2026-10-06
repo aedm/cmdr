@@ -98,6 +98,8 @@ export interface PaneMcpSyncDeps {
     indicatorStale: boolean
   }
   getLastJumpMatchedName: () => string | null
+  /** The quick filter's pattern; empty while no filter narrows the pane. */
+  getQuickFilterPattern: () => string
   /**
    * Where the listing stands as the pane shows it: an error screen, a stalled read,
    * a load in flight, or settled. What tells an agent an empty folder from a stuck one.
@@ -337,6 +339,7 @@ export function createPaneMcpSync(deps: PaneMcpSyncDeps) {
         loadedEnd,
         showHidden: deps.getShowHiddenFiles(),
         typeToJump: typeToJumpInfo,
+        quickFilter: deps.getQuickFilterPattern() || null,
         listing: deps.getListing(),
       }
 

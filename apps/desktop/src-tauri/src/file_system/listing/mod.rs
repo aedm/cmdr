@@ -11,6 +11,7 @@ pub(crate) mod fuzzy_jump;
 pub(crate) mod listing_host;
 pub(crate) mod mutation;
 pub(crate) mod name_filter;
+pub use name_filter::{NameFilterResult, set_listing_name_filter};
 pub(crate) mod operations;
 pub(crate) mod orphan_reaper;
 pub(crate) mod path_index;
@@ -32,10 +33,9 @@ pub use fuzzy_jump::fuzzy_find_first_match_in_listing;
 pub(crate) use cmdr_fs::entry as metadata;
 pub use metadata::{ExtendedMetadata, FileEntry};
 pub use operations::{
-    ListingLookupError, ListingStats, NameFilterResult, ResortResult, RowBeside, find_file_index, find_file_indices,
-    get_file_at, get_file_beside, get_file_range, get_listing_stats, get_total_count, keep_listings_alive,
-    list_directory_end, refresh_listing_index_sizes, resort_listing, set_listing_include_hidden,
-    set_listing_name_filter,
+    ListingLookupError, ListingStats, ResortResult, RowBeside, find_file_index, find_file_indices, get_file_at,
+    get_file_beside, get_file_range, get_listing_stats, get_total_count, keep_listings_alive, list_directory_end,
+    refresh_listing_index_sizes, resort_listing, set_listing_include_hidden,
 };
 pub use reading::{ListingTally, get_single_entry, list_directory_core, list_directory_core_with_tally};
 pub use sorting::{DirectorySortMode, SortColumn, SortOrder};
@@ -46,16 +46,18 @@ pub use operations::{get_files_at_indices, get_paths_at_indices};
 
 // Internal re-exports for file_system module internals (pub(crate) for crate-internal use)
 pub(crate) use caching::{
-    find_listings_for_path, get_cached_listing, get_listing_volume_id_and_path, has_entry, increment_sequence,
-    insert_entry_sorted, remove_entries_by_paths, update_entry_sorted,
+    find_listings_for_path, get_cached_listing, get_listing_volume_id_and_path, has_entry, insert_entry_sorted,
+    remove_entries_by_paths, sequence_changes, update_entry_sorted,
 };
 pub(crate) use diff::listing_changed;
 pub(crate) use orphan_reaper::start_orphan_listing_reaper;
 // Notification API for volume mutations
 pub(crate) use cached_listing::OverlayRows;
+#[cfg(test)]
+pub(crate) use operations::update_listing_entries;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 pub(crate) use operations::volume_ids_with_listings;
-pub(crate) use operations::{get_listing_entries, update_listing_entries};
+pub(crate) use operations::{get_listing_entries, replace_listing_entries};
 
 // The app's half of `cmdr-archive`'s live-content watch: what a refresh does to
 // the listing cache, which is this module's side of the seam.

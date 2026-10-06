@@ -165,7 +165,11 @@ pub fn insert_entry_sorted(listing_id: &str, entry: FileEntry) -> Option<PaneRow
     // The rows above `pos` are the same ones before and after the insert.
     let after = listing.pane_shows(&entry).then(|| listing.pane_rows().rows_before(pos));
     listing.entries_mut().insert(pos, entry);
-    Some(PaneRows { before: None, after })
+    Some(PaneRows {
+        before: None,
+        after,
+        epoch: listing.filter_epoch(),
+    })
 }
 
 /// Returns the directory path for a cached listing, without cloning entries.
@@ -226,11 +230,13 @@ pub fn remove_entries_by_paths(listing_id: &str, paths: &[PathBuf]) -> Vec<(Pane
 
     let rows: Vec<PaneRows> = {
         let pane = listing.pane_rows();
+        let epoch = listing.filter_epoch();
         doomed
             .iter()
             .map(|&index| PaneRows {
                 before: pane.row_of_entry(index),
                 after: None,
+                epoch,
             })
             .collect()
     };
@@ -261,6 +267,7 @@ pub fn remove_entry_by_name(listing_id: &str, name: &std::ffi::OsStr) -> Option<
     let rows = PaneRows {
         before: listing.pane_rows().row_of_entry(idx),
         after: None,
+        epoch: listing.filter_epoch(),
     };
     let entry = listing.entries_mut().remove(idx);
     Some((rows, entry))
@@ -318,7 +325,8 @@ pub fn update_entry_sorted(listing_id: &str, new_entry: FileEntry) -> Option<Pan
             (idx, pane.rows_before(idx))
         };
         let after = listing.pane_shows(&new_entry).then_some(rows_above);
-        (new_pos, PaneRows { before, after })
+        let epoch = listing.filter_epoch();
+        (new_pos, PaneRows { before, after, epoch })
     };
 
     let entries = listing.entries_mut();
@@ -389,7 +397,7 @@ pub fn apply_tags_to_listing(listing_id: &str, updates: Vec<(String, Vec<TagRef>
             .into_iter()
             .filter_map(|index| {
                 let row = pane.row_of_entry(index)?;
-                Some(DiffChange::modified(listing.entries()[index].clone(), row))
+                Some(DiffChange::modified(listing.entries()[index].clone(), row).read_at(listing.filter_epoch()))
             })
             .collect()
     };
@@ -679,7 +687,7 @@ pub(super) fn publish_replacement(listing_id: &str, entries: Vec<FileEntry>, ove
     use crate::file_system::listing::sorting::sort_entries;
 
     let mut sorted = entries;
-    let (old_entries, include_hidden, name_filter) = {
+    let (old_entries, include_hidden, name_filter, read_at) = {
         let cache = match LISTING_CACHE.read() {
             Ok(c) => c,
             Err(_) => return,
@@ -699,6 +707,7 @@ pub(super) fn publish_replacement(listing_id: &str, entries: Vec<FileEntry>, ove
             listing.entries().to_vec(),
             listing.include_hidden(),
             listing.name_filter().cloned(),
+            listing.filter_epoch(),
         )
     };
 
@@ -712,10 +721,12 @@ pub(super) fn publish_replacement(listing_id: &str, entries: Vec<FileEntry>, ove
     // fresh-listing oracle between the two writes would see six contributed
     // rows described by a count that still said zero, and a delete walker would
     // be handed a path with no inode behind it.
-    crate::file_system::listing::operations::update_listing_entries(
+    let changes = crate::file_system::listing::operations::replace_listing_entries(
         listing_id,
         sorted,
         OverlayRows::Recounted(overlay_rows),
+        read_at,
+        changes,
     );
     enqueue_diff(listing_id, changes);
 }
@@ -830,15 +841,28 @@ pub async fn refresh_archive_listings(volume_id: &str, archive_path: &Path) {
     }
 }
 
-/// Increments and returns the sequence number for a cached listing.
+/// Numbers a batch of `changes` for `listing_id`'s pane: drops each change read at a
+/// quick-filter epoch the listing has moved past (its rows name a row space the pane
+/// no longer shows, and the filter change's refetch already covers it), then takes
+/// the next sequence if any change is left. `None` when the listing is gone or
+/// nothing is left to send.
 ///
 /// Uses the `AtomicU64` on `CachedListing` so it works for all volume types,
-/// including SMB/MTP which don't have a `WatchedDirectory` entry.
-pub(crate) fn increment_sequence(listing_id: &str) -> Option<u64> {
+/// including SMB/MTP which don't have a `WatchedDirectory` entry. Under one read
+/// lock, so a filter change (write lock) can't land between the check and the number.
+pub(crate) fn sequence_changes(listing_id: &str, changes: Vec<DiffChange>) -> Option<(u64, Vec<DiffChange>)> {
     let cache = LISTING_CACHE.read().ok()?;
     let listing = cache.get(listing_id)?;
-    let seq = listing.sequence.fetch_add(1, Ordering::Relaxed) + 1;
-    Some(seq)
+    let epoch = listing.filter_epoch();
+    let changes: Vec<DiffChange> = changes
+        .into_iter()
+        .filter(|change| change.filter_epoch.is_none_or(|read_at| read_at == epoch))
+        .collect();
+    if changes.is_empty() {
+        return None;
+    }
+    let seq = listing.sequence.fetch_add(1, Ordering::AcqRel) + 1;
+    Some((seq, changes))
 }
 
 /// Returns cached entries for `(volume_id, path)` when the volume reports

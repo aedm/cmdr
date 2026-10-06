@@ -132,6 +132,7 @@ vi.mock('$lib/icon-cache', async () => {
 })
 
 vi.mock('$lib/settings/reactive-settings.svelte', () => ({
+  getTypeToJumpMode: vi.fn().mockReturnValue('jump'),
   getRowHeight: vi.fn().mockReturnValue(24),
   formatDateTime: vi.fn().mockReturnValue('2025-01-01 00:00'),
   formattedDate: vi.fn().mockReturnValue({

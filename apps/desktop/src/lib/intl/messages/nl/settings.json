@@ -1304,6 +1304,23 @@
   "@settings.fileExplorer.typeToJump.resetDelay.description": {
     "sourceHash": "ff59a6a"
   },
+  "settings.fileExplorer.typeToJump.mode.label": "Als je in een paneel typt",
+  "@settings.fileExplorer.typeToJump.mode.label": {
+    "sourceHash": "4ee8ef5"
+  },
+  "settings.fileExplorer.typeToJump.mode.description": "‘Ga naar’ zet de cursor op de beste overeenkomst. ‘Filter’ toont alleen de bestanden en mappen waarvan de naam bevat wat je typt, zoals het snelfilter van Total Commander; Delete (⌫) past het aan en Escape wist het.",
+  "@settings.fileExplorer.typeToJump.mode.description": {
+    "sourceHash": "e142e97"
+  },
+  "settings.fileExplorer.typeToJump.mode.opt.jump": "Ga naar",
+  "@settings.fileExplorer.typeToJump.mode.opt.jump": {
+    "sourceHash": "9ee0ca3"
+  },
+  "settings.fileExplorer.typeToJump.mode.opt.filter": "Filter",
+  "@settings.fileExplorer.typeToJump.mode.opt.filter": {
+    "sourceHash": "638e249",
+    "sameAsSourceJustification": "'Filter' is the Dutch bare-stem imperative of filteren, the button form the catalog already ships (Filter recente selecties, Filter op type); nl terms.json filter."
+  },
   "settings.fileOperations.maxConflictsToShow.label": "Maximaal aantal conflicten om te tonen",
   "@settings.fileOperations.maxConflictsToShow.label": {
     "sourceHash": "d9cdb0c"
@@ -2588,5 +2605,13 @@
   "settings.adb.pickerTitle": "Kies de opdracht adb",
   "@settings.adb.pickerTitle": {
     "sourceHash": "d6fc142"
+  },
+  "settings.fileExplorer.quickFilterIntroSeen.label": "Snelfilter uitgelegd",
+  "@settings.fileExplorer.quickFilterIntroSeen.label": {
+    "sourceHash": "5d124bb"
+  },
+  "settings.fileExplorer.quickFilterIntroSeen.description": "Of de melding die het eerste snelfilter uitlegt is getoond.",
+  "@settings.fileExplorer.quickFilterIntroSeen.description": {
+    "sourceHash": "855c661"
   }
 }

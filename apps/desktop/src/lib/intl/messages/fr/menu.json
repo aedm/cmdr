@@ -265,6 +265,10 @@
   "@menu.view.swapPanes": {
     "sourceHash": "cc29396"
   },
+  "menu.view.clonePane": "Cloner le panneau",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
+  },
   "menu.view.commandPalette": "Palette de commandes…",
   "@menu.view.commandPalette": {
     "sourceHash": "6b1c93d"

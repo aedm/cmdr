@@ -16,10 +16,10 @@ use cmdr_fs::ignore_poison::RwLockIgnorePoison;
 #[cfg(test)]
 use crate::benchmark;
 use crate::file_system::listing::cached_listing::{CachedListing, LISTING_CACHE, OverlayRows};
+use crate::file_system::listing::diff::{DiffChange, compute_diff};
 use crate::file_system::listing::metadata::FileEntry;
-use crate::file_system::listing::name_filter::NameFilter;
 use crate::file_system::listing::sorting::{DirectorySortMode, SortColumn, SortOrder, sort_entries};
-use crate::file_system::listing::visible_rows::{self, VisibleRows};
+use crate::file_system::listing::visible_rows::VisibleRows;
 #[cfg(test)]
 use crate::file_system::watcher::start_watching_detached;
 use crate::file_system::watcher::stop_watching;
@@ -172,97 +172,6 @@ pub fn set_listing_include_hidden(listing_id: &str, include_hidden: bool) -> Res
     Ok(())
 }
 
-/// Where the pane's cursor and selection land after a quick-filter change, in
-/// the new row space.
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub struct NameFilterResult {
-    /// Whether the listing took the new pattern. `false` only when the caller
-    /// asked to refuse a pattern nothing matches: the listing then keeps its
-    /// previous filter, and the rest of this answer describes that one.
-    pub accepted: bool,
-    /// How many rows the pane shows under the new filter.
-    pub total_count: usize,
-    /// The row of the file that was under the cursor, or `None` when the new
-    /// filter leaves it out (or no file was given).
-    pub new_cursor_index: Option<usize>,
-    /// The rows of the previously selected files the new filter still shows. A
-    /// selected file the filter leaves out drops out of the selection, so no
-    /// operation ever acts on a row the user can't see.
-    pub new_selected_indices: Vec<usize>,
-}
-
-/// Sets (or, with an empty or `None` pattern, clears) the pane's quick filter,
-/// and carries the cursor and selection into the new row space, all under ONE
-/// write lock so no diff or read can land between the old row space and the new.
-///
-/// With `refuse_empty`, a pattern that matches no row is refused and the old
-/// filter stays (`accepted: false`): Total Commander's rule that typing only
-/// ever narrows down to the last match, never past it. Deciding it here, under
-/// the same lock, is what makes the refusal exact; the frontend can't know the
-/// count before asking.
-///
-/// Like a hidden-files toggle, a change drops what's queued for the listing: it
-/// was numbered in the old row space, and the pane re-reads its rows after this.
-pub fn set_listing_name_filter(
-    listing_id: &str,
-    pattern: Option<&str>,
-    include_hidden: bool,
-    cursor_filename: Option<&str>,
-    selected_indices: &[usize],
-    refuse_empty: bool,
-) -> Result<NameFilterResult, ListingLookupError> {
-    let (changed, result) = {
-        let mut cache = LISTING_CACHE.write_ignore_poison();
-        let listing = cache
-            .get_mut(listing_id)
-            .ok_or_else(|| ListingLookupError::gone(listing_id))?;
-        listing.touch();
-
-        let selected_names: Vec<String> = {
-            let rows = listing.rows(include_hidden);
-            selected_indices
-                .iter()
-                .filter_map(|&row| rows.get(row).map(|entry| entry.name.clone()))
-                .collect()
-        };
-
-        let previous = listing.name_filter().cloned();
-        let next = pattern.and_then(NameFilter::new);
-        // Asked of every entry, not of the current rows: the new pattern needn't
-        // narrow the old one, so a row the old filter hides may be its only match.
-        let refused = refuse_empty
-            && next.is_some()
-            && next != previous
-            && !listing
-                .entries()
-                .iter()
-                .any(|entry| visible_rows::shows(entry, include_hidden, next.as_ref()));
-        let changed = !refused && listing.set_name_filter(next);
-
-        let rows = listing.rows(include_hidden);
-        let names_to_rows: HashMap<&str, usize> = rows
-            .iter()
-            .enumerate()
-            .map(|(row, entry)| (entry.name.as_str(), row))
-            .collect();
-        let result = NameFilterResult {
-            accepted: !refused,
-            total_count: rows.len(),
-            new_cursor_index: cursor_filename.and_then(|name| names_to_rows.get(name).copied()),
-            new_selected_indices: selected_names
-                .iter()
-                .filter_map(|name| names_to_rows.get(name.as_str()).copied())
-                .collect(),
-        };
-        (changed, result)
-    };
-    if changed {
-        crate::file_system::listing::diff_emitter::drop_pending(listing_id);
-    }
-    Ok(result)
-}
-
 // ============================================================================
 // On-demand virtual scrolling API (cache accessors)
 // ============================================================================
@@ -280,7 +189,7 @@ pub enum ListingLookupError {
 }
 
 impl ListingLookupError {
-    fn gone(listing_id: &str) -> Self {
+    pub(crate) fn gone(listing_id: &str) -> Self {
         Self::Gone {
             listing_id: listing_id.to_string(),
         }
@@ -614,19 +523,50 @@ pub(crate) fn update_listing_entries(listing_id: &str, entries: Vec<FileEntry>, 
     if let Ok(mut cache) = LISTING_CACHE.write()
         && let Some(listing) = cache.get_mut(listing_id)
     {
-        listing.touch();
-        let mut entries = entries;
-        index().enrich(&listing.volume_id, &mut entries);
-        sort_entries(
-            &mut entries,
-            listing.sort_by,
-            listing.sort_order,
-            listing.directory_sort_mode,
-        );
-        listing.set_entries(entries);
-        if let OverlayRows::Recounted(count) = overlay_rows {
-            listing.set_overlay_rows(count);
-        }
+        write_entries(listing, entries, overlay_rows);
+    }
+}
+
+/// [`update_listing_entries`] for a re-read whose pane diff, `changes`, was computed
+/// at quick-filter epoch `read_at`; answers the diff to send. When the filter moved
+/// on meanwhile, `changes` names rows of a row space the pane no longer shows, so it
+/// recomputes the diff here, under the write lock, against the filter as it stands.
+pub(crate) fn replace_listing_entries(
+    listing_id: &str,
+    entries: Vec<FileEntry>,
+    overlay_rows: OverlayRows,
+    read_at: u64,
+    changes: Vec<DiffChange>,
+) -> Vec<DiffChange> {
+    let Ok(mut cache) = LISTING_CACHE.write() else {
+        return Vec::new();
+    };
+    let Some(listing) = cache.get_mut(listing_id) else {
+        return Vec::new();
+    };
+    let epoch = listing.filter_epoch();
+    let old_entries = (epoch != read_at).then(|| listing.entries().to_vec());
+    write_entries(listing, entries, overlay_rows);
+    let changes = match old_entries {
+        None => changes,
+        Some(old) => compute_diff(&old, listing.entries(), listing.include_hidden(), listing.name_filter()),
+    };
+    changes.into_iter().map(|change| change.read_at(epoch)).collect()
+}
+
+fn write_entries(listing: &mut CachedListing, entries: Vec<FileEntry>, overlay_rows: OverlayRows) {
+    listing.touch();
+    let mut entries = entries;
+    index().enrich(&listing.volume_id, &mut entries);
+    sort_entries(
+        &mut entries,
+        listing.sort_by,
+        listing.sort_order,
+        listing.directory_sort_mode,
+    );
+    listing.set_entries(entries);
+    if let OverlayRows::Recounted(count) = overlay_rows {
+        listing.set_overlay_rows(count);
     }
 }
 

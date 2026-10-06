@@ -43,6 +43,7 @@ fn test_pane_state_store_update_left() {
         show_hidden: false,
         tabs: vec![],
         type_to_jump: None,
+        quick_filter: None,
         mount_error: None,
         listing: Default::default(),
     };
@@ -111,6 +112,7 @@ fn test_pane_state_cursor_index_bounds() {
         show_hidden: false,
         tabs: vec![],
         type_to_jump: None,
+        quick_filter: None,
         mount_error: None,
         listing: Default::default(),
     };
@@ -266,6 +268,7 @@ fn test_empty_file_list() {
         show_hidden: false,
         tabs: vec![],
         type_to_jump: None,
+        quick_filter: None,
         mount_error: None,
         listing: Default::default(),
     };
@@ -308,6 +311,7 @@ fn test_large_file_count() {
         show_hidden: false,
         tabs: vec![],
         type_to_jump: None,
+        quick_filter: None,
         mount_error: None,
         listing: Default::default(),
     };

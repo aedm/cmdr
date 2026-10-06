@@ -147,3 +147,9 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   `managed-by-organization`. (ru, zh-Hant)
 - `settings.managed.*`, `ai.managed.*`, `askCmdr.error.managedByOrganization`, `onboarding.stepBeta.analyticsManaged`:
   no screenshot of the managed card or the locked rows, so value widths are guesses. Capture them under a policy. (ru)
+- `fileExplorer.quickFilter.*`, `settings.fileExplorer.typeToJump.mode.*`: no screenshot of the toast, the "Filter: …"
+  badge with its ×, or the Jump/Filter toggle, so widths are guesses. Capture all three. (11)
+- `settings.fileExplorer.typeToJump.mode.description`: the description says to use "the names printed on a Mac
+  keyboard", but most non-US Mac keyboards print only the ⌫ glyph and an English "esc", so there's no printed name to
+  copy. Say "the name macOS gives the key in your language (VoiceOver's key names)" instead; that's what the
+  `delete-key` rulings record. (11)
