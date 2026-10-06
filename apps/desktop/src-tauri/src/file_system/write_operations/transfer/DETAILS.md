@@ -81,7 +81,8 @@ Three ledgers say what an operation currently has at the destination, and each o
 - **A partial is its own case**, not "a file whose identity we don't know". See below.
 - **Unverifiable** is the honest answer when the stat that would have snapshotted an entry failed, and the only route to it.
 
-**❌ No mtime, on any path.** The obvious rule — mtime locally, since local copies preserve it deliberately, size only on volumes — keys on how Cmdr WRITES, while the failure keys on what the destination filesystem STORES. Snapshots are whole seconds; FAT32 stores mtime at 2-second granularity and network mounts round too, so copy to a USB stick, cancel, roll back, and every preserved mtime reads back truncated: every file "drifted", the whole copy left on the stick. Symlinks are worse, and unconditionally: the snapshot is the link's, but `copy_symlink` creates a fresh link with no mtime preservation, so every copied link would be left behind.
+**❌ No mtime, on any path.** (This is the ledgers' identity check only; a copy itself does keep the source's date:
+`volume/DETAILS.md` § "Copies keep the source's date".) The obvious rule — mtime locally, since local copies preserve it deliberately, size only on volumes — keys on how Cmdr WRITES, while the failure keys on what the destination filesystem STORES. Snapshots are whole seconds; FAT32 stores mtime at 2-second granularity and network mounts round too, so copy to a USB stick, cancel, roll back, and every preserved mtime reads back truncated: every file "drifted", the whole copy left on the stick. Symlinks are worse, and unconditionally: the snapshot is the link's, but `copy_symlink` creates a fresh link with no mtime preservation, so every copied link would be left behind.
 
 **Where each snapshot comes from.**
 

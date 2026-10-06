@@ -140,6 +140,26 @@ async fn export_honors_the_shared_handshake_contract() {
     device.teardown(test_connection_manager()).await;
 }
 
+/// The shared date assertions, over a real `MtpVolume`: an upload carries the
+/// source's date in its ObjectInfo, and a read reports the device's.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "mtime: MTP not wired yet"]
+async fn a_copy_keeps_the_source_date_per_the_shared_contract() {
+    let _guard = device_lock().await;
+    let (device, volume) = connect_primed_volume(Some("/Documents")).await;
+
+    let dated = Path::new("/Documents/dated.txt");
+    cmdr_fs::volume::conformance::assert_write_from_stream_keeps_the_source_date(
+        &volume,
+        dated,
+        std::time::Duration::ZERO,
+    )
+    .await;
+    cmdr_fs::volume::conformance::assert_read_stream_reports_the_listed_date(&volume, dated).await;
+
+    device.teardown(test_connection_manager()).await;
+}
+
 /// The shared `NotFound`-payload assertion, over a real `MtpVolume`.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn not_found_honors_the_shared_path_payload_contract() {

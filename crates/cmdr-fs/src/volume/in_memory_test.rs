@@ -268,6 +268,21 @@ async fn write_from_stream_create_new_honors_the_shared_no_clobber_contract() {
     .await;
 }
 
+/// The double keeps the source's date too, so an engine test copying onto it
+/// sees what a real destination does.
+#[tokio::test]
+async fn a_copy_keeps_the_source_date_per_the_shared_contract() {
+    let volume = InMemoryVolume::new("Test");
+
+    conformance::assert_write_from_stream_keeps_the_source_date(
+        &volume,
+        Path::new("/dated.txt"),
+        std::time::Duration::ZERO,
+    )
+    .await;
+    conformance::assert_read_stream_reports_the_listed_date(&volume, Path::new("/dated.txt")).await;
+}
+
 #[tokio::test]
 async fn unknown_write_honors_the_shared_early_refusal_contract() {
     let volume = InMemoryVolume::new("Test");

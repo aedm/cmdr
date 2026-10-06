@@ -218,6 +218,28 @@ async fn smb_integration_export_honors_the_shared_handshake_contract() {
     ensure_clean(&smb_vol, &base).await;
 }
 
+/// The shared date assertions, against a real SMB server: a write sets the
+/// source's `LastWriteTime`, and a read reports the server's.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_copy_keeps_the_source_date_per_the_shared_contract() {
+    let smb_vol = Arc::new(make_docker_volume().await);
+    let base = test_dir_name();
+    ensure_clean(&smb_vol, &base).await;
+
+    smb_vol.create_directory(Path::new(&base)).await.unwrap();
+    let dated = format!("{base}/dated.txt");
+    cmdr_fs::volume::conformance::assert_write_from_stream_keeps_the_source_date(
+        smb_vol.as_ref(),
+        Path::new(&dated),
+        Duration::ZERO,
+    )
+    .await;
+    cmdr_fs::volume::conformance::assert_read_stream_reports_the_listed_date(smb_vol.as_ref(), Path::new(&dated)).await;
+
+    ensure_clean(&smb_vol, &base).await;
+}
+
 /// The shared `NotFound`-payload assertion, against a real SMB server: what the
 /// frontend renders as the missing file's name really is its path, not the
 /// server's NTSTATUS sentence.

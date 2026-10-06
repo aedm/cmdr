@@ -20,9 +20,13 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Duration;
 
 use cmdr_fs::volume::Volume;
 
+use super::network_dates_test_support::{
+    a_copy_off_the_server_keeps_the_source_date, a_copy_onto_the_server_keeps_the_source_date,
+};
 use super::network_transfer_test_support::{
     a_cancelled_upload_leaves_nothing_behind, a_directory_tree_lands_intact_off_the_server,
     a_directory_tree_lands_intact_on_the_server, a_pre_existing_destination_still_probes_each_name,
@@ -174,4 +178,18 @@ async fn sftp_integration_a_pre_existing_destination_still_probes_each_name() {
 async fn sftp_integration_awkward_names_survive_a_round_trip() {
     let (remote, dir) = fixture("app-awkward-names").await;
     awkward_names_survive_a_round_trip(remote, dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
+async fn sftp_integration_a_copy_onto_a_server_keeps_the_source_date() {
+    let (remote, dir) = fixture("app-dated-onto").await;
+    a_copy_onto_the_server_keeps_the_source_date(remote, dir, Duration::ZERO).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
+async fn sftp_integration_a_copy_off_a_server_keeps_the_source_date() {
+    let (remote, dir) = fixture("app-dated-off").await;
+    a_copy_off_the_server_keeps_the_source_date(remote, dir, Duration::ZERO).await;
 }

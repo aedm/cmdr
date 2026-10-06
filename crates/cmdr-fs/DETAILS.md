@@ -35,8 +35,8 @@ the next section.
   `<scheme>://user@host:port` app spelling, and the ONE translation); `friendly_error/` (typed, word-free
   classification); `usb_speed.rs` (❗ its doc comment reaches `bindings.ts`); `in_memory.rs` (the store and its knobs;
   `in_memory/volume_impl.rs` is its `impl Volume`); `conformance.rs` (+ `conformance/directory_creation.rs`, the three
-  `create_directory_all` promises); and `host/` (what a backend needs from the app, as named traits; read
-  `src/volume/host/CLAUDE.md` before writing a backend).
+  `create_directory_all` promises, and `conformance/modification_date.rs`, the two date ones); and `host/` (what a
+  backend needs from the app, as named traits; read `src/volume/host/CLAUDE.md` before writing a backend).
 - `entry.rs` + `icons/`: `FileEntry` and the classifiers behind `get_icon_id`.
 - `sqlite_util.rs`: the ONE process-wide page-cache slab, the connection factories every store opens through, and the
   one way a database file is deleted. `src/sqlite_util/thread_conn_cache.rs` is the per-thread read-connection cache and
@@ -523,6 +523,12 @@ everywhere, which is the point.
 - `assert_writability_matches_the_mutations_offered` and `assert_export_matches_the_bytes_offered` — the two capability
   DECLARATIONS that reach the user as UI state. Nothing but a test stops either drifting from the methods it speaks for.
 - `assert_not_found_carries_the_path` — the payload the frontend renders as the missing file's name.
+- `assert_write_from_stream_keeps_the_source_date` and `assert_read_stream_reports_the_listed_date` — the two halves of
+  "a copy keeps the source's date" (`src/volume/conformance/modification_date.rs`). Every copy suite checksums bytes,
+  and a destination stamping its own date passes all of them. Run by local, S3, and the in-memory double green; ADB,
+  MTP, SFTP, SMB, and WebDAV carry the cells while their wiring lands. The contract:
+  `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Copies keep the source's
+  date".
 
 `InMemoryVolume`, `LocalPosixVolume`, `AdbVolume`, and the Docker-gated `SmbVolume`, `SftpVolume`, and `WebdavVolume`
 run every one (InMemory's writability cell sits in `capabilities_test.rs`, next to the predicate it speaks for).

@@ -28,6 +28,15 @@ mod network_safety_test_support;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod network_semantics_test_support;
 
+// "A copy keeps the source's date", onto a server and off it, for every backend.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod network_dates_test_support;
+
+// The date scenarios against the in-memory double: the engine's half of
+// "a copy keeps the source's date", green whatever the network backends do.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod in_memory_dates_test;
+
 // Real copies, a move, a delete, and a mkdir between local disk and a phone over
 // ADB, against the crate's fake server, through the app's own write operations.
 #[cfg(any(target_os = "macos", target_os = "linux"))]

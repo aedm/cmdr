@@ -798,6 +798,53 @@ inside a folder — the two shapes take different routes through the engine), `m
 (`a_cross_volume_move_carries_the_executable_bit`), and `strategy_sequential_tests.rs`
 (`a_sequential_extract_carries_the_executable_bit`).
 
+## Copies keep the source's date
+
+**The rule: the source REPORTS its file's modification date on the read stream, the destination WRITES it.** This is
+the canonical home of the contract; the trait doc, the conformance assertions, and the backend docs point here. Local →
+local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile) and aren't covered here.
+
+- **Source half**: `VolumeReadStream::modified_at` is a REQUIRED trait method, so a new backend can't skip it by
+  omission. A stream answers the date its open already learned (the stat or listing it did anyway), ❌ never an extra
+  round trip. `None` means "no meaningful date" (fresh `create_file` bytes, a generated ZIP, a git blob, a test double),
+  and a wrapper (`CheckpointStream`, `fresh_compress.rs`'s pause wrapper) forwards its inner stream's answer. `ChannelReadStream` takes the
+  date through `with_modified_at`.
+- **Destination half**: every destination that can store a date writes `stream.modified_at()` inside
+  `write_from_stream`, so every engine path (staged, single-shot, whole-publish) gets it with no engine code. A staged
+  write sets it on the temp, and the engine's final rename carries it, so the real name never shows a wrong date. An
+  in-place writer sets it after the last byte (a later write would bump it again).
+- **Best effort**: a date that won't set is a `log::warn!`, and the copy still succeeds; the bytes are the copy.
+- **`None` leaves the destination's own date**, ❌ never an invented one. Only mtime is in scope: where a protocol
+  forces atime alongside (SFTP `ATTR_ACMODTIME`), atime gets the same value. Sub-second where both ends keep it.
+- **Not covered**: folder dates (writing children bumps them, which needs a post-order pass), birth time, and
+  permissions (§ "What mode a landed file wears").
+
+**Where each backend stands.**
+
+- **Local** (`local_posix/streams.rs`): reports the open's `stat` date; writes it with `File::set_modified` on the open
+  handle after the last byte, before `sync_data`.
+- **S3**: reports and writes the date as `x-amz-meta-mtime` (`crates/cmdr-s3/DETAILS.md`).
+- **`InMemoryVolume`**: keeps the stream's date (whole seconds), so an engine test copying onto it sees what a real
+  destination does.
+- **ADB, SFTP, SMB, MTP, WebDAV, archive (source only)**: not wired yet; each source stream carries a `TODO(mtime)`
+  marker. ADB push stamps `now` on `send_finish`.
+
+**How it's pinned.** Two layers, so a gap shows where it lives:
+
+- **Per backend**, in its own crate: `cmdr_fs::volume::conformance::assert_write_from_stream_keeps_the_source_date`
+  (the destination half, with a `tolerance` for a coarse clock) and `assert_read_stream_reports_the_listed_date` (the
+  source half, on a file dated a day or more back, so a stream reporting "now" can't pass). Every mutable backend's
+  `conformance_test.rs` runs both; a read-only backend runs only the second, seeded by its fixture's own means.
+- **Through the engine**: `backend_suites/network_dates_test_support.rs`'s
+  `a_copy_onto_the_server_keeps_the_source_date` and `a_copy_off_the_server_keeps_the_source_date`, with cells for
+  ADB, SFTP, and WebDAV, plus `in_memory_dates_test.rs`, which pins the engine's own half (the checkpoint wrapper,
+  staging, the final rename) against the double in the unit lane. S3's engine cell is
+  `s3_transfer_integration_test.rs::copying_onto_a_bucket_lands_every_byte_and_the_mtime`.
+
+**Why it took a test layer of its own.** Every copy suite checksums both ends, and a destination stamping its own date
+passes all of them. On 2026-10-07 a 562-photo copy from a Pixel (ADB) onto a QNAP (SFTP) landed every file dated to
+the copy, with both gaps at once: ADB's stream reported no date, and SFTP never set one.
+
 ## Pause in the volume walks
 
 Three loops in this directory are a WALK rather than a byte pump, and each parks at its own per-entry boundary by asking `state.stop_or_park_async()` exactly where it already observed cancel (`../../DETAILS.md` § "Pause / resume" owns the primitive and the ordering):

@@ -27,6 +27,9 @@ use super::super::event_sinks::{CollectorEventSink, OperationEventSink};
 use super::super::state::WriteOperationState;
 use super::super::types::{VolumeCopyConfig, WriteOperationConfig, WriteOperationError};
 use super::network_archive_test_support::a_compress_onto_the_server_lands_a_valid_zip;
+use super::network_dates_test_support::{
+    a_copy_off_the_server_keeps_the_source_date, a_copy_onto_the_server_keeps_the_source_date,
+};
 use super::network_transfer_test_support::{
     a_cancelled_upload_leaves_nothing_behind, a_directory_tree_lands_intact_off_the_server,
     a_directory_tree_lands_intact_on_the_server, a_pre_existing_destination_still_probes_each_name,
@@ -263,6 +266,20 @@ async fn a_folder_already_on_a_phone_still_asks_about_each_clashing_name() {
 async fn awkward_names_survive_a_round_trip_through_a_phone() {
     let phone = dialed_phone("R58M-Awkward-Names", "awkward-names").await;
     awkward_names_survive_a_round_trip(Arc::clone(&phone.volume), phone.dir.clone()).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "mtime: ADB not wired yet"]
+async fn a_copy_onto_a_phone_keeps_the_source_date() {
+    let phone = dialed_phone("R58M-Dated-Onto", "dated-onto").await;
+    a_copy_onto_the_server_keeps_the_source_date(Arc::clone(&phone.volume), phone.dir.clone(), Duration::ZERO).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "mtime: ADB not wired yet"]
+async fn a_copy_off_a_phone_keeps_the_source_date() {
+    let phone = dialed_phone("R58M-Dated-Off", "dated-off").await;
+    a_copy_off_the_server_keeps_the_source_date(Arc::clone(&phone.volume), phone.dir.clone(), Duration::ZERO).await;
 }
 
 // ── Mutations on the phone, and the pane patches they owe ────────────

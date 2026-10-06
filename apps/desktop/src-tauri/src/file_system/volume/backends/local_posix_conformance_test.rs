@@ -117,6 +117,23 @@ async fn write_from_stream_create_new_honors_the_shared_no_clobber_contract() {
     .await;
 }
 
+/// The shared date assertions. Every copy landing on local disk from another
+/// volume goes through `write_from_stream`, so this is the cell that keeps a
+/// phone's photos dated when they land in `~/Pictures`.
+#[tokio::test]
+async fn a_copy_keeps_the_source_date_per_the_shared_contract() {
+    let test_dir = TestDir::new("dated_write_conformance_test");
+    let volume = LocalPosixVolume::new("Test", &*test_dir);
+
+    cmdr_fs::volume::conformance::assert_write_from_stream_keeps_the_source_date(
+        &volume,
+        Path::new("dated.txt"),
+        std::time::Duration::ZERO,
+    )
+    .await;
+    cmdr_fs::volume::conformance::assert_read_stream_reports_the_listed_date(&volume, Path::new("dated.txt")).await;
+}
+
 #[tokio::test]
 async fn unknown_write_streams_all_bytes_and_reports_the_accepted_count() {
     let test_dir = TestDir::new("unknown_write_conformance_test");

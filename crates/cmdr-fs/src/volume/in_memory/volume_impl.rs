@@ -602,6 +602,14 @@ impl Volume for InMemoryVolume {
             } else {
                 self.create_file(dest, &data).await?;
             }
+            // Keeps the source's date the way a real destination does, so an
+            // engine test copying onto the double sees the same answer.
+            if let Some(secs) = stream
+                .modified_at()
+                .and_then(|date| date.duration_since(std::time::UNIX_EPOCH).ok())
+            {
+                self.set_modified_at(dest, Some(secs.as_secs()));
+            }
             Ok(bytes_written)
         })
     }

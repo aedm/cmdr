@@ -222,6 +222,19 @@ async fn export_matches_the_bytes_offered() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
+async fn a_copy_keeps_the_source_date() {
+    let (volume, dir) = stock_server_with_scratch("dated-copy").await;
+    let dated = format!("{dir}/dated.txt");
+
+    conformance::assert_write_from_stream_keeps_the_source_date(&volume, Path::new(&dated), std::time::Duration::ZERO)
+        .await;
+    conformance::assert_read_stream_reports_the_listed_date(&volume, Path::new(&dated)).await;
+
+    clean_scratch(&volume, &dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
 async fn not_found_carries_the_path() {
     // SFTP v3 answers a missing path with `SSH_FX_NO_SUCH_FILE` plus a sentence
     // of the server's own, and that sentence is what the frontend renders as the

@@ -156,6 +156,22 @@ async fn delete_leaves_a_non_empty_directory_intact() {
     clean(&volume, &dir).await;
 }
 
+/// ❗ Plain Apache `mod_dav` ignores `X-OC-Mtime` and offers no other way to
+/// set a date, so whether this cell can go green here at all is the WebDAV
+/// wiring's call: a server that can't store dates keeps the read half only,
+/// seeded by the fixture's own means.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
+async fn a_copy_keeps_the_source_date() {
+    let (volume, dir) = stock_server_with_scratch().await;
+    let dated = dir.join("dated.txt");
+
+    conformance::assert_write_from_stream_keeps_the_source_date(&volume, &dated, std::time::Duration::ZERO).await;
+    conformance::assert_read_stream_reports_the_listed_date(&volume, &dated).await;
+
+    clean(&volume, &dir).await;
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
 async fn writability_matches_the_mutations_offered() {

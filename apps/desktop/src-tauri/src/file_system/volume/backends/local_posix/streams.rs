@@ -242,12 +242,26 @@ impl LocalPosixVolume {
             // completed multi-GB transfer at the final fsync is worse UX than
             // accepting a small durability-window risk on a filesystem that
             // can't sync.
+            //
+            // The source's date goes on the open handle first, after the last
+            // byte (a later write would bump it again), so the sync covers it
+            // too. Best effort: the bytes are the copy, the date is courtesy.
+            let modified_at = stream.modified_at();
             let dest_for_sync = dest_abs.clone();
             file = spawn_blocking(move || {
                 use std::io::Write;
                 // Userspace flush first (harmless no-op on a raw File, but
                 // correct if the writer is ever wrapped in a BufWriter).
                 let _ = file.flush();
+                if let Some(date) = modified_at
+                    && let Err(e) = file.set_modified(date)
+                {
+                    log::warn!(
+                        target: "local_posix",
+                        "write_from_stream: couldn't keep the source's date on {}: {e}",
+                        dest_for_sync.display()
+                    );
+                }
                 if let Err(e) = file.sync_data() {
                     log::warn!(
                         target: "write_durability",

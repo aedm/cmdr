@@ -146,6 +146,16 @@ async fn not_found_carries_the_path() {
     conformance::assert_not_found_carries_the_path(volume.as_ref(), &fixture_path("/sdcard/no-such-file.txt")).await;
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "mtime: ADB not wired yet"]
+async fn a_copy_keeps_the_source_date() {
+    let (_server, volume) = seeded().await;
+    let dated = fixture_path("/sdcard/dated.txt");
+    conformance::assert_write_from_stream_keeps_the_source_date(volume.as_ref(), &dated, std::time::Duration::ZERO)
+        .await;
+    conformance::assert_read_stream_reports_the_listed_date(volume.as_ref(), &dated).await;
+}
+
 // ── This backend's own cells ─────────────────────────────────────────
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
