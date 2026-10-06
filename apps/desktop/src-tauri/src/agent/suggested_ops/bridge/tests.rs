@@ -376,6 +376,27 @@ async fn an_approval_the_engine_refuses_returns_the_group_to_pending() {
     );
 }
 
+/// An approved rename group renames its file. A rename binds only its parent folder and stores
+/// no destination volume, so a target check that wanted one refused every rename group the
+/// review dialog approved.
+#[tokio::test]
+async fn an_approved_rename_group_renames_its_file() {
+    ensure_root_volume();
+    let dir = TestDir::new("bridge_rename_runs");
+    let (conn, reporting, group_id) = vanished_rename_group(&dir);
+    std::fs::create_dir_all(dir.join("shots")).expect("parent");
+    std::fs::write(dir.join("shots").join("gone.png"), b"here after all").expect("seed");
+
+    let outcome = approve(&conn, reporting, group_id).await;
+
+    assert!(matches!(outcome, super::ApprovalOutcome::Started(_)), "{outcome:?}");
+    let renamed = dir.join("shots").join("renamed.png");
+    crate::test_support::wait_until_async(std::time::Duration::from_secs(5), "the rename lands", || {
+        renamed.exists()
+    })
+    .await;
+}
+
 /// A trash group on `volume_id`, the shape the source-volume check sees before any claim.
 fn trash_group_on(dir: &TestDir, volume_id: &str) -> (Connection, Connection, i64) {
     let db_path = dir.join("main.db");

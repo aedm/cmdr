@@ -289,7 +289,12 @@ async fn start_for(
         // per row, which is exactly what the live preflight capture produces. The group binds
         // the shared PARENT, and each op carries the NAME it becomes.
         ProposalVerb::Rename => {
-            let (parent, _) = target_of(group)?;
+            // A rename stays on its source volume, so the group stores no destination volume
+            // and `target_of`, which needs one, would refuse every rename group.
+            let parent = group
+                .destination
+                .clone()
+                .ok_or(ApprovalRefusal::TargetMissing { verb: group.verb })?;
             let rows = rename_rows(&parent, ops, &expected)?;
             // Routed: where a rename copies (an S3 folder), the batch runs as one move.
             start_renames(events, group.source_volume_id.clone(), rows, Initiator::Agent)
