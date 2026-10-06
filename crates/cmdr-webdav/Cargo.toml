@@ -28,6 +28,10 @@ fuzzing = []
 # The `Volume` trait, every type it exchanges, and the host seams this backend
 # asks the app through. The only crate below this one.
 cmdr-fs = { path = "../cmdr-fs" }
+# Builds the HTTP client, so a proxy and its bypass list apply here the way they do
+# everywhere else in Cmdr. A LAN server stays reachable on a proxied network only
+# because this routing sends it direct when macOS would.
+cmdr-http = { path = "../cmdr-http" }
 # The HTTP transport. Everything that touches it lives in `transport.rs`, plus
 # the status-code and method vocabulary `errors.rs` classifies on. A subset of
 # the app's features, so no second reqwest configuration enters the graph;

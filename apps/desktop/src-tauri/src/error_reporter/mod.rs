@@ -590,7 +590,7 @@ pub async fn upload(
         let meta_json = serde_json::to_string(manifest)
             .map_err(|e| ServerRequestError::unexpected(format!("serialize manifest: {e}")))?;
 
-        let client = reqwest::Client::builder()
+        let client = cmdr_http::client_builder()
             .timeout(Duration::from_secs(30))
             .build()
             .map_err(|e| ServerRequestError::unexpected(format!("HTTP client: {e}")))?;

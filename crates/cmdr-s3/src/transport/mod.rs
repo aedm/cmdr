@@ -121,7 +121,7 @@ impl S3Client {
     ) -> Result<Self, S3ConnectError> {
         let builder = || {
             tweak(
-                reqwest::Client::builder()
+                cmdr_http::client_builder()
                     .user_agent("Cmdr")
                     .connect_timeout(REQUEST_BUDGET)
                     .redirect(reqwest::redirect::Policy::none())

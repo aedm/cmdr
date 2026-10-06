@@ -126,7 +126,7 @@ impl std::fmt::Display for FetchError {
 /// The table at `url`, with its JSON for the cache. Split out so a test can
 /// point it at a mock server.
 async fn fetch(url: &str) -> Result<(PriceTable, String), FetchError> {
-    let client = reqwest::Client::builder()
+    let client = cmdr_http::client_builder()
         .connect_timeout(CONNECT_TIMEOUT)
         .timeout(REQUEST_TIMEOUT)
         .build()

@@ -164,7 +164,7 @@ pub(super) fn pending_report_id(path: &Path) -> Option<String> {
 /// POSTs one backend-owned report to `url`. Split from the send flow so tests can point it at a
 /// mock server without weakening the file/id boundary above.
 pub(super) async fn post_crash_report(url: &str, report: &CrashReport) -> Result<(), ServerRequestError> {
-    let client = reqwest::Client::builder()
+    let client = cmdr_http::client_builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| ServerRequestError::unexpected(format!("HTTP client: {e}")))?;

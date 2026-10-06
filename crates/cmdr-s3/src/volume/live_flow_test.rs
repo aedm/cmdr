@@ -224,7 +224,13 @@ async fn live_volume_flows_end_to_end() {
             )
             .await
             .expect("a link mints");
-        let fetched = reqwest::get(&link.into_url()).await.expect("the link fetches");
+        let fetched = cmdr_http::client_builder()
+            .build()
+            .expect("a plain client builds")
+            .get(link.into_url())
+            .send()
+            .await
+            .expect("the link fetches");
         let status = fetched.status();
         let body = fetched.bytes().await.unwrap_or_default();
         report(

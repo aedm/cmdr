@@ -115,7 +115,7 @@ impl WebdavClient {
     /// reaped by the OS rather than handed to the next request.
     pub(crate) fn new(base: Url, username: &str, password: &str) -> Result<Self, WebdavConnectError> {
         let builder = || {
-            reqwest::Client::builder()
+            cmdr_http::client_builder()
                 .user_agent("Cmdr")
                 .connect_timeout(REQUEST_BUDGET)
                 .redirect(reqwest::redirect::Policy::none())

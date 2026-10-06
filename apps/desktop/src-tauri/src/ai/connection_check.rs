@@ -101,7 +101,7 @@ async fn probe_ai_endpoint(base_url: String, api_key: String) -> AiConnectionChe
     let url = format!("{}/models", base_url.trim_end_matches('/'));
 
     // The policy judged `base_url` above; the redirect guard judges every hop after it.
-    let client = match reqwest::Client::builder()
+    let client = match cmdr_http::client_builder()
         .timeout(std::time::Duration::from_secs(10))
         .redirect(super::client::policy_guarded_redirects())
         .build()

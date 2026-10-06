@@ -657,7 +657,7 @@ async fn live_hostile_share_links() {
         let client = live.client();
         let prefix = live_prefix("share");
         let volume = live.connect(Some(&live.bucket)).await.expect("connects");
-        let http = reqwest::Client::new();
+        let http = cmdr_http::client_builder().build().expect("a plain client builds");
 
         for name in ["hash# & plus+ 100% é 🦀 ?.txt", "a b/c=d;e.txt", "שלום.txt"] {
             let path = at(&volume, &format!("{prefix}{name}"));

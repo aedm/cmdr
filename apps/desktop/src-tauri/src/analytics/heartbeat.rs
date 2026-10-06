@@ -269,7 +269,7 @@ async fn send_payload(payload: &HeartbeatPayload) -> BeatOutcome {
 }
 
 async fn send_payload_to(url: &str, payload: &HeartbeatPayload) -> BeatOutcome {
-    let client = match reqwest::Client::builder().timeout(HEARTBEAT_TIMEOUT).build() {
+    let client = match cmdr_http::client_builder().timeout(HEARTBEAT_TIMEOUT).build() {
         Ok(c) => c,
         Err(e) => {
             log::warn!(target: "analytics", "Couldn't build heartbeat HTTP client: {e}");

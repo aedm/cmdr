@@ -1358,6 +1358,7 @@ dependencies = [
  "cmdr-archive",
  "cmdr-fs",
  "cmdr-git",
+ "cmdr-http",
  "cmdr-index",
  "cmdr-mtp",
  "cmdr-s3",
@@ -1558,6 +1559,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cmdr-http"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "objc2-cf-network",
+ "objc2-core-foundation",
+ "reqwest",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "cmdr-index"
 version = "0.0.0"
 dependencies = [
@@ -1621,6 +1634,7 @@ dependencies = [
  "base64 0.23.1",
  "bytes",
  "cmdr-fs",
+ "cmdr-http",
  "cmdr-s3",
  "futures-util",
  "hmac 0.13.0",
@@ -1685,6 +1699,7 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "cmdr-fs",
+ "cmdr-http",
  "cmdr-webdav",
  "futures-util",
  "httpdate",
@@ -6583,6 +6598,15 @@ checksum = "478ae33fcac9df0a18db8302387c666b8ef08a3e2d62b510ca4fc278a384b6c0"
 dependencies = [
  "objc2 0.6.4",
  "objc2-foundation 0.3.2",
+]
+
+[[package]]
+name = "objc2-cf-network"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b4c9e30e636e2cd7d7414f320af2e0aa86f686adfc6f1bbe50b92366e4309c8"
+dependencies = [
+ "objc2-core-foundation",
 ]
 
 [[package]]

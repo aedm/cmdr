@@ -203,7 +203,7 @@ async fn send_amend(
         // someone is watching a dialog while it runs.
         const AMEND_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
 
-        let client = reqwest::Client::builder()
+        let client = cmdr_http::client_builder()
             .timeout(AMEND_TIMEOUT)
             .build()
             .map_err(|e| ServerRequestError::unexpected(format!("HTTP client: {e}")))?;

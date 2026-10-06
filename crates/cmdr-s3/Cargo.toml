@@ -47,6 +47,10 @@ log = "0.4"
 # The `Volume` trait, every type it exchanges, the host seams this backend asks
 # the app through, and the HTTP silence watch it shares with `cmdr-webdav`.
 cmdr-fs = { path = "../cmdr-fs" }
+# Builds the HTTP client, so a proxy and its bypass list apply here the way they do
+# everywhere else in Cmdr. A LAN server stays reachable on a proxied network only
+# because this routing sends it direct when macOS would.
+cmdr-http = { path = "../cmdr-http" }
 # The HTTP transport, confined to `transport/`. A subset of the app's
 # features, so no second reqwest configuration enters the graph. ❗ `http2` is
 # declared here although the app gets it anyway (through `genai`): without it

@@ -181,11 +181,12 @@ fern = "0.7.1"
 # so we own the rotation now. 0.8.0 (latest stable, ~14 months old, MIT). Pulls in
 # `chrono`/`filetime`/`flate2` are all already in our dep tree.
 file-rotate = "0.8.0"
-# HTTP client for API server validation and AI downloads. `system-proxy` is declared here
-# rather than inherited: it reached the build only through `genai`'s own reqwest line, so a
-# `genai` bump that dropped it would have silently stopped Cmdr honoring the macOS proxy
-# (`docs/notes/proxy-and-tls-inspection-2026-10.md`).
-reqwest = { version = "0.13", features = ["json", "rustls", "stream", "multipart", "system-proxy"], default-features = false }
+# HTTP client for API server validation and AI downloads. Every client is built through
+# `cmdr_http::client_builder()`, which owns proxy routing (system settings, PAC, bypass list),
+# so reqwest's own `system-proxy` reader is no longer what decides.
+reqwest = { version = "0.13", features = ["json", "rustls", "stream", "multipart"], default-features = false }
+# The one door every HTTP client is built through: proxy routing the way macOS decides it.
+cmdr-http = { path = "../../../crates/cmdr-http" }
 # MCP server
 axum = "0.8"
 tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "sync", "macros", "process"] }

@@ -72,7 +72,7 @@ fn raw(method: Method, at: &str) -> reqwest::RequestBuilder {
         .base_url
         .join(at)
         .unwrap_or_else(|e| panic!("joining {at} onto the fixture base URL: {e}"));
-    reqwest::Client::builder()
+    cmdr_http::client_builder()
         .user_agent("Cmdr")
         .build()
         .expect("a client with no TLS options is infallible")

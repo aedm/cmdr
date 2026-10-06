@@ -258,7 +258,7 @@ where
 /// Cmdr's server and this build disagree on the contract. The frontend owns the log line, gated once
 /// per condition, so a Rust warn here would only repeat it every poll tick.
 async fn fetch_manifest(url: &str) -> Result<manifest::UpdateManifest, crate::server_request::ServerRequestError> {
-    let client = reqwest::Client::builder()
+    let client = cmdr_http::client_builder()
         .connect_timeout(MANIFEST_CONNECT_TIMEOUT)
         .timeout(MANIFEST_REQUEST_TIMEOUT)
         .build()
@@ -336,7 +336,7 @@ impl From<crate::server_request::ServerRequestError> for UpdateDownloadError {
 /// maintenance page reads as the host's bad moment rather than as a tarball that fails its
 /// signature.
 async fn fetch_verified_tarball(url: &str, signature: &str) -> Result<Vec<u8>, UpdateDownloadError> {
-    let client = reqwest::Client::builder()
+    let client = cmdr_http::client_builder()
         .connect_timeout(DOWNLOAD_CONNECT_TIMEOUT)
         .read_timeout(DOWNLOAD_READ_TIMEOUT)
         .build()

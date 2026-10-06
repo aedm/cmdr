@@ -75,7 +75,10 @@ impl AiBackend {
         // which strips the last path segment when the base lacks `/`.
         let endpoint = format!("http://127.0.0.1:{port}/v1/");
         let resolver = make_resolver(endpoint, AuthData::from_single(""), ForceAdapter::OpenAi);
-        let client = Client::builder().with_service_target_resolver(resolver).build();
+        let client = Client::builder()
+            .with_reqwest(local_http_client())
+            .with_service_target_resolver(resolver)
+            .build();
         // Force the `openai::` namespace so `genai`'s adapter inference doesn't fall
         // back to Ollama for the bare `local-model` name. The resolver replaces the
         // rest, but adapter dispatch happens before the resolver runs.
@@ -627,10 +630,22 @@ const MAX_REDIRECTS: usize = 10;
 /// stops at any hop the managed policy refuses. Without it, a 3xx from an allowed host would carry
 /// the request (and its key) to any host.
 fn policy_guarded_http_client() -> reqwest::Client {
-    let builder = reqwest::Client::builder().redirect(policy_guarded_redirects());
+    let builder = cmdr_http::client_builder().redirect(policy_guarded_redirects());
     genai::WebConfig::default().apply_to_builder(builder).build().expect(
         "a reqwest client fails to build only when its TLS backend can't start, which genai treats as fatal too",
     )
+}
+
+/// The HTTP client for the on-device llama-server: `genai`'s defaults on Cmdr's client builder.
+/// ❗ Without it `genai` builds its own reqwest client, which would send `127.0.0.1` through a
+/// system proxy that can't reach it (`crates/cmdr-http/DETAILS.md`).
+fn local_http_client() -> reqwest::Client {
+    genai::WebConfig::default()
+        .apply_to_builder(cmdr_http::client_builder())
+        .build()
+        .expect(
+            "a reqwest client fails to build only when its TLS backend can't start, which genai treats as fatal too",
+        )
 }
 
 /// The redirect policy every HTTP client that talks to an AI endpoint uses (the LLM client above
@@ -769,7 +784,7 @@ pub(crate) fn map_genai_error(e: genai::Error) -> AiError {
 pub async fn health_check(port: u16) -> bool {
     let url = format!("http://127.0.0.1:{port}/health");
 
-    let client = match reqwest::Client::builder().timeout(Duration::from_secs(2)).build() {
+    let client = match cmdr_http::client_builder().timeout(Duration::from_secs(2)).build() {
         Ok(c) => c,
         Err(e) => {
             log::debug!("AI health_check: failed to build client: {e}");

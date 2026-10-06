@@ -353,7 +353,13 @@ async fn live_connect_routes_each_bucket_to_its_region() {
         // A share link signed for the far region fetches unsigned.
         let link = root.share_link(&in_far(&root, &key), ShareLinkExpiry::OneHour).await;
         let fetched = match link {
-            Ok(link) => match reqwest::get(&link.into_url()).await {
+            Ok(link) => match cmdr_http::client_builder()
+                .build()
+                .expect("a plain client builds")
+                .get(link.into_url())
+                .send()
+                .await
+            {
                 Ok(answer) => format!("{}", answer.status()),
                 Err(e) => format!("didn't fetch: {}", e.is_connect()),
             },

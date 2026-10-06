@@ -161,7 +161,7 @@ mod tests {
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     fn client(timeout: Duration) -> reqwest::Client {
-        reqwest::Client::builder()
+        cmdr_http::client_builder()
             .timeout(timeout)
             .build()
             .expect("a plain client builds")
@@ -408,7 +408,7 @@ mod tests {
     #[ignore = "network-dependent; run manually to verify reqwest chain content"]
     #[allow(clippy::print_stderr, reason = "verification harness; see fn doc")]
     async fn describe_error_chain_unwraps_reqwest_dns_failure() {
-        let err = reqwest::Client::builder()
+        let err = cmdr_http::client_builder()
             .connect_timeout(Duration::from_secs(2))
             .timeout(Duration::from_secs(5))
             .build()
@@ -428,7 +428,7 @@ mod tests {
     #[ignore = "network-dependent; run manually to verify reqwest chain content"]
     #[allow(clippy::print_stderr, reason = "verification harness; see fn doc")]
     async fn describe_error_chain_unwraps_reqwest_connect_timeout() {
-        let err = reqwest::Client::builder()
+        let err = cmdr_http::client_builder()
             .connect_timeout(Duration::from_millis(500))
             .build()
             .unwrap()

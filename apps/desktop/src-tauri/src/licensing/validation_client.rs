@@ -130,7 +130,7 @@ pub async fn activate_short_code(code: &str) -> Result<String, LicenseActivation
         });
     }
 
-    let client = reqwest::Client::builder()
+    let client = cmdr_http::client_builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| LicenseActivationError::NetworkError {
@@ -182,7 +182,7 @@ pub async fn validate_with_server(transaction_id: &str) -> ValidationOutcome {
         return ValidationOutcome::NetworkError;
     }
 
-    let client = match reqwest::Client::builder()
+    let client = match cmdr_http::client_builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()
     {

@@ -147,7 +147,13 @@ async fn the_file_row_reads_shares_and_copies_its_own_bytes(service: FixtureServ
         .await
         .expect(FIXTURE)
         .into_url();
-    let fetched = reqwest::get(&link).await.expect(FIXTURE);
+    let fetched = cmdr_http::client_builder()
+        .build()
+        .expect("a plain client builds")
+        .get(&link)
+        .send()
+        .await
+        .expect(FIXTURE);
     assert_eq!(fetched.status(), 200, "{}", service.key);
     assert_eq!(
         fetched.bytes().await.expect(FIXTURE).as_ref(),

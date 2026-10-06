@@ -337,5 +337,5 @@ async fn an_answer_under_the_cap_is_read() {
 /// feature, so dropping it from `Cargo.toml` fails this file to compile.
 #[test]
 fn the_client_is_built_with_http2() {
-    assert!(reqwest::Client::builder().http2_prior_knowledge().build().is_ok());
+    assert!(cmdr_http::client_builder().http2_prior_knowledge().build().is_ok());
 }

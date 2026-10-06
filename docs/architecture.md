@@ -359,10 +359,10 @@ All under `apps/desktop/src-tauri/src/`.
 ## Workspace crates
 
 All under `crates/`, alongside the four apps. `cmdr-fs`, `cmdr-index`, `cmdr-archive`, `cmdr-smb`, `cmdr-sftp`,
-`cmdr-webdav`, `cmdr-s3`, `cmdr-adb`, `cmdr-mtp`, and `cmdr-git` carry no `tauri` dependency and no reach into the app;
-`index-crate-isolation` enforces that against the `cargo metadata` graph, and caps the public surface of `cmdr-index`,
-`cmdr-archive`, `cmdr-smb`, `cmdr-sftp`, `cmdr-webdav`, `cmdr-s3`, `cmdr-mtp`, and `cmdr-git` at the numbers their
-audits landed on. The two dev CLIs and the vendored fork are ordinary members.
+`cmdr-webdav`, `cmdr-s3`, `cmdr-adb`, `cmdr-mtp`, `cmdr-git`, and `cmdr-http` carry no `tauri` dependency and no reach
+into the app; `index-crate-isolation` enforces that against the `cargo metadata` graph, and caps the public surface of
+`cmdr-index`, `cmdr-archive`, `cmdr-smb`, `cmdr-sftp`, `cmdr-webdav`, `cmdr-s3`, `cmdr-mtp`, and `cmdr-git` at the
+numbers their audits landed on. The two dev CLIs and the vendored fork are ordinary members.
 
 - `crates/cmdr-fs/`: the filesystem vocabulary and host primitives every layer speaks in — the `Volume` trait and its
   data types, `FileEntry`, typed error classification (`ListingError` / `ListingErrorReason` / `ErrorCategory`, errno →
@@ -375,6 +375,10 @@ audits landed on. The two dev CLIs and the vendored fork are ordinary members.
     connection events, credentials, index notification, settings, user activity, analytics. What a backend crate is
     written against; the app answers them from `apps/desktop/src-tauri/src/volume_host.rs`. See
     `crates/cmdr-fs/src/volume/host/CLAUDE.md`
+- `crates/cmdr-http/`: the one door every HTTP client is built through (`client_builder()`), and the proxy routing
+  behind it: loopback and link-local always direct, then the `*_PROXY` variables, then macOS's own verdict per URL
+  (manual proxy and its bypass list). The app, `cmdr-webdav`, and `cmdr-s3` all build on it, and `clippy.toml` refuses a
+  bare reqwest client. See `crates/cmdr-http/CLAUDE.md`
 - `crates/cmdr-archive/`: the archive backend — a `Volume` over a zip / tar / 7z file that physically lives on another
   volume. Browse + extract for every format, plus temp+rename WRITES for zip, over a decoupled `Volume`-free reading
   core (central-directory parse, synthetic tree, streaming decompress, Zip Slip defense) and the shared boundary
