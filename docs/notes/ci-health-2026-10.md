@@ -1,11 +1,40 @@
 # CI health, 2026-07-07 to 2026-10-06
 
-Why `main` was red so often (#118: "192 of 416 runs on `main` failed in three months"), measured from the runs rather
-than assumed. Method: `gh run list --branch main --created '>=2026-07-06'` (678 runs, all workflows), then
-`gh run view --json jobs` and `--log-failed` for every failed or cancelled CI run (244), classified by the check
-runner's `To rerun the failed check: pnpm check <name>` line, the Playwright summary, and the cargo diagnostics.
+`main` was red a lot over the summer (#118: "192 of 416 runs on `main` failed in three months"). It's much less frequent
+now: a run of fixes since late September took the red rate from about half of all pushes to one in seven, and the
+changes made on 2026-10-06 target what was still getting through.
 
-## Headline numbers
+## Where it stands
+
+- **October 1–6: 6 of 40 pushes red (15%)**, against 134 of 255 (53%) in September and 44% over the three months.
+- **What drove it down**, in order:
+  - **Website renderer pinned (2026-09-08).** The Website job runs in the Playwright container its visual baselines are
+    shot in, which ended renderer-drift pixel diffs.
+  - **Git hooks (2026-09-30, `docs/tooling/git-hooks.md`).** Commit and push format with the same tools CI checks.
+    Formatting was 63 red runs before them; one since.
+  - **Flake fixes (by 2026-09-30).** The four recurring flaky Rust tests listed below were fixed; none has failed since.
+  - **`clippy-linux` (2026-09-30), now with rustdoc (2026-10-06).** Lints and doc-checks the Linux target from a Mac in
+    Docker. It stays an opt-in slow lane (David's call), so it catches Linux-only breakage for whoever runs it before
+    pushing. The rustdoc half covers the doc links that went red three times in October alone.
+  - **Pre-push notices and size limits (2026-10-06).** A push that moves a lockfile regenerates
+    `THIRD-PARTY-NOTICES.md`, and every push checks `file-length` and `claude-md-length` before CI does
+    (`docs/tooling/git-hooks.md`).
+  - **macOS lane (2026-10-06).** `desktop-rust-macos` (`docs/tooling/ci.md` § macOS lane) compiles, lints, and tests the
+    macOS-only code no CI job used to touch. Non-blocking until two clean weeks (issue #368).
+- **October's six reds, and what covers each now:** rustdoc links to macOS-only items, three (`36919304043`,
+  `37374925748`, `37377933557`: `clippy-linux`); stale notices, one (`36953758363`: pre-push); an over-budget
+  `CLAUDE.md` plus a Linux-only dead function, one (`37425018587`: pre-push for the first, `clippy-linux` for the
+  second); an ESLint error, one (`37103401131`: the default local lane already runs ESLint, so this one only needed
+  running it).
+
+## History: why it was red (2026-07-07 to 2026-10-06)
+
+Measured from the runs rather than assumed. Method: `gh run list --branch main --created '>=2026-07-06'` (678 runs, all
+workflows), then `gh run view --json jobs` and `--log-failed` for every failed or cancelled CI run (244), classified by
+the check runner's `To rerun the failed check: pnpm check <name>` line, the Playwright summary, and the cargo
+diagnostics.
+
+### Headline numbers
 
 - **CI on push to `main`: 528 runs, 232 red (44%).** One run per push (GitHub runs only the pushed head), so this is
   also the share of pushes that ended red. Per month: July 31/51, August 61/183, September 134/255, October 1–6 6/40.
@@ -22,7 +51,7 @@ runner's `To rerun the failed check: pnpm check <name>` line, the Playwright sum
   absorb the E2E flakes (`rename-chaining` passed on retry in five red runs), so they rarely decide a run.
 - **Everything else is real breakage that a local `pnpm check` on a Mac doesn't see.**
 
-## What failed, by cause (runs; a run can hit several)
+### What failed, by cause (runs; a run can hit several)
 
 1. **Linux-only Rust breakage: 79 runs** (48 with no other cause). Every local lane compiles for macOS, so code under
    `cfg(target_os = "linux")`, and code only macOS uses (dead on Linux), reaches CI unchecked.
@@ -32,8 +61,8 @@ runner's `To rerun the failed check: pnpm check <name>` line, the Playwright sum
    - `rustdoc`, 27 runs: mostly intra-doc links to macOS-gated items (`query_task_vm_info` `30624996082`,
      `apple_languages` `32293336601`, `find_mounted_share` 7 runs from `35789523407`).
    - The Linux E2E build, 24 runs: the same compile errors stop the app build (`native_drag` `33977734585`).
-   - Mitigation since 2026-09-30: the `clippy-linux` slow lane (now also rustdoc, see below). It's opt-in, so six of
-     these still landed after it existed.
+   - Mitigation since 2026-09-30: the `clippy-linux` slow lane (now also rustdoc, see § Where it stands). It's opt-in,
+     so six of these still landed after it existed.
 2. **Formatting: 63 runs** (`oxfmt` 62, `rustfmt` 3). 115 of the 135 flagged files were Markdown: doc-only commits that
    ran no checks. The git hooks (2026-09-30, `docs/tooling/git-hooks.md`) fixed it: one `oxfmt` red since.
 3. **Stale artefacts, budgets, and static scanners: 60 runs.** `third-party-notices` 26 (a lockfile change pushed
@@ -55,17 +84,8 @@ runner's `To rerun the failed check: pnpm check <name>` line, the Playwright sum
 Noise worth knowing: in 23 red E2E runs the "Upload E2E screenshots" step failed too (`if-no-files-found: error` when
 the build died before any test ran), adding a second red step with no new information.
 
-## What changed because of this note
-
-- `clippy-linux` asks CI's rustdoc question as well (`scripts/check/checks/DETAILS.md` § "The Linux Docker lanes share
-  an image and a build cache"), so cause 1's doc half is now catchable from a Mac.
-- `ci.yml` gained a macOS job, `desktop-rust-macos` (`docs/tooling/ci.md` § macOS lane): the inverse gap, macOS-only
-  code that no CI run compiled at all.
-- The pre-push hook regenerates the license notices when a push moves a lockfile, and runs `file-length` and
-  `claude-md-length` on every push (`docs/tooling/git-hooks.md`): causes 3's two biggest recurring items.
-
 ## Calls made (2026-10-06)
 
-- **Declined: run the Linux lanes by default.** Cause 1 is the biggest and still landing, and `clippy-linux` costs ~25 s
-  warm (measured 2026-10-06, 13 crates) but needs Docker. David kept it opt-in.
-- **Open: promote `desktop-rust-macos` to required** after two weeks of clean runs (tracked as a GitHub issue).
+- **Declined: run the Linux lanes by default.** Cause 1 was the biggest, and `clippy-linux` costs ~25 s warm (measured
+  2026-10-06, 13 crates) but needs Docker. David kept it a slow, opt-in check.
+- **Open: promote `desktop-rust-macos` to required** after two weeks of clean runs (issue #368).
