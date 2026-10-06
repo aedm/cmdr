@@ -269,6 +269,23 @@ export const REPRESENTATIVE_SCREENSHOTS: RepresentativeMapping[] = [
       'content when a file can’t be loaded.',
   },
   {
+    // The rollback cross-reference lines sit under a list row, not in another
+    // dialog state. Listed BEFORE the blanket `operationLog.` mapping, whose
+    // note would otherwise misplace them. `rollbackOf` also covers `rollbackOfUnlisted`.
+    prefix: 'operationLog.dialog.rollbackOf',
+    screenshot: 'operation-log-more-pages.png',
+    note:
+      'The operation log dialog, pictured here with entries in it. Your string is the quiet second line under one of those ' +
+      'rows, shown only when that operation is a rollback or has been rolled back, so this screenshot may not show it.',
+  },
+  {
+    prefix: 'operationLog.dialog.latestRollback',
+    screenshot: 'operation-log-more-pages.png',
+    note:
+      'The operation log dialog, pictured here with entries in it. Your string is the quiet second line under one of those ' +
+      'rows, shown only when that operation is a rollback or has been rolled back, so this screenshot may not show it.',
+  },
+  {
     // The operation log's other states (loading, empty, load error) are the same
     // dialog with a different body.
     prefix: 'operationLog.',
