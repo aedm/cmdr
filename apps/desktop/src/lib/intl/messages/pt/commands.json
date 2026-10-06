@@ -336,6 +336,10 @@
   "@commands.navForward.label": {
     "sourceHash": "8121136"
   },
+  "commands.navGoToRoot.label": "Ir para a pasta raiz",
+  "@commands.navGoToRoot.label": {
+    "sourceHash": "3822d7b"
+  },
   "commands.navGoHome.label": "Ir para a pasta pessoal",
   "@commands.navGoHome.label": {
     "sourceHash": "74b2a8b"

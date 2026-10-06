@@ -349,6 +349,10 @@
   "@menu.go.parentFolder": {
     "sourceHash": "158f5a0"
   },
+  "menu.go.rootFolder": "Rotmapp",
+  "@menu.go.rootFolder": {
+    "sourceHash": "6d92528"
+  },
   "menu.go.home": "Hem",
   "@menu.go.home": {
     "sourceHash": "3a78695"

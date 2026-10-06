@@ -353,6 +353,10 @@
   "@menu.go.parentFolder": {
     "sourceHash": "158f5a0"
   },
+  "menu.go.rootFolder": "Pasta raiz",
+  "@menu.go.rootFolder": {
+    "sourceHash": "6d92528"
+  },
   "menu.go.home": "Pasta pessoal",
   "@menu.go.home": {
     "sourceHash": "3a78695"

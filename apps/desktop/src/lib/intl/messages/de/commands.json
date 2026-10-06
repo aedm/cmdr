@@ -336,6 +336,10 @@
   "@commands.navForward.label": {
     "sourceHash": "8121136"
   },
+  "commands.navGoToRoot.label": "Zum Stammordner gehen",
+  "@commands.navGoToRoot.label": {
+    "sourceHash": "3822d7b"
+  },
   "commands.navGoHome.label": "Zum persönlichen Ordner gehen",
   "@commands.navGoHome.label": {
     "sourceHash": "74b2a8b"

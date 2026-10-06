@@ -336,6 +336,10 @@
   "@commands.navForward.label": {
     "sourceHash": "8121136"
   },
+  "commands.navGoToRoot.label": "Aller au dossier racine",
+  "@commands.navGoToRoot.label": {
+    "sourceHash": "3822d7b"
+  },
   "commands.navGoHome.label": "Aller au dossier personnel",
   "@commands.navGoHome.label": {
     "sourceHash": "74b2a8b"

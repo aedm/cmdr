@@ -336,6 +336,10 @@
   "@commands.navForward.label": {
     "sourceHash": "8121136"
   },
+  "commands.navGoToRoot.label": "Gå till rotmappen",
+  "@commands.navGoToRoot.label": {
+    "sourceHash": "3822d7b"
+  },
   "commands.navGoHome.label": "Gå till hemmappen",
   "@commands.navGoHome.label": {
     "sourceHash": "74b2a8b"

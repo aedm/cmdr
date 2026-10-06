@@ -2700,7 +2700,7 @@
     "distinct": ["parent-folder", "current-folder"],
     "en": "root folder",
     "match": ["root folder", "top folder", "start folder", "starting folder"],
-    "sense": "The ceiling folder of a saved server, a volume's top folder, and the folder a pane opens in."
+    "sense": "The ceiling folder of a saved server, the top folder of a volume, phone, or archive (Go > Root folder), and the folder a pane opens in."
   },
   "rotate": {
     "en": "rotate",

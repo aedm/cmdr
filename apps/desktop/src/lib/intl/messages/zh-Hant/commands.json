@@ -336,6 +336,10 @@
   "@commands.navForward.label": {
     "sourceHash": "8121136"
   },
+  "commands.navGoToRoot.label": "前往根資料夾",
+  "@commands.navGoToRoot.label": {
+    "sourceHash": "3822d7b"
+  },
   "commands.navGoHome.label": "前往個人專屬資料夾",
   "@commands.navGoHome.label": {
     "sourceHash": "74b2a8b"

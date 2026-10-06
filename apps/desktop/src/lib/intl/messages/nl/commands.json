@@ -338,6 +338,10 @@
   "@commands.navForward.label": {
     "sourceHash": "8121136"
   },
+  "commands.navGoToRoot.label": "Ga naar hoofdmap",
+  "@commands.navGoToRoot.label": {
+    "sourceHash": "3822d7b"
+  },
   "commands.navGoHome.label": "Ga naar thuismap",
   "@commands.navGoHome.label": {
     "sourceHash": "74b2a8b"
