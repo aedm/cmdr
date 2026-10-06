@@ -291,11 +291,11 @@
   },
   "commands.paneClone.label": "Clone pane",
   "@commands.paneClone.label": {
-    "description": "Command name that opens the focused pane's folder in the other pane too, so both panes show the same folder. \"Pane\" is one of the two side-by-side file lists. Appears in the command palette and the View menu."
+    "description": "Command name that opens the focused pane's folder in the other pane too, so both panes show the same folder. \"Pane\" is one of the two side-by-side file lists. Appears in the command palette and the View menu. Total Commander calls this \"Target = Source\"; Finder has no equivalent. Not the Copy command (F5): nothing is copied, only the folder shown changes."
   },
   "commands.paneClone.description": "Open this pane’s folder in the other pane too.",
   "@commands.paneClone.description": {
-    "description": "Longer help text for the \"Clone pane\" command, shown as a secondary line in the command palette."
+    "description": "Longer help text for the \"Clone pane\" command, shown as a secondary line in the command palette. Total Commander calls this \"Target = Source\"; Finder has no equivalent. Not the Copy command (F5): nothing is copied, only the folder shown changes."
   },
   "commands.paneLeftVolumeChooser.label": "Open left volume switcher",
   "@commands.paneLeftVolumeChooser.label": {

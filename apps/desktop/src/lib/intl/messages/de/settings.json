@@ -1312,6 +1312,22 @@
   "@settings.fileExplorer.typeToJump.resetDelay.description": {
     "sourceHash": "ff59a6a"
   },
+  "settings.fileExplorer.typeToJump.mode.label": "Beim Tippen in einem Bereich",
+  "@settings.fileExplorer.typeToJump.mode.label": {
+    "sourceHash": "4ee8ef5"
+  },
+  "settings.fileExplorer.typeToJump.mode.description": "„Springen“ setzt den Cursor auf den besten Treffer. „Filtern“ zeigt nur die Dateien und Ordner an, deren Namen enthalten, was du tippst, wie der Schnellfilter von Total Commander. Mit der Löschtaste (⌫) änderst du ihn, mit der esc-Taste löschst du ihn.",
+  "@settings.fileExplorer.typeToJump.mode.description": {
+    "sourceHash": "e142e97"
+  },
+  "settings.fileExplorer.typeToJump.mode.opt.jump": "Springen",
+  "@settings.fileExplorer.typeToJump.mode.opt.jump": {
+    "sourceHash": "9ee0ca3"
+  },
+  "settings.fileExplorer.typeToJump.mode.opt.filter": "Filtern",
+  "@settings.fileExplorer.typeToJump.mode.opt.filter": {
+    "sourceHash": "638e249"
+  },
   "settings.fileOperations.maxConflictsToShow.label": "Maximal angezeigte Konflikte",
   "@settings.fileOperations.maxConflictsToShow.label": {
     "sourceHash": "d9cdb0c"
@@ -2595,5 +2611,13 @@
   "settings.adb.pickerTitle": "Den Befehl „adb“ auswählen",
   "@settings.adb.pickerTitle": {
     "sourceHash": "d6fc142"
+  },
+  "settings.fileExplorer.quickFilterIntroSeen.label": "Schnellfilter erklärt",
+  "@settings.fileExplorer.quickFilterIntroSeen.label": {
+    "sourceHash": "5d124bb"
+  },
+  "settings.fileExplorer.quickFilterIntroSeen.description": "Ob der Hinweis, der den ersten Schnellfilter erklärt, schon gezeigt wurde.",
+  "@settings.fileExplorer.quickFilterIntroSeen.description": {
+    "sourceHash": "855c661"
   }
 }

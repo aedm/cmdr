@@ -531,6 +531,18 @@
     "forms": "Cmdr clearing its own leftovers → räumt … weg; clears away what it leaves half-written → entfernt, was dabei halb geschrieben zurückbleibt",
     "sources": "catalog (fileOperations.cancelRollback.stagedLeftover.*, main.quit.body)"
   },
+  "clear": {
+    "accept": ["lösch", "gelöscht"],
+    "chosen": "löschen",
+    "confidence": "high",
+    "exceptions": {
+      "fileExplorer.navigation.favoriteShortcutAriaLabel": "Delete removes the shortcut assignment, so entfernen, like the sibling remove actions.",
+      "fileExplorer.searchResults.unavailableBody": "Cmdr threw the result set away, it didn't empty a field: verworfen."
+    },
+    "forms": "Clear search → Suche löschen; Clear index → Index löschen; Clear filter → Filter löschen",
+    "note": "Shares its verb with delete; the object (Suche, Filter, Index) keeps it from reading as deleting files.",
+    "sources": "macOS live (Clear → Löschen 91×; Clear Filter → Filter löschen); catalog (settings.sidebar.clearSearch, settings.fileSystemWatching.clearIndex, shortcuts.section.pressEscToClear)"
+  },
   "click": {
     "accept": ["klicke", "klickst", "geklickt", "Klick", "Klicken"],
     "chosen": "klicken",
@@ -543,6 +555,17 @@
     "confidence": "high",
     "forms": "copy to clipboard → In die Zwischenablage kopieren; no possessive (in der Zwischenablage, never in deiner)",
     "sources": "macOS Finder/AppKit (Zwischenablage)"
+  },
+  "clone-pane": {
+    "avoid": [
+      {
+        "form": "duplizieren",
+        "why": "Finder's Duplicate makes a file copy"
+      }
+    ],
+    "chosen": "Bereich klonen",
+    "confidence": "high",
+    "sources": "MS terminology (clone → klonen) + the pane ruling (Bereich). TC (532 Fenster angleichen) and DC (Ziel = Quelle) name the same command differently; Finder has none"
   },
   "close": {
     "accept": ["schließ", "geschlossen"],
@@ -783,6 +806,14 @@
     "chosen": "löschen",
     "confidence": "high",
     "sources": "macOS (Delete → Löschen, Erase → Löschen)"
+  },
+  "delete-key": {
+    "accept": ["Lösch"],
+    "chosen": "Löschtaste",
+    "confidence": "high",
+    "forms": "with the glyph → die Löschtaste (⌫); mit der Löschtaste (⌫)",
+    "note": "Pile mined 2026-10-07 (macOS 27.0.1 live bundles): VoiceOver SCRWorkspace.loctable deleteKey, Terminal keyDescriptions.loctable 007F, AccessibilitySharedSupport symbol names delete.backward.",
+    "sources": "macOS VoiceOver (Presses the delete key → Drückt die Löschentaste; Delete Key → Taste löschen), Terminal key descriptions (⌫ Delete → ⌫ Löschen); the symbol names say Rückschritt, the Windows word"
   },
   "delete-permanently": {
     "accept": ["dauerhaft"],
@@ -1182,6 +1213,13 @@
     "confidence": "high",
     "forms": "file system watching → Dateisystemüberwachung; format names stay verbatim (FAT32, exFAT)",
     "sources": "macOS AppKit (Read-only file system → Dateisystem ist schreibgeschützt); Finder NE29, verified 2026-09-06"
+  },
+  "filter": {
+    "accept": ["filter"],
+    "chosen": "filtern",
+    "confidence": "high",
+    "forms": "noun Filter (Filter löschen, Schnellfilter); the typing-mode name and badge Filtern (Filtern: …), beside Springen",
+    "sources": "macOS live (Filter → Filter 59×, Filtern 4×; Clear Filter → Filter löschen); DC, MC (Filter); catalog (selection.runHint, Größenfilter)"
   },
   "finder": {
     "chosen": "Finder",
@@ -2281,6 +2319,11 @@
     "confidence": "high",
     "forms": "the verb → abfragen",
     "sources": "MS terminology"
+  },
+  "quick-filter": {
+    "chosen": "Schnellfilter",
+    "confidence": "high",
+    "sources": "TC 3018/3019 (… Schnellfilter aus/ein); DC actQuickFilter (Schneller Filter)"
   },
   "quick-look": {
     "avoid": [

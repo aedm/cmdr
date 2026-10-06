@@ -11017,6 +11017,12 @@ export type NameFilterResult = {
    *  operation ever acts on a row the user can't see.
    */
   newSelectedIndices: number[]
+  /**
+   *  The diff sequence the new row space starts at, when the filter changed. Every
+   *  `directory-diff` numbered up to it describes the old rows: the pane takes it
+   *  as its last applied sequence and skips them. `None` when nothing changed.
+   */
+  sequence: number | null
 }
 
 export type NegotiatedSummaryDto = {
@@ -11628,6 +11634,13 @@ export type PaneState = {
    *  resource layer suppresses the section when it's `None`.
    */
   typeToJump?: TypeToJumpInfo | null
+  /**
+   *  The quick filter's pattern while it narrows the pane (`None` when off). The
+   *  files, counts, and indices here are then the FILTERED rows, which is what
+   *  an agent must know before reading an absent file as gone. Always on the wire,
+   *  like `type_to_jump`; the YAML layer prints it only when set.
+   */
+  quickFilter?: string | null
   /**
    *  Set while a mount the pane tried didn't go through, whichever way the pane
    *  is showing it (the "Couldn't mount share" pane, or the login form an

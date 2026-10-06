@@ -11,7 +11,7 @@ function runClone(focused: 'left' | 'right') {
   const copyPathBetweenPanes = vi.fn()
   const explorerRef = { getFocusedPane: () => focused, copyPathBetweenPanes }
   const hctx = { explorerRef, ctx: {}, dispatchArgs: undefined } as unknown as CommandHandlerContext
-  ;(paneHandlers['pane.clone'] as (hctx: CommandHandlerContext) => void)(hctx)
+  paneHandlers['pane.clone'](hctx)
   return copyPathBetweenPanes
 }
 
@@ -26,6 +26,8 @@ describe('pane.clone handler', () => {
 
   it('does nothing without an explorer', () => {
     const hctx = { explorerRef: undefined, ctx: {}, dispatchArgs: undefined } as unknown as CommandHandlerContext
-    expect(() => (paneHandlers['pane.clone'] as (hctx: CommandHandlerContext) => void)(hctx)).not.toThrow()
+    expect(() => {
+      paneHandlers['pane.clone'](hctx)
+    }).not.toThrow()
   })
 })

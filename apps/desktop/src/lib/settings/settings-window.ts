@@ -74,6 +74,8 @@ export type SettingsSurface =
   | 'wake-indicator'
   /** The paste-from-clipboard toast. */
   | 'paste-toast'
+  /** The first quick filter's "What just happened?" toast, deep-linking to the typing mode. */
+  | 'quick-filter-toast'
   /** A pane's Enter menu ("Configure…" on an archive). */
   | 'enter-menu'
   /** The volume breadcrumb's SMB/network-shares entry. */

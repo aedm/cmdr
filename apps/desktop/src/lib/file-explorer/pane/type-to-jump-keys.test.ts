@@ -5,8 +5,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import { routeTypingKey, type TypingKeyTarget } from './type-to-jump-keys'
 
+/** The target with its spies as plain `vi.fn()` properties (not `TypingKeyTarget` methods), so asserting on one isn't an unbound method. */
 function pane(mode: 'jump' | 'filter', active = false, renaming = false) {
-  const target: TypingKeyTarget = {
+  const target = {
     isRenaming: () => renaming,
     isJumpActive: () => active,
     handleJumpKeystroke: vi.fn(),
@@ -16,7 +17,7 @@ function pane(mode: 'jump' | 'filter', active = false, renaming = false) {
     appendQuickFilter: vi.fn(),
     backspaceQuickFilter: vi.fn(),
     clearQuickFilter: vi.fn(),
-  }
+  } satisfies TypingKeyTarget
   return target
 }
 

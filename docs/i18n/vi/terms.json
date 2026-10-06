@@ -437,6 +437,22 @@
     "forms": "click X → bấm X; click the + button → bấm vào nút Thêm (+) / bấm nút “+”; a key is pressed, not clicked → nhấn",
     "sources": "macOS AppKit (\"click Printers & Scanners, and then click the Add (+) button\" → \"bấm vào Máy in & Máy quét rồi bấm vào nút Thêm (+)\"); catalog (26 keys after the onboarding.stepFda.* sweep)"
   },
+  "clone-pane": {
+    "avoid": [
+      {
+        "form": "Nhân bản khung",
+        "why": "nhân bản is the Duplicate ruling (Finder Tệp > Nhân bản), so it reads as duplicating the pane"
+      },
+      {
+        "form": "Sao chép khung",
+        "why": "sao chép is Copy (F5), and MS vi renders clone that way"
+      }
+    ],
+    "chosen": "Khung đích = khung nguồn",
+    "confidence": "tentative",
+    "note": "Total Commander’s name for the command with Cmdr’s pane word, because both clone verbs collide with a shipped command. The palette description says what it does.",
+    "sources": "TC vi 532 (Đích=Nguồn); pane ruling (khung); MS vi clone → bản sao / sao chép; DC has no Vietnamese"
+  },
   "close": {
     "chosen": "đóng",
     "confidence": "high",
@@ -674,6 +690,13 @@
     "confidence": "high",
     "forms": "anything that really destroys bytes (incl. Remove download → Xóa bản tải về); the Delete key keeps its English name",
     "sources": "macOS AppKit (Xóa)"
+  },
+  "delete-key": {
+    "chosen": "Delete",
+    "confidence": "high",
+    "forms": "phím Delete (⌫)",
+    "note": "Pile mined 2026-10-07 (macOS 27.0.1 live bundles): VoiceOver SCRWorkspace.loctable deleteKey, Terminal keyDescriptions.loctable 007F, AccessibilitySharedSupport symbol names delete.backward.",
+    "sources": "macOS VoiceOver (Delete Key → Phím Delete; Presses the delete key → Nhấn phím delete); Terminal says ⌫ Xóa and the symbol names phím xóa lùi"
   },
   "delete-permanently": {
     "chosen": "vĩnh viễn",
@@ -1021,6 +1044,13 @@
     "chosen": "hệ thống tệp",
     "confidence": "high",
     "sources": "macOS Disk Utility / ASR (Verifying file system. → Đang xác minh hệ thống tệp.)"
+  },
+  "filter": {
+    "accept": ["bộ lọc"],
+    "chosen": "lọc",
+    "confidence": "high",
+    "forms": "verb lọc; noun bộ lọc (Xóa bộ lọc, bộ lọc nhanh); the typing-mode name and badge Lọc (Lọc: …), beside Nhảy tới",
+    "sources": "macOS live (Filter → Lọc 38×, Bộ lọc 25×; Clear Filter → Xóa bộ lọc); MC (Lọc tập tin); catalog (Nhấn Enter để lọc)"
   },
   "finder": {
     "chosen": "Finder",
@@ -2038,6 +2068,11 @@
     "chosen": "truy vấn",
     "confidence": "high",
     "sources": "macOS Finder (Truy vấn để tìm kiếm trong Finder), MS"
+  },
+  "quick-filter": {
+    "chosen": "bộ lọc nhanh",
+    "confidence": "high",
+    "sources": "TC vi 3018/3019 (tắt/bật lọc nhanh) + the filter ruling’s noun bộ lọc"
   },
   "quick-look": {
     "chosen": "Xem nhanh",

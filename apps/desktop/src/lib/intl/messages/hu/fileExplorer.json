@@ -1727,5 +1727,45 @@
   "fileExplorer.folderSizes.unreadable": "{count, plural, one {Nem sikerült teljesen beolvasni # mappát, ezért lehet, hogy a mérete hiányos.} other {Nem sikerült teljesen beolvasni # mappát, ezért lehet, hogy a méretük hiányos.}}",
   "@fileExplorer.folderSizes.unreadable": {
     "sourceHash": "ad31a56"
+  },
+  "fileExplorer.quickFilter.prefix": "Szűrés: ",
+  "@fileExplorer.quickFilter.prefix": {
+    "sourceHash": "b549365"
+  },
+  "fileExplorer.quickFilter.ariaLabel": "Ezt tartalmazó nevek megjelenítése: „{pattern}”",
+  "@fileExplorer.quickFilter.ariaLabel": {
+    "sourceHash": "9b223b0"
+  },
+  "fileExplorer.quickFilter.clear": "Szűrő törlése",
+  "@fileExplorer.quickFilter.clear": {
+    "sourceHash": "ba59e2d"
+  },
+  "fileExplorer.quickFilter.intro.title": "Gépeléssel szűrted ezt a panelt",
+  "@fileExplorer.quickFilter.intro.title": {
+    "sourceHash": "eef3e92"
+  },
+  "fileExplorer.quickFilter.intro.body": "Beírtál néhány betűt, ezért a panel most csak azokat a fájlokat és mappákat mutatja, amelyek nevében ezek szerepelnek.",
+  "@fileExplorer.quickFilter.intro.body": {
+    "sourceHash": "e406349"
+  },
+  "fileExplorer.quickFilter.intro.escape": "Nyomd meg az Escape billentyűt, és újra látod az összes fájlodat.",
+  "@fileExplorer.quickFilter.intro.escape": {
+    "sourceHash": "af749ad"
+  },
+  "fileExplorer.quickFilter.intro.jumpNote": "Inkább a kurzort vinnéd egy egyező névre, anélkül hogy bármit elrejtenél? Válts Ugrás módra itt vagy a Beállításokban.",
+  "@fileExplorer.quickFilter.intro.jumpNote": {
+    "sourceHash": "ac6d3c8"
+  },
+  "fileExplorer.quickFilter.intro.switchToJump": "Váltás Ugrás módra",
+  "@fileExplorer.quickFilter.intro.switchToJump": {
+    "sourceHash": "38642f9"
+  },
+  "fileExplorer.quickFilter.intro.openSettings": "Beállítások…",
+  "@fileExplorer.quickFilter.intro.openSettings": {
+    "sourceHash": "7a04083"
+  },
+  "fileExplorer.quickFilter.intro.gotIt": "Értem",
+  "@fileExplorer.quickFilter.intro.gotIt": {
+    "sourceHash": "5ad3dbd"
   }
 }

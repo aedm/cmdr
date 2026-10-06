@@ -696,5 +696,9 @@
   "menu.help.viewDebugLog": "Hibakeresési napló megtekintése",
   "@menu.help.viewDebugLog": {
     "sourceHash": "007c98d"
+  },
+  "menu.view.clonePane": "Panel klónozása",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
   }
 }

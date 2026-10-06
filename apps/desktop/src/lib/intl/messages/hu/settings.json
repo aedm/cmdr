@@ -1309,6 +1309,22 @@
   "@settings.fileExplorer.typeToJump.resetDelay.description": {
     "sourceHash": "ff59a6a"
   },
+  "settings.fileExplorer.typeToJump.mode.label": "Gépelés a panelen",
+  "@settings.fileExplorer.typeToJump.mode.label": {
+    "sourceHash": "4ee8ef5"
+  },
+  "settings.fileExplorer.typeToJump.mode.description": "Az Ugrás mód a legjobb találatra viszi a kurzort. A Szűrés mód csak azokat a fájlokat és mappákat mutatja, amelyek nevében szerepel, amit beírsz, mint a Total Commander gyorsszűrője. A Delete (⌫) billentyűvel módosíthatod, az Escape billentyűvel törölheted.",
+  "@settings.fileExplorer.typeToJump.mode.description": {
+    "sourceHash": "e142e97"
+  },
+  "settings.fileExplorer.typeToJump.mode.opt.jump": "Ugrás",
+  "@settings.fileExplorer.typeToJump.mode.opt.jump": {
+    "sourceHash": "9ee0ca3"
+  },
+  "settings.fileExplorer.typeToJump.mode.opt.filter": "Szűrés",
+  "@settings.fileExplorer.typeToJump.mode.opt.filter": {
+    "sourceHash": "638e249"
+  },
   "settings.fileOperations.maxConflictsToShow.label": "Megjelenítendő ütközések maximuma",
   "@settings.fileOperations.maxConflictsToShow.label": {
     "sourceHash": "d9cdb0c"
@@ -2584,5 +2600,13 @@
   "settings.adb.pickerTitle": "Az adb parancs kiválasztása",
   "@settings.adb.pickerTitle": {
     "sourceHash": "d6fc142"
+  },
+  "settings.fileExplorer.quickFilterIntroSeen.label": "Gyorsszűrő-magyarázat megjelent",
+  "@settings.fileExplorer.quickFilterIntroSeen.label": {
+    "sourceHash": "5d124bb"
+  },
+  "settings.fileExplorer.quickFilterIntroSeen.description": "Megjelent-e már az értesítés, amely az első gyorsszűrést elmagyarázza.",
+  "@settings.fileExplorer.quickFilterIntroSeen.description": {
+    "sourceHash": "855c661"
   }
 }

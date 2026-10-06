@@ -272,13 +272,12 @@
   },
   "menu.view.clonePane": "Clone pane",
   "@menu.view.clonePane": {
-    "description": "View menu item that opens the focused pane's folder in the other pane too, so both panes show the same folder. \"Pane\" is one of the two side-by-side file lists."
+    "description": "View menu item that opens the focused pane's folder in the other pane too, so both panes show the same folder. \"Pane\" is one of the two side-by-side file lists. Total Commander calls this \"Target = Source\"; nothing is copied, only the other pane's folder changes."
   },
   "menu.view.calculateFolderSizes": "Calculate folder sizes",
   "@menu.view.calculateFolderSizes": {
     "description": "View menu item (Alt+Shift+Enter): shows the total size of every folder in the focused file list that doesn't have one yet."
   },
-
   "menu.view.commandPalette": "Command palette…",
   "@menu.view.commandPalette": {
     "description": "NOUN phrase. Opens a Spotlight-style popup that finds and runs any Cmdr command by typing part of its name (⇧⌘P). \"palette\" here is the code-editor sense of a searchable command list, nothing to do with colors; VS Code's translation in this language is the best reference. The trailing … is U+2026 and must stay."

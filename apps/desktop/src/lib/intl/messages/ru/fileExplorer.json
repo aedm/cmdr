@@ -1726,5 +1726,45 @@
   "fileExplorer.folderSizes.unreadable": "{count, plural, =1 {Не удалось полностью прочитать # папку, поэтому ее размер может быть неполным.} one {Не удалось полностью прочитать # папку, поэтому их размеры могут быть неполными.} few {Не удалось полностью прочитать # папки, поэтому их размеры могут быть неполными.} many {Не удалось полностью прочитать # папок, поэтому их размеры могут быть неполными.} other {Не удалось полностью прочитать # папки, поэтому их размеры могут быть неполными.}}",
   "@fileExplorer.folderSizes.unreadable": {
     "sourceHash": "ad31a56"
+  },
+  "fileExplorer.quickFilter.prefix": "Фильтр: ",
+  "@fileExplorer.quickFilter.prefix": {
+    "sourceHash": "b549365"
+  },
+  "fileExplorer.quickFilter.ariaLabel": "Показаны имена, содержащие «{pattern}»",
+  "@fileExplorer.quickFilter.ariaLabel": {
+    "sourceHash": "9b223b0"
+  },
+  "fileExplorer.quickFilter.clear": "Снять фильтр",
+  "@fileExplorer.quickFilter.clear": {
+    "sourceHash": "ba59e2d"
+  },
+  "fileExplorer.quickFilter.intro.title": "Панель отфильтрована по вводу",
+  "@fileExplorer.quickFilter.intro.title": {
+    "sourceHash": "eef3e92"
+  },
+  "fileExplorer.quickFilter.intro.body": "Вы ввели несколько букв, поэтому в панели теперь показаны только файлы и папки, в именах которых они есть.",
+  "@fileExplorer.quickFilter.intro.body": {
+    "sourceHash": "e406349"
+  },
+  "fileExplorer.quickFilter.intro.escape": "Нажмите Escape, чтобы снова увидеть все файлы.",
+  "@fileExplorer.quickFilter.intro.escape": {
+    "sourceHash": "af749ad"
+  },
+  "fileExplorer.quickFilter.intro.jumpNote": "Хотите вместо этого переводить курсор на подходящее имя, ничего не скрывая? Переключитесь на «Переход» здесь или в настройках.",
+  "@fileExplorer.quickFilter.intro.jumpNote": {
+    "sourceHash": "ac6d3c8"
+  },
+  "fileExplorer.quickFilter.intro.switchToJump": "Переключить на «Переход»",
+  "@fileExplorer.quickFilter.intro.switchToJump": {
+    "sourceHash": "38642f9"
+  },
+  "fileExplorer.quickFilter.intro.openSettings": "Настройки…",
+  "@fileExplorer.quickFilter.intro.openSettings": {
+    "sourceHash": "7a04083"
+  },
+  "fileExplorer.quickFilter.intro.gotIt": "Понятно",
+  "@fileExplorer.quickFilter.intro.gotIt": {
+    "sourceHash": "5ad3dbd"
   }
 }

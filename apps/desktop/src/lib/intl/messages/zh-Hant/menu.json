@@ -695,5 +695,9 @@
   "menu.help.viewDebugLog": "檢視除錯記錄檔",
   "@menu.help.viewDebugLog": {
     "sourceHash": "007c98d"
+  },
+  "menu.view.clonePane": "目標窗格 = 來源窗格",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
   }
 }

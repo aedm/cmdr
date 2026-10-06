@@ -508,7 +508,9 @@ export const appearanceSettings: SettingDefinitionSource[] = [
     descriptionKey: 'settings.fileExplorer.typeToJump.mode.description',
     keywords: ['type', 'jump', 'filter', 'quick filter', 'quick search', 'narrow', 'total commander', 'keystroke'],
     type: 'enum',
-    default: 'jump',
+    // Filter, Total Commander's habit; the first filtered pane explains it once
+    // and offers Jump (`file-explorer/pane/quick-filter-intro.ts`).
+    default: 'filter',
     component: 'toggle-group',
     constraints: {
       options: [
@@ -516,6 +518,20 @@ export const appearanceSettings: SettingDefinitionSource[] = [
         { value: 'filter', labelKey: 'settings.fileExplorer.typeToJump.mode.opt.filter' },
       ],
     },
+  },
+  {
+    // Internal (FE-owned): whether the once-ever "What just happened?" toast the
+    // first quick filter raises has been shown. ❌ Not a nudge: it explains what
+    // the user just did, so it takes no part in the nudge cooldown.
+    id: 'fileExplorer.quickFilterIntroSeen',
+    section: ['Appearance', 'Listing'],
+    labelKey: 'settings.fileExplorer.quickFilterIntroSeen.label',
+    descriptionKey: 'settings.fileExplorer.quickFilterIntroSeen.description',
+    keywords: [],
+    type: 'boolean',
+    default: false,
+    component: 'switch',
+    hidden: true,
   },
   {
     id: 'listing.briefColumnWidthMode',

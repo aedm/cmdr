@@ -697,5 +697,9 @@
   "menu.help.viewDebugLog": "Visualiser le journal de débogage",
   "@menu.help.viewDebugLog": {
     "sourceHash": "007c98d"
+  },
+  "menu.view.clonePane": "Cloner le panneau",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
   }
 }

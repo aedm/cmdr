@@ -1729,5 +1729,45 @@
   "fileExplorer.folderSizes.unreadable": "{count, plural, one {Det gick inte att läsa # mapp helt, så storleken kan vara ofullständig.} other {Det gick inte att läsa # mappar helt, så storlekarna kan vara ofullständiga.}}",
   "@fileExplorer.folderSizes.unreadable": {
     "sourceHash": "ad31a56"
+  },
+  "fileExplorer.quickFilter.prefix": "Filtrera: ",
+  "@fileExplorer.quickFilter.prefix": {
+    "sourceHash": "b549365"
+  },
+  "fileExplorer.quickFilter.ariaLabel": "Visar namn som innehåller ”{pattern}”",
+  "@fileExplorer.quickFilter.ariaLabel": {
+    "sourceHash": "9b223b0"
+  },
+  "fileExplorer.quickFilter.clear": "Rensa filter",
+  "@fileExplorer.quickFilter.clear": {
+    "sourceHash": "ba59e2d"
+  },
+  "fileExplorer.quickFilter.intro.title": "Det du skrev filtrerade panelen",
+  "@fileExplorer.quickFilter.intro.title": {
+    "sourceHash": "eef3e92"
+  },
+  "fileExplorer.quickFilter.intro.body": "Du skrev några bokstäver, så panelen visar nu bara de filer och mappar vars namn innehåller dem.",
+  "@fileExplorer.quickFilter.intro.body": {
+    "sourceHash": "e406349"
+  },
+  "fileExplorer.quickFilter.intro.escape": "Tryck på Escape för att se alla dina filer igen.",
+  "@fileExplorer.quickFilter.intro.escape": {
+    "sourceHash": "af749ad"
+  },
+  "fileExplorer.quickFilter.intro.jumpNote": "Vill du hellre flytta markören till ett matchande namn utan att gömma något? Byt till ”Hoppa”, här eller i Inställningar.",
+  "@fileExplorer.quickFilter.intro.jumpNote": {
+    "sourceHash": "ac6d3c8"
+  },
+  "fileExplorer.quickFilter.intro.switchToJump": "Byt till ”Hoppa”",
+  "@fileExplorer.quickFilter.intro.switchToJump": {
+    "sourceHash": "38642f9"
+  },
+  "fileExplorer.quickFilter.intro.openSettings": "Inställningar…",
+  "@fileExplorer.quickFilter.intro.openSettings": {
+    "sourceHash": "7a04083"
+  },
+  "fileExplorer.quickFilter.intro.gotIt": "Uppfattat",
+  "@fileExplorer.quickFilter.intro.gotIt": {
+    "sourceHash": "5ad3dbd"
   }
 }

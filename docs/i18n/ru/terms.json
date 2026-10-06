@@ -818,7 +818,8 @@
     "sources": "macOS AppKit MainMenu 164.title (Clear → Очистить), Finder A29 (Clear Menu → Очистить меню); MS (clear → очистить); DC, Thunar",
     "note": "Phone and FaceTime say Удалить for clearing recents; Cmdr keeps Очистить so it never reads as deleting files.",
     "exceptions": {
-      "settings.mediaIndex.reclaim.alreadyCleared": "Index entries are deleted, not a field or list being emptied; «записи уже удалены» matches the sibling reclaim strings."
+      "settings.mediaIndex.reclaim.alreadyCleared": "Index entries are deleted, not a field or list being emptied; «записи уже удалены» matches the sibling reclaim strings.",
+      "fileExplorer.quickFilter.clear": "The × lifts the quick filter: macOS says Clear Filter → Снять фильтр (one exact hit), the idiomatic verb for removing a filter."
     }
   },
   "click": {
@@ -845,6 +846,17 @@
     "forms": "Copy to clipboard → Скопировать в буфер обмена; on your clipboard → в буфере обмена",
     "confidence": "high",
     "sources": "macOS Finder CW10, AppKit MenuCommands (Clipboard → Буфер обмена); MS (clipboard → буфер обмена); Nautilus, Thunar"
+  },
+  "clone-pane": {
+    "avoid": [
+      {
+        "form": "Дублировать",
+        "why": "Finder's Duplicate makes a file copy"
+      }
+    ],
+    "chosen": "Клонировать панель",
+    "confidence": "high",
+    "sources": "MS terminology (clone → клон, verb клонировать) + the pane ruling (панель). TC 532 and DC name the same command «Получатель = Источнику»; Finder has none"
   },
   "close": {
     "chosen": "Закрыть",
@@ -1168,6 +1180,13 @@
     "forms": "command Удалить; progress Удаление…; deleted → удалено",
     "confidence": "high",
     "sources": "macOS AppKit Common (Delete → Удалить), Finder AL7; MS (delete → удалить); DC, Dolphin, Thunar"
+  },
+  "delete-key": {
+    "chosen": "Delete",
+    "confidence": "high",
+    "forms": "stays Latin like Escape; with a noun → клавиша Delete (⌫)",
+    "note": "Pile mined 2026-10-07 (macOS 27.0.1 live bundles): VoiceOver SCRWorkspace.loctable deleteKey, Terminal keyDescriptions.loctable 007F, AccessibilitySharedSupport symbol names delete.backward.",
+    "sources": "macOS VoiceOver (Delete Key → Клавиша Delete; Presses the delete key → Нажимает клавишу Delete); Terminal key descriptions say ⌫ Удалить"
   },
   "delete-permanently": {
     "chosen": "безвозвратно",
@@ -3580,6 +3599,13 @@
     "forms": "search query → поисковый запрос",
     "confidence": "high",
     "sources": "MS query → «запрос»"
+  },
+  "quick-filter": {
+    "accept": ["быстр"],
+    "chosen": "быстрый фильтр",
+    "confidence": "high",
+    "forms": "case forms быстрого фильтра, быстрым фильтром",
+    "sources": "DC actQuickFilter (Быстрый фильтр); TC 3019 (диалог быстрой фильтрации)"
   },
   "quick-look": {
     "chosen": "Быстрый просмотр",

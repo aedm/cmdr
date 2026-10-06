@@ -2,13 +2,14 @@
 //! space is the one every reader, every carried cursor and selection, and every
 //! `directory-diff` speaks.
 
-use super::caching::notify_added;
+use super::cached_listing::OverlayRows;
+use super::caching::{notify_added, sequence_changes};
 use super::caching_test_support::{TestListing, TestListingGuard};
 use super::diff::{DiffChange, DiffChangeType, compute_diff};
 use super::diff_emitter::{hold_for_test, pending_changes_for_test};
 use super::metadata::FileEntry;
-use super::name_filter::NameFilter;
-use super::operations::{find_file_index, get_file_at, get_total_count, set_listing_name_filter};
+use super::name_filter::{NameFilter, set_listing_name_filter};
+use super::operations::{find_file_index, get_file_at, get_total_count, replace_listing_entries};
 use super::sorting::{DirectorySortMode, SortColumn, SortOrder, sort_entries};
 
 const DIR: &str = "/test/name-filter";
@@ -231,7 +232,7 @@ fn one_onet_onets(tag: &str) -> TestListingGuard {
     listing
 }
 
-fn type_pattern(listing: &TestListingGuard, pattern: &str) -> super::operations::NameFilterResult {
+fn type_pattern(listing: &TestListingGuard, pattern: &str) -> super::name_filter::NameFilterResult {
     set_listing_name_filter(listing.id(), Some(pattern), false, None, &[], true).expect("listing is cached")
 }
 
@@ -288,4 +289,49 @@ fn a_refusal_looks_past_the_rows_the_current_filter_hides() {
     let wider = type_pattern(&listing, "one.");
     assert!(wider.accepted, "one.txt matches, though the current filter hides it");
     assert_eq!(row_names(&listing), vec!["one.txt"]);
+}
+
+#[test]
+fn a_change_read_in_the_old_row_space_is_never_sent_after_the_filter_changed() {
+    // The race: a watcher read its rows, the user typed, then the batch went out.
+    let listing = pane("name-filter-race");
+    let stale = DiffChange::added(entry("echo.txt"), 4).read_at(0);
+    set_listing_name_filter(listing.id(), Some("pdf"), false, None, &[], false).expect("listing is cached");
+
+    assert!(sequence_changes(listing.id(), vec![stale]).is_none());
+    // One read in the new row space goes out, numbered after the switch.
+    let fresh = DiffChange::added(entry("bravo.pdf"), 1).read_at(1);
+    let (sequence, sent) = sequence_changes(listing.id(), vec![fresh]).expect("a current change is sent");
+    assert_eq!(sent.len(), 1);
+    assert_eq!(sequence, 2);
+}
+
+#[test]
+fn a_filter_change_names_the_sequence_its_rows_start_at() {
+    let listing = pane("name-filter-seq");
+    let changed =
+        set_listing_name_filter(listing.id(), Some("pdf"), false, None, &[], false).expect("listing is cached");
+    assert_eq!(changed.sequence, Some(1));
+    let same = set_listing_name_filter(listing.id(), Some("pdf"), false, None, &[], false).expect("listing is cached");
+    assert_eq!(same.sequence, None, "nothing changed, so the pane keeps its sequence");
+}
+
+#[test]
+fn a_re_read_that_crossed_a_filter_change_is_diffed_again_in_the_new_rows() {
+    let listing = pane("name-filter-reread");
+    // A re-read diffed with no filter (epoch 0): echo.txt lands as row 4.
+    let mut fresh = entries();
+    fresh.push(entry("echo.pdf"));
+    let fresh = sorted(fresh);
+    let stale = compute_diff(&entries(), &fresh, false, None);
+    set_listing_name_filter(listing.id(), Some("pdf"), false, None, &[], false).expect("listing is cached");
+
+    let sent = replace_listing_entries(listing.id(), fresh, OverlayRows::Unchanged, 0, stale);
+
+    let rows: Vec<(DiffChangeType, String, usize)> = sent
+        .into_iter()
+        .map(|c| (c.change_type, c.entry.name, c.index))
+        .collect();
+    // In the "pdf" rows (alpha.pdf, charlie.pdf) the new file is row 2.
+    assert_eq!(rows, vec![(DiffChangeType::Add, "echo.pdf".to_string(), 2)]);
 }

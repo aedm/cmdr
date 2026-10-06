@@ -244,6 +244,14 @@
   "@commands.paneSwap.label": {
     "sourceHash": "cc29396"
   },
+  "commands.paneClone.label": "Clonar painel",
+  "@commands.paneClone.label": {
+    "sourceHash": "74b2c7f"
+  },
+  "commands.paneClone.description": "Abra a pasta deste painel também no outro painel.",
+  "@commands.paneClone.description": {
+    "sourceHash": "8a13dc9"
+  },
   "commands.paneLeftVolumeChooser.label": "Abrir seletor de volume da esquerda",
   "@commands.paneLeftVolumeChooser.label": {
     "sourceHash": "6210f8e"

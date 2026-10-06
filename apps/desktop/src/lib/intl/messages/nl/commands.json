@@ -246,6 +246,14 @@
   "@commands.paneSwap.label": {
     "sourceHash": "cc29396"
   },
+  "commands.paneClone.label": "Kloon paneel",
+  "@commands.paneClone.label": {
+    "sourceHash": "74b2c7f"
+  },
+  "commands.paneClone.description": "Open de map van dit paneel ook in het andere paneel.",
+  "@commands.paneClone.description": {
+    "sourceHash": "8a13dc9"
+  },
   "commands.paneLeftVolumeChooser.label": "Open linker volumekiezer",
   "@commands.paneLeftVolumeChooser.label": {
     "sourceHash": "6210f8e"

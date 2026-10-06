@@ -432,6 +432,17 @@
     "confidence": "confirmed",
     "sources": "macOS (Área de Transferência)"
   },
+  "clone-pane": {
+    "avoid": [
+      {
+        "form": "Duplicar",
+        "why": "Finder's Duplicate makes a file copy"
+      }
+    ],
+    "chosen": "Clonar painel",
+    "confidence": "high",
+    "sources": "MS terminology pt-BR (clone → clonar) + the pane ruling (painel). TC 532 and DC name the same command Destino=Origem; Finder has none"
+  },
   "close": {
     "chosen": "Fechar",
     "accept": ["fech"],
@@ -686,6 +697,13 @@
     "confidence": "high",
     "sources": "macOS Finder pt-BR (Apagar; 0 Excluir in Finder pt-BR)",
     "decision": "Apagar, never Excluir"
+  },
+  "delete-key": {
+    "chosen": "Apagar",
+    "confidence": "high",
+    "forms": "a tecla Apagar (⌫)",
+    "note": "Pile mined 2026-10-07 (macOS 27.0.1 live bundles): VoiceOver SCRWorkspace.loctable deleteKey, Terminal keyDescriptions.loctable 007F, AccessibilitySharedSupport symbol names delete.backward.",
+    "sources": "macOS pt-BR Terminal key descriptions (⌫ Delete → ⌫ Apagar), VoiceOver (Presses the delete key → Pressiona a tecla apagar); the VoiceOver title keeps Tecla Delete; symbol names say retroceder"
   },
   "delete-permanently": {
     "chosen": "Apagar permanentemente",
@@ -1063,6 +1081,13 @@
     "accept": ["sistemas de arquivos"],
     "confidence": "confirmed",
     "sources": "macOS Disk Utility pt-BR (File system → Sistema de arquivos), 26.6.2, 2026-09-06"
+  },
+  "filter": {
+    "accept": ["filtr"],
+    "chosen": "filtrar",
+    "confidence": "high",
+    "forms": "noun o filtro (Limpar filtro, filtro rápido); the typing-mode name and badge Filtrar (Filtrar: …), beside Ir para",
+    "sources": "macOS live pt-BR (Filter → Filtrar 33×, Filtro 13×; Show Filter Bar → Mostrar Barra de Filtro); DC, MC (Filtro); catalog (Filtrar buscas recentes)"
   },
   "finder": {
     "chosen": "Finder",
@@ -1992,6 +2017,11 @@
     "accept": ["consulta"],
     "confidence": "tentative",
     "sources": "shipped pt catalog"
+  },
+  "quick-filter": {
+    "chosen": "filtro rápido",
+    "confidence": "high",
+    "sources": "TC pt-BR 3018/3019 (filtro rápido desativado/ativado); DC pt-BR actQuickFilter (Filtro rápido)"
   },
   "quick-look": {
     "chosen": "Visualização rápida",

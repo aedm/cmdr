@@ -697,5 +697,9 @@
   "menu.help.viewDebugLog": "Debug-Protokoll ansehen",
   "@menu.help.viewDebugLog": {
     "sourceHash": "007c98d"
+  },
+  "menu.view.clonePane": "Bereich klonen",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
   }
 }

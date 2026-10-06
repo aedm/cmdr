@@ -28,6 +28,8 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
   migration of the whole catalog, never piecemeal.
 - **upgrade page → `Frissítési oldal`** (`commands.aboutOpenUpgrade.label`): `frissítés` is also the update word, and
   the page sells a license. No ruling yet.
+- **`Gépelés a panelen`** (`settings.fileExplorer.typeToJump.mode.label`): unsourced phrasing for "When you type in a
+  pane"; no reference names the setting.
 
 ## Wording
 

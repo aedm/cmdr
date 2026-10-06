@@ -494,6 +494,17 @@
     "confidence": "confirmed",
     "sources": "macOS/MS"
   },
+  "clone-pane": {
+    "avoid": [
+      {
+        "form": "复制窗格",
+        "why": "复制 is Duplicate in this catalog"
+      }
+    ],
+    "chosen": "克隆窗格",
+    "confidence": "high",
+    "sources": "MS zh-CN clone → 克隆 + the pane ruling (窗格); no collision (copy 拷贝, duplicate 复制). TC zh-CN 532 (目标面板 = 源面板) and DC (目标 = 来源) name the same command differently; Finder has none"
+  },
   "close": {
     "accept": ["关掉"],
     "chosen": "关闭",
@@ -767,6 +778,14 @@
     "decision": "回滚结束后的提示条",
     "forms": "button 删除; spoken prose 删掉; the Delete key stays Latin; rollback and leftovers delete (删除), never 移除",
     "sources": "macOS"
+  },
+  "delete-key": {
+    "accept": ["Delete"],
+    "chosen": "Delete 键",
+    "confidence": "high",
+    "forms": "按 Delete（⌫）键 + verb",
+    "note": "Pile mined 2026-10-07 (macOS 27.0.1 live bundles): VoiceOver SCRWorkspace.loctable deleteKey, Terminal keyDescriptions.loctable 007F, AccessibilitySharedSupport symbol names delete.backward.",
+    "sources": "macOS VoiceOver zh_CN (Delete Key → delete键; Presses the delete key → 按下delete键); Terminal says ⌫删除, the symbol names 退格"
   },
   "delete-permanently": {
     "accept": ["彻底", "永久"],
@@ -2263,6 +2282,11 @@
       "queryUi.dialog.runQueryUnknownReason": "\"Try a narrower query?\" reads as the everyday 更精确的搜索."
     },
     "sources": "standard"
+  },
+  "quick-filter": {
+    "chosen": "快速筛选",
+    "confidence": "high",
+    "sources": "TC zh-CN 3018/3019 (关闭/开启筛选) + the filter ruling 筛选; DC zh-CN says 快速过滤器, macOS mostly 过滤"
   },
   "quick-look": {
     "avoid": [

@@ -694,5 +694,9 @@
   "menu.help.viewDebugLog": "Visa felsökningslogg",
   "@menu.help.viewDebugLog": {
     "sourceHash": "007c98d"
+  },
+  "menu.view.clonePane": "Klona panel",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
   }
 }

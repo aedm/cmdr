@@ -379,6 +379,7 @@ export interface SettingsValues {
 
   // Type-to-jump
   'fileExplorer.typeToJump.mode': TypeToJumpMode
+  'fileExplorer.quickFilterIntroSeen': boolean
   'fileExplorer.typeToJump.resetDelay': number
 
   // Quick Look

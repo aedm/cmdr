@@ -696,5 +696,9 @@
   "menu.help.viewDebugLog": "Просмотреть журнал отладки",
   "@menu.help.viewDebugLog": {
     "sourceHash": "007c98d"
+  },
+  "menu.view.clonePane": "Клонировать панель",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
   }
 }

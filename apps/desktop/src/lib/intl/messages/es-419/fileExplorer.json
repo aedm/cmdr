@@ -358,5 +358,25 @@
   "fileExplorer.folderSizes.unreadable": "{count, plural, one {No se pudo leer por completo # carpeta, así que puede que su tamaño esté incompleto.} many {No se pudieron leer por completo # carpetas, así que puede que sus tamaños estén incompletos.} other {No se pudieron leer por completo # carpetas, así que puede que sus tamaños estén incompletos.}}",
   "@fileExplorer.folderSizes.unreadable": {
     "sourceHash": "82dc6a5"
+  },
+  "fileExplorer.quickFilter.intro.title": "Este panel se filtró al escribir",
+  "@fileExplorer.quickFilter.intro.title": {
+    "sourceHash": "da13d0e"
+  },
+  "fileExplorer.quickFilter.intro.body": "Escribiste algunas letras, así que el panel ahora solo muestra los archivos y carpetas cuyo nombre las contiene.",
+  "@fileExplorer.quickFilter.intro.body": {
+    "sourceHash": "c4f5fad"
+  },
+  "fileExplorer.quickFilter.intro.escape": "Presiona Esc para volver a ver todos tus archivos.",
+  "@fileExplorer.quickFilter.intro.escape": {
+    "sourceHash": "db65860"
+  },
+  "fileExplorer.quickFilter.intro.jumpNote": "¿Prefieres mover el cursor a un nombre que coincida sin ocultar nada? Cambia a “Saltar”, aquí o en Configuración.",
+  "@fileExplorer.quickFilter.intro.jumpNote": {
+    "sourceHash": "0d1e2b4"
+  },
+  "fileExplorer.quickFilter.intro.openSettings": "Configuración…",
+  "@fileExplorer.quickFilter.intro.openSettings": {
+    "sourceHash": "4184f3c"
   }
 }

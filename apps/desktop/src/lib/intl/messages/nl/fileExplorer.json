@@ -1739,5 +1739,46 @@
   "fileExplorer.folderSizes.unreadable": "{count, plural, one {Kon # map niet volledig lezen, dus de grootte ervan is misschien onvolledig.} other {Kon # mappen niet volledig lezen, dus de groottes ervan zijn misschien onvolledig.}}",
   "@fileExplorer.folderSizes.unreadable": {
     "sourceHash": "ad31a56"
+  },
+  "fileExplorer.quickFilter.prefix": "Filter: ",
+  "@fileExplorer.quickFilter.prefix": {
+    "sourceHash": "b549365",
+    "sameAsSourceJustification": "'Filter' is the Dutch word too (catalog: Filter recente selecties, Groottefilter actief; nl terms.json filter); the badge names the Filter typing mode, beside the shipped 'Ga naar: '."
+  },
+  "fileExplorer.quickFilter.ariaLabel": "Toont namen die ‘{pattern}’ bevatten",
+  "@fileExplorer.quickFilter.ariaLabel": {
+    "sourceHash": "9b223b0"
+  },
+  "fileExplorer.quickFilter.clear": "Filter wissen",
+  "@fileExplorer.quickFilter.clear": {
+    "sourceHash": "ba59e2d"
+  },
+  "fileExplorer.quickFilter.intro.title": "Typen heeft dit paneel gefilterd",
+  "@fileExplorer.quickFilter.intro.title": {
+    "sourceHash": "eef3e92"
+  },
+  "fileExplorer.quickFilter.intro.body": "Je hebt een paar letters getypt, dus het paneel toont nu alleen de bestanden en mappen waarvan de naam ze bevat.",
+  "@fileExplorer.quickFilter.intro.body": {
+    "sourceHash": "e406349"
+  },
+  "fileExplorer.quickFilter.intro.escape": "Druk op Escape om weer al je bestanden te zien.",
+  "@fileExplorer.quickFilter.intro.escape": {
+    "sourceHash": "af749ad"
+  },
+  "fileExplorer.quickFilter.intro.jumpNote": "Liever de cursor naar een overeenkomende naam verplaatsen zonder iets te verbergen? Schakel naar ‘Ga naar’, hier of in Instellingen.",
+  "@fileExplorer.quickFilter.intro.jumpNote": {
+    "sourceHash": "ac6d3c8"
+  },
+  "fileExplorer.quickFilter.intro.switchToJump": "Schakel naar ‘Ga naar’",
+  "@fileExplorer.quickFilter.intro.switchToJump": {
+    "sourceHash": "38642f9"
+  },
+  "fileExplorer.quickFilter.intro.openSettings": "Instellingen…",
+  "@fileExplorer.quickFilter.intro.openSettings": {
+    "sourceHash": "7a04083"
+  },
+  "fileExplorer.quickFilter.intro.gotIt": "Begrepen",
+  "@fileExplorer.quickFilter.intro.gotIt": {
+    "sourceHash": "5ad3dbd"
   }
 }

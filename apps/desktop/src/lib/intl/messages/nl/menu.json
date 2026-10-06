@@ -704,5 +704,9 @@
   "menu.help.viewDebugLog": "Bekijk foutopsporingslogbestand",
   "@menu.help.viewDebugLog": {
     "sourceHash": "007c98d"
+  },
+  "menu.view.clonePane": "Kloon paneel",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
   }
 }

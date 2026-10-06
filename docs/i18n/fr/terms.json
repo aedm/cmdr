@@ -515,7 +515,7 @@
     "sources": "catalog (main.quit.body, fileOperations.cancelRollback.stagedLeftover.*)"
   },
   "clear": {
-    "accept": ["effacé", "effacez"],
+    "accept": ["efface", "effacé", "effacez"],
     "chosen": "Effacer",
     "confidence": "high",
     "exceptions": {
@@ -535,6 +535,17 @@
     "confidence": "high",
     "forms": "definite article, never a possessive: dans le presse-papiers",
     "sources": "macOS Finder (\"Afficher le presse-papiers\")"
+  },
+  "clone-pane": {
+    "avoid": [
+      {
+        "form": "Dupliquer",
+        "why": "Finder's Duplicate makes a file copy"
+      }
+    ],
+    "chosen": "Cloner le panneau",
+    "confidence": "high",
+    "sources": "MS terminology (clone → cloner) + the pane ruling (panneau). TC 532 and DC name the same command Cible = Source; Finder has none"
   },
   "close": {
     "accept": ["ferme", "fermé"],
@@ -830,6 +841,13 @@
     "confidence": "high",
     "forms": "progress noun Suppression (Suppression…); Erase → Effacer is the reformat/wipe sense",
     "sources": "macOS AppKit (Delete → Supprimer, Supprimer des favoris)"
+  },
+  "delete-key": {
+    "chosen": "Supprimer",
+    "confidence": "high",
+    "forms": "la touche Supprimer (⌫)",
+    "note": "Pile mined 2026-10-07 (macOS 27.0.1 live bundles): VoiceOver SCRWorkspace.loctable deleteKey, Terminal keyDescriptions.loctable 007F, AccessibilitySharedSupport symbol names delete.backward.",
+    "sources": "macOS Terminal key descriptions (⌫ Delete → ⌫ Supprimer), VoiceOver (Delete Key → Touche de suppression); the symbol names say retour arrière, the Windows word"
   },
   "delete-permanently": {
     "accept": ["définitivement"],
@@ -1205,6 +1223,13 @@
     "confidence": "high",
     "forms": "File system watching → Surveillance du système de fichiers",
     "sources": "macOS AppKit DocumentDragging (macOS 26.6.2 build 25G83, 2026-09-06)"
+  },
+  "filter": {
+    "accept": ["filtr"],
+    "chosen": "filtrer",
+    "confidence": "high",
+    "forms": "noun le filtre (filtre rapide); the typing-mode name and badge Filtrer (Filtrer : …), beside Aller à",
+    "sources": "macOS live (Filter → Filtrer 43×, Filtre 16×; Show Filter Bar → Afficher la barre de filtrage); DC (Filtres), MC (Filtre); catalog (selection.runHint)"
   },
   "finder": {
     "chosen": "Finder",
@@ -2224,6 +2249,11 @@
     "chosen": "requête",
     "confidence": "high",
     "sources": "catalog"
+  },
+  "quick-filter": {
+    "chosen": "filtre rapide",
+    "confidence": "high",
+    "sources": "TC 3018/3019 (filtre rapide désactivé/activé); DC actQuickFilter (Filtre rapide)"
   },
   "quick-look": {
     "avoid": [

@@ -1306,6 +1306,22 @@
   "@settings.fileExplorer.typeToJump.resetDelay.description": {
     "sourceHash": "ff59a6a"
   },
+  "settings.fileExplorer.typeToJump.mode.label": "Khi bạn gõ trong khung",
+  "@settings.fileExplorer.typeToJump.mode.label": {
+    "sourceHash": "4ee8ef5"
+  },
+  "settings.fileExplorer.typeToJump.mode.description": "“Nhảy tới” đưa con trỏ tới kết quả khớp nhất. “Lọc” chỉ hiển thị các tệp và thư mục có tên chứa nội dung bạn gõ, giống bộ lọc nhanh của Total Commander. Nhấn phím Delete (⌫) để sửa và Escape để xóa bộ lọc.",
+  "@settings.fileExplorer.typeToJump.mode.description": {
+    "sourceHash": "e142e97"
+  },
+  "settings.fileExplorer.typeToJump.mode.opt.jump": "Nhảy tới",
+  "@settings.fileExplorer.typeToJump.mode.opt.jump": {
+    "sourceHash": "9ee0ca3"
+  },
+  "settings.fileExplorer.typeToJump.mode.opt.filter": "Lọc",
+  "@settings.fileExplorer.typeToJump.mode.opt.filter": {
+    "sourceHash": "638e249"
+  },
   "settings.fileOperations.maxConflictsToShow.label": "Số xung đột tối đa cần hiển thị",
   "@settings.fileOperations.maxConflictsToShow.label": {
     "sourceHash": "d9cdb0c"
@@ -2582,5 +2598,13 @@
   "settings.adb.pickerTitle": "Chọn lệnh adb",
   "@settings.adb.pickerTitle": {
     "sourceHash": "d6fc142"
+  },
+  "settings.fileExplorer.quickFilterIntroSeen.label": "Đã hiển thị giải thích bộ lọc nhanh",
+  "@settings.fileExplorer.quickFilterIntroSeen.label": {
+    "sourceHash": "5d124bb"
+  },
+  "settings.fileExplorer.quickFilterIntroSeen.description": "Thông báo nhỏ giải thích bộ lọc nhanh đầu tiên đã hiển thị hay chưa.",
+  "@settings.fileExplorer.quickFilterIntroSeen.description": {
+    "sourceHash": "855c661"
   }
 }

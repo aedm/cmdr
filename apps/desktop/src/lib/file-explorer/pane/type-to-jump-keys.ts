@@ -85,25 +85,7 @@ export interface TypingKeyTarget {
  */
 export function routeTypingKey(pane: TypingKeyTarget, e: KeyboardEvent): boolean {
   if (pane.isRenaming()) return false
-
-  if (pane.isQuickFilterMode()) {
-    const active = pane.isQuickFilterActive()
-    if (isTypeToJumpChar(e) || (active && isPrintableJumpContinuation(e))) {
-      pane.appendQuickFilter(e.key)
-      return true
-    }
-    if (active && !e.metaKey && !e.ctrlKey && !e.altKey) {
-      if (e.key === 'Backspace') {
-        pane.backspaceQuickFilter()
-        return true
-      }
-      if (e.key === 'Escape') {
-        pane.clearQuickFilter()
-        return true
-      }
-    }
-    return false
-  }
+  if (pane.isQuickFilterMode()) return routeFilterKey(pane, e)
 
   if (isTypeToJumpChar(e) || (pane.isJumpActive() && isPrintableJumpContinuation(e))) {
     pane.handleJumpKeystroke(e.key)
@@ -112,6 +94,25 @@ export function routeTypingKey(pane: TypingKeyTarget, e: KeyboardEvent): boolean
   if (isTypeToJumpResetKey(e)) {
     pane.clearJumpState()
     // Fall through; Enter/arrows/Backspace/ESC keep their existing meaning.
+  }
+  return false
+}
+
+/** `routeTypingKey` in Filter mode: what extends, edits, or clears the pattern. */
+function routeFilterKey(pane: TypingKeyTarget, e: KeyboardEvent): boolean {
+  const active = pane.isQuickFilterActive()
+  if (isTypeToJumpChar(e) || (active && isPrintableJumpContinuation(e))) {
+    pane.appendQuickFilter(e.key)
+    return true
+  }
+  if (!active || e.metaKey || e.ctrlKey || e.altKey) return false
+  if (e.key === 'Backspace') {
+    pane.backspaceQuickFilter()
+    return true
+  }
+  if (e.key === 'Escape') {
+    pane.clearQuickFilter()
+    return true
   }
   return false
 }

@@ -537,6 +537,12 @@
     "forms": "choose one thing → 選擇 (選擇 App⋯, 選擇 adb 指令); casual pick → 選一個 / 挑一個; pick a different X → 換一個 X / 換個 X; picking items out of a list is select → 選取",
     "sources": "AP-TW (選擇啟動磁碟; Choose Application… → 選擇應用程式⋯)"
   },
+  "clear": {
+    "chosen": "清除",
+    "confidence": "high",
+    "forms": "Clear search → 清除搜尋; Clear index → 清除索引; Clear filter → 清除篩選",
+    "sources": "macOS live zh_TW (Clear → 清除 101×); catalog (settings.sidebar.clearSearch, settings.fileSystemWatching.clearIndex, shortcuts.section.pressEscToClear)"
+  },
   "click": {
     "accept": ["按", "點擊"],
     "avoid": [
@@ -568,6 +574,22 @@
     "chosen": "剪貼板",
     "confidence": "high",
     "sources": "AP-TW (8), AP-HK (8)"
+  },
+  "clone-pane": {
+    "avoid": [
+      {
+        "form": "複製窗格",
+        "why": "複製 is this catalog’s Copy (F5) and macOS zh-TW’s Duplicate, so it reads as copying the pane"
+      },
+      {
+        "form": "克隆",
+        "why": "mainland word for clone"
+      }
+    ],
+    "chosen": "目標窗格 = 來源窗格",
+    "confidence": "high",
+    "note": "The clone verb (MS zh-TW 複製) collides with Copy, so this follows Total Commander’s name for the command with the pane ruling’s target/source compounds.",
+    "sources": "TC zh-TW 532 (目標視窗 = 來源視窗), DC zh-TW (目標面板 = 來源面板); pane ruling (目標窗格 / 來源窗格)"
   },
   "close": {
     "accept": ["關掉", "關著"],
@@ -869,6 +891,14 @@
     "confidence": "confirmed",
     "forms": "button and formal line → 刪除; casual advice → 刪掉; the Delete key keeps its Latin name",
     "sources": "AP-TW = AP-HK, MS"
+  },
+  "delete-key": {
+    "accept": ["Delete"],
+    "chosen": "Delete 鍵",
+    "confidence": "high",
+    "forms": "按 Delete（⌫）鍵 + verb",
+    "note": "Pile mined 2026-10-07 (macOS 27.0.1 live bundles): VoiceOver SCRWorkspace.loctable deleteKey, Terminal keyDescriptions.loctable 007F, AccessibilitySharedSupport symbol names delete.backward.",
+    "sources": "macOS VoiceOver zh_TW (Delete Key → Delete鍵), Terminal key descriptions (⌫ Delete → ⌫ Delete); the symbol names say 退格"
   },
   "delete-permanently": {
     "accept": ["永久"],
@@ -2529,6 +2559,11 @@
     "decision": "The get-it-back words",
     "forms": "trashed files → 已把 … 放回原處; old names → 把原本的名稱改回去",
     "sources": "catalog fileOperations.trash.undone, queue.row.reversalMovingBack"
+  },
+  "quick-filter": {
+    "chosen": "快速篩選",
+    "confidence": "high",
+    "sources": "DC zh-TW actQuickFilter (快速篩選); TC zh-TW 3018/3019 (關閉/開啟篩選); the filter ruling 篩選"
   },
   "quick-look": {
     "chosen": "快速查看",

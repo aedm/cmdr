@@ -527,7 +527,7 @@
     "distinct": ["delete"],
     "en": "clean up",
     "match": ["clean up", "cleans up", "clears away", "clears it", "clear away"],
-    "notMatch": ["clears it up", "usually clears it"],
+    "notMatch": ["clears it up", "esc clears it", "usually clears it"],
     "note": "Deliberately not the delete verb: it sits next to queue rows that literally say deleting.",
     "sense": "Cmdr tidying away its own half-written or leftover files so nothing looks complete that isn't."
   },
@@ -565,6 +565,13 @@
     "en": "clipboard",
     "match": ["clipboard"],
     "sense": "The system pasteboard that cut, copy, and paste use."
+  },
+  "clone-pane": {
+    "distinct": ["pane", "duplicate"],
+    "en": "clone pane",
+    "match": ["clone pane"],
+    "note": "Where the language's clone verb is also its Copy or Duplicate command (zh-Hant 複製, vi nhân bản / sao chép), use Total Commander's name for the command (Target = Source) with the pane ruling's words instead.",
+    "sense": "The command that opens the focused pane's folder in the other pane too, so both panes show the same folder (Total Commander's Target = Source)."
   },
   "close": {
     "distinct": ["dismiss", "cancel", "quit"],
@@ -831,8 +838,15 @@
     "distinct": ["delete-permanently", "move-to-trash", "remove", "clean-up"],
     "en": "delete",
     "match": ["delete", "deletes", "deleting", "deleted", "deletion"],
-    "notMatch": ["or delete to clear", "=a–z or delete"],
+    "notMatch": ["or delete to clear", "=a–z or delete", "delete (⌫)"],
     "sense": "Removing files, either to the trash or permanently; also removing a model or other stored data."
+  },
+  "delete-key": {
+    "distinct": ["delete", "escape-key"],
+    "en": "Delete (⌫)",
+    "match": ["delete (⌫)", "delete key"],
+    "note": "A Mac key name, not the delete action: use the name macOS gives the ⌫ key in your language (VoiceOver's key names and Terminal's key descriptions), keeping the ⌫ glyph.",
+    "sense": "The Mac ⌫ key, which erases the character before the cursor (Backspace on a PC keyboard)."
   },
   "delete-permanently": {
     "distinct": ["delete", "move-to-trash"],
@@ -1034,6 +1048,7 @@
     "distinct": ["rename", "text-editor"],
     "en": "edit",
     "match": ["edit", "edits", "editing", "edited"],
+    "notMatch": ["(⌫) edits it"],
     "note": "Three senses share this English word: edit a file in an editor, edit an archive, and edit a saved server's settings (a form). Many locales split them, and the menu bar's Edit menu is Apple's own word.",
     "sense": "Opening a file in a text editor (F4), changing a zip's entries, or opening a form to change a saved item."
   },
@@ -1940,7 +1955,9 @@
       "stopped moving",
       "moving it to the trash",
       "moving those to the trash",
-      "move the cursor"
+      "move the cursor",
+      "moves the cursor",
+      "moving the cursor"
     ],
     "sense": "Relocating files to another folder (F6)."
   },
@@ -2376,6 +2393,12 @@
     "en": "query",
     "match": ["query", "queries", "search query"],
     "sense": "What the user typed into search or selection."
+  },
+  "quick-filter": {
+    "distinct": ["filter", "search"],
+    "en": "quick filter",
+    "match": ["quick filter", "quick filters"],
+    "sense": "Total Commander's type-to-narrow feature, Cmdr's Filter typing mode: typing in a pane shows only the files whose names contain the typed letters."
   },
   "quick-look": {
     "distinct": ["preview", "viewer"],

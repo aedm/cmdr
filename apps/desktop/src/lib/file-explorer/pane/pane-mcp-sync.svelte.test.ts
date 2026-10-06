@@ -85,6 +85,7 @@ function deps(overrides: Partial<PaneMcpSyncDeps> = {}): PaneMcpSyncDeps {
     getShowHiddenFiles: () => true,
     getTypeToJump: () => ({ buffer: '', indicatorVisible: false, indicatorStale: false }),
     getLastJumpMatchedName: () => null,
+    getQuickFilterPattern: () => '',
     getListing: () => 'settled',
     ...overrides,
   }

@@ -244,6 +244,14 @@
   "@commands.paneSwap.label": {
     "sourceHash": "cc29396"
   },
+  "commands.paneClone.label": "Bereich klonen",
+  "@commands.paneClone.label": {
+    "sourceHash": "74b2c7f"
+  },
+  "commands.paneClone.description": "Den Ordner dieses Bereichs auch im anderen Bereich öffnen.",
+  "@commands.paneClone.description": {
+    "sourceHash": "8a13dc9"
+  },
   "commands.paneLeftVolumeChooser.label": "Linke Volume-Auswahl öffnen",
   "@commands.paneLeftVolumeChooser.label": {
     "sourceHash": "6210f8e"

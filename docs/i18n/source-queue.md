@@ -150,3 +150,9 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
 - `fileExplorer.compareDirectories.*`: no screenshot of the compare toasts, so their widths are unverified. (all)
 - `settings.listing.spaceCalculatesFolderSize.*`, `fileExplorer.folderSizes.notConnected`: no screenshot of the switch
   or the Calculate-folder-sizes toast. (de…zh-Hant)
+- `fileExplorer.quickFilter.*`, `settings.fileExplorer.typeToJump.mode.*`: no screenshot of the toast, the "Filter: …"
+  badge with its ×, or the Jump/Filter toggle, so widths are guesses. Capture all three. (11)
+- `settings.fileExplorer.typeToJump.mode.description`: the description says to use "the names printed on a Mac
+  keyboard", but most non-US Mac keyboards print only the ⌫ glyph and an English "esc", so there's no printed name to
+  copy. Say "the name macOS gives the key in your language (VoiceOver's key names)" instead; that's what the
+  `delete-key` rulings record. (11)

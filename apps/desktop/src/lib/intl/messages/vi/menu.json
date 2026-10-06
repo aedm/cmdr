@@ -697,5 +697,9 @@
   "menu.help.viewDebugLog": "Xem nhật ký gỡ lỗi",
   "@menu.help.viewDebugLog": {
     "sourceHash": "007c98d"
+  },
+  "menu.view.clonePane": "Khung đích = khung nguồn",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
   }
 }

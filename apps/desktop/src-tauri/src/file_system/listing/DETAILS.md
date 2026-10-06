@@ -254,13 +254,39 @@ point: counts, ranges, selection, type-to-jump, and `directory-diff` rows all sp
 - **`set_listing_name_filter` swaps the row space under ONE write lock** and answers with the new count plus where the
   cursor's file and the selected files landed (the `resort_listing` shape). A selected file the filter hides drops out
   of the selection, so no operation acts on a row the user can't see. A change drops the queued diffs, like a hidden
-  toggle.
+  toggle, and answers the diff `sequence` the new row space starts at (bumped under the same lock).
+- **Matching cost**: the wildcard-free path folds each name once (`fold_name` allocates only when folding changes it)
+  and does one `contains`; a wildcard pattern walks chars with backtracking only to the last `*`, so no recursion
+  and no blowup on `*a*a*a*`. Measured by the review on a 50k-name folder: fast enough to type into.
 - **Typing narrows down to the last match, never past it.** A growing pattern is sent with `refuse_empty`; one that
   matches no entry is refused under the same lock (`accepted: false`, old filter kept) and the frontend drops the
   keystroke. The check walks every entry, not the current rows: an edited pattern needn't narrow the old one.
 - Matching: substring anywhere in the name, folded by `cmdr_fs::name_fold` (case and Unicode form), `*` / `?` as
   wildcards with an implied `*` on both ends. A new listing starts unfiltered; the frontend side is
-  `apps/desktop/src/lib/file-explorer/pane/quick-filter-controller.svelte.ts`.
+  `apps/desktop/src/lib/file-explorer/pane/DETAILS.md` § Quick filter.
+
+### The quick filter and in-flight diffs
+
+A diff's row numbers belong to the row space they were read in, and a filter change swaps it. A watcher reads its rows
+under one lock and sends them a flush window (50 ms) later; a batch re-read even diffs before it writes. So a diff
+could be read under one filter and reach a pane already showing another, shifting its cursor and selection by the
+wrong rows. Three pieces close that:
+
+- **Every listing has a `filter_epoch`, bumped by each filter change**, and a change carries the epoch its rows were
+  read at (`PaneRows::epoch` → `DiffChange::for_pane`, or `DiffChange::read_at`). `diff_emitter`'s flush numbers a
+  batch through `caching::sequence_changes`, which under ONE read lock drops every change from an older epoch and
+  takes the next sequence for the rest. Dropping is right: those rows were patched before the switch, so the switch's
+  full refetch already shows them.
+- **A batch re-read that crossed a switch is diffed again** (`operations::replace_listing_entries`): it diffed before
+  writing, so under the write lock it compares the epoch it read at, and on a mismatch recomputes the diff against the
+  filter as it stands. Dropping it instead would lose the update: its write lands AFTER the switch's refetch.
+- **The switch answers the sequence its rows start at**, and the pane takes it as its last applied one, so a diff
+  numbered before the switch that arrives late is skipped (the refetch holds it).
+
+Residual: a diff read in the NEW row space and delivered before the pane has applied the switch's answer lands on the
+old rows; the answer's refetch then repaints, but the cursor and selection it set don't include that diff's shift.
+Pinned by `name_filter_test.rs` (`a_change_read_in_the_old_row_space_is_never_sent_after_the_filter_changed`, and the
+re-read and sequence tests beside it).
 
 ## Diffs speak the pane's rows
 
@@ -290,7 +316,7 @@ for row 1).
   under the same write lock (`VisibleRows::rows_before` / `row_of_entry`, two binary searches). ❗ Reading after the patch
   would rebuild the map per patch, once per add in a burst. `DiffChange::for_pane` turns the pair into a change or none.
 - The batch re-reads (`publish_replacement`, the watcher's `handle_directory_change`) diff the SHOWN rows of old and new
-  with `compute_diff(old, new, include_hidden)`, so moves are judged among the pane's rows alone, and decide the cache
+  with `compute_diff(old, new, include_hidden, name_filter)`, so moves are judged among the pane's rows alone, and decide the cache
   write separately with `listing_changed`: an empty pane diff can still owe the cache a hidden entry's news.
 - `visible_rows::shows` is the one predicate, the same one the row map is built from. ❌ No name test anywhere.
 - `is_entry_modified` counts `is_hidden`: with hidden files shown the row dims, and a `chflags hidden` reaching a full

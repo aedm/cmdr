@@ -601,6 +601,12 @@
     "confidence": "high",
     "sources": "macOS (Vágólap)"
   },
+  "clone-pane": {
+    "accept": ["klónoz"],
+    "chosen": "Panel klónozása",
+    "confidence": "high",
+    "sources": "MS terminology (clone → klónoz) + the pane ruling (panel). TC 532 and DC name the same command Cél = Forrás; Finder has none"
+  },
   "close": {
     "chosen": "Bezárás",
     "accept": ["bezár", "zárd be", "zárj be", "lezár", "zárul", "zárja", "zárva"],
@@ -895,6 +901,13 @@
     "forms": "label Törlés; possessive … törlése; question Törlöd …?; progress Törlés…",
     "confidence": "high",
     "sources": "macOS; ms; GNOME; Xfce"
+  },
+  "delete-key": {
+    "chosen": "Delete",
+    "confidence": "high",
+    "forms": "with a base word, like the Escape ruling → a Delete (⌫) billentyűvel",
+    "note": "Pile mined 2026-10-07 (macOS 27.0.1 live bundles): VoiceOver SCRWorkspace.loctable deleteKey, Terminal keyDescriptions.loctable 007F, AccessibilitySharedSupport symbol names delete.backward.",
+    "sources": "macOS VoiceOver (Delete Key → Delete billentyű); Terminal key descriptions and the symbol names say Törlés, a description rather than the keycap"
   },
   "delete-permanently": {
     "chosen": "végleges törlés",
@@ -1315,6 +1328,13 @@
     "forms": "File system watching → Fájlrendszer figyelése; File systems → Fájlrendszerek",
     "confidence": "high",
     "sources": "ms"
+  },
+  "filter": {
+    "accept": ["szűr"],
+    "chosen": "szűrés",
+    "confidence": "high",
+    "forms": "noun szűrő (Szűrő törlése, gyorsszűrő); the typing-mode name and badge Szűrés (Szűrés: …), beside Ugrás",
+    "sources": "macOS live (Filter → Szűrő 37×, Szűrés 26×; Clear Filter → Szűrő törlése); DC, MC (Szűrő); catalog (Szűrés típus szerint, Méretszűrő aktív)"
   },
   "finder": {
     "chosen": "Finder",
@@ -2595,6 +2615,13 @@
     "accept": ["keresés"],
     "confidence": "high",
     "sources": "catalog (queryUi.results.criteria.query)"
+  },
+  "quick-filter": {
+    "accept": ["gyorsszűr"],
+    "chosen": "gyorsszűrő",
+    "confidence": "high",
+    "forms": "gyorsszűrő; the act → gyorsszűrés",
+    "sources": "DC actQuickFilter (Gyorsszűrő); TC 3018/3019 (gyorsszuro, accents dropped in TC’s file)"
   },
   "quick-look": {
     "chosen": "Gyorsnézet",

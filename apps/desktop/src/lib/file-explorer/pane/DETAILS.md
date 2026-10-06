@@ -243,6 +243,28 @@ Page/Home/End, Enter, Tab, Backspace, rename entry, context menu, drag start, pa
 re-sort, listing replace) all call the factory's `clearJumpState()`. The generation counter discards stale async match
 responses. Backend match runs in `apps/desktop/src-tauri/src/file_system/listing/fuzzy_jump.rs`.
 
+**Quick filter (Filter typing mode, the default).** `fileExplorer.typeToJump.mode` picks what typing does: `filter`
+(Total Commander's quick filter) or `jump`. `routeTypingKey` (`type-to-jump-keys.ts`) is the one intercept for both, and
+in Filter mode `routeFilterKey` sends letters and digits (any printable once a pattern is on) to
+`quick-filter-controller.svelte.ts`; Backspace edits and Esc clears while a pattern is on; arrows and Enter fall
+through, so you navigate the filtered list. The filtering is the backend's
+(`apps/desktop/src-tauri/src/file_system/listing/ DETAILS.md` § Quick filter), and everything the pane reads (count,
+rows, selection, diffs) is the filtered row space.
+
+- **One call in flight, latest pattern wins**: keystrokes that land mid-call only move `pattern`, and the loop sends
+  whatever stands when the call returns, so fast typing never loses a character. A growing pattern nothing matches is
+  refused and snaps back, but only while the pattern still extends the refused one: an Esc or Backspace typed meanwhile
+  stands.
+- **The answer starts a diff sequence** (`QuickFilterApplied.sequence`); `FilePane` takes it as `lastSequence`, so a
+  late diff numbered before the switch, which speaks the old rows, is skipped (the backend half: § The quick filter and
+  in-flight diffs, in the listing `DETAILS.md`).
+- **The pattern belongs to its listing and its mode**: a new listing starts unfiltered (`reset()`, no IPC), and leaving
+  Filter mode clears it, since in Jump mode nothing could.
+- **Seen from outside**: the "Filter: …" badge (`TypeToJumpIndicator kind="filter"`) carries a × that clears by mouse
+  without taking focus; MCP's pane state carries `quickFilter` while one is on; the first filter ever shown raises a
+  once-ever toast (`quick-filter-intro.ts`, stamped on the way up) saying what happened, that Esc brings every file
+  back, and offering Jump or the Settings row.
+
 **Active-jump key widening.** `isTypeToJumpChar` (letters/digits) STARTS a jump. Once one is active (`isJumpActive()` —
 buffer non-empty, before the reset-timeout empties it), the intercept widens to `isPrintableJumpContinuation` (any
 single printable key, Shift allowed), so `-`, Space, etc. extend the buffer instead of firing their own single-char

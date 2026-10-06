@@ -495,6 +495,17 @@
     "forms": "i urklipp (not på); urklippsinnehåll; no possessive",
     "sources": "macOS/Windows Swedish standard"
   },
+  "clone-pane": {
+    "avoid": [
+      {
+        "form": "Duplicera",
+        "why": "Finder's Duplicate makes a file copy"
+      }
+    ],
+    "chosen": "Klona panel",
+    "confidence": "high",
+    "sources": "MS terminology (clone → klona) + the pane ruling (panel). TC (Likställ fönster, 532 Mål=Källa) and DC (Mål = källa) name the same command differently; Finder has none"
+  },
   "close": {
     "avoid": [
       {
@@ -739,6 +750,13 @@
     "forms": "F8 and the dialog button Radera; progress Raderar; the act → raderingen; also a downloaded AI model",
     "note": "macOS wins over MS/GNOME's ta bort here. Removing rows from an index, or files English calls removing, keeps ta bort.",
     "sources": "macOS AppKit (Delete → Radera), Finder (Radera direkt…)"
+  },
+  "delete-key": {
+    "chosen": "Backsteg",
+    "confidence": "high",
+    "forms": "Backsteg (⌫); the key in a sentence → backstegstangenten",
+    "note": "Pile mined 2026-10-07 (macOS 27.0.1 live bundles): VoiceOver SCRWorkspace.loctable deleteKey, Terminal keyDescriptions.loctable 007F, AccessibilitySharedSupport symbol names delete.backward.",
+    "sources": "macOS VoiceOver (Delete Key → Backstegstangenten), symbol names (Backsteg); Terminal key descriptions say radera"
   },
   "delete-permanently": {
     "chosen": "permanent",
@@ -1091,6 +1109,13 @@
     "chosen": "filsystem",
     "confidence": "high",
     "sources": "standard Swedish IT"
+  },
+  "filter": {
+    "accept": ["filter", "filtr"],
+    "chosen": "filtrera",
+    "confidence": "high",
+    "forms": "noun filter, definite filtret (Rensa filter, snabbfiltret); the typing-mode name and badge Filtrera (Filtrera: …), beside Hoppa",
+    "sources": "macOS live (Filter → Filtrera 32×, Filter 31×; Clear Filter → Rensa filter); DC, MC (Filter); catalog (Filtrera senaste sökningar)"
   },
   "finder": {
     "chosen": "Finder",
@@ -2101,6 +2126,13 @@
     "chosen": "sökfråga",
     "confidence": "high",
     "sources": "catalog"
+  },
+  "quick-filter": {
+    "accept": ["snabbfilt"],
+    "chosen": "snabbfilter",
+    "confidence": "high",
+    "forms": "definite snabbfiltret",
+    "sources": "TC 3018/3019 (snabbfilter av/på); DC actQuickFilter (Snabbfilter)"
   },
   "quick-look": {
     "chosen": "Överblick",

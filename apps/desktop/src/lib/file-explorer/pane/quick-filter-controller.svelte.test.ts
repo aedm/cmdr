@@ -46,6 +46,7 @@ describe('createQuickFilterController', () => {
       totalCount: 2,
       newCursorIndex: 1,
       newSelectedIndices: [0],
+      sequence: 7,
     })
   })
 
@@ -56,7 +57,7 @@ describe('createQuickFilterController', () => {
 
     // Frontend [0 (..), 2, 3] → backend [1, 2].
     expect(ipc.setListingNameFilter).toHaveBeenCalledWith('listing-1', 'p', false, 'charlie.pdf', [1, 2], true)
-    expect(apply).toHaveBeenCalledWith({ totalCount: 2, cursorIndex: 2, selectedIndices: [1] })
+    expect(apply).toHaveBeenCalledWith({ totalCount: 2, cursorIndex: 2, selectedIndices: [1], sequence: 7 })
     expect(ctl.pattern).toBe('p')
     expect(ctl.isActive()).toBe(true)
   })
@@ -92,7 +93,9 @@ describe('createQuickFilterController', () => {
     ipc.setListingNameFilter.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
-          release = () => resolve({ accepted: true, totalCount: 5, newCursorIndex: null, newSelectedIndices: [] })
+          release = () => {
+            resolve({ accepted: true, totalCount: 5, newCursorIndex: null, newSelectedIndices: [], sequence: 1 })
+          }
         }),
     )
     const { ctl } = setup()
@@ -174,5 +177,44 @@ describe('createQuickFilterController', () => {
     ctl.reset()
     expect(ctl.isActive()).toBe(false)
     expect(ipc.setListingNameFilter).not.toHaveBeenCalled()
+  })
+
+  it('keeps every character typed while a slow answer is on its way', async () => {
+    // The review's 50k-file folder: each answer takes a while, the user types on.
+    const answers: Array<(v: unknown) => void> = []
+    ipc.setListingNameFilter.mockImplementation(() => new Promise((resolve) => answers.push(resolve)))
+    const { ctl } = setup()
+    for (const ch of '2030-') ctl.append(ch)
+    expect(ctl.pattern).toBe('2030-')
+
+    const ok = { accepted: true, totalCount: 9, newCursorIndex: 0, newSelectedIndices: [], sequence: 1 }
+    answers[0](ok)
+    await settle()
+    expect(ipc.setListingNameFilter).toHaveBeenCalledTimes(2)
+    expect(ipc.setListingNameFilter.mock.calls[1][1]).toBe('2030-')
+    answers[1](ok)
+    await settle()
+    expect(ctl.pattern).toBe('2030-')
+  })
+
+  it('never lets a late refusal undo a newer clear', async () => {
+    const { ctl } = setup()
+    ctl.append('a')
+    await settle() // "a" is the listing's filter now
+    let refuse: (v: unknown) => void = () => {}
+    ipc.setListingNameFilter.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          refuse = resolve
+        }),
+    )
+    ctl.append('z') // "az" matches nothing, but the answer is slow
+    ctl.clear() // Esc while it's on its way
+    refuse({ accepted: false, totalCount: 2, newCursorIndex: 0, newSelectedIndices: [], sequence: null })
+    await settle()
+
+    // The refusal of "az" must not bring "a" back: the clear goes out instead.
+    expect(ctl.pattern).toBe('')
+    expect(ipc.setListingNameFilter).toHaveBeenLastCalledWith('listing-1', null, false, 'charlie.pdf', [1, 2], false)
   })
 })
