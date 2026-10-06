@@ -212,9 +212,16 @@ the old set didn't.
 walking and `stat`ing the whole watched tree at arm time, which for a recursive gitdir is every loose object.
 `is_repo_state_path` reads paths only, so the pairing buys nothing.
 
-Linked worktrees have their `.git` as a FILE (gitlink), and `git_dir_path` resolves it to the worktree's own gitdir
-(`<common-dir>/worktrees/<name>/`), which holds its `HEAD`, `index`, and `logs/HEAD`. Refs live in the common dir and
-aren't under that watch; a commit in the worktree still appends to its `logs/HEAD`, which is.
+❗ **A linked worktree watches the COMMON gitdir.** Its `.git` is a FILE (gitlink) pointing at its own gitdir
+(`<common>/worktrees/<name>/`), which holds only `HEAD`, `index`, `logs/HEAD`, and the merge/fetch heads; every branch,
+tag, and remote-tracking ref lives in the common dir (`commondir` file, verified with `git rev-parse --git-path` on git
+2.x, 2026-10-06). A watch on the own gitdir alone missed `git fetch` / `git push` (stale ahead/behind) and branch
+create/delete. `watcher::WatchScope` puts the one recursive watch on the common dir (which contains the own one) and
+filters to the own gitdir's state files plus the shared `refs/` and `packed-refs`; the common dir's top-level `HEAD` /
+`index` (the main worktree's) and `worktrees/<sibling>/` are dropped. Two linked worktrees of one repo hold two watches
+on that dir rather than sharing one: each reports its own root through its own filter, and sharing would buy a second
+refcount layer and a per-worktree fan-out to save a kernel subscription. Pinned by
+`watcher_tests::a_linked_worktree_hears_the_shared_refs_and_not_its_siblings`.
 
 ❗ **A directory, ❌ never the state files themselves.** git never writes `HEAD` or `index` in place: it writes
 `HEAD.lock` and renames it over the top. inotify watches an INODE, so a watch on the file dies at the first rename and

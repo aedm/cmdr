@@ -62,7 +62,8 @@ type LastReport = Arc<Mutex<Option<(Instant, RepoInfo)>>>;
 ///
 /// [`GitPortal::with_scripted_watcher`]: crate::GitPortal::with_scripted_watcher
 pub(crate) trait GitWatcherBackend: Send + Sync {
-    /// Starts watching the gitdir of the repository at `repo_root`, calling
+    /// Starts watching the gitdir of the repository at `repo_root` (for a linked
+    /// worktree, the common one: [`WatchScope`]), calling
     /// `on_change` once per batch it emits, on a thread of the backend's own.
     /// ❗ A burst can arrive as more than one batch; making that ONE report is
     /// [`recompute_and_report`]'s job, ❌ not a promise a backend has to keep.
@@ -81,7 +82,7 @@ pub(crate) trait GitWatcherBackend: Send + Sync {
 }
 
 /// The real backend: one `notify` debouncer per repository, with ONE recursive
-/// watch on the gitdir.
+/// watch on the gitdir ([`WatchScope::watched_dir`]).
 ///
 /// ❗ **One path, ❌ never one per state directory.** On macOS `notify` stops and
 /// restarts the whole FSEvents stream for every `watch` call (joining its run-loop
@@ -101,12 +102,12 @@ pub(crate) struct NotifyWatcherBackend;
 
 impl GitWatcherBackend for NotifyWatcherBackend {
     fn watch(&self, repo_root: &Path, on_change: RepoChanged) -> Result<Box<dyn Send>, FriendlyGitError> {
-        let git_dir = git_dir_path(repo_root);
-        let filter_dir = git_dir.clone();
+        let scope = WatchScope::of(repo_root);
+        let watched_dir = scope.watched_dir().to_path_buf();
         let logged_root = repo_root.to_path_buf();
         let handler = move |result: DebounceEventResult| match result {
             Ok(events) => {
-                let touched_state = events.iter().any(|event| is_repo_state_change(&filter_dir, event));
+                let touched_state = events.iter().any(|event| is_repo_state_change(&scope, event));
                 trace_delivery(&logged_root, Ok(&events), touched_state);
                 if touched_state {
                     on_change();
@@ -139,7 +140,7 @@ impl GitWatcherBackend for NotifyWatcherBackend {
         .map_err(|e| FriendlyGitError::with_source(FriendlyGitErrorKind::CorruptRepo, e.to_string(), e))?;
         // A failed watch costs live updates, ❌ not the chip: the handshake still
         // reads the repository, so the subscribe goes ahead without one.
-        let _ = debouncer.watch(&git_dir, RecursiveMode::Recursive);
+        let _ = debouncer.watch(&watched_dir, RecursiveMode::Recursive);
         Ok(Box::new(debouncer))
     }
 }
@@ -262,6 +263,12 @@ mod scripted {
 }
 
 /// One per repo. Owns the live watch and the subscriber count.
+///
+/// Keyed by worktree root, so two linked worktrees of one repository hold two
+/// watches on the same common gitdir. ❗ Kept separate on purpose: each reports its
+/// OWN root through its own [`WatchScope`] filter, and sharing one stream would
+/// mean a second refcount layer plus a fan-out that re-filters per worktree, all
+/// to save a kernel-side subscription that costs next to nothing.
 struct Subscription {
     refcount: u32,
     /// Keep the backend's watch alive so it doesn't stop. Opaque on purpose:
@@ -464,6 +471,87 @@ fn git_dir_path(repo_root: &Path) -> PathBuf {
     dot_git
 }
 
+/// Where one worktree's state lives on disk: the directory the watch goes on, and
+/// which paths under it are this worktree's.
+///
+/// ❗ **A linked worktree watches the COMMON gitdir**, ❌ never only its own. Its
+/// own gitdir (`<common>/worktrees/<name>/`) holds `HEAD`, `index`, `logs/HEAD`,
+/// and the merge/fetch heads, but every branch, tag, and remote-tracking ref is
+/// shared in the common dir, so a watch on the own gitdir alone never heard a
+/// `git fetch`, a `git push`, or a branch created or deleted. The common dir
+/// contains the own one, so it's still ONE recursive watch.
+pub(crate) struct WatchScope {
+    /// The gitdir holding the shared refs: the main worktree's `.git`.
+    common_dir: PathBuf,
+    /// A linked worktree's own gitdir, under `common_dir`. `None` for the main
+    /// worktree, whose own files ARE the common dir's top level.
+    linked_dir: Option<PathBuf>,
+}
+
+impl WatchScope {
+    /// The scope of the worktree checked out at `repo_root`.
+    pub(crate) fn of(repo_root: &Path) -> Self {
+        let git_dir = git_dir_path(repo_root);
+        match common_dir_of(&git_dir) {
+            Some(common_dir) => Self {
+                common_dir,
+                linked_dir: Some(git_dir.canonicalize().unwrap_or(git_dir)),
+            },
+            None => Self {
+                common_dir: git_dir,
+                linked_dir: None,
+            },
+        }
+    }
+
+    /// The ONE directory the recursive watch goes on.
+    pub(crate) fn watched_dir(&self) -> &Path {
+        &self.common_dir
+    }
+
+    /// Whether an event on `path` is worth recomputing this worktree for.
+    ///
+    /// For a linked worktree: its own gitdir's state files, plus the shared refs.
+    /// The common dir's top-level `HEAD`, `index`, and `logs/HEAD` are the MAIN
+    /// worktree's, and `worktrees/<sibling>/` is a sibling's, so neither is news
+    /// here.
+    pub(crate) fn is_state_path(&self, path: &Path) -> bool {
+        match &self.linked_dir {
+            None => is_repo_state_path(&self.common_dir, path),
+            Some(own) if path.starts_with(own) => is_repo_state_path(own, path),
+            Some(_) => is_shared_ref_path(&self.common_dir, path),
+        }
+    }
+}
+
+/// The common gitdir a linked worktree's gitdir points at through its
+/// `commondir` file (`../..` as git writes it), canonical so it's spelled the way
+/// the operating system reports event paths. `None` for a main worktree's gitdir,
+/// which has no such file.
+fn common_dir_of(git_dir: &Path) -> Option<PathBuf> {
+    let content = std::fs::read_to_string(git_dir.join("commondir")).ok()?;
+    let common_dir = git_dir.join(content.trim());
+    Some(common_dir.canonicalize().unwrap_or(common_dir))
+}
+
+/// Whether `path` is one of the refs every worktree of a repository shares:
+/// anything under `refs/`, and `packed-refs`. ❗ Not `*.lock`, for the reason
+/// [`is_repo_state_path`] gives.
+fn is_shared_ref_path(common_dir: &Path, path: &Path) -> bool {
+    let Ok(relative) = path.strip_prefix(common_dir) else {
+        return false;
+    };
+    if path.extension().is_some_and(|extension| extension == "lock") {
+        return false;
+    }
+    let mut components = relative.components();
+    match components.next() {
+        Some(std::path::Component::Normal(first)) if first == "refs" => true,
+        Some(std::path::Component::Normal(first)) => first == "packed-refs" && components.next().is_none(),
+        _ => false,
+    }
+}
+
 /// The direct children of the gitdir whose contents decide a [`RepoInfo`].
 const STATE_FILES: [&str; 6] = ["HEAD", "ORIG_HEAD", "MERGE_HEAD", "FETCH_HEAD", "packed-refs", "index"];
 
@@ -478,8 +566,8 @@ const STATE_DIRS: [&str; 2] = ["refs", "worktrees"];
 /// Two gates, and each carries half the answer: the event has to name a path a
 /// snapshot reads ([`is_repo_state_path`]), and it has to be a WRITE rather than
 /// one of the reads [`is_a_read`] drops.
-pub(crate) fn is_repo_state_change(git_dir: &Path, event: &notify::Event) -> bool {
-    !is_a_read(&event.kind) && event.paths.iter().any(|path| is_repo_state_path(git_dir, path))
+pub(crate) fn is_repo_state_change(scope: &WatchScope, event: &notify::Event) -> bool {
+    !is_a_read(&event.kind) && event.paths.iter().any(|path| scope.is_state_path(path))
 }
 
 /// Whether an event kind says somebody READ something rather than wrote it.

@@ -232,6 +232,65 @@ fn only_the_paths_a_snapshot_reads_are_worth_a_recompute() {
     );
 }
 
+/// ❗ **A linked worktree watches the COMMON gitdir**, because its refs live there.
+///
+/// `git worktree add` gives the worktree a gitdir of its own
+/// (`<common>/worktrees/<name>/`) holding only `HEAD`, `index`, and `logs/HEAD`;
+/// every branch, tag, and remote-tracking ref is shared in the common dir. A
+/// watch on the worktree's own gitdir alone never saw a `git fetch` or a
+/// `git push` (ahead/behind went stale) or a branch created or deleted there.
+/// The sibling worktrees' own files sit under the same watch and are theirs, so
+/// they are noise to this one.
+#[test]
+fn a_linked_worktree_hears_the_shared_refs_and_not_its_siblings() {
+    let (dir, _root, _fixture) = a_repo("linked_scope");
+    let linked = dir.join("linked");
+    let sibling = dir.join("sibling");
+    crate::test_fixtures::git_cli(
+        &dir,
+        &["worktree", "add", "-q", linked.to_str().unwrap(), "-b", "linked"],
+    );
+    crate::test_fixtures::git_cli(
+        &dir,
+        &["worktree", "add", "-q", sibling.to_str().unwrap(), "-b", "sibling"],
+    );
+    let common = dir.join(".git").canonicalize().expect("the common gitdir exists");
+    let linked_root = linked.canonicalize().expect("the linked worktree exists");
+
+    let scope = crate::watcher::WatchScope::of(&linked_root);
+    assert_eq!(
+        scope.watched_dir().canonicalize().ok().as_deref(),
+        Some(common.as_path()),
+        "one watch, on the dir that holds the shared refs"
+    );
+    let matters = |relative: &str| scope.is_state_path(&scope.watched_dir().join(relative));
+
+    for path in [
+        "refs/remotes/origin/main",
+        "refs/heads/new-branch",
+        "packed-refs",
+        "worktrees/linked/HEAD",
+        "worktrees/linked/index",
+        "worktrees/linked/logs/HEAD",
+        "worktrees/linked/ORIG_HEAD",
+    ] {
+        assert!(matters(path), "the linked worktree's chip should hear {path}");
+    }
+    for path in [
+        "worktrees/sibling/HEAD",
+        "worktrees/sibling/index",
+        "HEAD",
+        "index",
+        "logs/HEAD",
+        "objects/ab/cdef",
+        "logs/refs/heads/linked",
+        "refs/remotes/origin/main.lock",
+    ] {
+        assert!(!matters(path), "{path} is another worktree's, or noise");
+    }
+    cleanup(&dir);
+}
+
 /// ❗ **A READ of the gitdir is never a change**, and dropping one is what keeps
 /// the watcher from feeding itself.
 ///
@@ -249,8 +308,9 @@ fn the_watchers_own_reads_are_not_changes() {
     use notify::event::{AccessKind, AccessMode, CreateKind, DataChange, ModifyKind, RenameMode};
 
     let git_dir = PathBuf::from("/repo/.git");
+    let scope = crate::watcher::WatchScope::of(Path::new("/repo"));
     let about = |kind: EventKind, relative: &str| {
-        crate::watcher::is_repo_state_change(&git_dir, &notify::Event::new(kind).add_path(git_dir.join(relative)))
+        crate::watcher::is_repo_state_change(&scope, &notify::Event::new(kind).add_path(git_dir.join(relative)))
     };
 
     // Everything the recompute itself provokes. Each of these names a path the
