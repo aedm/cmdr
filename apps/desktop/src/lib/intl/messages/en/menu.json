@@ -433,6 +433,11 @@
     "description": "NOUN phrase naming a destination: goes up one level, to the folder that contains the current one (⌘↑). \"Parent\" is the containing folder, nothing to do with people. Use the word for a directory your macOS Finder uses in this language."
   },
 
+  "menu.go.rootFolder": "Root folder",
+  "@menu.go.rootFolder": {
+    "description": "NOUN phrase naming a destination: the topmost folder of the disk, server, phone, or archive the pane shows, \"/\" on the Mac's main disk (⌘/). Sits between \"Parent folder\" and \"Home\". \"Root\" is the top of a folder tree, nothing to do with plants or admin rights. Short label."
+  },
+
   "menu.go.home": "Home",
   "@menu.go.home": {
     "description": "NOUN naming a destination: the user's own home folder, the one holding Documents and Downloads (⇧⌘H). Use the exact word your macOS Finder uses for Go > Home. Very short label."

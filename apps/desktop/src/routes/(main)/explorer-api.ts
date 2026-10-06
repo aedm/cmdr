@@ -79,6 +79,12 @@ export interface ExplorerAPI {
    * error pane's "Go to home folder" button, so all three land identically.
    */
   goHome: (pane?: 'left' | 'right') => Promise<void>
+  /**
+   * Opens the root of what `pane` shows (the focused pane when omitted): its
+   * volume's root, or its archive's when it's inside one. Rules:
+   * `navigation/root-folder.ts`.
+   */
+  goToRoot: (pane?: 'left' | 'right') => Promise<void>
   getFileAndPathUnderCursor: () => { path: string; filename: string } | null
   /**
    * The path the "copy path" command copies: the cursor entry's path, or the pane's

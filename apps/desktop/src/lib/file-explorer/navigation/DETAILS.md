@@ -137,6 +137,22 @@ restored tab, a favorite, go-to-path, history) never comes through it, so it kee
   as arm 4. ❌ Passing the landing as the target instead reads as arm 1 (a favorite) and skips the other pane and the
   remembered path.
 
+### Go > Root folder (`root-folder.ts`)
+
+`nav.goToRoot` (⌘/) opens the root of what the pane SHOWS, which is where a pane picking its volume never goes on its
+own: picking it lands on the other pane's folder or the remembered one, as in Total Commander, Double Commander, and
+Commander One (verified by hand, 2026-10-06). This command is the one-keystroke way to `/`, from issue #366.
+
+- **Inside an archive, the archive's root** (`archiveRootOf`, leftmost archive wins). The pane keeps the drive's
+  `volumeId` there, so the volume root would leave the archive.
+- **Otherwise the root of `paneVolumeOf`'s answer**, the volume the header names, so a boot-disk pane inside
+  `/Volumes/USB` goes to `/Volumes/USB`. A phone goes to its true root, ❌ never its `/sdcard` landing.
+- **❗ The target stays on the pane's own volume, opened in place** (`{ goTo }` with the pane's own `volumeId`). Another
+  volume's id would take the switch arm, whose best-path correction swaps a root for the remembered folder, and a path
+  off the pane's volume is dropped as a foreign listing. A share pane wandered off its mount gets the share's root.
+- The servers hub and a search snapshot have no root: a no-op, as is a pane already there, or one that moved while
+  `resolvePathVolume` answered.
+
 ### Following an edited place or a renamed drive (`root-change-follow.ts`)
 
 `pathAfterRootChange(path, change)` is where a path on a volume goes after `volume-root-changed`, by whole components

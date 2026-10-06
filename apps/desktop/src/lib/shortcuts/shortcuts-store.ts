@@ -312,6 +312,7 @@ export const menuCommands = [
   'nav.back',
   'nav.forward',
   'nav.parent',
+  'nav.goToRoot',
   'nav.goHome',
   'nav.goToPath',
   // Downloads

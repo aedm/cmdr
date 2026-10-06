@@ -6,7 +6,7 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the pane's 
 
 - History: `navigation-history.ts` (immutable stack), `history-cursor.ts` (each entry's cursor),
   `real-folder-history.ts` (newest non-snapshot entry). Paths: `path-navigation.ts`, `path-resolution.ts`,
-  `keyboard-shortcuts.ts`.
+  `root-folder.ts`, `keyboard-shortcuts.ts`.
 - `VolumeBreadcrumb.svelte` is the CHIP, hosting `VolumeChooserMenu.svelte` (the switcher) and `FavoritesMenu.svelte` +
   `favorites-menu.svelte.ts` (⌃D). Plus a helper per concern (grouping, disk space, connection state, eject, labels,
   badges) and the shared dots (`ConnectionDot`, `UsbSpeedDot`, `DetachButton`).

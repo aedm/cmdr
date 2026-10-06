@@ -120,16 +120,17 @@ menu menu.bar.go id=menu_go
   1 item go_forward menu.go.forward [Cmd+]] tracked
   2 separator
   3 item go_parent menu.go.parentFolder [Cmd+Up] tracked
-  4 item go_home menu.go.home [Shift+Cmd+H] tracked
-  5 separator
-  6 item go_to_path menu.go.goToPath [Cmd+G] tracked
-  7 item go_latest_download menu.go.goToLatestDownload [Cmd+J] tracked
-  8 separator
-  9 item favorites_add menu.go.addToFavorites tracked
-  10 item favorites_open menu.go.showFavorites [Ctrl+D] tracked
-  11 separator
-  12 item servers_connect menu.go.connectToServer [Cmd+K] tracked
-  13 item servers_show menu.go.showServers tracked
+  4 item go_root menu.go.rootFolder [Cmd+/] tracked
+  5 item go_home menu.go.home [Shift+Cmd+H] tracked
+  6 separator
+  7 item go_to_path menu.go.goToPath [Cmd+G] tracked
+  8 item go_latest_download menu.go.goToLatestDownload [Cmd+J] tracked
+  9 separator
+  10 item favorites_add menu.go.addToFavorites tracked
+  11 item favorites_open menu.go.showFavorites [Ctrl+D] tracked
+  12 separator
+  13 item servers_connect menu.go.connectToServer [Cmd+K] tracked
+  14 item servers_show menu.go.showServers tracked
 menu menu.bar.tab id=menu_tab
   0 item new_tab menu.tab.newTab [Cmd+T] tracked
   1 item close_tab menu.tab.closeTab [Cmd+W] tracked
@@ -235,16 +236,17 @@ menu menu.bar.go
   1 item go_forward menu.go.forward [Cmd+]] tracked
   2 separator
   3 item go_parent menu.go.parentFolder [Cmd+Up] tracked
-  4 item go_home menu.go.home [Shift+Cmd+H] tracked
-  5 separator
-  6 item go_to_path menu.go.goToPath [Cmd+G] tracked
-  7 item go_latest_download menu.go.goToLatestDownload [Cmd+J] tracked
-  8 separator
-  9 item favorites_add menu.go.addToFavorites tracked
-  10 item favorites_open menu.go.showFavorites [Ctrl+D] tracked
-  11 separator
-  12 item servers_connect menu.go.connectToServer [Cmd+K] tracked
-  13 item servers_show menu.go.showServers tracked
+  4 item go_root menu.go.rootFolder [Cmd+/] tracked
+  5 item go_home menu.go.home [Shift+Cmd+H] tracked
+  6 separator
+  7 item go_to_path menu.go.goToPath [Cmd+G] tracked
+  8 item go_latest_download menu.go.goToLatestDownload [Cmd+J] tracked
+  9 separator
+  10 item favorites_add menu.go.addToFavorites tracked
+  11 item favorites_open menu.go.showFavorites [Ctrl+D] tracked
+  12 separator
+  13 item servers_connect menu.go.connectToServer [Cmd+K] tracked
+  14 item servers_show menu.go.showServers tracked
 menu menu.bar.tab
   0 item new_tab menu.tab.newTab [Cmd+T] tracked
   1 item close_tab menu.tab.closeTab [Cmd+W] tracked

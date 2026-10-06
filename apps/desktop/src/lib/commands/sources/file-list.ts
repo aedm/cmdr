@@ -98,6 +98,15 @@ export const fileListCommands: CommandSource[] = [
     whileDialogOpen: BLOCKED_BY_DIALOGS,
   },
   {
+    // ⌘/ because `/` is the root's own name.
+    id: 'nav.goToRoot',
+    nameKey: 'commands.navGoToRoot.label',
+    scope: 'Main window/File list',
+    showInPalette: true,
+    shortcuts: ['⌘/'],
+    whileDialogOpen: BLOCKED_BY_DIALOGS,
+  },
+  {
     // ⌘⇧H, not ⌘H: macOS reserves ⌘H for "Hide Cmdr" (an AppKit predefined item
     // Cmdr can neither rebind nor intercept — see `NATIVE_SHORTCUT_COMMAND_IDS`).
     id: 'nav.goHome',

@@ -1090,7 +1090,7 @@ the Selection dialog (see `apps/desktop/src/lib/selection-dialog/CLAUDE.md`). Al
 `MenuState.items`, so a user-customized shortcut flows into the menu through the generic update path — and becomes a
 real accelerator when the rebind clears the modifier floor.
 
-The **Go** submenu holds, in order: `Back` (⌘[), `Forward` (⌘]), separator, `Parent folder` (⌘↑), `Home` (⇧⌘H),
+The **Go** submenu holds, in order: `Back` (⌘[), `Forward` (⌘]), separator, `Parent folder` (⌘↑), `Root folder` (⌘/, `nav.goToRoot`, rules in `apps/desktop/src/lib/file-explorer/navigation/root-folder.ts`), `Home` (⇧⌘H),
 separator, `Go to path…` (⌘G), `Go to latest download` (⌘J), separator, `Add to favorites`, `Show favorites` (⌃D),
 `Show servers`. The two jump items are `GO_TO_PATH_ID` (`"go_to_path"`) →
 `nav.goToPath` and `GO_LATEST_DOWNLOAD_ID` (`"go_latest_download"`) → `downloads.goToLatest`, both `FileScoped` so they

@@ -131,6 +131,8 @@ export const COMMAND_IDS = [
   'nav.pageDown',
   'nav.back',
   'nav.forward',
+  // Navigates the focused pane to the root of what it shows (volume or archive).
+  'nav.goToRoot',
   // Navigates the focused pane to the home folder. Distinct from `nav.home`,
   // which moves the CURSOR to the first row.
   'nav.goHome',

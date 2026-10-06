@@ -404,6 +404,10 @@
     "description": "Command name that navigates forward in history. Appears in the command palette.",
     "screenshot": "settings-keyboard-shortcuts.png"
   },
+  "commands.navGoToRoot.label": "Go to root folder",
+  "@commands.navGoToRoot.label": {
+    "description": "Command name that opens the topmost folder of what the active pane shows: \"/\" on the Mac's main disk, the top of a USB drive, server, or phone, or the top of an archive when the pane is inside one (⌘/). \"Root\" is the top of a folder tree, nothing to do with plants or admin rights. Use this language's ruling for the \"root folder\" term, as in the Go menu's \"Root folder\" item."
+  },
   "commands.navGoHome.label": "Go to home folder",
   "@commands.navGoHome.label": {
     "description": "Command name that opens the home folder in the active pane. Appears in the command palette, the Go menu, and on the button that gets users out of an error screen. \"Home folder\" means the per-user folder the operating system gives each account (~), not a website home page. Distinct from \"Go to first file\", which only moves the cursor within the current folder.",

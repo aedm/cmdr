@@ -170,6 +170,8 @@ pub const SWAP_PANES_ID: &str = "swap_panes";
 pub const GO_BACK_ID: &str = "go_back";
 pub const GO_FORWARD_ID: &str = "go_forward";
 pub const GO_PARENT_ID: &str = "go_parent";
+/// "Root folder" (⌘/): opens the root of what the focused pane shows, its volume's or its archive's.
+pub const GO_ROOT_ID: &str = "go_root";
 /// "Go to path…" (⌘G): opens the Go-to-path dialog (dialog-open is idempotency-guarded).
 pub const GO_TO_PATH_ID: &str = "go_to_path";
 /// "Go to latest download" (⌘J): jumps the focused pane to the most recent download.
@@ -363,6 +365,7 @@ pub fn menu_id_to_command(menu_id: &str) -> Option<(&'static str, CommandScope)>
         GO_BACK_ID => Some(("nav.back", CommandScope::FileScoped)),
         GO_FORWARD_ID => Some(("nav.forward", CommandScope::FileScoped)),
         GO_PARENT_ID => Some(("nav.parent", CommandScope::FileScoped)),
+        GO_ROOT_ID => Some(("nav.goToRoot", CommandScope::FileScoped)),
         GO_TO_PATH_ID => Some(("nav.goToPath", CommandScope::FileScoped)),
         GO_LATEST_DOWNLOAD_ID => Some(("downloads.goToLatest", CommandScope::FileScoped)),
         GO_HOME_ID => Some(("nav.goHome", CommandScope::FileScoped)),
@@ -482,6 +485,7 @@ pub fn command_id_to_menu_id(command_id: &str) -> Option<&'static str> {
         "nav.back" => Some(GO_BACK_ID),
         "nav.forward" => Some(GO_FORWARD_ID),
         "nav.parent" => Some(GO_PARENT_ID),
+        "nav.goToRoot" => Some(GO_ROOT_ID),
         "nav.goToPath" => Some(GO_TO_PATH_ID),
         "downloads.goToLatest" => Some(GO_LATEST_DOWNLOAD_ID),
         "nav.goHome" => Some(GO_HOME_ID),

@@ -91,6 +91,7 @@
     import { createSortOperations } from './sort-operations'
     import { createSwapPanes } from './swap-panes'
     import { createVolumeSelection, type VolumeSelectOutcome } from './volume-selection'
+    import { goToRootFolder } from '../navigation/root-folder'
     import { createEdgeFlowHandlers } from './edge-flow-handlers'
     import { createPaneMirror } from './pane-mirror'
     import type { SmbHandOff } from '$lib/servers/open-sign-in'
@@ -911,6 +912,11 @@
 
     export function goHome(pane?: 'left' | 'right'): Promise<void> {
         return edgeFlow.handleOpenHome(pane ?? focusedPane)
+    }
+
+    export function goToRoot(pane?: 'left' | 'right'): Promise<void> {
+        const deps = { getVolumes: () => volumes, getPaneVolumeId, getPanePath, navigate: navigateIntent }
+        return goToRootFolder(deps, pane ?? focusedPane)
     }
 
     export function getFileAndPathUnderCursor(): { path: string; filename: string } | null {

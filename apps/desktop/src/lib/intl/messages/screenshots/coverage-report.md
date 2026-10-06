@@ -16,8 +16,8 @@ Per catalog area, each renderable key is one of three:
 
 Coverage is PARTIAL by design. Uncoupled keys are expected, not bugs.
 
-**Total: 2628 / 3921 keys have a screenshot (67%):** 1399 direct (36%) and 1229 representative (31%). 1125 remain
-uncoupled, and 168 are native surfaces a webview capture cannot reach.
+**Total: 2624 / 3933 keys have a screenshot (67%):** 1396 direct (35%) and 1228 representative (31%). 1140 remain
+uncoupled, and 169 are native surfaces a webview capture cannot reach.
 
 | Area           | Direct | Representative | Uncoupled | Native | Total | Any % |
 | -------------- | -----: | -------------: | --------: | -----: | ----: | ----: |
@@ -25,8 +25,8 @@ uncoupled, and 168 are native surfaces a webview capture cannot reach.
 | ai             |      0 |            123 |         0 |      0 |   123 |  100% |
 | askCmdr        |     65 |              0 |       128 |      0 |   193 |   34% |
 | commandPalette |      3 |              2 |         1 |      0 |     6 |   83% |
-| commands       |    152 |              1 |        78 |      0 |   231 |   66% |
-| common         |      1 |              1 |         4 |      0 |     6 |   33% |
+| commands       |    152 |              1 |        79 |      0 |   232 |   66% |
+| common         |      1 |              1 |        11 |      0 |    13 |   15% |
 | crashReporter  |     12 |             11 |         0 |      0 |    23 |  100% |
 | downloads      |     10 |              5 |        21 |      0 |    36 |   42% |
 | errorReporter  |     17 |              0 |        31 |      0 |    48 |   35% |
@@ -39,19 +39,19 @@ uncoupled, and 168 are native surfaces a webview capture cannot reach.
 | licensing      |     49 |             35 |        25 |      0 |   109 |   77% |
 | lowDiskSpace   |      0 |              0 |         5 |      0 |     5 |    0% |
 | main           |      7 |              0 |        32 |      2 |    41 |   17% |
-| menu           |      4 |              0 |         0 |    166 |   170 |    2% |
+| menu           |      4 |              0 |         0 |    167 |   171 |    2% |
 | mtp            |     18 |              2 |         0 |      0 |    20 |  100% |
 | notifications  |      0 |              0 |         1 |      0 |     1 |    0% |
-| onboarding     |     96 |             39 |        22 |      0 |   157 |   86% |
+| onboarding     |     96 |             39 |        25 |      0 |   160 |   84% |
 | operationLog   |     26 |             29 |         0 |      0 |    55 |  100% |
-| queryUi        |     44 |            128 |         0 |      0 |   172 |  100% |
+| queryUi        |     43 |            127 |         0 |      0 |   170 |  100% |
 | queue          |     25 |             11 |         1 |      0 |    37 |   97% |
 | search         |      9 |             48 |         0 |      0 |    57 |  100% |
 | selection      |     14 |              0 |         1 |      0 |    15 |   93% |
 | servers        |     55 |             23 |        98 |      0 |   176 |   44% |
-| settings       |    343 |             37 |       269 |      0 |   649 |   59% |
+| settings       |    341 |             37 |       268 |      0 |   646 |   59% |
 | shortcuts      |     32 |             28 |         0 |      0 |    60 |  100% |
-| suggestedOps   |      0 |              0 |        33 |      0 |    33 |    0% |
+| suggestedOps   |      0 |              0 |        38 |      0 |    38 |    0% |
 | transfer       |      2 |             12 |         0 |      0 |    14 |  100% |
 | ui             |     13 |              0 |        11 |      0 |    24 |   54% |
 | updates        |      5 |             18 |         0 |      0 |    23 |  100% |

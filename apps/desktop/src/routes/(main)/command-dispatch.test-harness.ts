@@ -98,6 +98,7 @@ export function makeExplorerSpy(): Record<string, ReturnType<typeof vi.fn>> {
     'sendKeyToFocusedPane',
     'navigate',
     'goHome',
+    'goToRoot',
     'getFocusedPane',
     'openItemUnderCursor',
     'openContextMenuAtCursor',
