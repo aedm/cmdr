@@ -62,7 +62,7 @@ use crate::file_system::volume::manager::{RoutedKind, get_volume_manager, path_r
 /// 256 MiB comfortably covers real preview content (documents, images, PDFs, most
 /// media) while bounding the temp write, extraction time, and decompression
 /// amplification. Chosen independently of the FE copy-selection ceiling
-/// (`COPY_REFUSE_BYTES`, 100 MiB) — that caps a *selection*, this caps a whole-entry
+/// (`COPY_REFUSE_BYTES`, 100 MB) — that caps a *selection*, this caps a whole-entry
 /// materialization.
 pub(crate) const PREVIEW_CAP_BYTES: u64 = 256 * 1024 * 1024;
 

@@ -397,8 +397,8 @@ export interface RowMetrics {
  * Cmdr ended at a segment boundary (`continues`) is followed by no byte at all: the next
  * row resumes the same line. The file's last row is followed by nothing either, so a file
  * with no trailing newline stops being counted as if it had one. Assuming a delimiter per
- * row over-counts a minified file by a byte every 20 000, and those bytes pick the 10 MiB
- * confirm tier and the 100 MiB refusal (invariant I3).
+ * row over-counts a minified file by a byte every 20 000, and those bytes pick the 10 MB
+ * confirm tier and the 100 MB refusal (invariant I3).
  */
 export function rowMetrics({
   text,

@@ -86,8 +86,8 @@ the rule in `ViewerRow.svelte`, and `ViewerRow.test.ts` fails if someone swaps i
 **A Cmdr break is not a newline.** Nothing that measures or reconstructs text from cached rows may put a byte or a
 character between two rows of the same line. `rowMetrics` is the one place that decides a row's delimiter (0 when the
 row `continues`, 0 on the file's last row, 1 otherwise), and `describeSelectionForAt` sums row lengths with nothing
-between them. Assuming one per row over-counts a minified file by a byte every 20 000 — and those bytes pick the 10 MiB
-confirm tier and the 100 MiB refusal, which is invariant I3 (`src-tauri/src/file_viewer/DETAILS.md` § "The row
+between them. Assuming one per row over-counts a minified file by a byte every 20 000 — and those bytes pick the 10 MB
+confirm tier and the 100 MB refusal, which is invariant I3 (`src-tauri/src/file_viewer/DETAILS.md` § "The row
 invariants").
 
 Decision/Why: **WebKit's own soft wraps stay unmarked** (David's call). With word wrap on, only the segment break Cmdr
@@ -285,7 +285,7 @@ logical coordinates, independent of which lines happen to be rendered.
   (`handleSilentCopy`). `selectionBytesFromFileSize` subtracts the unselected remainder from the known file size rather
   than rounding a near-whole-file selection up to it, so a selection stopping partway into the last row reports what it
   will actually copy. ❌ Never short-circuit that back to `totalBytes` on a start of `(0, 0)`: the same number decides
-  the 10 MiB confirm and the 100 MiB refusal. Spec invariant I3: a number in front of the user is a claim about their
+  the 10 MB confirm and the 100 MB refusal. Spec invariant I3: a number in front of the user is a claim about their
   data.
 - **Render**: the page calls `getLineSegmentBounds(selection, lineNumber, lineLength)` and passes the bounds to
   `search.getHighlightedSegments(...)`. The shared `segmentLine()` function (in `line-segments.ts`) merges search-match

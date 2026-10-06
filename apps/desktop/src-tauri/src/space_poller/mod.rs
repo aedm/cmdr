@@ -66,7 +66,7 @@ static SIZE_FORMAT_SI: AtomicBool = AtomicBool::new(false);
 static SPACE_EMIT_LOG: cmdr_fs::log_rollup::LogRollup = cmdr_fs::log_rollup::LogRollup::new(Duration::from_secs(60));
 
 /// Change threshold in bytes. Updated at runtime from settings.
-static THRESHOLD_BYTES: AtomicU64 = AtomicU64::new(1_048_576); // 1 MB default
+static THRESHOLD_BYTES: AtomicU64 = AtomicU64::new(1_000_000); // 1 MB default
 
 /// Whether the low-disk-space warning is on. Mirrors the
 /// `behavior.fileSystemWatching.lowDiskSpaceNotifications` setting
@@ -195,9 +195,10 @@ pub fn apply_saved_settings(settings: &crate::settings::loader::Settings) {
     );
 }
 
-/// Updates the threshold from the Settings UI (value in megabytes).
+/// Updates the threshold from the Settings UI (value in decimal megabytes, 1 MB = 1,000,000 bytes, as its
+/// "(MB)" label says).
 pub fn set_threshold_mb(mb: u64) {
-    THRESHOLD_BYTES.store(mb.saturating_mul(1_048_576), Ordering::Relaxed);
+    THRESHOLD_BYTES.store(mb.saturating_mul(1_000_000), Ordering::Relaxed);
 }
 
 /// Applies the low-disk-space warning config (at startup and live from Settings).
@@ -710,7 +711,7 @@ mod emit_tests {
 
     const GIB: u64 = 1024 * 1024 * 1024;
     const MIB: u64 = 1024 * 1024;
-    const ONE_MB_THRESHOLD: u64 = 1_048_576;
+    const ONE_MB_THRESHOLD: u64 = 1_000_000;
 
     fn free(available: u64) -> SpaceInfo {
         SpaceInfo::bounded(926 * GIB, available)

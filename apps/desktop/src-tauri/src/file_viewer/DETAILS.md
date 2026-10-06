@@ -191,7 +191,7 @@ receives a `MaterializedFile` owns removing `cleanup_dir` (the reaper only cover
 
 **The cap is 256 MiB** (`PREVIEW_CAP_BYTES`), chosen to comfortably cover real preview content (documents, images, PDFs,
 most media) while bounding the temp write, extraction time, and decompression amplification. It's independent of the FE
-copy-selection ceiling (`COPY_REFUSE_BYTES`, 100 MiB): that caps a *selection*, this caps a whole-entry materialization.
+copy-selection ceiling (`COPY_REFUSE_BYTES`, 100 MB): that caps a *selection*, this caps a whole-entry materialization.
 A viewer pull has no total time budget, only a stall rule, and its window shows progress; an `inspect_file` pull obeys
 that tool's five-second per-path budget: § "Watching a pull" below.
 
@@ -755,7 +755,7 @@ timeout shape. Why every family owns its error type: `docs/guides/error-handling
   as soon as row lengths drift from the estimate. `range_read.rs` keys the first chunk by row, then by `byte_offset = chunk
   end` for every subsequent chunk. All three backends honour byte-offset seeks exactly.
 - **The save is the escape hatch from the clipboard's memory refusal, so it must never buffer the range.** The copy
-  dialog refuses a clipboard copy past `COPY_REFUSE_BYTES` (100 MiB) and points the user at "Save as", so
+  dialog refuses a clipboard copy past `COPY_REFUSE_BYTES` (100 MB) and points the user at "Save as", so
   `write_range_to_file` walks the range through `read_range_streamed` in `STREAM_CHUNK_BYTES` (1 MiB) pieces and writes
   each one to the temp. Chunks break on line boundaries, never inside a character, and each is decoded first, so a
   UTF-16 source saves as UTF-8 text (a raw byte copy would silently change every non-UTF-8 file). The cancel flag is
