@@ -276,9 +276,9 @@
     "description": "Label for the size-unit picker in Settings > Appearance > File and folder sizes (how file sizes are unit-formatted).",
     "screenshot": "settings-appearance-sizes.png"
   },
-  "settings.listing.sizeUnit.description": "Dynamic picks the friendliest unit per file (1.02 MB). Fixed units make sizes apples-to-apples across the list. Bytes shows the exact count for precise comparison.",
+  "settings.listing.sizeUnit.description": "Dynamic picks the friendliest unit per file. Fixed units make sizes apples-to-apples across the list. Bytes shows the exact count for precise comparison.",
   "@settings.listing.sizeUnit.description": {
-    "description": "Help text for the size-unit setting. \"Dynamic\" and \"Bytes\" are this setting's own option names; keep consistent. \"apples-to-apples\" is an idiom meaning a fair like-for-like comparison; render the meaning, not the literal fruit. \"1.02 MB\" is a literal example; \"MB\" is a unit symbol, keep it.",
+    "description": "Help text for the size-unit setting. \"Dynamic\" and \"Bytes\" are this setting's own option names; keep consistent. \"apples-to-apples\" is an idiom meaning a fair like-for-like comparison; render the meaning, not the literal fruit.",
     "screenshot": "settings-appearance-sizes.png"
   },
   "settings.listing.sizeUnit.opt.dynamic": "Dynamic",
