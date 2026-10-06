@@ -28,7 +28,19 @@ that push would break a release.
   line when it changed something and nothing otherwise.
 - **`pre-push`** is the backstop for what `pre-commit` never sees: a rebase, a conflict resolution, a `--no-verify`
   commit, a generated file. It runs the same whole-repo commands as the CI lanes. If they'd fail, it formats those
-  files, commits them as `style: apply formatter output`, stops the push, and asks for a second push.
+  files, commits them as `style: apply formatter output`, stops the push, and asks for a second push. Two more steps
+  follow, both through the check runner (`scripts/git-hooks/prepush_checks.go`):
+  - **License notices.** When the pushed range changes `Cargo.lock`, `pnpm-lock.yaml`, `deny.toml`, or the vendored
+    credits, it runs `desktop-third-party-notices` (`--fresh`, about a minute) and, if that rewrote
+    `THIRD-PARTY-NOTICES.md` or `third-party-packages.gen.json`, commits them as
+    `chore(deps): regenerate third-party notices` and stops the push the same way. Any other push skips it. A new
+    branch, or a remote tip this clone doesn't have, counts as a change.
+  - **Size limits.** `file-length` and `claude-md-length` in `--ci` mode (milliseconds) on every push, so a push that
+    crosses a limit stops with the check's output instead of turning CI red. Nothing to commit there: trim, split, or
+    bump the allowlist entry with a reason. Skipped on a dirty tree, since both read the working tree.
+
+  Both answer CI failures that kept recurring after the formatters were handled: `docs/notes/ci-health-2026-10.md`.
+
 - **`post-commit`** repairs the index after `git commit <paths>` (see the gotchas).
 
 ## Decisions
@@ -45,8 +57,10 @@ that push would break a release.
 - **`pre-commit` only touches what's staged**, which keeps it under a second: `oxfmt` gets the staged paths, and each
   staged `.rs` file goes through `rustfmt` on its own.
 - **A hook that can't do its job exits 0.** No Go toolchain, no `node_modules`, a hook program that doesn't build, a
-  formatter that errors: the commit or push goes through and CI stays the gate. The one non-zero exit is the push that
-  got a format commit.
+  formatter that errors, a notices run that doesn't finish: the commit or push goes through and CI stays the gate. The
+  non-zero exits are a push that got a format or notices commit, and a push over a size limit. One caveat: the check
+  runner answers a failing check and a runner that won't build with the same exit code, so a broken `scripts/check`
+  stops pushes too (`git push --no-verify` gets past it).
 - **Each tool decides its own scope.** `oxfmt` gets every candidate file and applies `.oxfmtrc.json` itself. Rust scope
   and each crate's edition come from `cargo metadata --no-deps`, so only workspace members are formatted and `vendor/`
   stays byte-identical to upstream. The Go directories are the one hand-kept list (`goDirs`), mirroring

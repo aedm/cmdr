@@ -229,7 +229,8 @@ func TestParsePushedRefs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || !got["refs/heads/main"] {
-		t.Errorf("pushed branches: got %v, want only refs/heads/main", got)
+	want := pushedRef{localSha: "aaa", remoteSha: "bbb"}
+	if len(got) != 1 || got["refs/heads/main"] != want {
+		t.Errorf("pushed branches: got %v, want only refs/heads/main %v", got, want)
 	}
 }

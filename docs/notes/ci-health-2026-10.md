@@ -61,14 +61,11 @@ the build died before any test ran), adding a second red step with no new inform
   an image and a build cache"), so cause 1's doc half is now catchable from a Mac.
 - `ci.yml` gained a macOS job, `desktop-rust-macos` (`docs/tooling/ci.md` § macOS lane): the inverse gap, macOS-only
   code that no CI run compiled at all.
+- The pre-push hook regenerates the license notices when a push moves a lockfile, and runs `file-length` and
+  `claude-md-length` on every push (`docs/tooling/git-hooks.md`): causes 3's two biggest recurring items.
 
-## Open calls (for David)
+## Calls made (2026-10-06)
 
-- **Run the Linux lanes by default, not opt-in.** Cause 1 is the biggest and still landing. `clippy-linux` costs ~25 s
-  warm (measured 2026-10-06, 13 crates) but needs Docker; making it a default lane when Docker is up (skip otherwise)
-  would have caught 48 single-cause red runs.
-- **Regenerate `THIRD-PARTY-NOTICES.md` in the pre-push hook** when `Cargo.lock` or `pnpm-lock.yaml` is in the pushed
-  range, the same way the hook commits formatter output. It's a minute of `cargo-about`, paid only on dependency pushes.
-- **Run the whole-repo budget scanners (`file-length`, `claude-md-length`) in pre-push.** They take milliseconds and
-  catch the "two branches merged over budget" case only a post-merge run can see.
-- **Promote `desktop-rust-macos` to required** after a couple of weeks of clean runs.
+- **Declined: run the Linux lanes by default.** Cause 1 is the biggest and still landing, and `clippy-linux` costs ~25 s
+  warm (measured 2026-10-06, 13 crates) but needs Docker. David kept it opt-in.
+- **Open: promote `desktop-rust-macos` to required** after two weeks of clean runs (tracked as a GitHub issue).

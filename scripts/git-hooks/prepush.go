@@ -14,20 +14,34 @@ const formatCommitSubject = "style: apply formatter output"
 // prePush is the backstop for what pre-commit never sees: a rebase, a conflict
 // resolution, a `--no-verify` commit, a generated file. It runs the same
 // whole-repo checks as CI's formatting lanes, and when they'd fail it formats,
-// commits, and stops the push.
+// commits, and stops the push. Then it does the same for the license notices a
+// dependency push makes stale, and runs CI's size limits (`prepush_checks.go`).
 //
 // Stopping is not a choice. Git settles which commits a push sends before it runs
 // this hook, so a commit made here can't join the push in flight; letting the push
 // continue would send the unformatted tip and leave the fix behind.
-func prePush(r repo, fs []formatter, stdin io.Reader, stderr io.Writer) (stopPush bool, err error) {
+func prePush(r repo, fs []formatter, check checkRunner, stdin io.Reader, stderr io.Writer) (stopPush bool, err error) {
 	pushed, err := pushedBranches(stdin)
 	if err != nil {
 		return false, err
 	}
-	if !describesPushedBranch(r, pushed) {
+	ref, ok := describesPushedBranch(r, pushed)
+	if !ok {
 		return false, nil
 	}
 
+	if stop, err := commitFormatting(r, fs, stderr); stop || err != nil {
+		return stop, err
+	}
+	if stop, err := regenerateNotices(r, check, ref, stderr); stop || err != nil {
+		return stop, err
+	}
+	return checkBudgets(r, check, stderr)
+}
+
+// commitFormatting formats what CI's formatting lanes would flag, commits it, and
+// reports whether it did (which stops the push).
+func commitFormatting(r repo, fs []formatter, stderr io.Writer) (stopPush bool, err error) {
 	fixable, err := fixableFiles(r, unformattedFiles(fs, stderr))
 	if err != nil || len(fixable) == 0 {
 		return false, err
@@ -49,53 +63,70 @@ func prePush(r repo, fs []formatter, stdin io.Reader, stderr io.Writer) (stopPus
 		return false, nil
 	}
 
-	// `--only` commits these paths and nothing else, whatever is staged. The
-	// pre-commit hook has nothing left to do for files that were just formatted.
-	if _, err := r.gitWithStdin(joinNul(formatted), "commit", "--quiet", "--no-verify", "--only",
-		"-m", formatCommitSubject, "--pathspec-from-file=-", "--pathspec-file-nul"); err != nil {
-		return false, err
-	}
-	sha, err := r.git("rev-parse", "--short", "HEAD")
+	sha, err := commitOnly(r, formatted, formatCommitSubject)
 	if err != nil {
 		return false, err
 	}
 	fmt.Fprintf(stderr, "Formatted %d %s and committed the result as %s (%q).\n"+
 		"Git can't add a commit to a push that's already running, so this push stopped. Push again to send everything.\n",
-		len(formatted), pluralize(len(formatted), "file", "files"), strings.TrimSpace(sha), formatCommitSubject)
+		len(formatted), pluralize(len(formatted), "file", "files"), sha, formatCommitSubject)
 	return true, nil
+}
+
+// commitOnly commits these paths and nothing else, whatever is staged (`--only`),
+// and returns the new commit's short sha. The pre-commit hook has nothing left to
+// do for files a hook just rewrote, so it's skipped.
+func commitOnly(r repo, paths []string, subject string) (string, error) {
+	if _, err := r.gitWithStdin(joinNul(paths), "commit", "--quiet", "--no-verify", "--only",
+		"-m", subject, "--pathspec-from-file=-", "--pathspec-file-nul"); err != nil {
+		return "", err
+	}
+	sha, err := r.git("rev-parse", "--short", "HEAD")
+	return strings.TrimSpace(sha), err
+}
+
+// pushedRef is one branch in a push: the local tip being sent and the remote tip
+// it replaces (all zeros for a new branch).
+type pushedRef struct {
+	localSha, remoteSha string
 }
 
 // pushedBranches reads what git feeds a pre-push hook, one line per ref
 // (`<local ref> <local sha> <remote ref> <remote sha>`), and returns the local
 // branches being pushed. Tags and deletions are left out: neither puts new branch
 // content on the remote.
-func pushedBranches(stdin io.Reader) (map[string]bool, error) {
-	branches := make(map[string]bool)
+func pushedBranches(stdin io.Reader) (map[string]pushedRef, error) {
+	branches := make(map[string]pushedRef)
 	scanner := bufio.NewScanner(stdin)
 	for scanner.Scan() {
 		fields := strings.Fields(scanner.Text())
 		if len(fields) != 4 {
 			continue
 		}
-		localRef, localSha := fields[0], fields[1]
+		localRef, localSha, remoteSha := fields[0], fields[1], fields[3]
 		if strings.HasPrefix(localRef, "refs/heads/") && strings.Trim(localSha, "0") != "" {
-			branches[localRef] = true
+			branches[localRef] = pushedRef{localSha: localSha, remoteSha: remoteSha}
 		}
 	}
 	return branches, scanner.Err()
 }
 
 // describesPushedBranch reports whether the working tree is a fair stand-in for
-// what's being pushed. The formatters read files on disk, so their verdict only
-// applies when the pushed branch is the one checked out, and a commit can only be
-// added while no merge, rebase, or cherry-pick is underway.
-func describesPushedBranch(r repo, pushed map[string]bool) bool {
+// what's being pushed, and returns the checked-out branch's push. The formatters
+// read files on disk, so their verdict only applies when the pushed branch is the
+// one checked out, and a commit can only be added while no merge, rebase, or
+// cherry-pick is underway.
+func describesPushedBranch(r repo, pushed map[string]pushedRef) (pushedRef, bool) {
 	head, err := r.git("symbolic-ref", "--quiet", "HEAD")
-	if err != nil || !pushed[strings.TrimSpace(head)] {
-		return false
+	if err != nil {
+		return pushedRef{}, false
+	}
+	ref, ok := pushed[strings.TrimSpace(head)]
+	if !ok {
+		return pushedRef{}, false
 	}
 	inProgress := []string{"MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply"}
-	return !slices.ContainsFunc(inProgress, r.gitPathExists)
+	return ref, !slices.ContainsFunc(inProgress, r.gitPathExists)
 }
 
 // unformattedFiles asks every formatter, in parallel, what its CI lane would flag.
