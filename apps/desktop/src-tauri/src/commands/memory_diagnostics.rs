@@ -422,8 +422,24 @@ fn collect(sizes_per_tag: usize) -> MemoryDiagnostics {
 mod tests {
     use super::*;
 
+    unsafe extern "C" {
+        fn malloc_create_zone(start_size: libc::size_t, flags: libc::c_uint) -> *mut libc::c_void;
+    }
+
     #[tokio::test]
     async fn the_snapshot_reads_every_accountant_at_once() {
+        // Which zones exist beyond the default one is up to the OS: on macOS 27 the Objective-C
+        // runtime registers `objc-class_rw_t`, while the macOS 26 CI runner had none (verified
+        // with `malloc_get_all_zones` locally and a CI run, 2026-10-06). Under the system
+        // allocator the default zone is the Rust heap's and isn't counted here, so a bare
+        // process can legitimately report zero. Registering our own makes "at least one"
+        // hold on every macOS. Leaked on purpose: destroying a zone while a parallel test
+        // walks the registry would hand that walk a dangling pointer.
+        // SAFETY: `malloc_create_zone` takes plain integers and returns a new zone (or NULL),
+        // which we never use or free.
+        let zone = unsafe { malloc_create_zone(0, 0) };
+        assert!(!zone.is_null(), "libmalloc registers the test's own zone");
+
         let snapshot = get_memory_diagnostics(8).await;
 
         assert!(snapshot.phys_footprint_bytes > 0, "a live process has a footprint");
