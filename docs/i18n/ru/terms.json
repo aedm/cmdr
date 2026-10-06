@@ -388,10 +388,7 @@
     ],
     "confidence": "high",
     "sources": "macOS live Mail MainMenu (Ask → Спрашивать), Podcasts (Always Ask → Спрашивать всегда); DC (Ask;Overwrite;Skip → Спрашивать;Перезаписывать;Пропускать); Dolphin (Always ask → Всегда спрашивать)",
-    "decision": "Option labels",
-    "exceptions": {
-      "suggestedOps.refusal.couldNotStart.suggestion": "\"Ask the AI to\" is a request, not the ask-every-time option: Russian says попросить (попросите ИИ предложить его заново)."
-    }
+    "decision": "Option labels"
   },
   "ask-cmdr": {
     "chosen": "Ask Cmdr",

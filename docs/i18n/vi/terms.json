@@ -200,10 +200,10 @@
     "sources": "macOS Finder AR40 (Archive → Lưu trữ); Bỏ lưu trữ mirrors Gmail/Zalo (tentative)"
   },
   "ask": {
-    "accept": ["Ask Cmdr", "nhờ", "yêu cầu", "xin"],
+    "accept": ["Ask Cmdr"],
     "chosen": "hỏi",
     "confidence": "high",
-    "forms": "option hỏi mỗi lần (ask each time); asking a helper or a person to do something → nhờ",
+    "forms": "option hỏi mỗi lần (ask each time)",
     "sources": "macOS Finder (hỏi in prompts)"
   },
   "ask-cmdr": {

@@ -251,9 +251,6 @@
   "ask": {
     "chosen": "询问",
     "confidence": "tentative",
-    "exceptions": {
-      "suggestedOps.refusal.couldNotStart.suggestion": "Asking the AI to DO something is a request, not a question: 让 AI 再建议一次."
-    },
     "proseAccept": ["问你"],
     "forms": "setting option 询问 / 每次询问; don't-ask-again 不再询问; prose asking the user (问你要不要信任它, 问你要密码) → 问你",
     "sources": "catalog"

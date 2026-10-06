@@ -283,10 +283,10 @@
     "sources": "AP-TW = AP-HK (Archive → 封存)"
   },
   "ask": {
-    "accept": ["請", "讓", "問"],
+    "accept": ["問"],
     "chosen": "詢問",
     "confidence": "high",
-    "forms": "the option label → 詢問; Don’t ask again → 別再詢問; asking the AI to do something in prose → 讓 AI 再建議一次 / 請 AI⋯",
+    "forms": "the option label → 詢問; Don’t ask again → 別再詢問",
     "sources": "AP-TW (詢問, 2) + MS zh-Hant (詢問, 7) + TC; catalog settings.archives.opt.ask, search.coverage.dontAskAgain"
   },
   "ask-cmdr": {

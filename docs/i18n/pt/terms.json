@@ -171,7 +171,7 @@
   },
   "ask": {
     "chosen": "Perguntar",
-    "accept": ["pergunt", "Ask Cmdr", "peç", "pede", "pedi"],
+    "accept": ["pergunt", "Ask Cmdr", "pedi"],
     "forms": "segmented cell Perguntar; ask each time → perguntar a cada vez",
     "confidence": "high",
     "sources": "macOS (Perguntar); shipped pt catalog (allowFileExtensionChanges.opt.ask Sempre perguntar)"

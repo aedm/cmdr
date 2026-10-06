@@ -267,7 +267,7 @@
   },
   "ask": {
     "chosen": "Rákérdezés",
-    "accept": ["rákérdez", "kérd", "kérés", "kérdez", "kérj", "kéri"],
+    "accept": ["rákérdez", "kérdez", "kéri"],
     "forms": "segmented cell Rákérdezés; or ask each time → vagy rákérdezés minden alkalommal",
     "confidence": "tentative",
     "sources": "descriptive; nominal form fits a one-cell control"

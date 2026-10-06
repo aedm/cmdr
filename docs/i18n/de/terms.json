@@ -238,7 +238,6 @@
     "chosen": "Fragen",
     "confidence": "high",
     "forms": "segmented cell Fragen; prose ask each time → jedes Mal fragen",
-    "proseAccept": ["bitte die KI"],
     "sources": "MS terminology (Ask → Fragen); macOS nachfragen is the confirm-prompt sense"
   },
   "ask-cmdr": {

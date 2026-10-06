@@ -227,10 +227,9 @@
     "sources": "MS terminology (archive verb → arkivera)"
   },
   "ask": {
-    "accept": ["be ", "ber "],
     "chosen": "fråga",
     "confidence": "high",
-    "forms": "segmented option Fråga; Fråga för varje / Fråga senare; asking someone to do something → be (Be din systemadministratör, ber den komma ihåg)",
+    "forms": "segmented option Fråga; Fråga för varje / Fråga senare",
     "sources": "macOS (Fråga … prompts)"
   },
   "ask-cmdr": {
