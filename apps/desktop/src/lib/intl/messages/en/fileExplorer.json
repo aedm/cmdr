@@ -966,6 +966,28 @@
       "count": "the same number of items (drives the singular/plural form)"
     }
   },
+  "fileExplorer.compareDirectories.marked": "Selected {leftCountText} {leftCount, plural, one {file} other {files}} on the left and {rightCountText} {rightCount, plural, one {file} other {files}} on the right that differ",
+  "@fileExplorer.compareDirectories.marked": {
+    "description": "Toast after Compare directories (Shift+F2) selected the files that differ between the two side-by-side panes, e.g. \"Selected 3 files on the left and 5 on the right that differ\".",
+    "placeholders": {
+      "leftCountText": "how many files were selected in the left pane, already formatted for display",
+      "leftCount": "the same number (drives the singular/plural form)",
+      "rightCountText": "how many files were selected in the right pane, already formatted for display",
+      "rightCount": "the same number, for the right pane"
+    }
+  },
+  "fileExplorer.compareDirectories.noDifferences": "Both folders have the same files",
+  "@fileExplorer.compareDirectories.noDifferences": {
+    "description": "Toast after Compare directories (Shift+F2) found no file missing or newer on either side of the two side-by-side panes."
+  },
+  "fileExplorer.compareDirectories.needsTwoFolders": "Open a folder in both panes to compare them",
+  "@fileExplorer.compareDirectories.needsTwoFolders": {
+    "description": "Toast when Compare directories (Shift+F2) can't run because one pane shows something other than a folder, such as the server list or search results."
+  },
+  "fileExplorer.compareDirectories.couldNotFinish": "Couldn’t finish comparing the folders. Try again in a moment.",
+  "@fileExplorer.compareDirectories.couldNotFinish": {
+    "description": "Toast when Compare directories (Shift+F2) ran out of time or stopped unexpectedly, so nothing was selected."
+  },
   "fileExplorer.clipboard.cutReady": "{countText} {count, plural, one {item} other {items}} ready to move. Paste to complete.",
   "@fileExplorer.clipboard.cutReady": {
     "description": "Toast confirming files were cut to the clipboard and are ready to be moved on paste, e.g. \"3 items ready to move. Paste to complete.\"",

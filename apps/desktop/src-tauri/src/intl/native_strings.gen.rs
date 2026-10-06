@@ -312,6 +312,7 @@ pub(crate) const NATIVE_STRINGS: &[LocaleStrings] = &[
             ("menu.network.unpin", "Unpin from switcher"),
             ("menu.select.all", "Select all"),
             ("menu.select.allFolders", "Select all folders"),
+            ("menu.select.compareDirectories", "Compare directories"),
             ("menu.select.deselectAll", "Deselect all"),
             ("menu.select.deselectFiles", "Deselect files…"),
             ("menu.select.files", "Select files…"),

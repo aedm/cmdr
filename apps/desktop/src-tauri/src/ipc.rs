@@ -146,6 +146,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::file_system::get_total_count,
                     crate::commands::file_system::get_brief_column_text_widths,
                     crate::commands::file_system::find_file_index,
+                    crate::commands::file_system::compare_directories,
                     crate::commands::file_system::find_file_indices,
                     crate::commands::file_system::find_first_fuzzy_match,
                     crate::commands::file_system::resort_listing,

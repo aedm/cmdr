@@ -798,6 +798,30 @@
   "@commands.selectionSelectSameKind.description": {
     "description": "Longer help text for the \"Select all of the same kind\" command, shown as a secondary line in the command palette. \"Like the one under the cursor\" means same extension for a file, or a folder for a folder."
   },
+  "commands.selectionCompareDirectories.label": "Compare directories",
+  "@commands.selectionCompareDirectories.label": {
+    "description": "Command name in the command palette and Select menu. Compares the folders shown in the two side-by-side panes and selects the files that differ, like Total Commander's Compare directories (Shift+F2). \"Directories\" = folders."
+  },
+  "commands.selectionCompareDirectories.description": "Selects, in each pane, the files the other pane lacks and the newer copies of the rest",
+  "@commands.selectionCompareDirectories.description": {
+    "description": "Longer help text for this compare-directories command, shown as a secondary line in the command palette. \"Pane\" is one of the two side-by-side file lists."
+  },
+  "commands.selectionCompareDirectoriesMissing.label": "Compare directories: missing files only",
+  "@commands.selectionCompareDirectoriesMissing.label": {
+    "description": "Command name in the command palette and Select menu. Compares the folders shown in the two side-by-side panes and selects the files that differ, like Total Commander's Compare directories (Shift+F2). \"Directories\" = folders."
+  },
+  "commands.selectionCompareDirectoriesMissing.description": "Selects, in each pane, only the files the other pane lacks",
+  "@commands.selectionCompareDirectoriesMissing.description": {
+    "description": "Longer help text for this compare-directories command, shown as a secondary line in the command palette. \"Pane\" is one of the two side-by-side file lists."
+  },
+  "commands.selectionCompareDirectoriesSize.label": "Compare directories: different size",
+  "@commands.selectionCompareDirectoriesSize.label": {
+    "description": "Command name in the command palette and Select menu. Compares the folders shown in the two side-by-side panes and selects the files that differ, like Total Commander's Compare directories (Shift+F2). \"Directories\" = folders."
+  },
+  "commands.selectionCompareDirectoriesSize.description": "Selects, in each pane, the files the other pane lacks and both copies of files whose size differs",
+  "@commands.selectionCompareDirectoriesSize.description": {
+    "description": "Longer help text for this compare-directories command, shown as a secondary line in the command palette. \"Pane\" is one of the two side-by-side file lists."
+  },
   "commands.selectionSelectSameKind.allFolders": "Select all folders",
   "@commands.selectionSelectSameKind.allFolders": {
     "description": "Command palette row for \"Select all of the same kind\" while the cursor sits on a folder, so the row says what running it would do right now. A terse control label."

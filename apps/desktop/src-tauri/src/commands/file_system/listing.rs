@@ -22,6 +22,7 @@ use crate::deadline::{
     TimedOut, blocking_typed_result_with_timeout, blocking_with_timeout_flag, timeout_detached_typed,
 };
 use crate::file_system::listing::brief_columns::BriefColumnsError;
+use crate::file_system::listing::compare::{CompareDirectoriesError, CompareDirectoriesMode, CompareDirectoriesResult};
 use crate::file_system::listing::fuzzy_jump::FuzzyJumpError;
 use crate::file_system::validation::{MAX_NAME_BYTES, MAX_PATH_BYTES};
 use crate::file_system::volume::manager::get_volume_manager;
@@ -395,6 +396,36 @@ pub async fn get_brief_column_text_widths(
         move || {
             ops_compute_brief_column_text_widths(&listing_id, items_per_column, has_parent, &font_id, include_hidden)
                 .map_err(BriefColumnsIpcError::from)
+        },
+    )
+    .await
+}
+
+/// Compare directories (⇧F2): which rows each pane should mark against the
+/// other. A pure read of the two cached listings; see `listing/compare.rs`.
+#[tauri::command]
+#[specta::specta]
+pub async fn compare_directories(
+    left_listing_id: String,
+    left_include_hidden: bool,
+    right_listing_id: String,
+    right_include_hidden: bool,
+    mode: CompareDirectoriesMode,
+) -> Result<CompareDirectoriesResult, CompareDirectoriesError> {
+    // Off the IPC thread: two large listings mean two O(n) passes with a fold per name.
+    blocking_typed_result_with_timeout(
+        Duration::from_secs(10),
+        || CompareDirectoriesError::TimedOut,
+        |detail| CompareDirectoriesError::Internal { detail },
+        move || {
+            crate::file_system::listing::compare::compare_directories(
+                &left_listing_id,
+                left_include_hidden,
+                &right_listing_id,
+                right_include_hidden,
+                mode,
+            )
+            .map_err(CompareDirectoriesError::from)
         },
     )
     .await

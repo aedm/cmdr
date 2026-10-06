@@ -212,6 +212,9 @@ export const COMMAND_IDS = [
   'selection.deselectAll',
   'selection.invert',
   'selection.selectSameKind',
+  'selection.compareDirectories',
+  'selection.compareDirectoriesMissing',
+  'selection.compareDirectoriesSize',
   'selection.selectFiles',
   'selection.deselectFiles',
   // Range/all selection carried by the MCP `select` tool (start + count + mode).

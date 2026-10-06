@@ -150,6 +150,9 @@ const EXPECTED_NAMES: Record<string, string> = {
   'selection.deselectAll': 'Deselect all',
   'selection.invert': 'Invert selection',
   'selection.selectSameKind': 'Select all of the same kind',
+  'selection.compareDirectories': 'Compare directories',
+  'selection.compareDirectoriesMissing': 'Compare directories: missing files only',
+  'selection.compareDirectoriesSize': 'Compare directories: different size',
   'selection.selectFiles': 'Select files…',
   'selection.deselectFiles': 'Deselect files…',
   'selection.mcpSelect': 'Select range in pane',
@@ -225,6 +228,11 @@ const EXPECTED_DESCRIPTIONS: Record<string, string | undefined> = {
   'selection.toggleAndDown': 'Selects or deselects the file under the cursor, then moves down (Total Commander style)',
   'selection.invert': 'Selects every unselected file and deselects every selected one',
   'selection.selectSameKind': 'Adds every entry like the one under the cursor to the selection, without clearing it',
+  'selection.compareDirectories':
+    'Selects, in each pane, the files the other pane lacks and the newer copies of the rest',
+  'selection.compareDirectoriesMissing': 'Selects, in each pane, only the files the other pane lacks',
+  'selection.compareDirectoriesSize':
+    'Selects, in each pane, the files the other pane lacks and both copies of files whose size differs',
   'selection.selectFiles': 'Opens the Select files dialog to add matching files to the selection',
   'selection.deselectFiles': 'Opens the Deselect files dialog to remove matching files from the selection',
 }
