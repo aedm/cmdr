@@ -123,6 +123,14 @@
   "@fileExplorer.unreachable.detailTimeout": {
     "sourceHash": "e83b556"
   },
+  "fileExplorer.compareDirectories.keptChanging": "Las carpetas no dejaron de cambiar mientras se comparaban. Vuelve a intentarlo cuando dejen de cambiar.",
+  "@fileExplorer.compareDirectories.keptChanging": {
+    "sourceHash": "f36f2bd"
+  },
+  "fileExplorer.compareDirectories.couldNotFinish": "No se pudo completar la comparación de las carpetas. Inténtalo de nuevo en un momento.",
+  "@fileExplorer.compareDirectories.couldNotFinish": {
+    "sourceHash": "40e603a"
+  },
   "fileExplorer.edit.notOnThisMac": "Cmdr aún no puede editar este archivo en el editor, porque no es un archivo normal de tu Mac. Presiona F3 para verlo.",
   "@fileExplorer.edit.notOnThisMac": {
     "sourceHash": "19bf73c"

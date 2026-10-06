@@ -676,6 +676,30 @@
   "@commands.selectionSelectSameKind.description": {
     "sourceHash": "9a95212"
   },
+  "commands.selectionCompareDirectories.label": "比對資料夾",
+  "@commands.selectionCompareDirectories.label": {
+    "sourceHash": "5cf3985"
+  },
+  "commands.selectionCompareDirectories.description": "在每個窗格中選取另一個窗格沒有的檔案，以及其餘檔案較新的副本",
+  "@commands.selectionCompareDirectories.description": {
+    "sourceHash": "190d99f"
+  },
+  "commands.selectionCompareDirectoriesMissing.label": "比對資料夾：只有缺少的檔案",
+  "@commands.selectionCompareDirectoriesMissing.label": {
+    "sourceHash": "d03d3c1"
+  },
+  "commands.selectionCompareDirectoriesMissing.description": "在每個窗格中只選取另一個窗格沒有的檔案",
+  "@commands.selectionCompareDirectoriesMissing.description": {
+    "sourceHash": "e61c71b"
+  },
+  "commands.selectionCompareDirectoriesSize.label": "比對資料夾：大小不同",
+  "@commands.selectionCompareDirectoriesSize.label": {
+    "sourceHash": "6c8fd21"
+  },
+  "commands.selectionCompareDirectoriesSize.description": "在每個窗格中選取另一個窗格沒有的檔案，以及大小不同的檔案的兩個副本",
+  "@commands.selectionCompareDirectoriesSize.description": {
+    "sourceHash": "ac31996"
+  },
   "commands.selectionSelectSameKind.allFolders": "選取所有資料夾",
   "@commands.selectionSelectSameKind.allFolders": {
     "sourceHash": "5351f8b"

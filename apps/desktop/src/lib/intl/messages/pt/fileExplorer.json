@@ -637,6 +637,34 @@
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
   },
+  "fileExplorer.compareDirectories.marked": "Arquivos diferentes selecionados: {leftCountText} {leftCount, plural, one {arquivo} many {arquivos} other {arquivos}} à esquerda e {rightCountText} {rightCount, plural, one {arquivo} many {arquivos} other {arquivos}} à direita.",
+  "@fileExplorer.compareDirectories.marked": {
+    "sourceHash": "73e3ccf"
+  },
+  "fileExplorer.compareDirectories.noDifferences.newerAndMissing": "Nada para selecionar: todos os arquivos estão nas duas pastas, e nenhuma cópia é mais recente. As subpastas não são comparadas.",
+  "@fileExplorer.compareDirectories.noDifferences.newerAndMissing": {
+    "sourceHash": "c2960d8"
+  },
+  "fileExplorer.compareDirectories.noDifferences.missing": "Nada para selecionar: todos os arquivos estão nas duas pastas. As subpastas não são comparadas.",
+  "@fileExplorer.compareDirectories.noDifferences.missing": {
+    "sourceHash": "ed2e696"
+  },
+  "fileExplorer.compareDirectories.noDifferences.sizeAndMissing": "Nada para selecionar: todos os arquivos estão nas duas pastas, com o mesmo tamanho. As subpastas não são comparadas.",
+  "@fileExplorer.compareDirectories.noDifferences.sizeAndMissing": {
+    "sourceHash": "5f7b808"
+  },
+  "fileExplorer.compareDirectories.keptChanging": "As pastas não pararam de mudar durante a comparação. Tente de novo quando elas se estabilizarem.",
+  "@fileExplorer.compareDirectories.keptChanging": {
+    "sourceHash": "3051074"
+  },
+  "fileExplorer.compareDirectories.needsTwoFolders": "Abra uma pasta em cada painel para compará-las",
+  "@fileExplorer.compareDirectories.needsTwoFolders": {
+    "sourceHash": "c04ef80"
+  },
+  "fileExplorer.compareDirectories.couldNotFinish": "Não foi possível concluir a comparação das pastas. Tente novamente em instantes.",
+  "@fileExplorer.compareDirectories.couldNotFinish": {
+    "sourceHash": "0900bc9"
+  },
   "fileExplorer.clipboard.cutReady": "{count, plural, one {{countText} item pronto} many {{countText} itens prontos} other {{countText} itens prontos}} para mover. Cole para concluir.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

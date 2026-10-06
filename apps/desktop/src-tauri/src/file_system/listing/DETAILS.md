@@ -227,6 +227,12 @@ copies (`newerAndMissing`, TC's default), nothing more (`missing`), or both copi
 
 - **Read off both cached listings under ONE lock, in each pane's row space** (`CachedListing::rows`), so the answer is a
   ready selection and a row the pane doesn't show is never marked.
+- **The answer names the state it was read from**: each listing's diff `sequence`, and `settled`, false when a change
+  was queued or in flight in `diff_emitter` (`has_unsent_changes`, checked after the read and outside the cache lock).
+  The cache mutates before its diff is sent, so without this a pane could apply rows that already include a file it
+  doesn't show yet. The frontend applies only a settled answer at the sequence its pane shows
+  (`src/lib/file-explorer/pane/DETAILS.md` § Compare directories). Residual window: a writer between its cache write
+  and its `enqueue_diff` call (a few instructions, same function) isn't seen as unsent.
 - **Names match as the Mac does**: the exact spelling first, else a name that folds to the same key
   (`cmdr_fs::name_fold`, case and Unicode form). A folded match counts only when the key is unique on BOTH sides, so
   the two directions always agree: `Report` and `report` (a case-sensitive volume) against `REPORT` pair nothing.

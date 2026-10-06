@@ -6048,10 +6048,24 @@ export type CompareDirectoriesMode =
   // Both copies of a file whose size differs, whichever is newer.
   | 'sizeAndMissing'
 
-// The rows to mark in each pane, in that pane's row space (no `..` offset).
+/**
+ *  The rows to mark in each pane, in that pane's row space (no `..` offset), and
+ *  which state of each listing they were read from.
+ */
 export type CompareDirectoriesResult = {
   left: number[]
   right: number[]
+  /**
+   *  The listing's diff sequence the rows were read at. A pane may mark them
+   *  only while its last applied `directory-diff` sequence is exactly this.
+   */
+  leftSequence: number
+  rightSequence: number
+  /**
+   *  No change was waiting to reach either pane while the rows were read. When
+   *  false, the cache was ahead of the panes and the rows may name other files.
+   */
+  settled: boolean
 }
 
 /**

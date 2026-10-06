@@ -1669,6 +1669,23 @@ open in the default app, or ask. The decision is a pure function; the UI is a sm
   Installs from before the split are carried over by settings migration 5 (`settings/settings-store.ts`), which unpacks
   the old `behavior.archiveEnterBehavior` JSON blob into the three keys and deletes it.
 
+## Compare directories (⇧F2)
+
+`selection.compareDirectories*` (⇧F2 and two variants) is Total Commander's "Compare directories":
+`compare-directories.ts` asks the backend (`src-tauri/src/file_system/listing/compare.rs`, where the matching rules
+live) which rows each pane should select, replaces both selections with the answer (plus each pane's own `..` offset),
+and says what happened in a toast. What the user should know, and the copy says: it compares only the files directly in
+the two folders, by name and the listed modification time or size, never contents and never subfolders, so "nothing to
+select" is worded per mode and promises no more than that.
+
+- **Row numbers fit only the state they were read from.** The answer carries each listing's diff sequence and `settled`
+  (nothing was still on its way to a pane). It's applied only when settled AND each pane's `getLastSequence()` equals
+  it; otherwise the diffs haven't landed, so it asks again after `COMPARE_RETRY_DELAY_MS`, up to `COMPARE_ATTEMPTS`
+  times, then gives up with a toast. Why: a file appearing between the compare and the selection shifted the rows, and
+  ⇧F2 then selected a file that's equal on both sides, the wrong input for F5.
+- **An answer for panes that moved on is dropped** (a listing id changed, or hidden files were toggled): it describes
+  rows the panes no longer show. A `gone` listing stays quiet; `timedOut` / `internal` toast.
+
 ## Select all of the same kind
 
 `selection.selectSameKind` (`⌥⇧=`, or the numpad `⌥+`) adds every row of the cursor row's kind to the selection, the way

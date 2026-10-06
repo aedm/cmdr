@@ -203,6 +203,10 @@
   "@menu.select.sameKind": {
     "sourceHash": "9933028"
   },
+  "menu.select.compareDirectories": "Mappák összehasonlítása",
+  "@menu.select.compareDirectories": {
+    "sourceHash": "5cf3985"
+  },
   "menu.select.allFolders": "Összes mappa kijelölése",
   "@menu.select.allFolders": {
     "sourceHash": "5351f8b"

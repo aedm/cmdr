@@ -637,6 +637,34 @@
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
   },
+  "fileExplorer.compareDirectories.marked": "Fichiers différents sélectionnés : {leftCountText} {leftCount, plural, one {fichier} many {fichiers} other {fichiers}} à gauche et {rightCountText} {rightCount, plural, one {fichier} many {fichiers} other {fichiers}} à droite.",
+  "@fileExplorer.compareDirectories.marked": {
+    "sourceHash": "73e3ccf"
+  },
+  "fileExplorer.compareDirectories.noDifferences.newerAndMissing": "Rien à sélectionner : chaque fichier se trouve dans les deux dossiers, et aucune copie n’est plus récente. Les sous-dossiers ne sont pas comparés.",
+  "@fileExplorer.compareDirectories.noDifferences.newerAndMissing": {
+    "sourceHash": "c2960d8"
+  },
+  "fileExplorer.compareDirectories.noDifferences.missing": "Rien à sélectionner : chaque fichier se trouve dans les deux dossiers. Les sous-dossiers ne sont pas comparés.",
+  "@fileExplorer.compareDirectories.noDifferences.missing": {
+    "sourceHash": "ed2e696"
+  },
+  "fileExplorer.compareDirectories.noDifferences.sizeAndMissing": "Rien à sélectionner : chaque fichier se trouve dans les deux dossiers, avec la même taille. Les sous-dossiers ne sont pas comparés.",
+  "@fileExplorer.compareDirectories.noDifferences.sizeAndMissing": {
+    "sourceHash": "5f7b808"
+  },
+  "fileExplorer.compareDirectories.keptChanging": "Les dossiers n’ont pas cessé de changer pendant la comparaison. Réessayez une fois qu’ils ne changent plus.",
+  "@fileExplorer.compareDirectories.keptChanging": {
+    "sourceHash": "3051074"
+  },
+  "fileExplorer.compareDirectories.needsTwoFolders": "Ouvrez un dossier dans chaque panneau pour les comparer",
+  "@fileExplorer.compareDirectories.needsTwoFolders": {
+    "sourceHash": "c04ef80"
+  },
+  "fileExplorer.compareDirectories.couldNotFinish": "La comparaison des dossiers n’a pas pu se terminer. Réessayez dans un instant.",
+  "@fileExplorer.compareDirectories.couldNotFinish": {
+    "sourceHash": "0900bc9"
+  },
   "fileExplorer.clipboard.cutReady": "{countText} {count, plural, one {élément prêt} many {éléments prêts} other {éléments prêts}} à déplacer. Collez pour terminer.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

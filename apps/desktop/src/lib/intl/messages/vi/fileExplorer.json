@@ -637,6 +637,34 @@
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
   },
+  "fileExplorer.compareDirectories.marked": "Đã chọn các tệp khác nhau: {leftCountText} {leftCount, plural, other {tệp}} bên trái và {rightCountText} {rightCount, plural, other {tệp}} bên phải.",
+  "@fileExplorer.compareDirectories.marked": {
+    "sourceHash": "73e3ccf"
+  },
+  "fileExplorer.compareDirectories.noDifferences.newerAndMissing": "Không có gì để chọn: tệp nào cũng có ở cả hai thư mục, và không bản sao nào mới hơn. Thư mục con không được so sánh.",
+  "@fileExplorer.compareDirectories.noDifferences.newerAndMissing": {
+    "sourceHash": "c2960d8"
+  },
+  "fileExplorer.compareDirectories.noDifferences.missing": "Không có gì để chọn: tệp nào cũng có ở cả hai thư mục. Thư mục con không được so sánh.",
+  "@fileExplorer.compareDirectories.noDifferences.missing": {
+    "sourceHash": "ed2e696"
+  },
+  "fileExplorer.compareDirectories.noDifferences.sizeAndMissing": "Không có gì để chọn: tệp nào cũng có ở cả hai thư mục, với cùng kích cỡ. Thư mục con không được so sánh.",
+  "@fileExplorer.compareDirectories.noDifferences.sizeAndMissing": {
+    "sourceHash": "5f7b808"
+  },
+  "fileExplorer.compareDirectories.keptChanging": "Các thư mục liên tục thay đổi trong lúc so sánh. Hãy thử lại khi chúng không còn thay đổi.",
+  "@fileExplorer.compareDirectories.keptChanging": {
+    "sourceHash": "3051074"
+  },
+  "fileExplorer.compareDirectories.needsTwoFolders": "Hãy mở một thư mục ở mỗi khung để so sánh",
+  "@fileExplorer.compareDirectories.needsTwoFolders": {
+    "sourceHash": "c04ef80"
+  },
+  "fileExplorer.compareDirectories.couldNotFinish": "Chưa so sánh xong hai thư mục. Hãy thử lại sau giây lát.",
+  "@fileExplorer.compareDirectories.couldNotFinish": {
+    "sourceHash": "0900bc9"
+  },
   "fileExplorer.clipboard.cutReady": "{countText} {count, plural, other {mục}} sẵn sàng để di chuyển. Dán để hoàn tất.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

@@ -576,6 +576,18 @@
     "confidence": "high",
     "sources": "MS terminology FRA"
   },
+  "compare-folders": {
+    "chosen": "Comparer les dossiers",
+    "accept": ["compar"],
+    "avoid": [
+      {
+        "form": "Comparer les répertoires",
+        "why": "TC's wording; Cmdr follows Finder's dossier"
+      }
+    ],
+    "confidence": "tentative",
+    "sources": "TC names the command Comparer les répertoires; Cmdr follows the folder ruling (Finder dossier). Pile unavailable on this machine; TC wording from memory"
+  },
   "complete": {
     "accept": ["terminé", "finalis", "incomplet", "incomplète", "complet", "complète"],
     "avoid": [
@@ -2858,6 +2870,12 @@
     "chosen": "lignes alternées",
     "confidence": "high",
     "sources": "descriptive FR"
+  },
+  "subfolder": {
+    "chosen": "sous-dossier",
+    "accept": ["sous-dossiers"],
+    "confidence": "tentative",
+    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); reference pile unavailable on this machine, so unverified against TC/Finder"
   },
   "subscription": {
     "chosen": "abonnement",

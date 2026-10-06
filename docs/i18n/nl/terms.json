@@ -523,6 +523,13 @@
     "confidence": "tentative",
     "sources": "standard NL (math comparison sign)"
   },
+  "compare-folders": {
+    "chosen": "Vergelijk mappen",
+    "accept": ["vergelijk"],
+    "forms": "menu item Vergelijk mappen; the act → het vergelijken van de mappen",
+    "confidence": "tentative",
+    "sources": "TC names the command Vergelijk mappen / Mappen vergelijken; bare-stem imperative per the menu register; catalog already says vergelijken. Pile unavailable on this machine; TC wording from memory"
+  },
   "complete": {
     "accept": ["voltooi", "voltooien", "onvolledig", "niet voltooid"],
     "avoid": [
@@ -2762,6 +2769,12 @@
     "chosen": "streamen",
     "confidence": "tentative",
     "sources": "loanword kept; no Dutch UI equivalent"
+  },
+  "subfolder": {
+    "chosen": "submap",
+    "accept": ["submappen"],
+    "confidence": "tentative",
+    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); reference pile unavailable on this machine, so unverified against TC/Finder"
   },
   "suggestion": {
     "accept": ["suggesties", "voorgesteld", "voorstel"],

@@ -676,6 +676,30 @@
   "@commands.selectionSelectSameKind.description": {
     "sourceHash": "9a95212"
   },
+  "commands.selectionCompareDirectories.label": "比较文件夹",
+  "@commands.selectionCompareDirectories.label": {
+    "sourceHash": "5cf3985"
+  },
+  "commands.selectionCompareDirectories.description": "在每个窗格中选择另一个窗格没有的文件，以及其余文件的较新副本",
+  "@commands.selectionCompareDirectories.description": {
+    "sourceHash": "190d99f"
+  },
+  "commands.selectionCompareDirectoriesMissing.label": "比较文件夹：仅缺少的文件",
+  "@commands.selectionCompareDirectoriesMissing.label": {
+    "sourceHash": "d03d3c1"
+  },
+  "commands.selectionCompareDirectoriesMissing.description": "在每个窗格中只选择另一个窗格没有的文件",
+  "@commands.selectionCompareDirectoriesMissing.description": {
+    "sourceHash": "e61c71b"
+  },
+  "commands.selectionCompareDirectoriesSize.label": "比较文件夹：大小不同",
+  "@commands.selectionCompareDirectoriesSize.label": {
+    "sourceHash": "6c8fd21"
+  },
+  "commands.selectionCompareDirectoriesSize.description": "在每个窗格中选择另一个窗格没有的文件，以及大小不同的文件的两个副本",
+  "@commands.selectionCompareDirectoriesSize.description": {
+    "sourceHash": "ac31996"
+  },
   "commands.selectionSelectSameKind.allFolders": "选择所有文件夹",
   "@commands.selectionSelectSameKind.allFolders": {
     "sourceHash": "5351f8b"

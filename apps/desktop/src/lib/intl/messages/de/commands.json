@@ -676,6 +676,30 @@
   "@commands.selectionSelectSameKind.description": {
     "sourceHash": "9a95212"
   },
+  "commands.selectionCompareDirectories.label": "Ordner vergleichen",
+  "@commands.selectionCompareDirectories.label": {
+    "sourceHash": "5cf3985"
+  },
+  "commands.selectionCompareDirectories.description": "Wählt in jedem Bereich die Dateien aus, die im anderen Bereich fehlen, sowie von den übrigen die neueren Kopien",
+  "@commands.selectionCompareDirectories.description": {
+    "sourceHash": "190d99f"
+  },
+  "commands.selectionCompareDirectoriesMissing.label": "Ordner vergleichen: nur fehlende Dateien",
+  "@commands.selectionCompareDirectoriesMissing.label": {
+    "sourceHash": "d03d3c1"
+  },
+  "commands.selectionCompareDirectoriesMissing.description": "Wählt in jedem Bereich nur die Dateien aus, die im anderen Bereich fehlen",
+  "@commands.selectionCompareDirectoriesMissing.description": {
+    "sourceHash": "e61c71b"
+  },
+  "commands.selectionCompareDirectoriesSize.label": "Ordner vergleichen: abweichende Größe",
+  "@commands.selectionCompareDirectoriesSize.label": {
+    "sourceHash": "6c8fd21"
+  },
+  "commands.selectionCompareDirectoriesSize.description": "Wählt in jedem Bereich die Dateien aus, die im anderen Bereich fehlen, sowie beide Kopien von Dateien mit abweichender Größe",
+  "@commands.selectionCompareDirectoriesSize.description": {
+    "sourceHash": "ac31996"
+  },
   "commands.selectionSelectSameKind.allFolders": "Alle Ordner auswählen",
   "@commands.selectionSelectSameKind.allFolders": {
     "sourceHash": "5351f8b"

@@ -7,9 +7,18 @@
  * The comparison is the backend's (`src-tauri/src/file_system/listing/compare.rs`),
  * read off both cached listings at once; this replaces each pane's selection with
  * the answer (adding the `..` offset) and says what happened in a toast.
+ *
+ * Row numbers only fit a pane showing the state they were read from: a file that
+ * appeared since would shift them onto other files. So the answer is applied only
+ * when it's `settled` and each pane's last applied diff sequence is the one it was
+ * read at; otherwise the diffs are still on their way, and it asks again.
  */
 
-import { compareDirectories as compareDirectoriesIpc, type CompareDirectoriesMode } from '$lib/tauri-commands'
+import {
+  compareDirectories as compareDirectoriesIpc,
+  type CompareDirectoriesMode,
+  type CompareDirectoriesResult,
+} from '$lib/tauri-commands'
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
 import { formatNumber } from '$lib/file-explorer/selection/selection-info-utils'
@@ -18,26 +27,72 @@ import type { FilePaneAPI } from './types'
 
 const log = getAppLogger('fileExplorer')
 
+/** How many times to ask while the folders keep changing under the comparison. */
+export const COMPARE_ATTEMPTS = 5
+/** Two of the backend's 50 ms diff flush windows: long enough for a pending diff to land. */
+export const COMPARE_RETRY_DELAY_MS = 100
+
 export interface CompareDirectoriesDeps {
   getPaneRef: (pane: 'left' | 'right') => FilePaneAPI | undefined
   getShowHiddenFiles: () => boolean
 }
 
+/** What the comparison was asked about: the two panes as they were when it started. */
+interface Asked {
+  left: FilePaneAPI
+  right: FilePaneAPI
+  leftListingId: string
+  rightListingId: string
+  includeHidden: boolean
+}
+
+const NO_DIFFERENCES: Record<CompareDirectoriesMode, () => string> = {
+  newerAndMissing: () => tString('fileExplorer.compareDirectories.noDifferences.newerAndMissing'),
+  missing: () => tString('fileExplorer.compareDirectories.noDifferences.missing'),
+  sizeAndMissing: () => tString('fileExplorer.compareDirectories.noDifferences.sizeAndMissing'),
+}
+
 export async function compareDirectories(deps: CompareDirectoriesDeps, mode: CompareDirectoriesMode): Promise<void> {
+  const asked = askedAbout(deps)
+  // A network hub or a search-results snapshot has no folder listing to compare.
+  if (!asked) {
+    addToast(tString('fileExplorer.compareDirectories.needsTwoFolders'), { level: 'info' })
+    return
+  }
+  for (let attempt = 1; attempt <= COMPARE_ATTEMPTS; attempt++) {
+    const result = await requestComparison(asked, mode)
+    if (!result || movedOn(deps, asked)) return
+    if (fitsPanes(asked, result)) {
+      markAndReport(asked, result, mode)
+      return
+    }
+    await new Promise((resolve) => setTimeout(resolve, COMPARE_RETRY_DELAY_MS))
+  }
+  log.info('compare directories gave up: the folders kept changing over {attempts} attempts', {
+    attempts: COMPARE_ATTEMPTS,
+  })
+  addToast(tString('fileExplorer.compareDirectories.keptChanging'), { level: 'warn' })
+}
+
+function askedAbout(deps: CompareDirectoriesDeps): Asked | null {
   const left = deps.getPaneRef('left')
   const right = deps.getPaneRef('right')
   const leftListingId = left?.getListingId() ?? ''
   const rightListingId = right?.getListingId() ?? ''
-  // A network hub or a search-results snapshot has no folder listing to compare.
-  if (!left || !right || leftListingId === '' || rightListingId === '') {
-    addToast(tString('fileExplorer.compareDirectories.needsTwoFolders'), { level: 'info' })
-    return
-  }
+  if (!left || !right || leftListingId === '' || rightListingId === '') return null
+  return { left, right, leftListingId, rightListingId, includeHidden: deps.getShowHiddenFiles() }
+}
 
-  const includeHidden = deps.getShowHiddenFiles()
-  let result
+/** The backend's answer, or `null` when there's none to apply (it said why in the log and maybe a toast). */
+async function requestComparison(asked: Asked, mode: CompareDirectoriesMode): Promise<CompareDirectoriesResult | null> {
   try {
-    result = await compareDirectoriesIpc(leftListingId, includeHidden, rightListingId, includeHidden, mode)
+    return await compareDirectoriesIpc(
+      asked.leftListingId,
+      asked.includeHidden,
+      asked.rightListingId,
+      asked.includeHidden,
+      mode,
+    )
   } catch (e) {
     const reason = (e as { type?: string }).type
     log.warn("compare directories couldn't run: {reason}", { reason: reason ?? String(e) })
@@ -46,26 +101,38 @@ export async function compareDirectories(deps: CompareDirectoriesDeps, mode: Com
     if (reason === 'timedOut' || reason === 'internal') {
       addToast(tString('fileExplorer.compareDirectories.couldNotFinish'), { level: 'warn' })
     }
-    return
+    return null
   }
-  // The panes moved on, or hidden files were toggled, while we compared: these rows
-  // describe a row space the panes no longer show.
-  if (
-    left.getListingId() !== leftListingId ||
-    right.getListingId() !== rightListingId ||
-    deps.getShowHiddenFiles() !== includeHidden
-  )
-    return
+}
 
+/** The panes moved on, or hidden files were toggled: the answer is for folders no longer shown. */
+function movedOn(deps: CompareDirectoriesDeps, asked: Asked): boolean {
+  return (
+    asked.left.getListingId() !== asked.leftListingId ||
+    asked.right.getListingId() !== asked.rightListingId ||
+    deps.getShowHiddenFiles() !== asked.includeHidden
+  )
+}
+
+/** Each pane shows exactly the state the rows were read from. */
+function fitsPanes(asked: Asked, result: CompareDirectoriesResult): boolean {
+  return (
+    result.settled &&
+    asked.left.getLastSequence() === result.leftSequence &&
+    asked.right.getLastSequence() === result.rightSequence
+  )
+}
+
+function markAndReport(asked: Asked, result: CompareDirectoriesResult, mode: CompareDirectoriesMode): void {
   const withParentOffset = (pane: FilePaneAPI, rows: number[]): number[] =>
     pane.hasParentEntry() ? rows.map((row) => row + 1) : rows
-  left.setSelectedIndices(withParentOffset(left, result.left))
-  right.setSelectedIndices(withParentOffset(right, result.right))
+  asked.left.setSelectedIndices(withParentOffset(asked.left, result.left))
+  asked.right.setSelectedIndices(withParentOffset(asked.right, result.right))
 
   const leftCount = result.left.length
   const rightCount = result.right.length
   if (leftCount === 0 && rightCount === 0) {
-    addToast(tString('fileExplorer.compareDirectories.noDifferences'), { level: 'info' })
+    addToast(NO_DIFFERENCES[mode](), { level: 'info' })
     return
   }
   addToast(

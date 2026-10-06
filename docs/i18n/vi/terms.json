@@ -466,6 +466,12 @@
     "confidence": "tentative",
     "sources": "catalog"
   },
+  "compare-folders": {
+    "chosen": "So sánh thư mục",
+    "accept": ["so sánh"],
+    "confidence": "tentative",
+    "sources": "catalog already says so sánh (smallerDisabledTooltip); thư mục per the folder ruling. Pile unavailable on this machine"
+  },
   "complete": {
     "accept": ["hoàn chỉnh", "đầy đủ"],
     "avoid": [
@@ -2527,6 +2533,11 @@
     "chosen": "phát trực tiếp",
     "confidence": "tentative",
     "sources": "MS-style rendering"
+  },
+  "subfolder": {
+    "chosen": "thư mục con",
+    "confidence": "tentative",
+    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); reference pile unavailable on this machine, so unverified against TC/Finder"
   },
   "subscription": {
     "chosen": "đăng ký",

@@ -2,6 +2,8 @@
 
 use super::caching_test_support::{TestListing, TestListingGuard};
 use super::compare::{CompareDirectoriesMode, compare_directories};
+use super::diff::DiffChange;
+use super::diff_emitter::{enqueue_diff, flush_now_for_test};
 use super::metadata::FileEntry;
 use super::sorting::{DirectorySortMode, SortColumn, SortOrder, sort_entries};
 
@@ -231,4 +233,45 @@ fn a_gone_listing_is_an_error_not_an_empty_answer() {
         )
         .is_err()
     );
+}
+
+#[test]
+fn the_answer_names_the_state_it_was_read_from() {
+    let left = pane("cmp-seq-l", L, vec![file(L, "a.txt", 1, 100)]);
+    let right = pane("cmp-seq-r", R, vec![]);
+    let quiet = compare_directories(
+        left.id(),
+        false,
+        right.id(),
+        false,
+        CompareDirectoriesMode::NewerAndMissing,
+    )
+    .expect("both listings are cached");
+    assert!(quiet.settled);
+    assert_eq!((quiet.left_sequence, quiet.right_sequence), (0, 0));
+
+    // A change on its way to the left pane: the cache is ahead of what it shows.
+    enqueue_diff(left.id(), vec![DiffChange::added(file(L, "b.txt", 1, 100), 1)]);
+    let busy = compare_directories(
+        left.id(),
+        false,
+        right.id(),
+        false,
+        CompareDirectoriesMode::NewerAndMissing,
+    )
+    .expect("both listings are cached");
+    assert!(!busy.settled);
+
+    // Once sent, the sequence moved on and nothing waits.
+    flush_now_for_test(left.id());
+    let after = compare_directories(
+        left.id(),
+        false,
+        right.id(),
+        false,
+        CompareDirectoriesMode::NewerAndMissing,
+    )
+    .expect("both listings are cached");
+    assert!(after.settled);
+    assert_eq!(after.left_sequence, 1);
 }

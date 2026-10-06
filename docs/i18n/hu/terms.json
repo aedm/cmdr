@@ -648,6 +648,19 @@
     "confidence": "tentative",
     "sources": "catalog (queryUi.*.aria.comparator)"
   },
+  "compare-folders": {
+    "chosen": "Mappák összehasonlítása",
+    "accept": ["összehasonlít"],
+    "forms": "label Mappák összehasonlítása; the act → a mappák összehasonlítása",
+    "avoid": [
+      {
+        "form": "Könyvtárak összehasonlítása",
+        "why": "TC's wording; UI copy says mappa"
+      }
+    ],
+    "confidence": "tentative",
+    "sources": "TC names the command Könyvtárak összehasonlítása; Cmdr follows the folder ruling (mappa), nominal label like Fájlok kijelölése; catalog already says összehasonlítható. Pile unavailable on this machine; TC wording from memory"
+  },
   "complete": {
     "chosen": "befejezés",
     "accept": ["befejez", "befejeződ", "elkészül", "kész", "hiányos", "félbe"],
@@ -3003,7 +3016,7 @@
   },
   "select": {
     "chosen": "kijelölés",
-    "accept": ["kijelöl", "kiválaszt", "válassz", "kijeloles", "jelöld ki", "jelölj ki"],
+    "accept": ["kijelöl", "kiválaszt", "válassz", "kijeloles", "jelöld ki", "jelölj ki", "jelöli ki"],
     "forms": "the menu and the action → Kijelölés; Select all → Összes kijelölése; Select files → Fájlok kijelölése; the dropdown placeholder (the user picks an option) → Válassz",
     "confidence": "high",
     "sources": "macOS Finder (172.title Összes kijelölése); Nautilus (Kijelölés)"

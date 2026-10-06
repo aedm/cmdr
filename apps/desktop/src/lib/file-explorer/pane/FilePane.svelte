@@ -938,6 +938,11 @@
         return hasParent
     }
 
+    /** The last `directory-diff` sequence this pane applied: which state of its listing its rows show. */
+    export function getLastSequence(): number {
+        return lastSequence
+    }
+
     // noinspection JSUnusedGlobalSymbols -- Used dynamically
     export function isAllSelected(): boolean {
         return selection.isAllSelected(hasParent, effectiveTotalCount)

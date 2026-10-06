@@ -637,6 +637,34 @@
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
   },
+  "fileExplorer.compareDirectories.marked": "Archivos distintos seleccionados: {leftCountText} {leftCount, plural, one {archivo} many {archivos} other {archivos}} a la izquierda y {rightCountText} {rightCount, plural, one {archivo} many {archivos} other {archivos}} a la derecha.",
+  "@fileExplorer.compareDirectories.marked": {
+    "sourceHash": "73e3ccf"
+  },
+  "fileExplorer.compareDirectories.noDifferences.newerAndMissing": "Nada que seleccionar: todos los archivos están en ambas carpetas y ninguna copia es más reciente. Las subcarpetas no se comparan.",
+  "@fileExplorer.compareDirectories.noDifferences.newerAndMissing": {
+    "sourceHash": "c2960d8"
+  },
+  "fileExplorer.compareDirectories.noDifferences.missing": "Nada que seleccionar: todos los archivos están en ambas carpetas. Las subcarpetas no se comparan.",
+  "@fileExplorer.compareDirectories.noDifferences.missing": {
+    "sourceHash": "ed2e696"
+  },
+  "fileExplorer.compareDirectories.noDifferences.sizeAndMissing": "Nada que seleccionar: todos los archivos están en ambas carpetas, con el mismo tamaño. Las subcarpetas no se comparan.",
+  "@fileExplorer.compareDirectories.noDifferences.sizeAndMissing": {
+    "sourceHash": "5f7b808"
+  },
+  "fileExplorer.compareDirectories.keptChanging": "Las carpetas no han dejado de cambiar mientras se comparaban. Vuelve a intentarlo cuando dejen de cambiar.",
+  "@fileExplorer.compareDirectories.keptChanging": {
+    "sourceHash": "3051074"
+  },
+  "fileExplorer.compareDirectories.needsTwoFolders": "Abre una carpeta en cada panel para compararlas",
+  "@fileExplorer.compareDirectories.needsTwoFolders": {
+    "sourceHash": "c04ef80"
+  },
+  "fileExplorer.compareDirectories.couldNotFinish": "No se ha podido completar la comparación de las carpetas. Inténtalo de nuevo en un momento.",
+  "@fileExplorer.compareDirectories.couldNotFinish": {
+    "sourceHash": "0900bc9"
+  },
   "fileExplorer.clipboard.cutReady": "{count, plural, one {{countText} elemento listo para mover} many {{countText} elementos listos para mover} other {{countText} elementos listos para mover}}. Pega para completar.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

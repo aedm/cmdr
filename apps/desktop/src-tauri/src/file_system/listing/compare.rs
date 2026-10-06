@@ -9,9 +9,13 @@
 //! It reads the two cached listings under ONE lock and answers in each pane's own
 //! row space ([`CachedListing::rows`](super::cached_listing::CachedListing::rows)),
 //! so the indices are ready to become a selection, and a row the pane doesn't
-//! show (a hidden file, scratch) is never marked.
+//! show (a hidden file, scratch) is never marked. Row numbers only fit a pane
+//! showing the same state, so the answer carries each listing's diff sequence and
+//! whether a change was still on its way to the pane (`settled`); the frontend
+//! marks nothing unless its panes match.
 
 use std::collections::HashMap;
+use std::sync::atomic::Ordering;
 
 use serde::{Deserialize, Serialize};
 
@@ -19,6 +23,7 @@ use cmdr_fs::ignore_poison::RwLockIgnorePoison;
 use cmdr_fs::name_fold::fold_name;
 
 use crate::file_system::listing::cached_listing::LISTING_CACHE;
+use crate::file_system::listing::diff_emitter::has_unsent_changes;
 use crate::file_system::listing::metadata::FileEntry;
 use crate::file_system::listing::operations::ListingLookupError;
 use crate::file_system::listing::visible_rows::VisibleRows;
@@ -62,12 +67,20 @@ impl From<ListingLookupError> for CompareDirectoriesError {
     }
 }
 
-/// The rows to mark in each pane, in that pane's row space (no `..` offset).
+/// The rows to mark in each pane, in that pane's row space (no `..` offset), and
+/// which state of each listing they were read from.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CompareDirectoriesResult {
     pub left: Vec<usize>,
     pub right: Vec<usize>,
+    /// The listing's diff sequence the rows were read at. A pane may mark them
+    /// only while its last applied `directory-diff` sequence is exactly this.
+    pub left_sequence: u64,
+    pub right_sequence: u64,
+    /// No change was waiting to reach either pane while the rows were read. When
+    /// false, the cache was ahead of the panes and the rows may name other files.
+    pub settled: bool,
 }
 
 /// Compares the files two panes show and answers which rows each should mark.
@@ -87,16 +100,39 @@ pub fn compare_directories(
         .ok_or_else(|| ListingLookupError::gone(right_listing_id))?;
     left.touch();
     right.touch();
+    let left_sequence = left.sequence.load(Ordering::Acquire);
+    let right_sequence = right.sequence.load(Ordering::Acquire);
 
     let left_rows = left.rows(left_include_hidden);
     let right_rows = right.rows(right_include_hidden);
     let left_files = Counterparts::of(&left_rows);
     let right_files = Counterparts::of(&right_rows);
+    let left_marked = rows_to_mark(&left_rows, &left_files, &right_files, mode);
+    let right_marked = rows_to_mark(&right_rows, &right_files, &left_files, mode);
+    drop(left_rows);
+    drop(right_rows);
+    drop(cache);
 
+    // Checked after the read, outside the cache lock: a change the read saw is
+    // either still unsent (queued or in flight) or already counted in a sequence
+    // that moved past the one read above.
+    let settled = settled_at(left_listing_id, left_sequence) && settled_at(right_listing_id, right_sequence);
     Ok(CompareDirectoriesResult {
-        left: rows_to_mark(&left_rows, &left_files, &right_files, mode),
-        right: rows_to_mark(&right_rows, &right_files, &left_files, mode),
+        left: left_marked,
+        right: right_marked,
+        left_sequence,
+        right_sequence,
+        settled,
     })
+}
+
+/// Whether `listing_id` still sits at `sequence` with nothing waiting to reach its pane.
+fn settled_at(listing_id: &str, sequence: u64) -> bool {
+    !has_unsent_changes(listing_id)
+        && LISTING_CACHE
+            .read_ignore_poison()
+            .get(listing_id)
+            .is_some_and(|listing| listing.sequence.load(Ordering::Acquire) == sequence)
 }
 
 /// The files one pane shows, looked up by name the way the other pane's names
