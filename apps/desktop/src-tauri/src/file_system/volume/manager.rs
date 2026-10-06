@@ -25,6 +25,7 @@ mod root_replace;
 /// Following a mount root that moved while its filesystem stayed mounted (a rename).
 mod root_move;
 
+#[cfg(target_os = "macos")]
 pub use root_move::RootMove;
 pub use root_replace::RootReplacement;
 use roots::Registration;

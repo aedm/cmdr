@@ -707,7 +707,14 @@ fn the_background_starts_skip_a_leaving_drive_at_once() {
     fx.gate.set_unmount_pending(&ids(&[A, ROOT_VOLUME_ID]));
     fx.door.ejecting.lock_ignore_poison().insert(B.to_string());
 
-    for kind in [StartKind::MasterResume, StartKind::SearchCover, StartKind::DriveRenamed] {
+    #[cfg_attr(
+        not(target_os = "macos"),
+        allow(unused_mut, reason = "only macOS has a rename start to add")
+    )]
+    let mut kinds = vec![StartKind::MasterResume, StartKind::SearchCover];
+    #[cfg(target_os = "macos")]
+    kinds.push(StartKind::DriveRenamed);
+    for kind in kinds {
         for volume_id in [A, B] {
             assert_eq!(
                 fx.gate.start_blocking(volume_id, kind, || panic!("no start may run")),

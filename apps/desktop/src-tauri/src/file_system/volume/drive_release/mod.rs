@@ -63,6 +63,7 @@ pub(crate) enum StartKind {
     /// The drive was renamed while it indexed, and its index restarts at the new mount point
     /// (`Index::follow_volume_move`). A restart is a start: an eject landing beside it must not
     /// find a fresh watcher on the drive.
+    #[cfg(target_os = "macos")]
     DriveRenamed,
 }
 
