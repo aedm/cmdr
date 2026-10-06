@@ -206,7 +206,10 @@ export const allowlistHosts: { host: string; purpose: string }[] = [
   { host: 'getcmdr.com', purpose: 'the update manifest (latest.json)' },
   { host: 'github.com, release-assets.githubusercontent.com', purpose: 'update downloads' },
   { host: 'license.getcmdr.com', purpose: 'license checks from older versions only' },
-  { host: 'huggingface.co', purpose: 'optional, only for local AI and image-search model downloads' },
+  {
+    host: 'huggingface.co, *.hf.co',
+    purpose: 'optional, only for local AI and image-search model downloads (hf.co serves the files)',
+  },
   { host: 'your AI provider', purpose: 'optional, only if a user sets up cloud AI' },
 ]
 
@@ -327,7 +330,7 @@ export const notInPlaceYet: string[] = [
   '<strong>No fuzzing</strong>, although Cmdr parses untrusted input (network protocols, archives, PDFs, images).',
   "<strong>One person maintains Cmdr</strong> and holds all signing keys. There's no continuity clause in the terms and no written support commitment.",
   "<strong>Local data isn't encrypted by Cmdr</strong>, so it relies on FileVault. There's no option to exclude Cmdr's index from backups.",
-  '<strong>Not tested behind a TLS-inspecting proxy</strong>, and PAC files are untested.',
+  "<strong>No PAC file or automatic proxy discovery.</strong> Cmdr uses the proxy set by hand in macOS's network settings, and with a PAC file it connects directly. It also ignores the list of hosts that bypass the proxy.",
   "<strong>No published security advisories yet</strong>, so there's no track record of how Cmdr handles a reported issue.",
 ]
 

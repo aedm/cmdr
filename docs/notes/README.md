@@ -34,6 +34,10 @@ Some notes here are load-bearing rather than historical. Those are grouped below
   formatting (63, fixed by the git hooks). It records the calls made on it (Linux lanes stay opt-in; the pre-push hook
   took on notices and size limits; the macOS CI job turns required after two clean weeks). Read it before changing what
   CI or the hooks run.
+- `proxy-and-tls-inspection-2026-10.md` — how every outbound connection behaves behind a corporate proxy, measured on
+  the 0.50.0 release. **The static system proxy works and TLS trust is macOS's own; PAC files and the system bypass list
+  are ignored, and loopback gets proxied.** It sizes the three fixes. Read it before changing how HTTP clients are
+  built, or before answering a reviewer's proxy question on `/trust`.
 - `rust-test-flake-analysis-2026-08-23.md` — what actually makes the Rust lanes go red, measured rather than assumed.
   **What predicts a starvation kill is a test's MARGIN (per-test cap ÷ idle runtime), not its duration**: every test two
   saturated full-suite runs killed sits at the thin end of that ratio, while three of the four causes found have no
