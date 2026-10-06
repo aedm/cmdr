@@ -83,7 +83,7 @@ describe('query-ui filter-chip summary parity (en)', () => {
   it('renders single-bound and range size summaries', () => {
     expect(deriveSizeChip('gte', '100', 'MB', '', 'B', 'binary').summary).toBe('> 100 MB')
     expect(deriveSizeChip('lte', '5', 'GB', '', 'B', 'binary').summary).toBe('< 5 GB')
-    expect(deriveSizeChip('eq', '0', 'B', '', 'B', 'binary').summary).toBe('= 0 B')
+    expect(deriveSizeChip('eq', '0', 'B', '', 'B', 'binary').summary).toBe('= 0 bytes')
     expect(deriveSizeChip('between', '1', 'MB', '200', 'MB', 'binary').summary).toBe('1 MB – 200 MB')
   })
 

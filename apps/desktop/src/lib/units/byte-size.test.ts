@@ -202,7 +202,7 @@ describe('formatFileSizeWithFormat: locale-aware decimal', () => {
   it('does NOT group the bytes-as-integer dynamic value', () => {
     _setLocaleForTests('de-DE')
     // 1000 bytes in binary stays sub-base, rendered as a bare integer; no grouping.
-    expect(formatFileSizeWithFormat(1000, 'binary')).toBe('1000 bytes')
+    expect(formatFileSizeWithFormat(1000, 'binary')).toBe('1000 Bytes')
   })
 })
 

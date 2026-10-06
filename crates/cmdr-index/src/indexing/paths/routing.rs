@@ -280,7 +280,9 @@ pub(crate) fn index_read_path(volume_id: &str, abs_path: &str) -> Option<String>
 /// drive's get the mount root the host serves it at RIGHT NOW joined on, so a
 /// renamed drive answers at its new name.
 ///
-/// `None` when the host has no root for the volume (it isn't mounted).
+/// `None` when the host has no root for the volume (it isn't mounted). macOS only, like its
+/// one caller (`importance::last_used`'s Spotlight sampling).
+#[cfg(target_os = "macos")]
 pub(crate) fn local_path_of(volume_id: &str, index_relative: &str) -> Option<String> {
     if volume_id == ROOT_VOLUME_ID {
         return Some(index_relative.to_string());

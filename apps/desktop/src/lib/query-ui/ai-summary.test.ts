@@ -38,7 +38,7 @@ describe('buildAiSummary', () => {
 
   it('renders an exact (eq) size as "= N"', () => {
     const s = buildAiSummary(baseInput({ sizeFilter: 'eq', sizeValue: '0', sizeUnit: 'B' }))
-    expect(s.filters).toContainEqual({ label: 'Size', value: '= 0 B' })
+    expect(s.filters).toContainEqual({ label: 'Size', value: '= 0 bytes' })
   })
 
   it('renders the modified filter line when configured', () => {
