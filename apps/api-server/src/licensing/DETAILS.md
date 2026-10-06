@@ -38,6 +38,7 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 
 ```
 Paddle webhook → HMAC verify (tries both live + sandbox secrets)
+  → transaction.completed with a `subscription_*` origin (renewal etc.) → 200 ignored, nothing issued
   → claim the transaction (D1 license_issuance, conditional INSERT; see Fulfillment below)
   → Paddle API: fetch customer details
   → per seat: generateLicenseKey() → generateShortCode() → KV.put(code, {fullKey, orgName})
@@ -113,6 +114,15 @@ one wins and the other gets the 503.
 **Rows never expire.** "This purchase was fulfilled" has no useful end date, and an expiring marker is exactly how a
 late redelivery or a replayed webhook mints a second set of usable perpetual licenses. The table also doubles as the
 support/audit trail (who got which codes, when).
+
+**Only a purchase fulfills, never a subscription's follow-up.** Paddle completes a NEW transaction (new `txn_` id) for
+every renewal, one-off charge, plan or seat change, and payment-method update, with `origin` set to
+`subscription_recurring` / `subscription_charge` / `subscription_update` / `subscription_payment_method_change`. The
+buyer's key names the subscription's first transaction and keeps validating through the subscription's status, so those
+are acknowledged and ignored before the claim (`isSubscriptionFollowUp`, `licensing.ts`); before this, every renewal
+mailed a fresh set of keys. A missing or unknown origin still fulfills: a paying buyer without a key is the worse miss.
+Gotcha: a seat INCREASE on a subscription is a `subscription_update` too, so extra seats are not issued automatically;
+mint them by hand until that's built.
 
 **Decision, why not the Paddle `event_id` as the key:** one purchase must yield one set of licenses however many events
 carry it, so the transaction id is the unit of fulfillment. `event_id` is stored on the row for debugging only.

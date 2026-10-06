@@ -392,21 +392,51 @@ licensing.post('/webhook/paddle', async (c) => {
   console.log('Received webhook:', payload.event_type)
 
   try {
-    if (payload.event_type === 'transaction.completed') return await processCompletedTransaction(payload, c.env)
-    if (payload.event_type === 'adjustment.created' || payload.event_type === 'adjustment.updated') {
-      const adjustment = parseAdjustment(payload.data)
-      if (!adjustment) {
-        console.error('Adjustment webhook without a usable adjustment id, transaction id, action, or status')
-        return c.json({ error: 'Invalid adjustment' }, 400)
-      }
-      return await processAdjustment(adjustment, payload.event_id ?? null, c.env)
-    }
-    return c.json({ status: 'ignored', event: payload.event_type })
+    return await dispatchWebhookEvent(payload, c.env)
   } catch (error) {
     console.error('Webhook processing failed:', error instanceof Error ? error.message : String(error))
     return c.json({ error: 'Internal server error' }, 500)
   }
 })
+
+/** Route a verified webhook to its handler: a purchase mints, an adjustment may revoke, the rest is acknowledged. */
+async function dispatchWebhookEvent(payload: PaddleWebhookPayload, env: Bindings): Promise<Response> {
+  if (payload.event_type === 'transaction.completed') {
+    if (isSubscriptionFollowUp(payload.data?.origin)) {
+      console.log('Subscription follow-up transaction, nothing to issue:', payload.data?.id, payload.data?.origin)
+      return Response.json({ status: 'ignored', event: payload.event_type, origin: payload.data?.origin })
+    }
+    return await processCompletedTransaction(payload, env)
+  }
+  if (payload.event_type === 'adjustment.created' || payload.event_type === 'adjustment.updated') {
+    const adjustment = parseAdjustment(payload.data)
+    if (!adjustment) {
+      console.error('Adjustment webhook without a usable adjustment id, transaction id, action, or status')
+      return Response.json({ error: 'Invalid adjustment' }, { status: 400 })
+    }
+    return await processAdjustment(adjustment, payload.event_id ?? null, env)
+  }
+  return Response.json({ status: 'ignored', event: payload.event_type })
+}
+
+/**
+ * Transactions Paddle creates on its own from an existing subscription: a renewal, a one-off charge,
+ * a plan or seat change, a payment-method update. Each completes with a NEW `txn_` id, but the
+ * buyer's key names the subscription's FIRST transaction and keeps validating through the
+ * subscription's status, so fulfilling one would only mail a second, redundant set of licenses.
+ * A missing or unknown origin still fulfills: a paying buyer left without a key is the worse miss.
+ * (Origins from https://developer.paddle.com/webhooks/transactions/transaction-completed, 2026-10-06.)
+ */
+const subscriptionFollowUpOrigins: ReadonlySet<string> = new Set([
+  'subscription_recurring',
+  'subscription_charge',
+  'subscription_update',
+  'subscription_payment_method_change',
+])
+
+function isSubscriptionFollowUp(origin: string | undefined): boolean {
+  return origin !== undefined && subscriptionFollowUpOrigins.has(origin)
+}
 
 /** Process a completed Paddle transaction: claim it, mint licenses if needed, email them. */
 async function processCompletedTransaction(payload: PaddleWebhookPayload, env: Bindings): Promise<Response> {

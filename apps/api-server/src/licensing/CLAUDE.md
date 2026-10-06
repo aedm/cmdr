@@ -22,8 +22,8 @@ signing, id namespaces), `license-issuance.ts` (the D1 ledger), `refunds.ts` (re
   key by build mode; rationale and rotation caveat in `apps/desktop/src-tauri/src/licensing/DETAILS.md` § Signing keys.
 - **One purchase yields ONE set of license codes, but the email may repeat.** `/webhook/paddle` claims the transaction
   in D1 (`license_issuance`) BEFORE any side effect, stores the codes before emailing, and marks `emailed_at` after. A
-  delivery that loses the claim classifies the row (`classifyIssuance`) instead of issuing beside it. DETAILS §
-  Fulfillment.
+  delivery that loses the claim classifies the row (`classifyIssuance`) instead of issuing beside it. A renewal (any
+  `subscription_*` origin) issues nothing. DETAILS § Fulfillment.
 - **Issuance rows never expire.** An expiring marker is exactly how a late redelivery mints a second set of usable
   perpetual licenses. ❌ Don't add a TTL or a cleanup job.
 - **A take-over is conditional** (`UPDATE ... WHERE claimed_at = <the value we read>`), so two deliveries finding the

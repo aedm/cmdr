@@ -149,6 +149,9 @@ export interface PaddleWebhookPayload {
   event_id?: string
   data?: {
     id?: string
+    // How Paddle created the transaction: `web` (checkout), `api`, or one of the `subscription_*`
+    // origins for a transaction it generated from an existing subscription (`isSubscriptionFollowUp`).
+    origin?: string
     customer_id?: string
     items?: Array<{
       price?: {

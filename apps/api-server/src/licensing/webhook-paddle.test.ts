@@ -317,6 +317,60 @@ describe('POST /webhook/paddle idempotency', () => {
     expect((await first).status).toBe(200)
   })
 
+  it('mints nothing for a transaction Paddle created from an existing subscription, like a renewal', async () => {
+    const bindings = createBindings()
+    // Paddle completes a NEW transaction on every renewal, with its own `txn_` id. The buyer's key
+    // points at the first one and keeps validating through the subscription, so a renewal needs nothing.
+    for (const origin of [
+      'subscription_recurring',
+      'subscription_charge',
+      'subscription_update',
+      'subscription_payment_method_change',
+    ]) {
+      const body = JSON.stringify({
+        event_id: `evt_${origin}`,
+        event_type: 'transaction.completed',
+        data: {
+          id: `txn_${origin}`,
+          origin,
+          customer_id: customerId,
+          subscription_id: 'sub_01hv8x',
+          items: [{ price: { id: 'pri_subscription' }, quantity: 1 }],
+        },
+      })
+
+      const res = await app.request(
+        '/webhook/paddle',
+        { method: 'POST', headers: { 'Paddle-Signature': await sign(body) }, body },
+        bindings,
+      )
+
+      expect(res.status, origin).toBe(200)
+      expect(await res.json(), origin).toMatchObject({ status: 'ignored' })
+    }
+    expect(bindings.TELEMETRY_DB.rows.size).toBe(0)
+    expect(mintedCodes(bindings)).toHaveLength(0)
+    expect(mockSend).not.toHaveBeenCalled()
+  })
+
+  it('fulfills a checkout purchase that says where it came from', async () => {
+    const bindings = createBindings()
+    const body = JSON.stringify({
+      event_id: 'evt_web',
+      event_type: 'transaction.completed',
+      data: { id: transactionId, origin: 'web', customer_id: customerId, items: [{ price: { id: 'pri_perpetual' } }] },
+    })
+
+    const res = await app.request(
+      '/webhook/paddle',
+      { method: 'POST', headers: { 'Paddle-Signature': await sign(body) }, body },
+      bindings,
+    )
+
+    expect(res.status).toBe(200)
+    expect(mintedCodes(bindings)).toHaveLength(1)
+  })
+
   it('ignores events that are not transaction.completed', async () => {
     const bindings = createBindings()
     const body = JSON.stringify({ event_type: 'transaction.updated', data: { id: transactionId } })
