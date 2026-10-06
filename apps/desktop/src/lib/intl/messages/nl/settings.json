@@ -304,6 +304,14 @@
   "@settings.listing.foldersFirst.description": {
     "sourceHash": "8505ff3"
   },
+  "settings.listing.spaceCalculatesFolderSize.label": "Mapgrootte berekenen met Spatie",
+  "@settings.listing.spaceCalculatesFolderSize.label": {
+    "sourceHash": "1a403eb"
+  },
+  "settings.listing.spaceCalculatesFolderSize.description": "Als Spatie een map selecteert waarvan de grootte nog niet bekend is, telt Cmdr de inhoud bij elkaar op en toont het totaal. Escape stopt het.",
+  "@settings.listing.spaceCalculatesFolderSize.description": {
+    "sourceHash": "38d64c1"
+  },
   "settings.listing.directorySortMode.label": "Mappen sorteren",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7d0b088"

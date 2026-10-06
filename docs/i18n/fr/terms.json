@@ -384,6 +384,13 @@
     "confidence": "high",
     "sources": "MS terminology FRA"
   },
+  "calculate": {
+    "accept": ["calcul"],
+    "chosen": "calculer",
+    "confidence": "tentative",
+    "forms": "Calculate folder sizes → Calculer la taille des dossiers; the running work in prose → le calcul",
+    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+  },
   "camera": {
     "accept": ["appareils photo"],
     "avoid": [

@@ -637,6 +637,10 @@
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
   },
+  "fileExplorer.folderSizes.notConnected": "Itt nem lehet kiszámítani a mappaméreteket: ez a hely most nincs csatlakoztatva.",
+  "@fileExplorer.folderSizes.notConnected": {
+    "sourceHash": "8b51988"
+  },
   "fileExplorer.clipboard.cutReady": "{countText} {count, plural, one {elem} other {elem}} áthelyezésre kész. Illeszd be a befejezéshez.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

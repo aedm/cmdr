@@ -156,6 +156,14 @@
   "@commands.viewShowHidden.label": {
     "sourceHash": "6aa9b55"
   },
+  "commands.viewCalculateFolderSizes.label": "Calculer la taille des dossiers",
+  "@commands.viewCalculateFolderSizes.label": {
+    "sourceHash": "d2a83da"
+  },
+  "commands.viewCalculateFolderSizes.description": "Affiche la taille de chaque dossier de ce panneau qui n’en a pas encore. La touche Échap arrête le calcul.",
+  "@commands.viewCalculateFolderSizes.description": {
+    "sourceHash": "2a7568d"
+  },
   "commands.viewBriefMode.label": "Passer en présentation brève",
   "@commands.viewBriefMode.label": {
     "sourceHash": "bcf6636"

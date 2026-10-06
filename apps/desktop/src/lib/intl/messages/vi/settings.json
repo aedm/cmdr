@@ -300,6 +300,14 @@
   "@settings.listing.foldersFirst.description": {
     "sourceHash": "8505ff3"
   },
+  "settings.listing.spaceCalculatesFolderSize.label": "Tính kích cỡ thư mục bằng phím Space",
+  "@settings.listing.spaceCalculatesFolderSize.label": {
+    "sourceHash": "1a403eb"
+  },
+  "settings.listing.spaceCalculatesFolderSize.description": "Khi bạn nhấn Space để chọn một thư mục chưa biết kích cỡ, Cmdr sẽ cộng dồn nội dung bên trong và hiển thị tổng. Nhấn Escape để dừng.",
+  "@settings.listing.spaceCalculatesFolderSize.description": {
+    "sourceHash": "38d64c1"
+  },
   "settings.listing.directorySortMode.label": "Sắp xếp thư mục",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7d0b088"

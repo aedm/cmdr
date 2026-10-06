@@ -302,6 +302,13 @@
     "forms": "verb → lưu vào bộ đệm",
     "sources": "MS terminology (bộ đệm ẩn), plain bộ đệm for UI brevity"
   },
+  "calculate": {
+    "accept": ["tính toán"],
+    "chosen": "tính",
+    "confidence": "tentative",
+    "forms": "Calculate folder sizes → Tính kích cỡ thư mục; adding up in prose → cộng dồn",
+    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+  },
   "camera-details": {
     "chosen": "thông tin máy ảnh",
     "confidence": "high",

@@ -657,6 +657,13 @@
     "sources": "macOS live Activity Monitor, Weather (Cache → Кэш); MS (cache → кэш); DC (Кэш эскизов)",
     "proseAccept": ["хран"]
   },
+  "calculate": {
+    "accept": ["вычисл", "подсчит", "подсчет"],
+    "chosen": "вычислить",
+    "confidence": "tentative",
+    "forms": "command Вычислить размеры папок; a standing switch Вычислять …; prose may say подсчитать",
+    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+  },
   "camera": {
     "chosen": "камера",
     "accept": ["камер"],

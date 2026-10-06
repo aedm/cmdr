@@ -356,6 +356,13 @@
     "forms": "only in compounds (resurscache, Cachetid, cachas); no settled plural, so caches as folders → cachemappar",
     "sources": "MS terminology (cache / cacheminne)"
   },
+  "calculate": {
+    "accept": ["beräkn", "räknar"],
+    "chosen": "beräkna",
+    "confidence": "tentative",
+    "forms": "Calculate folder sizes → Beräkna mappstorlekar; adding up in prose → räknar ihop",
+    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+  },
   "camera-details": {
     "avoid": [
       {

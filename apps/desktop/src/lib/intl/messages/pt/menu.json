@@ -264,6 +264,10 @@
   "@menu.view.swapPanes": {
     "sourceHash": "cc29396"
   },
+  "menu.view.calculateFolderSizes": "Calcular tamanhos das pastas",
+  "@menu.view.calculateFolderSizes": {
+    "sourceHash": "d2a83da"
+  },
   "menu.view.commandPalette": "Paleta de comandos…",
   "@menu.view.commandPalette": {
     "sourceHash": "6b1c93d"

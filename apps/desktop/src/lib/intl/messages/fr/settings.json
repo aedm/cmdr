@@ -303,6 +303,14 @@
   "@settings.listing.foldersFirst.description": {
     "sourceHash": "8505ff3"
   },
+  "settings.listing.spaceCalculatesFolderSize.label": "Calculer la taille d’un dossier avec la touche Espace",
+  "@settings.listing.spaceCalculatesFolderSize.label": {
+    "sourceHash": "1a403eb"
+  },
+  "settings.listing.spaceCalculatesFolderSize.description": "Quand Espace sélectionne un dossier dont la taille n’est pas encore connue, Cmdr additionne son contenu et affiche le total. La touche Échap arrête le calcul.",
+  "@settings.listing.spaceCalculatesFolderSize.description": {
+    "sourceHash": "38d64c1"
+  },
   "settings.listing.directorySortMode.label": "Trier les dossiers",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7d0b088"

@@ -302,6 +302,14 @@
   "@settings.listing.foldersFirst.description": {
     "sourceHash": "8505ff3"
   },
+  "settings.listing.spaceCalculatesFolderSize.label": "按 Space 键计算文件夹大小",
+  "@settings.listing.spaceCalculatesFolderSize.label": {
+    "sourceHash": "1a403eb"
+  },
+  "settings.listing.spaceCalculatesFolderSize.description": "用 Space 键选择一个还不知道大小的文件夹时，Cmdr 会把其中的内容加起来并显示总大小。按 Esc 键可停止。",
+  "@settings.listing.spaceCalculatesFolderSize.description": {
+    "sourceHash": "38d64c1"
+  },
   "settings.listing.directorySortMode.label": "文件夹排序",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7d0b088"

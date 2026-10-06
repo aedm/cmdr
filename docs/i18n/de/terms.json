@@ -268,6 +268,13 @@
     "confidence": "high",
     "sources": "AWS console and docs in this language (outside the pile, not verified live) keep Bucket (der Bucket); catalog servers.sheet.s3Bucket; MS has no S3 sense (its bucket entries are a field or a generic container)"
   },
+  "calculate": {
+    "accept": ["berechne", "Berechnung", "rechnet"],
+    "chosen": "berechnen",
+    "confidence": "tentative",
+    "forms": "Calculate folder sizes → Ordnergrößen berechnen; adding a folder's contents up in prose → rechnet … zusammen",
+    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+  },
   "column": {
     "chosen": "Spalte",
     "confidence": "high",

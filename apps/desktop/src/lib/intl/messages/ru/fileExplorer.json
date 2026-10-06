@@ -637,6 +637,10 @@
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
   },
+  "fileExplorer.folderSizes.notConnected": "Не удается вычислить размеры папок здесь: это место сейчас не подключено.",
+  "@fileExplorer.folderSizes.notConnected": {
+    "sourceHash": "8b51988"
+  },
   "fileExplorer.clipboard.cutReady": "Готово к перемещению: {countText} {count, plural, one {объект} few {объекта} many {объектов} other {объекта}}. Вставьте, чтобы завершить.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

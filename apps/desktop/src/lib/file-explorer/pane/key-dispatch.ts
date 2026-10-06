@@ -89,6 +89,16 @@ export function createKeyDispatch(deps: KeyDispatchDeps): KeyDispatch {
     containerElement?.focus()
   }
 
+  /**
+   * Esc while folder sizes are being calculated stops the count (Total Commander's
+   * Esc). Not while renaming: there Esc cancels the rename. True when it stopped one.
+   */
+  function stopFolderSizeCount(): boolean {
+    const pane = deps.getPaneRef(deps.getFocusedPane())
+    if (!pane || pane.isRenaming()) return false
+    return cancelCountInPane(pane.getListingId())
+  }
+
   function handleKeyDown(e: KeyboardEvent): void {
     // ESC during loading = cancel and go back
     if (e.key === 'Escape' && handleEscapeDuringLoading()) {
@@ -101,15 +111,7 @@ export function createKeyDispatch(deps: KeyDispatchDeps): KeyDispatch {
       return
     }
 
-    // ESC while folder sizes are being calculated stops the count (Total Commander's
-    // Esc). Not while renaming: there Esc cancels the rename.
-    const countingPane = deps.getPaneRef(deps.getFocusedPane())
-    if (
-      e.key === 'Escape' &&
-      countingPane &&
-      !countingPane.isRenaming() &&
-      cancelCountInPane(countingPane.getListingId())
-    ) {
+    if (e.key === 'Escape' && stopFolderSizeCount()) {
       e.preventDefault()
       return
     }

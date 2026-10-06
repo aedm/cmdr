@@ -444,6 +444,12 @@
     "confidence": "high",
     "sources": "MS"
   },
+  "calculate": {
+    "chosen": "計算",
+    "confidence": "tentative",
+    "forms": "Calculate folder sizes → 計算資料夾大小",
+    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+  },
   "camera": {
     "chosen": "相機",
     "confidence": "high",

@@ -156,6 +156,14 @@
   "@commands.viewShowHidden.label": {
     "sourceHash": "6aa9b55"
   },
+  "commands.viewCalculateFolderSizes.label": "Tính kích cỡ thư mục",
+  "@commands.viewCalculateFolderSizes.label": {
+    "sourceHash": "d2a83da"
+  },
+  "commands.viewCalculateFolderSizes.description": "Hiển thị kích cỡ của mọi thư mục chưa có kích cỡ trong khung này. Nhấn Escape để dừng.",
+  "@commands.viewCalculateFolderSizes.description": {
+    "sourceHash": "2a7568d"
+  },
   "commands.viewBriefMode.label": "Chuyển sang dạng xem Rút gọn",
   "@commands.viewBriefMode.label": {
     "sourceHash": "bcf6636"

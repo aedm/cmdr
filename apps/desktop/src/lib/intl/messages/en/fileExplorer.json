@@ -966,7 +966,7 @@
       "count": "the same number of items (drives the singular/plural form)"
     }
   },
-  "fileExplorer.folderSizes.notConnected": "Can’t calculate folder sizes here: this location isn’t connected right now",
+  "fileExplorer.folderSizes.notConnected": "Can’t calculate folder sizes here: this location isn’t connected right now.",
   "@fileExplorer.folderSizes.notConnected": {
     "description": "Toast when Calculate folder sizes (Alt+Shift+Enter) can't start because the pane's drive or server is no longer connected."
   },

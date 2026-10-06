@@ -62,7 +62,7 @@
     "distinct": ["create"],
     "en": "add",
     "match": ["add", "adds", "adding", "added"],
-    "notMatch": ["add up", "adds a row", "add iso date prefix"],
+    "notMatch": ["add up", "adds up", "adding up", "added up", "adds a row", "add iso date prefix"],
     "sense": "Putting something into an existing list or report (a folder, a server, a favorite, a note)."
   },
   "advanced": {
@@ -419,6 +419,12 @@
     "en": "cache",
     "match": ["cache", "caches", "cached"],
     "sense": "Locally stored data kept to speed things up."
+  },
+  "calculate": {
+    "distinct": ["size"],
+    "en": "calculate",
+    "match": ["calculate", "calculates", "calculated", "calculating"],
+    "sense": "Working out a folder's total size on demand (Calculate folder sizes, Space on a folder), Total Commander's Calculate occupied space and Finder's Calculate all sizes."
   },
   "camera": {
     "distinct": ["camera-details", "device"],

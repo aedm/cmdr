@@ -179,7 +179,8 @@ const EXPECTED_NAMES: Record<string, string> = {
 
 /** id → exact pre-migration English `description` (only commands that had one). */
 const EXPECTED_DESCRIPTIONS: Record<string, string | undefined> = {
-  'view.calculateFolderSizes': 'Shows the size of every folder in this pane that doesn’t have one yet. Esc stops it.',
+  'view.calculateFolderSizes':
+    'Shows the size of every folder in this pane that doesn’t have one yet. Esc stops the calculation.',
   'app.checkForUpdates': 'Check whether a newer version of Cmdr is available, and download it if so',
   'cmdr.openOnboarding': 'Reopen the onboarding wizard to review or change first-launch setup options',
   'help.openShortcuts': 'Open a read-only window listing every keyboard shortcut, live-synced with your customizations',

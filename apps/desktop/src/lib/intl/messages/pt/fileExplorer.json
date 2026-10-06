@@ -637,6 +637,10 @@
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
   },
+  "fileExplorer.folderSizes.notConnected": "Não é possível calcular os tamanhos das pastas aqui: este local não está conectado no momento.",
+  "@fileExplorer.folderSizes.notConnected": {
+    "sourceHash": "8b51988"
+  },
   "fileExplorer.clipboard.cutReady": "{count, plural, one {{countText} item pronto} many {{countText} itens prontos} other {{countText} itens prontos}} para mover. Cole para concluir.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

@@ -427,6 +427,13 @@
     "confidence": "high",
     "sources": "ms (cache → gyorsítótár); catalog"
   },
+  "calculate": {
+    "accept": ["kiszámít", "számol", "számít"],
+    "chosen": "kiszámítás",
+    "confidence": "tentative",
+    "forms": "Calculate folder sizes → Mappaméretek kiszámítása; adding up in prose → összeadja",
+    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+  },
   "camera-details": {
     "chosen": "kameraadatok",
     "accept": ["kameraadat"],

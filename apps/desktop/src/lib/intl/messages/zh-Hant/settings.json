@@ -302,6 +302,14 @@
   "@settings.listing.foldersFirst.description": {
     "sourceHash": "8505ff3"
   },
+  "settings.listing.spaceCalculatesFolderSize.label": "按 Space 鍵計算資料夾大小",
+  "@settings.listing.spaceCalculatesFolderSize.label": {
+    "sourceHash": "1a403eb"
+  },
+  "settings.listing.spaceCalculatesFolderSize.description": "用 Space 鍵選取一個還不知道大小的資料夾時，Cmdr 會把裡面的內容加起來並顯示總大小。按 Esc 鍵即可停止。",
+  "@settings.listing.spaceCalculatesFolderSize.description": {
+    "sourceHash": "38d64c1"
+  },
   "settings.listing.directorySortMode.label": "資料夾排序",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7d0b088"

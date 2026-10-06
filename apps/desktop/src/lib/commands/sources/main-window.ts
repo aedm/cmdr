@@ -97,7 +97,7 @@ export const mainWindowCommands: CommandSource[] = [
   },
   {
     // Total Commander's Alt+Shift+Enter: the size of every folder in the pane
-    // whose exact size isn't known yet. Esc stops it.
+    // whose exact size isn't known yet. Esc stops the calculation.
     id: 'view.calculateFolderSizes',
     nameKey: 'commands.viewCalculateFolderSizes.label',
     scope: 'Main window',
