@@ -295,6 +295,7 @@ export const menuCommands = [
   'selection.selectAll',
   'selection.deselectAll',
   'selection.selectSameKind',
+  'selection.compareDirectories',
   'selection.invert',
   'selection.selectFiles',
   'selection.deselectFiles',

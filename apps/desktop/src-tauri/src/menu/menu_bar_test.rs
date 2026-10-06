@@ -80,6 +80,8 @@ menu menu.bar.select id=menu_select
   4 separator
   5 item select_files menu.select.files [display +] tracked
   6 item deselect_files menu.select.deselectFiles [display -] tracked
+  7 separator
+  8 item compare_directories menu.select.compareDirectories [Shift+F2] tracked
 menu menu.bar.view id=menu_view
   0 submenu menu.view.leftPane pane:left
       0 check view_mode_full_left menu.view.fullView [Cmd+1] view-mode:left:full
@@ -196,6 +198,8 @@ menu menu.bar.select
   4 separator
   5 item select_files menu.select.files (+) tracked
   6 item deselect_files menu.select.deselectFiles (-) tracked
+  7 separator
+  8 item compare_directories menu.select.compareDirectories tracked
 menu menu.bar.view
   0 submenu menu.view.leftPane pane:left
       0 check view_mode_full_left menu.view.fullView [Cmd+1] view-mode:left:full

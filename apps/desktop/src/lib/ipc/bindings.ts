@@ -453,6 +453,26 @@ export const commands = {
     typedError<number | null, ListingLookupError>(
       __TAURI_INVOKE('find_file_index', { listingId, name, includeHidden }),
     ),
+  /**
+   *  Compare directories (⇧F2): which rows each pane should mark against the
+   *  other. A pure read of the two cached listings; see `listing/compare.rs`.
+   */
+  compareDirectories: (
+    leftListingId: string,
+    leftIncludeHidden: boolean,
+    rightListingId: string,
+    rightIncludeHidden: boolean,
+    mode: CompareDirectoriesMode,
+  ) =>
+    typedError<CompareDirectoriesResult, CompareDirectoriesError>(
+      __TAURI_INVOKE('compare_directories', {
+        leftListingId,
+        leftIncludeHidden,
+        rightListingId,
+        rightIncludeHidden,
+        mode,
+      }),
+    ),
   findFileIndices: (listingId: string, names: string[], includeHidden: boolean) =>
     typedError<{ [key in string]: number }, ListingLookupError>(
       __TAURI_INVOKE('find_file_indices', { listingId, names, includeHidden }),
@@ -6003,6 +6023,36 @@ export type CloudAiConsentWriteError =
   | { kind: 'storeUnavailable' }
   // `main.db` refused the write. `detail` is for logs only.
   | { kind: 'storeRefused'; detail: string }
+
+// Why a comparison didn't answer. Typed, so the frontend never reads a message.
+export type CompareDirectoriesError =
+  // A pane's listing is no longer cached (its pane moved on).
+  | { type: 'gone'; listingId: string }
+  // The comparison didn't finish within its deadline.
+  | { type: 'timedOut' }
+  // The comparison's worker failed; `detail` is log text only.
+  | { type: 'internal'; detail: string }
+
+/**
+ *  Which copies count as different, beyond the files missing on the other side
+ *  (marked in every mode).
+ */
+export type CompareDirectoriesMode =
+  /**
+   *  Total Commander's default: the newer copy of a file is marked, the older
+   *  one isn't.
+   */
+  | 'newerAndMissing'
+  // Only the files the other side doesn't have.
+  | 'missing'
+  // Both copies of a file whose size differs, whichever is newer.
+  | 'sizeAndMissing'
+
+// The rows to mark in each pane, in that pane's row space (no `..` offset).
+export type CompareDirectoriesResult = {
+  left: number[]
+  right: number[]
+}
 
 /**
  *  Estimated compressed output size for a Compress operation, split by

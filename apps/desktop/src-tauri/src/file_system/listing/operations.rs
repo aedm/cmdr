@@ -188,7 +188,7 @@ pub enum ListingLookupError {
 }
 
 impl ListingLookupError {
-    fn gone(listing_id: &str) -> Self {
+    pub(crate) fn gone(listing_id: &str) -> Self {
         Self::Gone {
             listing_id: listing_id.to_string(),
         }

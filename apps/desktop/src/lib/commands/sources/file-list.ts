@@ -618,6 +618,35 @@ export const fileListCommands: CommandSource[] = [
     displayName: sameKindCommandLabel,
   },
   {
+    // Total Commander's ⇧F2: each pane marks the files the other lacks plus the
+    // newer copies, so F5 afterwards brings the other side up to date.
+    id: 'selection.compareDirectories',
+    nameKey: 'commands.selectionCompareDirectories.label',
+    scope: 'Main window/File list',
+    showInPalette: true,
+    shortcuts: ['⇧F2'],
+    whileDialogOpen: BLOCKED_BY_DIALOGS,
+    descriptionKey: 'commands.selectionCompareDirectories.description',
+  },
+  {
+    id: 'selection.compareDirectoriesMissing',
+    nameKey: 'commands.selectionCompareDirectoriesMissing.label',
+    scope: 'Main window/File list',
+    showInPalette: true,
+    shortcuts: [],
+    whileDialogOpen: BLOCKED_BY_DIALOGS,
+    descriptionKey: 'commands.selectionCompareDirectoriesMissing.description',
+  },
+  {
+    id: 'selection.compareDirectoriesSize',
+    nameKey: 'commands.selectionCompareDirectoriesSize.label',
+    scope: 'Main window/File list',
+    showInPalette: true,
+    shortcuts: [],
+    whileDialogOpen: BLOCKED_BY_DIALOGS,
+    descriptionKey: 'commands.selectionCompareDirectoriesSize.description',
+  },
+  {
     id: 'selection.selectFiles',
     nameKey: 'commands.selectionSelectFiles.label',
     scope: 'Main window/File list',

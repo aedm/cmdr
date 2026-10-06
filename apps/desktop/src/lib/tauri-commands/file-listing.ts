@@ -1,7 +1,14 @@
 // On-demand virtual scrolling API (listing-based), sync status, font metrics
 
 import { type UnlistenFn } from '@tauri-apps/api/event'
-import { commands, events, type Initiator, type RowBeside } from '$lib/ipc/bindings'
+import {
+  commands,
+  events,
+  type CompareDirectoriesMode,
+  type CompareDirectoriesResult,
+  type Initiator,
+  type RowBeside,
+} from '$lib/ipc/bindings'
 import type {
   FileEntry,
   ListingStats,
@@ -146,6 +153,33 @@ export async function getFileRange(
 export async function getTotalCount(listingId: string, includeHidden: boolean): Promise<number> {
   const res = await commands.getTotalCount(listingId, includeHidden)
   if (res.status === 'error') throwListingLookupError(res.error)
+  return res.data
+}
+
+export type { CompareDirectoriesMode, CompareDirectoriesResult }
+
+/**
+ * Compare directories (⇧F2): the rows each pane should mark against the other,
+ * in each pane's own row space (no `..` offset).
+ */
+export async function compareDirectories(
+  leftListingId: string,
+  leftIncludeHidden: boolean,
+  rightListingId: string,
+  rightIncludeHidden: boolean,
+  mode: CompareDirectoriesMode,
+): Promise<CompareDirectoriesResult> {
+  const res = await commands.compareDirectories(
+    leftListingId,
+    leftIncludeHidden,
+    rightListingId,
+    rightIncludeHidden,
+    mode,
+  )
+  if (res.status === 'error') {
+    if (res.error.type === 'gone') throwListingLookupError(res.error)
+    throwIpcError(res.error)
+  }
   return res.data
 }
 

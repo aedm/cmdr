@@ -3,6 +3,7 @@
  * Used by +page.svelte, command-dispatch.ts, and mcp-listeners.ts.
  */
 
+import type { CompareDirectoriesMode } from '$lib/tauri-commands'
 import type { ViewMode } from '$lib/app-status-store'
 import type { McpSelectMode, McpTabAction, ConfirmDialogType } from '$lib/commands'
 import type { TabMoveRequest } from '$lib/file-explorer/pane/tab-operations'
@@ -47,6 +48,8 @@ export interface ExplorerAPI {
   refocus: () => void
   switchPane: () => void
   swapPanes: () => void
+  /** Compare directories (⇧F2): mark what differs between the two panes. */
+  compareDirectories: (mode: CompareDirectoriesMode) => Promise<void>
   copyPathBetweenPanes: (args: CopyPathBetweenPanesArgs) => void
   toggleVolumeChooser: (pane: 'left' | 'right') => void
   openVolumeChooser: () => void

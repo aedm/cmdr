@@ -4,6 +4,7 @@ pub(crate) mod brief_columns;
 pub(crate) mod cached_listing;
 pub(crate) mod caching;
 pub(crate) mod collation;
+pub(crate) mod compare;
 pub(crate) mod diff;
 pub(crate) mod diff_emitter;
 pub(crate) mod foreign_path;
@@ -75,6 +76,8 @@ pub(crate) mod caching_test_support;
 // reading language and shares that lock with `intl::native_strings`.
 #[cfg(test)]
 mod collation_test;
+#[cfg(test)]
+mod compare_test;
 #[cfg(test)]
 mod diff_emitter_test;
 #[cfg(test)]

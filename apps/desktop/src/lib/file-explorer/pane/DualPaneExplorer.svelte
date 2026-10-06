@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { compareDirectories as runCompareDirectories } from './compare-directories'
+    import type { CompareDirectoriesMode } from '$lib/tauri-commands'
     import { onMount, onDestroy, untrack } from 'svelte'
     import FilePane from './FilePane.svelte'
     import type {
@@ -854,6 +856,11 @@
      */
     export function swapPanes(): void {
         swapper.swapPanes()
+    }
+
+    /** Compare directories (⇧F2), `compare-directories.ts`. */
+    export function compareDirectories(mode: CompareDirectoriesMode): Promise<void> {
+        return runCompareDirectories({ getPaneRef, getShowHiddenFiles: () => showHiddenFiles }, mode)
     }
 
     export function toggleVolumeChooser(pane: 'left' | 'right') {

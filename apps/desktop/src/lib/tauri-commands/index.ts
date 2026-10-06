@@ -9,6 +9,7 @@ export {
   getFileRange,
   getTotalCount,
   findFileIndex,
+  compareDirectories,
   findFileIndices,
   findFirstFuzzyMatch,
   getFileAt,
@@ -49,6 +50,7 @@ export {
   getBriefColumnTextWidths,
 } from './file-listing'
 // Streaming-listing event payload types, from the typed-events bindings via `file-listing.ts`.
+export type { CompareDirectoriesMode, CompareDirectoriesResult } from './file-listing'
 export type {
   ListingOpeningEvent,
   ListingStalledEvent,
