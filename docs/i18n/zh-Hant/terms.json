@@ -3273,8 +3273,8 @@
   },
   "subfolder": {
     "chosen": "子資料夾",
-    "confidence": "tentative",
-    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); the folder ruling's forms already name it; reference pile unavailable on this machine, so unverified against TC/Finder"
+    "confidence": "high",
+    "sources": "TC zh-TW (子資料夾), DC, Nautilus, Thunar, Dolphin (建立子資料夾) agree; Finder zh-TW says 子檔案夾, the AP-TW outlier the folder ruling avoids (style.md § The Apple-zh-TW outlier rule)"
   },
   "subscription": {
     "chosen": "訂閱",

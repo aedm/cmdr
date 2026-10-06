@@ -473,11 +473,11 @@
     "avoid": [
       {
         "form": "Comparar diretórios",
-        "why": "TC's wording; Cmdr follows Finder's pasta"
+        "why": "MC's wording; TC pt-BR, DC and Finder say pasta"
       }
     ],
-    "confidence": "tentative",
-    "sources": "TC (pt-BR) names the command Comparar diretórios; Cmdr follows the folder ruling (Finder pasta). Pile unavailable on this machine; TC wording from memory"
+    "confidence": "high",
+    "sources": "TC 11.58 pt-BR menu Comparar pastas (exact match, ⇧F2) and DC Comparar pastas; MC Comparar diretórios; Finder pasta"
   },
   "complete": {
     "chosen": "concluir",
@@ -2549,8 +2549,8 @@
   "subfolder": {
     "chosen": "subpasta",
     "accept": ["subpastas"],
-    "confidence": "tentative",
-    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); reference pile unavailable on this machine, so unverified against TC/Finder"
+    "confidence": "high",
+    "sources": "macOS Finder pt-BR (PE26.1 … para uma de suas subpastas); TC pt-BR (Subpastas), DC, Nautilus, Thunar, Dolphin (Criar subpasta) agree"
   },
   "suggestion": {
     "chosen": "sugestão",

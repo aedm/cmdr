@@ -927,7 +927,7 @@
     "avoid": [
       {
         "form": "Сравнить каталоги",
-        "why": "DC's wording; Cmdr follows Finder's папка"
+        "why": "TC's, DC's and MC's wording; Cmdr follows Finder's папка"
       },
       {
         "form": "Синхронизация каталогов",
@@ -935,7 +935,7 @@
       }
     ],
     "confidence": "high",
-    "sources": "DC (Compare Directories → Сравнить каталоги); TC 6251 (Синхронизация каталогов, a different feature); folder ruling (Finder Папка)"
+    "sources": "TC 11.58 ru menu and command list (533, ⇧F2), DC and MC all say Сравнить каталоги; TC 6251 (Синхронизация каталогов, a different feature); folder ruling (Finder Папка)"
   },
   "complete": {
     "chosen": "завершено",

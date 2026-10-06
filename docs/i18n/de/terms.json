@@ -602,8 +602,8 @@
         "why": "TC's wording; Cmdr follows Finder's Ordner"
       }
     ],
-    "confidence": "tentative",
-    "sources": "TC names the command Verzeichnisse vergleichen (Mark menu, ⇧F2); Cmdr follows the folder ruling (Finder Ordner), as ru did. Pile unavailable on this machine, so TC wording is from memory"
+    "confidence": "high",
+    "sources": "TC 11.58 (Markieren menu, ⇧F2), DC and MC all say Verzeichnisse vergleichen; Cmdr follows the folder ruling (Finder Ordner, Unterordner). TC's compare by content → Vergleich nach Inhalt"
   },
   "complete": {
     "accept": ["abschließen", "abgeschlossen", "unvollständig", "abschluss", "abzuschließen"],
@@ -2847,8 +2847,8 @@
   },
   "subfolder": {
     "chosen": "Unterordner",
-    "confidence": "tentative",
-    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); reference pile unavailable on this machine, so unverified against TC/Finder"
+    "confidence": "high",
+    "sources": "macOS Finder (PE26.1 … in einen seiner Unterordner bewegt); Nautilus, Thunar, Dolphin (Unterordner erstellen) agree; TC/DC/MC say Unterverzeichnis (directory wording, avoided)"
   },
   "subscription": {
     "accept": ["Abos", "Abonnement"],

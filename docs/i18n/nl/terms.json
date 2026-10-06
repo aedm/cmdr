@@ -527,8 +527,8 @@
     "chosen": "Vergelijk mappen",
     "accept": ["vergelijk"],
     "forms": "menu item Vergelijk mappen; the act → het vergelijken van de mappen",
-    "confidence": "tentative",
-    "sources": "TC names the command Vergelijk mappen / Mappen vergelijken; bare-stem imperative per the menu register; catalog already says vergelijken. Pile unavailable on this machine; TC wording from memory"
+    "confidence": "high",
+    "sources": "DC Vergelijk mappen (exact match); MC Mappen vergelijken; TC 11.58 Directory's vergelijken; Finder map; bare-stem imperative per the menu register"
   },
   "complete": {
     "accept": ["voltooi", "voltooien", "onvolledig", "niet voltooid"],
@@ -2773,8 +2773,8 @@
   "subfolder": {
     "chosen": "submap",
     "accept": ["submappen"],
-    "confidence": "tentative",
-    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); reference pile unavailable on this machine, so unverified against TC/Finder"
+    "confidence": "high",
+    "sources": "macOS Finder (PE26.1 … naar een van de submappen); DC, MC, Nautilus, Thunar, Dolphin (Submap aanmaken) agree"
   },
   "suggestion": {
     "accept": ["suggesties", "voorgesteld", "voorstel"],
