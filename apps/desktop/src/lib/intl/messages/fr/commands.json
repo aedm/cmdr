@@ -676,6 +676,30 @@
   "@commands.selectionSelectSameKind.description": {
     "sourceHash": "9a95212"
   },
+  "commands.selectionCompareDirectories.label": "Comparer les dossiers",
+  "@commands.selectionCompareDirectories.label": {
+    "sourceHash": "5cf3985"
+  },
+  "commands.selectionCompareDirectories.description": "Sélectionne, dans chaque panneau, les fichiers absents de l’autre panneau, ainsi que les copies les plus récentes des autres fichiers",
+  "@commands.selectionCompareDirectories.description": {
+    "sourceHash": "190d99f"
+  },
+  "commands.selectionCompareDirectoriesMissing.label": "Comparer les dossiers : fichiers manquants uniquement",
+  "@commands.selectionCompareDirectoriesMissing.label": {
+    "sourceHash": "d03d3c1"
+  },
+  "commands.selectionCompareDirectoriesMissing.description": "Sélectionne, dans chaque panneau, uniquement les fichiers absents de l’autre panneau",
+  "@commands.selectionCompareDirectoriesMissing.description": {
+    "sourceHash": "e61c71b"
+  },
+  "commands.selectionCompareDirectoriesSize.label": "Comparer les dossiers : taille différente",
+  "@commands.selectionCompareDirectoriesSize.label": {
+    "sourceHash": "6c8fd21"
+  },
+  "commands.selectionCompareDirectoriesSize.description": "Sélectionne, dans chaque panneau, les fichiers absents de l’autre panneau, ainsi que les deux copies des fichiers dont la taille diffère",
+  "@commands.selectionCompareDirectoriesSize.description": {
+    "sourceHash": "ac31996"
+  },
   "commands.selectionSelectSameKind.allFolders": "Sélectionner tous les dossiers",
   "@commands.selectionSelectSameKind.allFolders": {
     "sourceHash": "5351f8b"

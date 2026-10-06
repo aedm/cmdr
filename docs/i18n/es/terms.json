@@ -493,6 +493,18 @@
     "confidence": "high",
     "sources": "standard"
   },
+  "compare-folders": {
+    "chosen": "Comparar carpetas",
+    "accept": ["compar"],
+    "avoid": [
+      {
+        "form": "Comparar directorios",
+        "why": "TC's wording; Cmdr follows Finder's carpeta"
+      }
+    ],
+    "confidence": "tentative",
+    "sources": "TC names the command Comparar directorios; Cmdr follows the folder ruling (Finder carpeta). Pile unavailable on this machine; TC wording from memory"
+  },
   "complete": {
     "chosen": "completar",
     "accept": ["complet", "termin", "parcial"],
@@ -2587,6 +2599,12 @@
     "accept": ["transmit"],
     "confidence": "tentative",
     "sources": "standard"
+  },
+  "subfolder": {
+    "chosen": "subcarpeta",
+    "accept": ["subcarpetas"],
+    "confidence": "tentative",
+    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); reference pile unavailable on this machine, so unverified against TC/Finder"
   },
   "suggestion": {
     "chosen": "sugerencia",

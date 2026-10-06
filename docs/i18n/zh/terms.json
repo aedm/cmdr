@@ -554,6 +554,18 @@
     "confidence": "high",
     "sources": "descriptive"
   },
+  "compare-folders": {
+    "chosen": "比较文件夹",
+    "accept": ["比较"],
+    "avoid": [
+      {
+        "form": "比较目录",
+        "why": "TC/DC wording; user-facing copy says 文件夹"
+      }
+    ],
+    "confidence": "tentative",
+    "sources": "TC/DC say 比较目录; Cmdr follows the folder ruling (文件夹); catalog already says 比较. Pile unavailable on this machine; TC wording from memory"
+  },
   "complete": {
     "accept": ["完整"],
     "chosen": "完成",
@@ -2863,6 +2875,11 @@
     "confidence": "high",
     "forms": "the viewer badge 流式读取",
     "sources": "MS terminology"
+  },
+  "subfolder": {
+    "chosen": "子文件夹",
+    "confidence": "tentative",
+    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); reference pile unavailable on this machine, so unverified against TC/Finder"
   },
   "subscription": {
     "chosen": "订阅",

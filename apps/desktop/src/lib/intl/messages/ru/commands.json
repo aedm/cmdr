@@ -676,6 +676,30 @@
   "@commands.selectionSelectSameKind.description": {
     "sourceHash": "9a95212"
   },
+  "commands.selectionCompareDirectories.label": "Сравнить папки",
+  "@commands.selectionCompareDirectories.label": {
+    "sourceHash": "5cf3985"
+  },
+  "commands.selectionCompareDirectories.description": "Выделить в каждой панели файлы, которых нет в другой панели, и более новые копии остальных",
+  "@commands.selectionCompareDirectories.description": {
+    "sourceHash": "190d99f"
+  },
+  "commands.selectionCompareDirectoriesMissing.label": "Сравнить папки: только отсутствующие файлы",
+  "@commands.selectionCompareDirectoriesMissing.label": {
+    "sourceHash": "d03d3c1"
+  },
+  "commands.selectionCompareDirectoriesMissing.description": "Выделить в каждой панели только файлы, которых нет в другой панели",
+  "@commands.selectionCompareDirectoriesMissing.description": {
+    "sourceHash": "e61c71b"
+  },
+  "commands.selectionCompareDirectoriesSize.label": "Сравнить папки: разный размер",
+  "@commands.selectionCompareDirectoriesSize.label": {
+    "sourceHash": "6c8fd21"
+  },
+  "commands.selectionCompareDirectoriesSize.description": "Выделить в каждой панели файлы, которых нет в другой панели, и обе копии файлов разного размера",
+  "@commands.selectionCompareDirectoriesSize.description": {
+    "sourceHash": "ac31996"
+  },
   "commands.selectionSelectSameKind.allFolders": "Выделить все папки",
   "@commands.selectionSelectSameKind.allFolders": {
     "sourceHash": "5351f8b"

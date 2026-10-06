@@ -638,6 +638,34 @@
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
   },
+  "fileExplorer.compareDirectories.marked": "Afwijkende bestanden geselecteerd: {leftCountText} {leftCount, plural, one {bestand} other {bestanden}} links en {rightCountText} {rightCount, plural, one {bestand} other {bestanden}} rechts.",
+  "@fileExplorer.compareDirectories.marked": {
+    "sourceHash": "73e3ccf"
+  },
+  "fileExplorer.compareDirectories.noDifferences.newerAndMissing": "Niets te selecteren: elk bestand staat in beide mappen, en geen van beide kopieën is nieuwer. Submappen worden niet vergeleken.",
+  "@fileExplorer.compareDirectories.noDifferences.newerAndMissing": {
+    "sourceHash": "c2960d8"
+  },
+  "fileExplorer.compareDirectories.noDifferences.missing": "Niets te selecteren: elk bestand staat in beide mappen. Submappen worden niet vergeleken.",
+  "@fileExplorer.compareDirectories.noDifferences.missing": {
+    "sourceHash": "ed2e696"
+  },
+  "fileExplorer.compareDirectories.noDifferences.sizeAndMissing": "Niets te selecteren: elk bestand staat in beide mappen, met dezelfde grootte. Submappen worden niet vergeleken.",
+  "@fileExplorer.compareDirectories.noDifferences.sizeAndMissing": {
+    "sourceHash": "5f7b808"
+  },
+  "fileExplorer.compareDirectories.keptChanging": "De mappen bleven veranderen tijdens het vergelijken. Probeer het opnieuw zodra ze niet meer veranderen.",
+  "@fileExplorer.compareDirectories.keptChanging": {
+    "sourceHash": "3051074"
+  },
+  "fileExplorer.compareDirectories.needsTwoFolders": "Open in beide panelen een map om ze te vergelijken",
+  "@fileExplorer.compareDirectories.needsTwoFolders": {
+    "sourceHash": "c04ef80"
+  },
+  "fileExplorer.compareDirectories.couldNotFinish": "Het vergelijken van de mappen is niet voltooid. Probeer het zo meteen opnieuw.",
+  "@fileExplorer.compareDirectories.couldNotFinish": {
+    "sourceHash": "0900bc9"
+  },
   "fileExplorer.clipboard.cutReady": "{countText} {count, plural, one {onderdeel} other {onderdelen}} klaar om te verplaatsen. Plak om te voltooien.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

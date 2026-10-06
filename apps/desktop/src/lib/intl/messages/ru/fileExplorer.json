@@ -637,6 +637,34 @@
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
   },
+  "fileExplorer.compareDirectories.marked": "Выделены отличающиеся файлы: {leftCountText} {leftCount, plural, one {файл} few {файла} many {файлов} other {файла}} слева и {rightCountText} {rightCount, plural, one {файл} few {файла} many {файлов} other {файла}} справа.",
+  "@fileExplorer.compareDirectories.marked": {
+    "sourceHash": "73e3ccf"
+  },
+  "fileExplorer.compareDirectories.noDifferences.newerAndMissing": "Нечего выделять: каждый файл есть в обеих папках, и ни одна из копий не новее. Вложенные папки не сравниваются.",
+  "@fileExplorer.compareDirectories.noDifferences.newerAndMissing": {
+    "sourceHash": "c2960d8"
+  },
+  "fileExplorer.compareDirectories.noDifferences.missing": "Нечего выделять: каждый файл есть в обеих папках. Вложенные папки не сравниваются.",
+  "@fileExplorer.compareDirectories.noDifferences.missing": {
+    "sourceHash": "ed2e696"
+  },
+  "fileExplorer.compareDirectories.noDifferences.sizeAndMissing": "Нечего выделять: каждый файл есть в обеих папках, и копии одного размера. Вложенные папки не сравниваются.",
+  "@fileExplorer.compareDirectories.noDifferences.sizeAndMissing": {
+    "sourceHash": "5f7b808"
+  },
+  "fileExplorer.compareDirectories.keptChanging": "Папки все время менялись, пока шло сравнение. Попробуйте еще раз, когда они перестанут меняться.",
+  "@fileExplorer.compareDirectories.keptChanging": {
+    "sourceHash": "3051074"
+  },
+  "fileExplorer.compareDirectories.needsTwoFolders": "Откройте папку в каждой панели, чтобы сравнить папки",
+  "@fileExplorer.compareDirectories.needsTwoFolders": {
+    "sourceHash": "c04ef80"
+  },
+  "fileExplorer.compareDirectories.couldNotFinish": "Не удалось завершить сравнение папок. Попробуйте еще раз чуть позже.",
+  "@fileExplorer.compareDirectories.couldNotFinish": {
+    "sourceHash": "0900bc9"
+  },
   "fileExplorer.clipboard.cutReady": "Готово к перемещению: {countText} {count, plural, one {объект} few {объекта} many {объектов} other {объекта}}. Вставьте, чтобы завершить.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

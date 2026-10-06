@@ -467,6 +467,18 @@
     "confidence": "tentative",
     "sources": "shipped pt catalog"
   },
+  "compare-folders": {
+    "chosen": "Comparar pastas",
+    "accept": ["compar"],
+    "avoid": [
+      {
+        "form": "Comparar diretórios",
+        "why": "TC's wording; Cmdr follows Finder's pasta"
+      }
+    ],
+    "confidence": "tentative",
+    "sources": "TC (pt-BR) names the command Comparar diretórios; Cmdr follows the folder ruling (Finder pasta). Pile unavailable on this machine; TC wording from memory"
+  },
   "complete": {
     "chosen": "concluir",
     "accept": ["conclu", "incomplet"],
@@ -2533,6 +2545,12 @@
     "accept": ["transmit"],
     "confidence": "tentative",
     "sources": "shipped pt catalog"
+  },
+  "subfolder": {
+    "chosen": "subpasta",
+    "accept": ["subpastas"],
+    "confidence": "tentative",
+    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); reference pile unavailable on this machine, so unverified against TC/Finder"
   },
   "suggestion": {
     "chosen": "sugestão",

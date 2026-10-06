@@ -182,6 +182,11 @@ export interface FilePaneAPI {
   restoreHistoryCursor(target: HistoryCursorTarget): void
   isInNetworkView(): boolean
   hasParentEntry(): boolean
+  /**
+   * The last `directory-diff` sequence applied: which state of the listing the rows
+   * show. Row numbers the backend read at another sequence don't fit them.
+   */
+  getLastSequence(): number
   getCurrentPath(): string
   getVolumeId(): string
   isMtp(): boolean

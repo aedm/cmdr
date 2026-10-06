@@ -637,6 +637,34 @@
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
   },
+  "fileExplorer.compareDirectories.marked": "Eltérő fájlok kijelölve: {leftCountText} {leftCount, plural, one {fájl} other {fájl}} a bal oldalon és {rightCountText} {rightCount, plural, one {fájl} other {fájl}} a jobb oldalon.",
+  "@fileExplorer.compareDirectories.marked": {
+    "sourceHash": "73e3ccf"
+  },
+  "fileExplorer.compareDirectories.noDifferences.newerAndMissing": "Nincs mit kijelölni: minden fájl megvan mindkét mappában, és egyik másolat sem újabb. Az almappákat a Cmdr nem hasonlítja össze.",
+  "@fileExplorer.compareDirectories.noDifferences.newerAndMissing": {
+    "sourceHash": "c2960d8"
+  },
+  "fileExplorer.compareDirectories.noDifferences.missing": "Nincs mit kijelölni: minden fájl megvan mindkét mappában. Az almappákat a Cmdr nem hasonlítja össze.",
+  "@fileExplorer.compareDirectories.noDifferences.missing": {
+    "sourceHash": "ed2e696"
+  },
+  "fileExplorer.compareDirectories.noDifferences.sizeAndMissing": "Nincs mit kijelölni: minden fájl megvan mindkét mappában, azonos mérettel. Az almappákat a Cmdr nem hasonlítja össze.",
+  "@fileExplorer.compareDirectories.noDifferences.sizeAndMissing": {
+    "sourceHash": "5f7b808"
+  },
+  "fileExplorer.compareDirectories.keptChanging": "A mappák az összehasonlítás közben folyamatosan változtak. Próbáld újra, ha már nem változnak.",
+  "@fileExplorer.compareDirectories.keptChanging": {
+    "sourceHash": "3051074"
+  },
+  "fileExplorer.compareDirectories.needsTwoFolders": "Nyiss meg egy-egy mappát mindkét panelen az összehasonlításhoz",
+  "@fileExplorer.compareDirectories.needsTwoFolders": {
+    "sourceHash": "c04ef80"
+  },
+  "fileExplorer.compareDirectories.couldNotFinish": "Nem sikerült befejezni a mappák összehasonlítását. Próbáld újra egy pillanat múlva.",
+  "@fileExplorer.compareDirectories.couldNotFinish": {
+    "sourceHash": "0900bc9"
+  },
   "fileExplorer.clipboard.cutReady": "{countText} {count, plural, one {elem} other {elem}} áthelyezésre kész. Illeszd be a befejezéshez.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

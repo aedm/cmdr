@@ -3,7 +3,9 @@
  * - both panes' listings and the hidden-files setting go to the backend,
  * - each pane's selection becomes the backend's rows plus its own `..` offset,
  * - the toasts: what was selected, no differences, a pane with no folder,
- * - an answer for panes that moved on meanwhile is dropped.
+ * - an answer for panes that moved on meanwhile is dropped,
+ * - an answer read from another state than the panes show is asked again, and
+ *   given up on (with a toast) when the folders keep changing.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -21,7 +23,7 @@ vi.mock('$lib/logging/logger', () => ({
   getAppLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }))
 
-import { compareDirectories } from './compare-directories'
+import { COMPARE_ATTEMPTS, COMPARE_RETRY_DELAY_MS, compareDirectories } from './compare-directories'
 import type { FilePaneAPI } from './types'
 
 function paneRef(listingId: string, hasParent: boolean) {
@@ -29,6 +31,8 @@ function paneRef(listingId: string, hasParent: boolean) {
     listingId,
     getListingId: vi.fn(() => ref.listingId),
     hasParentEntry: vi.fn(() => hasParent),
+    sequence: 0,
+    getLastSequence: vi.fn(() => ref.sequence),
     setSelectedIndices: vi.fn(),
   }
   return ref
@@ -41,13 +45,18 @@ function deps(left: ReturnType<typeof paneRef> | undefined, right: ReturnType<ty
   }
 }
 
+/** A settled answer read at sequence 0 on both sides, as the panes show. */
+function answer(left: number[], right: number[], extra: Record<string, unknown> = {}) {
+  return { left, right, leftSequence: 0, rightSequence: 0, settled: true, ...extra }
+}
+
 describe('compareDirectories', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('selects the backend rows in each pane, with each pane’s own parent offset', async () => {
-    ipc.compareDirectories.mockResolvedValue({ left: [0, 2], right: [1] })
+    ipc.compareDirectories.mockResolvedValue(answer([0, 2], [1]))
     const left = paneRef('L', true)
     const right = paneRef('R', false)
 
@@ -61,7 +70,7 @@ describe('compareDirectories', () => {
   })
 
   it('clears both selections and says so when nothing differs', async () => {
-    ipc.compareDirectories.mockResolvedValue({ left: [], right: [] })
+    ipc.compareDirectories.mockResolvedValue(answer([], []))
     const left = paneRef('L', true)
     const right = paneRef('R', true)
 
@@ -69,7 +78,7 @@ describe('compareDirectories', () => {
 
     expect(left.setSelectedIndices).toHaveBeenCalledWith([])
     expect(right.setSelectedIndices).toHaveBeenCalledWith([])
-    expect(addToast).toHaveBeenCalledWith('fileExplorer.compareDirectories.noDifferences', { level: 'info' })
+    expect(addToast).toHaveBeenCalledWith('fileExplorer.compareDirectories.noDifferences.missing', { level: 'info' })
   })
 
   it('asks for two folders when a pane shows no listing', async () => {
@@ -84,7 +93,7 @@ describe('compareDirectories', () => {
     const right = paneRef('R', false)
     ipc.compareDirectories.mockImplementation(() => {
       left.listingId = 'L2'
-      return Promise.resolve({ left: [0], right: [0] })
+      return Promise.resolve(answer([0], [0]))
     })
 
     await compareDirectories(deps(left, right), 'newerAndMissing')
@@ -107,7 +116,7 @@ describe('compareDirectories', () => {
     const right = paneRef('R', false)
     ipc.compareDirectories.mockImplementation(() => {
       showHidden = false
-      return Promise.resolve({ left: [0], right: [] })
+      return Promise.resolve(answer([0], []))
     })
 
     await compareDirectories(
@@ -129,5 +138,41 @@ describe('compareDirectories', () => {
 
     expect(left.setSelectedIndices).not.toHaveBeenCalled()
     expect(addToast).not.toHaveBeenCalled()
+  })
+
+  it('asks again when the answer was read from a state the panes don’t show yet', async () => {
+    vi.useFakeTimers()
+    const left = paneRef('L', false)
+    const right = paneRef('R', false)
+    // A file appeared on the left: the backend read sequence 1, the pane still shows 0.
+    ipc.compareDirectories
+      .mockResolvedValueOnce(answer([0], [], { leftSequence: 1 }))
+      .mockResolvedValueOnce(answer([1], [], { leftSequence: 1 }))
+
+    const done = compareDirectories(deps(left, right), 'newerAndMissing')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(left.setSelectedIndices).not.toHaveBeenCalled()
+    left.sequence = 1 // the diff landed
+    await vi.advanceTimersByTimeAsync(COMPARE_RETRY_DELAY_MS)
+    await done
+
+    expect(ipc.compareDirectories).toHaveBeenCalledTimes(2)
+    expect(left.setSelectedIndices).toHaveBeenCalledExactlyOnceWith([1])
+    vi.useRealTimers()
+  })
+
+  it('never applies an unsettled answer, and gives up when the folders keep changing', async () => {
+    vi.useFakeTimers()
+    const left = paneRef('L', false)
+    ipc.compareDirectories.mockResolvedValue(answer([0], [], { settled: false }))
+
+    const done = compareDirectories(deps(left, paneRef('R', false)), 'newerAndMissing')
+    await vi.advanceTimersByTimeAsync(COMPARE_RETRY_DELAY_MS * COMPARE_ATTEMPTS)
+    await done
+
+    expect(ipc.compareDirectories).toHaveBeenCalledTimes(COMPARE_ATTEMPTS)
+    expect(left.setSelectedIndices).not.toHaveBeenCalled()
+    expect(addToast).toHaveBeenCalledWith('fileExplorer.compareDirectories.keptChanging', { level: 'warn' })
+    vi.useRealTimers()
   })
 })

@@ -966,9 +966,9 @@
       "count": "the same number of items (drives the singular/plural form)"
     }
   },
-  "fileExplorer.compareDirectories.marked": "Selected {leftCountText} {leftCount, plural, one {file} other {files}} on the left and {rightCountText} {rightCount, plural, one {file} other {files}} on the right that differ",
+  "fileExplorer.compareDirectories.marked": "Selected {leftCountText} {leftCount, plural, one {file} other {files}} on the left and {rightCountText} {rightCount, plural, one {file} other {files}} on the right that differ.",
   "@fileExplorer.compareDirectories.marked": {
-    "description": "Toast after Compare directories (Shift+F2) selected the files that differ between the two side-by-side panes, e.g. \"Selected 3 files on the left and 5 on the right that differ\".",
+    "description": "Toast after Compare directories (Shift+F2) selected the files that differ between the two side-by-side panes, e.g. \"Selected 3 files on the left and 5 files on the right that differ.\".",
     "placeholders": {
       "leftCountText": "how many files were selected in the left pane, already formatted for display",
       "leftCount": "the same number (drives the singular/plural form)",
@@ -976,9 +976,21 @@
       "rightCount": "the same number, for the right pane"
     }
   },
-  "fileExplorer.compareDirectories.noDifferences": "Both folders have the same files",
-  "@fileExplorer.compareDirectories.noDifferences": {
-    "description": "Toast after Compare directories (Shift+F2) found no file missing or newer on either side of the two side-by-side panes."
+  "fileExplorer.compareDirectories.noDifferences.newerAndMissing": "Nothing to select: every file is in both folders, and neither copy is newer. Subfolders aren’t compared.",
+  "@fileExplorer.compareDirectories.noDifferences.newerAndMissing": {
+    "description": "Toast after Compare directories (⇧F2) in its default mode found nothing to select: no file is missing on either side and no copy has a newer modification time. Folders and their contents aren't compared, only the files directly in each folder, by name and the listed modification time or size, so the copy must not promise the files are identical."
+  },
+  "fileExplorer.compareDirectories.noDifferences.missing": "Nothing to select: every file is in both folders. Subfolders aren’t compared.",
+  "@fileExplorer.compareDirectories.noDifferences.missing": {
+    "description": "Toast after Compare directories in its \"only missing files\" mode found nothing to select: no file is missing on either side. Folders and their contents aren't compared, only the files directly in each folder, by name and the listed modification time or size, so the copy must not promise the files are identical."
+  },
+  "fileExplorer.compareDirectories.noDifferences.sizeAndMissing": "Nothing to select: every file is in both folders, at the same size. Subfolders aren’t compared.",
+  "@fileExplorer.compareDirectories.noDifferences.sizeAndMissing": {
+    "description": "Toast after Compare directories in its \"missing or different size\" mode found nothing to select: no file is missing on either side and each pair has the same size. Folders and their contents aren't compared, only the files directly in each folder, by name and the listed modification time or size, so the copy must not promise the files are identical."
+  },
+  "fileExplorer.compareDirectories.keptChanging": "The folders kept changing while they were being compared. Try again once they settle.",
+  "@fileExplorer.compareDirectories.keptChanging": {
+    "description": "Warning toast when Compare directories (⇧F2) gave up because files kept appearing or disappearing in one of the two folders, so it couldn't select the right files safely."
   },
   "fileExplorer.compareDirectories.needsTwoFolders": "Open a folder in both panes to compare them",
   "@fileExplorer.compareDirectories.needsTwoFolders": {

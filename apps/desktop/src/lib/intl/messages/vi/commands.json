@@ -676,6 +676,30 @@
   "@commands.selectionSelectSameKind.description": {
     "sourceHash": "9a95212"
   },
+  "commands.selectionCompareDirectories.label": "So sánh thư mục",
+  "@commands.selectionCompareDirectories.label": {
+    "sourceHash": "5cf3985"
+  },
+  "commands.selectionCompareDirectories.description": "Chọn trong mỗi khung các tệp mà khung kia không có, cùng bản sao mới hơn của các tệp còn lại",
+  "@commands.selectionCompareDirectories.description": {
+    "sourceHash": "190d99f"
+  },
+  "commands.selectionCompareDirectoriesMissing.label": "So sánh thư mục: chỉ tệp bị thiếu",
+  "@commands.selectionCompareDirectoriesMissing.label": {
+    "sourceHash": "d03d3c1"
+  },
+  "commands.selectionCompareDirectoriesMissing.description": "Chỉ chọn trong mỗi khung các tệp mà khung kia không có",
+  "@commands.selectionCompareDirectoriesMissing.description": {
+    "sourceHash": "e61c71b"
+  },
+  "commands.selectionCompareDirectoriesSize.label": "So sánh thư mục: khác kích cỡ",
+  "@commands.selectionCompareDirectoriesSize.label": {
+    "sourceHash": "6c8fd21"
+  },
+  "commands.selectionCompareDirectoriesSize.description": "Chọn trong mỗi khung các tệp mà khung kia không có, cùng cả hai bản sao của những tệp có kích cỡ khác nhau",
+  "@commands.selectionCompareDirectoriesSize.description": {
+    "sourceHash": "ac31996"
+  },
   "commands.selectionSelectSameKind.allFolders": "Chọn tất cả thư mục",
   "@commands.selectionSelectSameKind.allFolders": {
     "sourceHash": "5351f8b"

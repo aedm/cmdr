@@ -536,6 +536,18 @@
     "confidence": "tentative",
     "sources": "catalog"
   },
+  "compare-folders": {
+    "chosen": "Jämför mappar",
+    "accept": ["jämför"],
+    "avoid": [
+      {
+        "form": "Jämför kataloger",
+        "why": "TC's wording; Cmdr follows Finder's mapp"
+      }
+    ],
+    "confidence": "tentative",
+    "sources": "TC names the command Jämför kataloger; Cmdr follows the folder ruling (Finder mapp); catalog already says jämföra. Pile unavailable on this machine; TC wording from memory"
+  },
   "complete": {
     "accept": ["klar", "slutför", "ofullständig", "avbruten"],
     "chosen": "slutföra",
@@ -2647,6 +2659,12 @@
     "confidence": "tentative",
     "forms": "strömma, strömningsläge",
     "sources": "standard Swedish IT"
+  },
+  "subfolder": {
+    "chosen": "undermapp",
+    "accept": ["undermappar"],
+    "confidence": "tentative",
+    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); reference pile unavailable on this machine, so unverified against TC/Finder"
   },
   "subscription": {
     "chosen": "prenumeration",

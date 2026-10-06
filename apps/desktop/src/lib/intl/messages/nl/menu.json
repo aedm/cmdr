@@ -206,6 +206,10 @@
   "@menu.select.sameKind": {
     "sourceHash": "9933028"
   },
+  "menu.select.compareDirectories": "Vergelijk mappen",
+  "@menu.select.compareDirectories": {
+    "sourceHash": "5cf3985"
+  },
   "menu.select.allFolders": "Selecteer alle mappen",
   "@menu.select.allFolders": {
     "sourceHash": "5351f8b"

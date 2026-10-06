@@ -3271,6 +3271,11 @@
     "forms": "the viewer's streaming mode → 串流模式; an AI response streaming in → 串流",
     "sources": "MS streaming → 串流 (HKG, TWN); catalog viewer.statusBar.badge.streaming"
   },
+  "subfolder": {
+    "chosen": "子資料夾",
+    "confidence": "tentative",
+    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); the folder ruling's forms already name it; reference pile unavailable on this machine, so unverified against TC/Finder"
+  },
   "subscription": {
     "chosen": "訂閱",
     "confidence": "high",

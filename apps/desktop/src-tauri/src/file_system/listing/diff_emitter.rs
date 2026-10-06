@@ -32,6 +32,9 @@ const FLUSH_WINDOW_MS: u64 = 50;
 struct PendingDiff {
     changes: Vec<DiffChange>,
     flush_scheduled: bool,
+    /// Changes taken by a flush that hasn't bumped the sequence yet: still
+    /// unsent as far as [`has_unsent_changes`] is concerned.
+    in_flight: bool,
 }
 
 static PENDING_DIFFS: LazyLock<Mutex<HashMap<String, PendingDiff>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
@@ -70,6 +73,18 @@ pub(crate) fn enqueue_diff(listing_id: &str, changes: Vec<DiffChange>) {
     }
 }
 
+/// Whether `listing_id` has changes its pane hasn't been sent yet: queued, or
+/// taken by a flush that hasn't bumped the sequence. While true, the cache already
+/// holds rows the pane doesn't show, so row numbers read off the cache don't fit
+/// the pane.
+pub(crate) fn has_unsent_changes(listing_id: &str) -> bool {
+    PENDING_DIFFS
+        .lock()
+        .ok()
+        .and_then(|p| p.get(listing_id).map(|e| !e.changes.is_empty() || e.in_flight))
+        .unwrap_or(false)
+}
+
 /// Drops any pending changes for `listing_id` without emitting. Called when a
 /// listing ends (`list_directory_end`) so a no-longer-watched listing doesn't
 /// fire a trailing event.
@@ -89,6 +104,7 @@ fn flush(listing_id: &str) {
             return;
         };
         entry.flush_scheduled = false;
+        entry.in_flight = !entry.changes.is_empty();
         std::mem::take(&mut entry.changes)
     };
 
@@ -96,7 +112,13 @@ fn flush(listing_id: &str) {
         return;
     }
 
-    let Some(sequence) = increment_sequence(listing_id) else {
+    let sequence = increment_sequence(listing_id);
+    if let Ok(mut pending) = PENDING_DIFFS.lock()
+        && let Some(entry) = pending.get_mut(listing_id)
+    {
+        entry.in_flight = false;
+    }
+    let Some(sequence) = sequence else {
         return; // listing gone
     };
 

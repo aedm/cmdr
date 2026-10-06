@@ -592,6 +592,19 @@
     "confidence": "high",
     "sources": "MS terminology"
   },
+  "compare-folders": {
+    "chosen": "Ordner vergleichen",
+    "accept": ["vergleich"],
+    "forms": "the menu item and command Ordner vergleichen; the act → Vergleich (während des Vergleichs, Ordnervergleich)",
+    "avoid": [
+      {
+        "form": "Verzeichnisse vergleichen",
+        "why": "TC's wording; Cmdr follows Finder's Ordner"
+      }
+    ],
+    "confidence": "tentative",
+    "sources": "TC names the command Verzeichnisse vergleichen (Mark menu, ⇧F2); Cmdr follows the folder ruling (Finder Ordner), as ru did. Pile unavailable on this machine, so TC wording is from memory"
+  },
   "complete": {
     "accept": ["abschließen", "abgeschlossen", "unvollständig", "abschluss", "abzuschließen"],
     "avoid": [
@@ -2831,6 +2844,11 @@
     "confidence": "high",
     "forms": "streaming mode → Streaming-Modus",
     "sources": "MS terminology (Streaming)"
+  },
+  "subfolder": {
+    "chosen": "Unterordner",
+    "confidence": "tentative",
+    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); reference pile unavailable on this machine, so unverified against TC/Finder"
   },
   "subscription": {
     "accept": ["Abos", "Abonnement"],

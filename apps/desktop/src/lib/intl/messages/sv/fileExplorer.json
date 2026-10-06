@@ -637,6 +637,34 @@
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
   },
+  "fileExplorer.compareDirectories.marked": "Markerade filer som skiljer sig åt: {leftCountText} {leftCount, plural, one {fil} other {filer}} till vänster och {rightCountText} {rightCount, plural, one {fil} other {filer}} till höger.",
+  "@fileExplorer.compareDirectories.marked": {
+    "sourceHash": "73e3ccf"
+  },
+  "fileExplorer.compareDirectories.noDifferences.newerAndMissing": "Inget att markera: varje fil finns i båda mapparna, och ingen kopia är nyare. Undermappar jämförs inte.",
+  "@fileExplorer.compareDirectories.noDifferences.newerAndMissing": {
+    "sourceHash": "c2960d8"
+  },
+  "fileExplorer.compareDirectories.noDifferences.missing": "Inget att markera: varje fil finns i båda mapparna. Undermappar jämförs inte.",
+  "@fileExplorer.compareDirectories.noDifferences.missing": {
+    "sourceHash": "ed2e696"
+  },
+  "fileExplorer.compareDirectories.noDifferences.sizeAndMissing": "Inget att markera: varje fil finns i båda mapparna, med samma storlek. Undermappar jämförs inte.",
+  "@fileExplorer.compareDirectories.noDifferences.sizeAndMissing": {
+    "sourceHash": "5f7b808"
+  },
+  "fileExplorer.compareDirectories.keptChanging": "Mapparna ändrades hela tiden medan de jämfördes. Försök igen när de har slutat ändras.",
+  "@fileExplorer.compareDirectories.keptChanging": {
+    "sourceHash": "3051074"
+  },
+  "fileExplorer.compareDirectories.needsTwoFolders": "Öppna en mapp i båda panelerna för att jämföra dem",
+  "@fileExplorer.compareDirectories.needsTwoFolders": {
+    "sourceHash": "c04ef80"
+  },
+  "fileExplorer.compareDirectories.couldNotFinish": "Det gick inte att slutföra jämförelsen av mapparna. Försök igen om en stund.",
+  "@fileExplorer.compareDirectories.couldNotFinish": {
+    "sourceHash": "0900bc9"
+  },
   "fileExplorer.clipboard.cutReady": "{countText} {count, plural, one {objekt} other {objekt}} redo att flyttas. Klistra in för att slutföra.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

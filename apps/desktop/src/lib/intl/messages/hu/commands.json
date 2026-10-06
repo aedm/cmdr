@@ -676,6 +676,30 @@
   "@commands.selectionSelectSameKind.description": {
     "sourceHash": "9a95212"
   },
+  "commands.selectionCompareDirectories.label": "Mappák összehasonlítása",
+  "@commands.selectionCompareDirectories.label": {
+    "sourceHash": "5cf3985"
+  },
+  "commands.selectionCompareDirectories.description": "Mindkét panelen kijelöli a másik panelről hiányzó fájlokat, a többi fájlnak pedig az újabb másolatát",
+  "@commands.selectionCompareDirectories.description": {
+    "sourceHash": "190d99f"
+  },
+  "commands.selectionCompareDirectoriesMissing.label": "Mappák összehasonlítása: csak a hiányzó fájlok",
+  "@commands.selectionCompareDirectoriesMissing.label": {
+    "sourceHash": "d03d3c1"
+  },
+  "commands.selectionCompareDirectoriesMissing.description": "Mindkét panelen csak a másik panelről hiányzó fájlokat jelöli ki",
+  "@commands.selectionCompareDirectoriesMissing.description": {
+    "sourceHash": "e61c71b"
+  },
+  "commands.selectionCompareDirectoriesSize.label": "Mappák összehasonlítása: eltérő méret",
+  "@commands.selectionCompareDirectoriesSize.label": {
+    "sourceHash": "6c8fd21"
+  },
+  "commands.selectionCompareDirectoriesSize.description": "Mindkét panelen kijelöli a másik panelről hiányzó fájlokat, valamint az eltérő méretű fájlok mindkét másolatát",
+  "@commands.selectionCompareDirectoriesSize.description": {
+    "sourceHash": "ac31996"
+  },
   "commands.selectionSelectSameKind.allFolders": "Összes mappa kijelölése",
   "@commands.selectionSelectSameKind.allFolders": {
     "sourceHash": "5351f8b"

@@ -637,6 +637,34 @@
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
   },
+  "fileExplorer.compareDirectories.marked": "Abweichende Dateien ausgewählt: {leftCountText} {leftCount, plural, one {Datei} other {Dateien}} links und {rightCountText} {rightCount, plural, one {Datei} other {Dateien}} rechts.",
+  "@fileExplorer.compareDirectories.marked": {
+    "sourceHash": "73e3ccf"
+  },
+  "fileExplorer.compareDirectories.noDifferences.newerAndMissing": "Nichts auszuwählen: Jede Datei liegt in beiden Ordnern, und keine Kopie ist neuer. Unterordner werden nicht verglichen.",
+  "@fileExplorer.compareDirectories.noDifferences.newerAndMissing": {
+    "sourceHash": "c2960d8"
+  },
+  "fileExplorer.compareDirectories.noDifferences.missing": "Nichts auszuwählen: Jede Datei liegt in beiden Ordnern. Unterordner werden nicht verglichen.",
+  "@fileExplorer.compareDirectories.noDifferences.missing": {
+    "sourceHash": "ed2e696"
+  },
+  "fileExplorer.compareDirectories.noDifferences.sizeAndMissing": "Nichts auszuwählen: Jede Datei liegt in beiden Ordnern, und beide Kopien sind gleich groß. Unterordner werden nicht verglichen.",
+  "@fileExplorer.compareDirectories.noDifferences.sizeAndMissing": {
+    "sourceHash": "5f7b808"
+  },
+  "fileExplorer.compareDirectories.keptChanging": "Die Ordner haben sich während des Vergleichs ständig geändert. Versuche es erneut, sobald sie sich nicht mehr ändern.",
+  "@fileExplorer.compareDirectories.keptChanging": {
+    "sourceHash": "3051074"
+  },
+  "fileExplorer.compareDirectories.needsTwoFolders": "Öffne in beiden Bereichen einen Ordner, um die Ordner zu vergleichen",
+  "@fileExplorer.compareDirectories.needsTwoFolders": {
+    "sourceHash": "c04ef80"
+  },
+  "fileExplorer.compareDirectories.couldNotFinish": "Ordnervergleich nicht abgeschlossen. Versuche es gleich noch einmal.",
+  "@fileExplorer.compareDirectories.couldNotFinish": {
+    "sourceHash": "0900bc9"
+  },
   "fileExplorer.clipboard.cutReady": "{countText} {count, plural, one {Objekt} other {Objekte}} bereit zum Bewegen. Zum Abschließen einsetzen.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

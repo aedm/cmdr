@@ -635,6 +635,34 @@
   "@fileExplorer.clipboard.copied": {
     "sourceHash": "1c25075"
   },
+  "fileExplorer.compareDirectories.marked": "已選取不同的檔案：左側 {leftCountText} {leftCount, plural, other {個檔案}}，右側 {rightCountText} {rightCount, plural, other {個檔案}}。",
+  "@fileExplorer.compareDirectories.marked": {
+    "sourceHash": "73e3ccf"
+  },
+  "fileExplorer.compareDirectories.noDifferences.newerAndMissing": "沒有可選取的檔案：每個檔案在兩個資料夾中都有，而且沒有哪個副本比較新。子資料夾不會比對。",
+  "@fileExplorer.compareDirectories.noDifferences.newerAndMissing": {
+    "sourceHash": "c2960d8"
+  },
+  "fileExplorer.compareDirectories.noDifferences.missing": "沒有可選取的檔案：每個檔案在兩個資料夾中都有。子資料夾不會比對。",
+  "@fileExplorer.compareDirectories.noDifferences.missing": {
+    "sourceHash": "ed2e696"
+  },
+  "fileExplorer.compareDirectories.noDifferences.sizeAndMissing": "沒有可選取的檔案：每個檔案在兩個資料夾中都有，而且大小相同。子資料夾不會比對。",
+  "@fileExplorer.compareDirectories.noDifferences.sizeAndMissing": {
+    "sourceHash": "5f7b808"
+  },
+  "fileExplorer.compareDirectories.keptChanging": "比對期間資料夾一直在變動。等它們不再變動後再試一次。",
+  "@fileExplorer.compareDirectories.keptChanging": {
+    "sourceHash": "3051074"
+  },
+  "fileExplorer.compareDirectories.needsTwoFolders": "在兩個窗格中各開啟一個資料夾，才能比對",
+  "@fileExplorer.compareDirectories.needsTwoFolders": {
+    "sourceHash": "c04ef80"
+  },
+  "fileExplorer.compareDirectories.couldNotFinish": "無法完成資料夾比對。請稍後再試一次。",
+  "@fileExplorer.compareDirectories.couldNotFinish": {
+    "sourceHash": "0900bc9"
+  },
   "fileExplorer.clipboard.cutReady": "{countText} {count, plural, other {個項目}}已準備好移動。貼上即可完成。",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"
