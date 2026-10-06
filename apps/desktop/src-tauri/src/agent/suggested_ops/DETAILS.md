@@ -59,6 +59,13 @@ is worse than none. `analytics.rs` emits `suggestion_group_proposed`, `suggestio
 `suggestion_group_rejected`, each carrying the verb token and a coarse count bucket through the shared
 `analytics::item_count_bucket` (shared so two dashboards can't end up with two ideas of what "a lot" means).
 
+`suggestion_group_approved` fires from `started`, which both approval paths (the bridge's `approve_and_execute` and the
+rename review's `apply_bulk_rename`) call only once the operation is running. `approve` is the claim, and a
+claim the engine then refuses goes back to pending (`give_back`), so counting there would report approvals nothing came
+of and count a re-approved group once per attempt. A started group never returns to pending, so the event fires exactly
+once per group that ran. `bridge/tests.rs::an_approval_is_counted_once_when_it_starts_and_not_when_the_engine_refuses_it`
+holds it.
+
 The events land in M1, before the dialog exists, deliberately: David's own QA pass then produces real numbers before
 launch rather than after.
 
@@ -79,7 +86,7 @@ said no.
 **Every cross-volume verb goes through the ROUTED entry points** (`start_volume_{copy, move, compress}`), the same ones the transfer commands use, so an approved transfer resolves its volumes and anchors its destination exactly as a clicked one does. Extract needs no arm of its own: its sources resolve to an `ArchiveVolume` inside that routing, which is why extract has no operation type.
 
 **Decision: an approval that refuses to start gives its group back to `pending`.**
-**Why**: the claim must come before the engine is asked (it is what makes a group un-replayable), so an engine refusal lands after it. Left `approved`, the group dropped off the review list with nothing running and no word (#184). Nothing ran, so `give_back` (`release_claim` plus a `GivenBack` announcement) returns it and the dialog shows the refusal under it. A refusal before the claim (the source volume isn't registered, a stale or changed group) never left `pending`. The approval metric keeps the count `approve` made: the user did say yes. The rename review's `apply_bulk_rename` gives back the same way.
+**Why**: the claim must come before the engine is asked (it is what makes a group un-replayable), so an engine refusal lands after it. Left `approved`, the group dropped off the review list with nothing running and no word (#184). Nothing ran, so `give_back` (`release_claim` plus a `GivenBack` announcement) returns it and the dialog shows the refusal under it. A refusal before the claim (the source volume isn't registered, a stale or changed group) never left `pending`. Nothing was counted either: the approval metric waits for a start (§ The metric). The rename review's `apply_bulk_rename` gives back the same way.
 
 **The refusals are typed, never sentences.** A source volume nothing registered is classified by `crate::unregistered_volumes` through `write_operations::unregistered_source_error`, so a suggestion about a phone or server nobody connected reads `SourceNotConnected` and one about a drive that left reads `SourceNoLongerConnected`, exactly as a clicked copy off it would. Engine refusals stay the `WriteOperationError` they are, and the rename batch's own are `RenameStartError`. The IPC view (`commands/agent/suggested_ops.rs::ApprovalResultView`) carries the error itself, so the dialog words it through the transfer dialogs' copy.
 

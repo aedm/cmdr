@@ -397,6 +397,39 @@ async fn an_approved_rename_group_renames_its_file() {
     .await;
 }
 
+/// ❗ **An approval is counted when its operation STARTS, never at the claim.** A refused start
+/// gives the group back, so counting the claim would count an approval nothing came of, and
+/// count the same group again when the user re-approves it. The acceptance-rate metric then
+/// reads higher than what users actually let run.
+#[tokio::test]
+async fn an_approval_is_counted_once_when_it_starts_and_not_when_the_engine_refuses_it() {
+    ensure_root_volume();
+    let dir = TestDir::new("bridge_counted_at_start");
+    let (conn, reporting, group_id) = vanished_rename_group(&dir);
+    super::super::analytics::take_captured();
+
+    let refused = approve(&conn, reporting, group_id).await;
+    assert!(matches!(refused, super::ApprovalOutcome::Refused(_)), "{refused:?}");
+    assert_eq!(
+        super::super::analytics::take_captured(),
+        Vec::<String>::new(),
+        "nothing ran, so nothing was approved"
+    );
+
+    // The file turns up, and the user approves the same group again.
+    std::fs::create_dir_all(dir.join("shots")).expect("parent");
+    std::fs::write(dir.join("shots").join("gone.png"), b"back").expect("seed");
+    let reporting = open_write_connection(&dir.join("main.db")).expect("second connection");
+    let started = approve(&conn, reporting, group_id).await;
+    assert!(matches!(started, super::ApprovalOutcome::Started(_)), "{started:?}");
+
+    assert_eq!(
+        super::super::analytics::take_captured(),
+        vec!["suggestion_group_approved".to_string()],
+        "one group ran, so one approval"
+    );
+}
+
 /// A trash group on `volume_id`, the shape the source-volume check sees before any claim.
 fn trash_group_on(dir: &TestDir, volume_id: &str) -> (Connection, Connection, i64) {
     let db_path = dir.join("main.db");

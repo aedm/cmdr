@@ -281,7 +281,8 @@ Backend events fire at success chokepoints; frontend events ride `track_event`.
   `ask_cmdr_turn`'s `origin: "wake"`; the gap between them is the point.
 - `suggestion_group_proposed` / `suggestion_group_approved` / `suggestion_group_rejected` (backend,
   `agent/suggested_ops/analytics.rs`): `verb` (the `ProposalVerb` token) + `op_count` bucket. Acceptance rate is the
-  agent's north-star metric, which is why the proposal and both outcomes are all counted; never a path, file name,
+  agent's north-star metric, which is why the proposal and both outcomes are all counted; `approved` counts a group
+  whose operation STARTED, not a claim (`agent/suggested_ops/DETAILS.md` § The metric). Never a path, file name,
   rationale, or selector pattern.
 - `rename_plan_from_cut_listing` (backend, `../agent/tools/propose/rename/cut_listing.rs`, when a rename plan stages):
   fires only when the thread's latest `list_pane_files` result was cut (`returned < total`) and the plan renames files

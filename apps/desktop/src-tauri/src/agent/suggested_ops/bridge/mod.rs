@@ -136,10 +136,10 @@ pub async fn approve_and_execute(
     };
     let expected = capture_expected_sources(source_volume.as_ref(), &sources).await;
 
-    // Through the service layer, so the approval metric is reported in the one place that
-    // owns it rather than a second time here.
-    let group = match super::approve(conn, group_id, now)? {
-        ClaimOutcome::Claimed(claimed) => claimed.group,
+    // Through the service layer, which owns both the claim's announcement and the approval
+    // metric. The metric waits for the start: a refused start gives the group back.
+    let claimed = match super::approve(conn, group_id, now)? {
+        ClaimOutcome::Claimed(claimed) => claimed,
         ClaimOutcome::Refused(refusal) => return Ok(ApprovalOutcome::Refused(ApprovalRefusal::Claim(refusal))),
     };
 
@@ -151,8 +151,11 @@ pub async fn approve_and_execute(
         memory,
     ));
 
-    match start_for(&group, sources, &ops, expected, sink).await {
-        Ok(operation) => Ok(ApprovalOutcome::Started(ApprovedGroup { group_id, operation })),
+    match start_for(&claimed.group, sources, &ops, expected, sink).await {
+        Ok(operation) => {
+            super::started(&claimed);
+            Ok(ApprovalOutcome::Started(ApprovedGroup { group_id, operation }))
+        }
         Err(refusal) => {
             give_back_after(conn, group_id, &refusal);
             Ok(ApprovalOutcome::Refused(refusal))

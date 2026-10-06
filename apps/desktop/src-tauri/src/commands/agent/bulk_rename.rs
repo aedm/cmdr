@@ -180,9 +180,9 @@ pub async fn apply_bulk_rename(
     // the group reviewable rather than approved-but-unstarted.
     let group_id = group_id_of(&proposal_id)?;
     let claimed = crate::agent::suggested_ops::approve(&conn, group_id, now_secs()).map_err(|_| review_is_over())?;
-    if !matches!(claimed, ClaimOutcome::Claimed(_)) {
+    let ClaimOutcome::Claimed(claimed) = claimed else {
         return Err(review_again());
-    }
+    };
 
     let initiator = bulk_rename_initiator(&applied_rows);
     // Routed: where a rename copies (an S3 folder), the batch runs as one move.
@@ -194,10 +194,13 @@ pub async fn apply_bulk_rename(
     )
     .await;
     match started {
-        Ok(started) => Ok(BulkRenameStarted {
-            operation_id: started.operation.operation_id,
-            swaps_left_out: u32::try_from(started.swaps_left_out).unwrap_or(u32::MAX),
-        }),
+        Ok(started) => {
+            crate::agent::suggested_ops::started(&claimed);
+            Ok(BulkRenameStarted {
+                operation_id: started.operation.operation_id,
+                swaps_left_out: u32::try_from(started.swaps_left_out).unwrap_or(u32::MAX),
+            })
+        }
         Err(reason) => {
             // Nothing ran, so the claim goes back: the review re-reads the plan, and a group left
             // `approved` would read as expired with no operation behind it.
