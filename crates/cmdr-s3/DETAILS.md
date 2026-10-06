@@ -173,9 +173,11 @@ except one per fixture at the production 64 MiB. **Live cells** (`live_protocol_
 only through `apps/desktop/test/s3-servers/live.sh` (`CMDR_S3_LIVE=1` plus each account's variables; without them every
 cell skips silently, so the lanes never reach an account). Each protocol cell also asserts the profile against what it
 saw, so an allowlist trusting a header a provider ignores fails the run; § "Verified providers" holds the findings. The
-1,005-key paging prefix (`cmdr-test-paging-1005/`) and the 65 MiB object (`cmdr-test-large-65mib/blob.bin`, `seed_once`)
+1,005-key paging prefix (`cmdr-seed-paging-1005/`) and the 65 MiB object (`cmdr-seed-large-65mib/blob.bin`, `seed_once`)
 are seeded once per fixture and kept; every other cell works under a `scratch_prefix` of its own, since the stack's
-objects persist across runs.
+objects persist across runs. The fixtures expire everything under `cmdr-test-` on their own (VersityGW after two hours,
+Garage after a day; `apps/desktop/test/s3-servers/README.md`), so ❗ a key meant to outlive a run goes under
+`cmdr-seed-`, ❌ never `cmdr-test-`.
 
 **One scenario, either server: `testing::S3Target`.** A fixture or a live account (`testing::live`, the one list of
 accounts both runners read), with the same seeding, probing, unfinished-upload listing, and prefix cleanup on both; the

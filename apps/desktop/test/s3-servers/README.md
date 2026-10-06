@@ -56,6 +56,12 @@ else; VersityGW takes any string. The single source is `docker-compose.yml`; `st
   (the WebDAV stack once leaked 41 GB that way). Objects persist across runs, so cells must not assume an empty bucket:
   give each cell a key prefix of its own. `docker compose -p s3-fixture down -v` wipes both, and the next bring-up
   recreates the buckets.
+- **Scratch expires on its own.** Cells never delete their `scratch_prefix`, and nothing runs `down -v`, so without this
+  the VersityGW volume reached 4,900 prefixes and 64 GB in five days. Now everything under `cmdr-test-` goes:
+  VersityGW's entrypoint runs a janitor that removes top-level `cmdr-test-*` dirs untouched for two hours
+  (`FIXTURE_PREFIX_MAX_AGE_MIN`, checked every `FIXTURE_JANITOR_INTERVAL_S`), and Garage's bootstrap sets a lifecycle
+  rule expiring that prefix after one day (its lifecycle worker runs daily, so a day is the floor). The keys seeded once
+  and shared across runs live under `cmdr-seed-` for exactly this reason.
 
 ## Ports and binding
 
@@ -200,9 +206,11 @@ both. To rerun one:
 The shared fixture lane selects every `#[ignore]`d test in `package(cmdr-s3)`, plus app-crate cells named
 `s3_integration_*` (`laneFixtures` in `scripts/check/checks/fixture-lane-coverage.go`). Gate each cell with an
 `#[ignore]` reason naming `s3-servers/start.sh` or `s3-fixture`, connect through `cmdr_s3::volume::testing`, and work
-under a `scratch_prefix` of your own: the objects persist across runs. Seed with `testing::seed`, which goes through the
-crate's own request builders. Run a cell against BOTH servers when what it asserts could differ between them; a wrong
-secret already does (above). By hand: `./start.sh`, then `cargo nextest run -p cmdr-s3 --run-ignored only`.
+under a `scratch_prefix` of your own: the objects persist across runs until the fixture expires them. A key meant to be
+shared across runs goes under `cmdr-seed-` (`testing::seed_once`), never `cmdr-test-`. Seed with `testing::seed`, which
+goes through the crate's own request builders. Run a cell against BOTH servers when what it asserts could differ between
+them; a wrong secret already does (above). By hand: `./start.sh`, then
+`cargo nextest run -p cmdr-s3 --run-ignored only`.
 
 Every S3 fixture cell runs four at a time on nextest's `s3-fixture` test group with a 30 s cap (`.config/nextest.toml`):
 at full parallelism on a loaded machine all of them starved past the 8 s cap together. The group finds a `cmdr-s3` cell

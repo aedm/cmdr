@@ -16,6 +16,26 @@ READY=/tmp/fixture-ready
 rm -f "$READY"
 mkdir -p /var/lib/garage/meta /var/lib/garage/data
 
+# Every cell writes under a `scratch_prefix` of its own and never deletes it, so
+# without a rule the bucket only grows. Garage stores blocks, not files, so the
+# VersityGW image's `find`-based janitor can't work here; a lifecycle rule is
+# Garage's own way. Its lifecycle worker runs once a day, so one day is the
+# shortest expiry that means anything. PUT replaces the whole config, so this is
+# idempotent on a re-run.
+expire_scratch() {
+    rule='<LifecycleConfiguration><Rule><ID>expire-scratch</ID><Status>Enabled</Status>'
+    rule="$rule<Filter><Prefix>cmdr-test-</Prefix></Filter><Expiration><Days>1</Days></Expiration>"
+    rule="$rule<AbortIncompleteMultipartUpload><DaysAfterInitiation>1</DaysAfterInitiation></AbortIncompleteMultipartUpload>"
+    rule="$rule</Rule></LifecycleConfiguration>"
+    code=$(curl -s -o /dev/null -w '%{http_code}' -X PUT --data "$rule" \
+        --aws-sigv4 "aws:amz:us-east-1:s3" --user "$S3_ACCESS_KEY:$S3_SECRET_KEY" \
+        "http://127.0.0.1:3900/$1?lifecycle")
+    if [ "$code" != 200 ]; then
+        echo "fixture: setting the lifecycle rule on $1 answered $code" >&2
+        return 1
+    fi
+}
+
 bootstrap() {
     # The CLI talks RPC to the local node; poll until it answers. ❌ No fixed sleep.
     tries=0
@@ -46,6 +66,7 @@ bootstrap() {
         fi
         # Re-granting is a no-op, so no check first.
         garage bucket allow --read --write --owner "$bucket" --key "$S3_ACCESS_KEY" > /dev/null
+        expire_scratch "$bucket"
         echo "fixture: bucket $bucket ready"
     done
     touch "$READY"

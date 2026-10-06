@@ -5,8 +5,9 @@
 //! claims on VersityGW and Garage in the lane and on R2, GCS, AWS, and the rest
 //! by hand (`apps/desktop/test/s3-servers/live-engine.sh`).
 //!
-//! ❗ The two differ in cleanup. A fixture's objects persist across runs and
-//! nothing relies on a clean bucket (`scratch_prefix`); a live account bills
+//! ❗ The two differ in cleanup. A fixture's objects persist across runs until
+//! the fixture itself expires them, and nothing relies on a clean bucket
+//! (`scratch_prefix`); a live account bills
 //! every byte kept, so whoever drives a live scenario calls
 //! [`S3Target::clean_run`] after it, which removes everything this run wrote.
 

@@ -39,7 +39,7 @@ const PAYLOAD_BYTES: usize = 700_000;
 /// Past 64 MiB, the size where holding a file whole would show. Shared with the
 /// crate's own large-object cell, and seeded once per fixture (`seed_once`).
 const LARGE_LEN: usize = 65 * 1024 * 1024 + 123;
-const LARGE_KEY: &str = "cmdr-test-large-65mib/blob.bin";
+const LARGE_KEY: &str = "cmdr-seed-large-65mib/blob.bin";
 
 /// A bucket place on `target`, as the transfer engine sees it, plus the key
 /// prefix and app path of a scratch folder nothing else in the run uses.

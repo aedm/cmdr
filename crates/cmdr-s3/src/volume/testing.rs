@@ -167,8 +167,9 @@ fn run_token() -> &'static str {
 }
 
 /// A key prefix no other cell or run uses: `cmdr-test-<run>-<n>-<label>/`. The
-/// objects stay behind on the fixture (its volume is wiped with `down -v`);
-/// nothing here relies on a clean bucket.
+/// objects stay behind until the fixture expires them (everything under
+/// `cmdr-test-`, see `apps/desktop/test/s3-servers/README.md`); nothing here
+/// relies on a clean bucket.
 pub fn scratch_prefix(label: &str) -> String {
     use std::sync::atomic::{AtomicU64, Ordering};
     static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -188,7 +189,7 @@ pub async fn seed(service: FixtureService, bucket: &str, seeds: &[Seed<'_>]) {
 /// Puts `bytes()` at `key` unless an object of that exact length is already
 /// there, for a big object that would otherwise pile up on the fixture's disk
 /// once per run. ❗ The key is fixed and shared across runs, so treat it as
-/// read-only.
+/// read-only, and put it under `cmdr-seed-`: the fixtures expire `cmdr-test-`.
 pub async fn seed_once(service: FixtureService, bucket: &str, key: &str, len: usize, bytes: impl FnOnce() -> Vec<u8>) {
     let stored = S3Target::Fixture(service)
         .stored_header(bucket, key, "content-length")

@@ -18,7 +18,7 @@ const LARGE_LEN: usize = 65 * 1024 * 1024 + 123;
 
 /// Where the large object lives: fixed and shared across runs (`seed_once`),
 /// so ❌ never write to it.
-const LARGE_KEY: &str = "cmdr-test-large-65mib/blob.bin";
+const LARGE_KEY: &str = "cmdr-seed-large-65mib/blob.bin";
 
 fn at(volume: &S3Volume, key: &str) -> PathBuf {
     volume.root().join(key)

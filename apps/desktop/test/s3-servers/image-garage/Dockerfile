@@ -10,6 +10,10 @@ FROM dxflrs/garage:v2.4.1 AS garage
 
 FROM alpine:3.24.2
 
+# The bootstrap sets each bucket's lifecycle rule through the S3 API, which the
+# `garage` CLI doesn't reach; curl's `--aws-sigv4` signs it.
+RUN apk add --no-cache curl
+
 COPY --from=garage /garage /usr/local/bin/garage
 COPY garage.toml /etc/garage.toml
 COPY entrypoint.sh /usr/local/bin/fixture-entrypoint.sh

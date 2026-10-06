@@ -158,7 +158,7 @@ async fn a_missing_bucket_and_a_missing_secret_are_named_on_garage() {
 
 /// The prefix the paging cells share, seeded once per fixture and kept: 1,005
 /// PUTs per run would cost seconds for nothing.
-const PAGING_PREFIX: &str = "cmdr-test-paging-1005/";
+const PAGING_PREFIX: &str = "cmdr-seed-paging-1005/";
 const PAGING_COUNT: usize = 1_005;
 
 async fn a_folder_past_one_page_lists_whole_and_reports_each_page(service: FixtureService) {
