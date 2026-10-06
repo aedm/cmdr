@@ -849,18 +849,24 @@ pub(super) fn finalize_search_status(status: &Arc<Mutex<SearchStatus>>, cancel: 
     };
 }
 
+/// How often the search watchdog checks the worker's status and `cancel` flag.
+pub(super) const SEARCH_WATCHDOG_POLL: Duration = Duration::from_millis(250);
+/// How long the watchdog lets a worker ignore a set `cancel` flag before it
+/// writes `Cancelled` itself.
+pub(super) const SEARCH_WATCHDOG_BUDGET: Duration = Duration::from_secs(1);
+
 /// Watchdog: polls the worker's `cancel` flag and forces the search status to
 /// `Cancelled` if the worker hasn't observed the flag within 1 s. Exits as soon
 /// as the worker writes a non-Running status (i.e. it finished naturally or got
 /// cancelled cooperatively).
 ///
-/// The 250 ms poll + 1 s budget pair keeps user-visible cancellation under
-/// 1.25 s in the worst case even for runaway-regex paths where the inner
-/// `iter.next()` call doesn't observe the per-match cancel.
+/// The poll + budget pair keeps user-visible cancellation under 1.25 s (plus
+/// scheduling delay) in the worst case even for runaway-regex paths where the
+/// inner `iter.next()` call doesn't observe the per-match cancel.
 pub(super) fn run_search_watchdog(cancel: Arc<AtomicBool>, status: Arc<Mutex<SearchStatus>>) {
     let mut cancel_seen_at: Option<std::time::Instant> = None;
     loop {
-        thread::sleep(Duration::from_millis(250));
+        thread::sleep(SEARCH_WATCHDOG_POLL);
         // Cheap check first; bail out if the worker is done.
         let still_running = matches!(*status.lock_ignore_poison(), SearchStatus::Running);
         if !still_running {
@@ -868,7 +874,7 @@ pub(super) fn run_search_watchdog(cancel: Arc<AtomicBool>, status: Arc<Mutex<Sea
         }
         if cancel.load(Ordering::Relaxed) {
             let started = cancel_seen_at.get_or_insert_with(std::time::Instant::now);
-            if started.elapsed() >= Duration::from_secs(1) {
+            if started.elapsed() >= SEARCH_WATCHDOG_BUDGET {
                 let mut guard = status.lock_ignore_poison();
                 if matches!(*guard, SearchStatus::Running) {
                     *guard = SearchStatus::Cancelled;

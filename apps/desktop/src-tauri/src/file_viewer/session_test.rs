@@ -1033,8 +1033,7 @@ fn test_finalize_writes_cancelled_when_cancel_observed() {
 fn test_watchdog_forces_cancel_when_worker_ignores_flag() {
     // Spawn `run_search_watchdog` against a fake worker that never observes
     // the cancel flag (it just keeps the status at `Running`). The watchdog
-    // must transition the status to `Cancelled` within ~1.25 s of the flag
-    // being set.
+    // must wait out its budget, then transition the status to `Cancelled`.
     use std::sync::atomic::AtomicBool;
     use std::sync::{Arc, Mutex};
 
@@ -1057,10 +1056,19 @@ fn test_watchdog_forces_cancel_when_worker_ignores_flag() {
         matches!(*status.lock().unwrap(), SearchStatus::Cancelled),
         "watchdog must write Cancelled"
     );
+    // The flag is seen on the first poll at the latest, then the budget runs out, so the ideal
+    // is one poll plus the budget (1.25 s). Each of those five sleeps overshoots on a loaded
+    // machine: a 3-core CI runner took 1.63 s. The slack absorbs that and still fails a watchdog
+    // that waits a whole extra budget or never fires.
+    const SCHEDULING_SLACK: Duration = Duration::from_millis(750);
     assert!(
-        elapsed < Duration::from_millis(1_500),
-        "watchdog took too long: {:?}",
-        elapsed
+        elapsed >= session::SEARCH_WATCHDOG_BUDGET,
+        "watchdog must give the worker its full budget first, fired after {elapsed:?}"
+    );
+    let ceiling = session::SEARCH_WATCHDOG_POLL + session::SEARCH_WATCHDOG_BUDGET + SCHEDULING_SLACK;
+    assert!(
+        elapsed < ceiling,
+        "watchdog took too long: {elapsed:?} (ceiling {ceiling:?})"
     );
 }
 
