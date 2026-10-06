@@ -96,10 +96,10 @@ fn recent_listing_errors_redact_remote_references_and_identities_with_bare_token
 #[test]
 fn test_format_size() {
     assert_eq!(format_size(500), "500 B");
-    assert_eq!(format_size(1024), "1 KB");
-    assert_eq!(format_size(1536), "1.5 KB");
-    assert_eq!(format_size(1048576), "1 MB");
-    assert_eq!(format_size(1073741824), "1 GB");
+    assert_eq!(format_size(1024), "1 KiB");
+    assert_eq!(format_size(1536), "1.5 KiB");
+    assert_eq!(format_size(1048576), "1 MiB");
+    assert_eq!(format_size(1073741824), "1 GiB");
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn test_format_file_compact() {
 
     // With details
     let formatted = format_file_compact(&file, 0, true, true, true);
-    assert_eq!(formatted, "i:0 f test.txt 1 KB 2024-01-15 [cur] [sel]");
+    assert_eq!(formatted, "i:0 f test.txt 1 KiB 2024-01-15 [cur] [sel]");
 
     // Directory
     let dir = PaneFileEntry {
@@ -177,7 +177,7 @@ fn test_format_file_compact() {
         ..Default::default()
     };
     let formatted = format_file_compact(&moving_dir, 2, false, false, true);
-    assert_eq!(formatted, "i:2 d target ~4 KB [size-unsettled]");
+    assert_eq!(formatted, "i:2 d target ~4 KiB [size-unsettled]");
     // The marker shows even without details (it's a status, not a detail).
     let formatted = format_file_compact(&moving_dir, 2, false, false, false);
     assert_eq!(formatted, "i:2 d target [size-unsettled]");
@@ -468,21 +468,27 @@ fn incomplete_recursive_size_renders_as_a_lower_bound() {
         recursive_size_complete: Some(false),
         ..Default::default()
     };
-    assert_eq!(format_file_compact(&partial, 2, false, false, true), "i:2 d deps ≥4 KB");
+    assert_eq!(
+        format_file_compact(&partial, 2, false, false, true),
+        "i:2 d deps ≥4 KiB"
+    );
 
     // A covered subtree is an exact total, so it renders bare.
     let complete = PaneFileEntry {
         recursive_size_complete: Some(true),
         ..partial.clone()
     };
-    assert_eq!(format_file_compact(&complete, 2, false, false, true), "i:2 d deps 4 KB");
+    assert_eq!(
+        format_file_compact(&complete, 2, false, false, true),
+        "i:2 d deps 4 KiB"
+    );
 
     // Absent flag ⇒ treat as exact (fixtures, and volumes with no index).
     let unknown = PaneFileEntry {
         recursive_size_complete: None,
         ..partial.clone()
     };
-    assert_eq!(format_file_compact(&unknown, 2, false, false, true), "i:2 d deps 4 KB");
+    assert_eq!(format_file_compact(&unknown, 2, false, false, true), "i:2 d deps 4 KiB");
 }
 
 /// While a total is still moving it reads `~`, never `≥`.
@@ -505,7 +511,7 @@ fn a_moving_total_reads_approximate_rather_than_claiming_a_floor() {
     };
     assert_eq!(
         format_file_compact(&moving, 2, false, false, true),
-        "i:2 d deps ~4 KB [size-unsettled]"
+        "i:2 d deps ~4 KiB [size-unsettled]"
     );
 
     // Exact AND moving is still approximate: `~` is about motion, not coverage.
@@ -515,7 +521,7 @@ fn a_moving_total_reads_approximate_rather_than_claiming_a_floor() {
     };
     assert_eq!(
         format_file_compact(&moving_exact, 2, false, false, true),
-        "i:2 d deps ~4 KB [size-unsettled]"
+        "i:2 d deps ~4 KiB [size-unsettled]"
     );
 
     // Settled again: the floor is a claim we can stand behind, so it comes back.
@@ -523,7 +529,10 @@ fn a_moving_total_reads_approximate_rather_than_claiming_a_floor() {
         recursive_size_updating: None,
         ..moving.clone()
     };
-    assert_eq!(format_file_compact(&settled, 2, false, false, true), "i:2 d deps ≥4 KB");
+    assert_eq!(
+        format_file_compact(&settled, 2, false, false, true),
+        "i:2 d deps ≥4 KiB"
+    );
 }
 
 /// Incomplete AND nothing known below yet: `≥0 B` would be worse than silence,
@@ -559,7 +568,7 @@ fn a_stale_recursive_size_is_marked() {
     };
     assert_eq!(
         format_file_compact(&stale, 4, false, false, true),
-        "i:4 d old 2 KB [size-stale]"
+        "i:4 d old 2 KiB [size-stale]"
     );
     assert_eq!(
         format_file_compact(&stale, 4, false, false, false),
@@ -584,7 +593,7 @@ fn on_disk_size_shows_only_when_it_diverges_enough_to_matter() {
     };
     assert_eq!(
         format_file_compact(&sparse, 5, false, false, true),
-        "i:5 d sparse 4 GB (1 GB on disk)"
+        "i:5 d sparse 4 GiB (1 GiB on disk)"
     );
 
     // Same relative gap, but too small in absolute terms to be worth a word.
@@ -606,7 +615,7 @@ fn on_disk_size_shows_only_when_it_diverges_enough_to_matter() {
     };
     assert_eq!(
         format_file_compact(&small_relative_gap, 5, false, false, true),
-        "i:5 d sparse 10 GB"
+        "i:5 d sparse 10 GiB"
     );
 
     // A lower-bound total keeps its `≥`, and the on-disk figure follows it.
@@ -616,7 +625,7 @@ fn on_disk_size_shows_only_when_it_diverges_enough_to_matter() {
     };
     assert_eq!(
         format_file_compact(&partial_sparse, 5, false, false, true),
-        "i:5 d sparse ≥4 GB (1 GB on disk)"
+        "i:5 d sparse ≥4 GiB (1 GiB on disk)"
     );
 
     // Details off ⇒ no sizes at all, on-disk included.

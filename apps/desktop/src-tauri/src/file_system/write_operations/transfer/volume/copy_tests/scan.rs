@@ -23,11 +23,10 @@ fn test_format_skipped_suffix_zero_is_empty() {
 #[test]
 fn test_format_skipped_suffix_singular() {
     assert_eq!(format_skipped_suffix(1, 0), " (of which skipped 1 file, 0 B)");
-    // Humanized via search::query::format_size (binary GiB labeled GB, per
-    // the existing project convention there).
+    // Humanized via search::query::format_size (base 1024, so IEC symbols).
     assert_eq!(
         format_skipped_suffix(1, 3_100_000_000),
-        " (of which skipped 1 file, 2.9 GB)"
+        " (of which skipped 1 file, 2.9 GiB)"
     );
 }
 
@@ -36,7 +35,7 @@ fn test_format_skipped_suffix_plural() {
     assert_eq!(format_skipped_suffix(2, 200), " (of which skipped 2 files, 200 B)");
     assert_eq!(
         format_skipped_suffix(821, 17_500_000_000),
-        " (of which skipped 821 files, 16.3 GB)"
+        " (of which skipped 821 files, 16.3 GiB)"
     );
 }
 

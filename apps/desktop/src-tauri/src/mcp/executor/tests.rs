@@ -292,6 +292,16 @@ fn test_parse_human_size_case_insensitive() {
 }
 
 #[test]
+fn test_parse_human_size_iec() {
+    // The IEC binary symbols Cmdr's own sizes read in (`search::format_size`), so a size the
+    // model read off a listing parses back to the same bytes.
+    assert_eq!(parse_human_size("1 KiB").unwrap(), 1_024);
+    assert_eq!(parse_human_size("1.5 MiB").unwrap(), 1_572_864);
+    assert_eq!(parse_human_size("2GiB").unwrap(), 2_147_483_648);
+    assert_eq!(parse_human_size("1 tib").unwrap(), 1_099_511_627_776);
+}
+
+#[test]
 fn test_parse_human_size_decimal() {
     assert_eq!(parse_human_size("1.5 MB").unwrap(), 1_572_864);
     assert_eq!(parse_human_size("0.5 GB").unwrap(), 536_870_912);

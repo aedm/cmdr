@@ -498,7 +498,7 @@ pub(super) fn transfer_concurrency(source: &dyn Volume, dest: &dyn Volume) -> us
 /// Formats the trailing "(of which skipped N file(s), X)" annotation for
 /// the completion log. Returns an empty string when nothing was skipped, so
 /// the log stays terse on the happy path. Byte counts go through
-/// `search::query::format_size` so a 35 GB skip doesn't read as
+/// `search::query::format_size` so a 35 GiB skip doesn't read as
 /// `37656214069 bytes`.
 fn format_skipped_suffix(files_skipped: usize, bytes_skipped: u64) -> String {
     if files_skipped == 0 {

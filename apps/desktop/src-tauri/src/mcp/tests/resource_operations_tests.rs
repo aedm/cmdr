@@ -100,11 +100,11 @@ fn running_op_shows_status_progress_speed_and_eta() {
     assert!(yaml.contains("type: copy"), "yaml: {yaml}");
     assert!(yaml.contains("status: running"), "yaml: {yaml}");
     assert!(
-        yaml.contains("progress: 200 MB / 1 GB (19%), 3/10 files"),
+        yaml.contains("progress: 200 MiB / 1 GiB (19%), 3/10 files"),
         "yaml: {yaml}"
     );
     assert!(yaml.contains("currentFile: \"photo.jpg\""), "yaml: {yaml}");
-    assert!(yaml.contains("speed: 50 MB/s"), "yaml: {yaml}");
+    assert!(yaml.contains("speed: 50 MiB/s"), "yaml: {yaml}");
     assert!(yaml.contains("etaSeconds: 16"), "yaml: {yaml}");
     assert!(yaml.contains("elapsedSeconds: 4"), "yaml: {yaml}");
 }
@@ -153,7 +153,7 @@ fn paused_op_keeps_its_progress_but_reports_paused() {
     let yaml = build_operations_yaml(&rows, 12_000);
     assert!(yaml.contains("- operationId: op-2"), "yaml: {yaml}");
     assert!(yaml.contains("status: paused"), "yaml: {yaml}");
-    assert!(yaml.contains("progress: 100 MB / 1 GB"), "yaml: {yaml}");
+    assert!(yaml.contains("progress: 100 MiB / 1 GiB"), "yaml: {yaml}");
 }
 
 #[test]

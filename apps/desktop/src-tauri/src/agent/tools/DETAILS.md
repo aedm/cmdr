@@ -423,6 +423,8 @@ which uncertainty it has can look.
 **One formatter, `search::format_size` + `format_timestamp`.** ❌ Never a second one: two would round differently and
 the same folder would read two sizes across two surfaces. Like the `search` results table, this path does NOT consult
 the user's SI-vs-binary units setting; MCP/agent output stays internally consistent instead of tracking a UI preference.
+It's base 1024, so it writes IEC symbols (`KiB`, `MiB`, `GiB`, `TiB`), and the MCP search's `parse_human_size` reads
+them back.
 
 ### The remainder: what the page didn't show
 

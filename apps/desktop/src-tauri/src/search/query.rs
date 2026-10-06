@@ -164,12 +164,14 @@ fn keyed_list(key: &str, values: &[String]) -> String {
     format!("[{}]", items.join(", "))
 }
 
+/// A byte count for a model or a log to read ("1.5 KiB", "214.3 GiB"). Base 1024, so the symbols are IEC
+/// binary (KiB, MiB, GiB, TiB): a symbol always names the base its number was divided by.
 pub(crate) fn format_size(bytes: u64) -> String {
-    const KB: u64 = 1_024;
-    const MB: u64 = 1_024 * KB;
-    const GB: u64 = 1_024 * MB;
-    const TB: u64 = 1_024 * GB;
-    const UNITS: &[(u64, &str)] = &[(TB, "TB"), (GB, "GB"), (MB, "MB"), (KB, "KB")];
+    const KIB: u64 = 1_024;
+    const MIB: u64 = 1_024 * KIB;
+    const GIB: u64 = 1_024 * MIB;
+    const TIB: u64 = 1_024 * GIB;
+    const UNITS: &[(u64, &str)] = &[(TIB, "TiB"), (GIB, "GiB"), (MIB, "MiB"), (KIB, "KiB")];
 
     for &(threshold, unit) in UNITS {
         if bytes >= threshold {
