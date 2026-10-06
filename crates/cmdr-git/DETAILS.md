@@ -217,10 +217,10 @@ walking and `stat`ing the whole watched tree at arm time, which for a recursive 
 tag, and remote-tracking ref lives in the common dir (`commondir` file, verified with `git rev-parse --git-path` on git
 2.x, 2026-10-06). A watch on the own gitdir alone missed `git fetch` / `git push` (stale ahead/behind) and branch
 create/delete. `watcher::WatchScope` puts the one recursive watch on the common dir (which contains the own one) and
-filters to the own gitdir's state files plus the shared `refs/` and `packed-refs`; the common dir's top-level `HEAD` /
-`index` (the main worktree's) and `worktrees/<sibling>/` are dropped. Two linked worktrees of one repo hold two watches
-on that dir rather than sharing one: each reports its own root through its own filter, and sharing would buy a second
-refcount layer and a per-worktree fan-out to save a kernel subscription. Pinned by
+filters to the own gitdir's state files plus the shared `refs/`, `packed-refs`, and `config`; the common dir's top-level
+`HEAD` / `index` (the main worktree's) and `worktrees/<sibling>/` are dropped. Two linked worktrees of one repo hold two
+watches on that dir rather than sharing one: each reports its own root through its own filter, and sharing would buy a
+second refcount layer and a per-worktree fan-out to save a kernel subscription. Pinned by
 `watcher_tests::a_linked_worktree_hears_the_shared_refs_and_not_its_siblings`.
 
 ❗ **A directory, ❌ never the state files themselves.** git never writes `HEAD` or `index` in place: it writes
@@ -230,14 +230,14 @@ watches, so this only ever failed on Linux, where the real-watcher cell timed ou
 first commit (CI, 2026-09-06). A directory's inode is what the rename modifies, so it survives.
 
 **What the recursive watch costs, and what pays it back.** It also delivers `objects/`, `hooks/`, `COMMIT_EDITMSG`,
-`MERGE_MSG`, `*.lock`, `config`, and the per-ref reflogs, none of which moves a pane. `watcher::is_repo_state_path` is
-the allowlist that drops them before anything opens the repository: a path counts when it is one of the six state files
-(`HEAD`, `ORIG_HEAD`, `MERGE_HEAD`, `FETCH_HEAD`, `packed-refs`, `index`) or `logs/HEAD`, or sits under `refs/` or
-`worktrees/`, and never when it ends in `.lock`. Dropping the lock half of git's write dance costs no report, because
-the rename's TARGET (`HEAD`) rides in the same event and answers `true`.
-`watcher_tests::only_the_paths_a_snapshot_reads_are_worth_a_recompute` pins the whole table. On Linux the recursive
-watch is one inotify watch per gitdir DIRECTORY (`objects/` fans out to at most 256, plus any `modules/` or `lfs/`
-trees), the price of one code path for both platforms.
+`MERGE_MSG`, `*.lock`, and the per-ref reflogs, none of which moves a pane. `watcher::is_repo_state_path` is the
+allowlist that drops them before anything opens the repository: a path counts when it is one of the seven state files
+(`HEAD`, `ORIG_HEAD`, `MERGE_HEAD`, `FETCH_HEAD`, `packed-refs`, `index`, and `config`, which names each branch's
+upstream) or `logs/HEAD`, or sits under `refs/` or `worktrees/`, and never when it ends in `.lock`. Dropping the lock
+half of git's write dance costs no report, because the rename's TARGET (`HEAD`) rides in the same event and answers
+`true`. `watcher_tests::only_the_paths_a_snapshot_reads_are_worth_a_recompute` pins the whole table. On Linux the
+recursive watch is one inotify watch per gitdir DIRECTORY (`objects/` fans out to at most 256, plus any `modules/` or
+`lfs/` trees), the price of one code path for both platforms.
 
 ❗ **A READ is dropped by KIND, and that is what keeps the watcher off its own tail.** Linux inotify asks for `IN_OPEN`
 (`notify` 8.2 sets it in `add_single_watch`), so every file a recompute OPENS — `HEAD`, `index`, `packed-refs`, a

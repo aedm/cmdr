@@ -511,7 +511,8 @@ impl WatchScope {
 
     /// Whether an event on `path` is worth recomputing this worktree for.
     ///
-    /// For a linked worktree: its own gitdir's state files, plus the shared refs.
+    /// For a linked worktree: its own gitdir's state files, plus the shared refs
+    /// and `config`.
     /// The common dir's top-level `HEAD`, `index`, and `logs/HEAD` are the MAIN
     /// worktree's, and `worktrees/<sibling>/` is a sibling's, so neither is news
     /// here.
@@ -534,9 +535,9 @@ fn common_dir_of(git_dir: &Path) -> Option<PathBuf> {
     Some(common_dir.canonicalize().unwrap_or(common_dir))
 }
 
-/// Whether `path` is one of the refs every worktree of a repository shares:
-/// anything under `refs/`, and `packed-refs`. ❗ Not `*.lock`, for the reason
-/// [`is_repo_state_path`] gives.
+/// Whether `path` is state every worktree of a repository shares: anything under
+/// `refs/`, `packed-refs`, and `config` (each branch's upstream). ❗ Not `*.lock`,
+/// for the reason [`is_repo_state_path`] gives.
 fn is_shared_ref_path(common_dir: &Path, path: &Path) -> bool {
     let Ok(relative) = path.strip_prefix(common_dir) else {
         return false;
@@ -547,13 +548,25 @@ fn is_shared_ref_path(common_dir: &Path, path: &Path) -> bool {
     let mut components = relative.components();
     match components.next() {
         Some(std::path::Component::Normal(first)) if first == "refs" => true,
-        Some(std::path::Component::Normal(first)) => first == "packed-refs" && components.next().is_none(),
+        Some(std::path::Component::Normal(first)) => {
+            (first == "packed-refs" || first == "config") && components.next().is_none()
+        }
         _ => false,
     }
 }
 
 /// The direct children of the gitdir whose contents decide a [`RepoInfo`].
-const STATE_FILES: [&str; 6] = ["HEAD", "ORIG_HEAD", "MERGE_HEAD", "FETCH_HEAD", "packed-refs", "index"];
+/// `config` names each branch's upstream, so `--set-upstream-to` moves the chip's
+/// upstream and ahead/behind.
+const STATE_FILES: [&str; 7] = [
+    "HEAD",
+    "ORIG_HEAD",
+    "MERGE_HEAD",
+    "FETCH_HEAD",
+    "packed-refs",
+    "index",
+    "config",
+];
 
 /// The directories under the gitdir whose whole subtree matters, as first path
 /// components: refs (every branch, tag, and remote) and each linked worktree's

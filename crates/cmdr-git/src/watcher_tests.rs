@@ -195,7 +195,17 @@ fn only_the_paths_a_snapshot_reads_are_worth_a_recompute() {
     let git_dir = PathBuf::from("/repo/.git");
     let matters = |relative: &str| crate::watcher::is_repo_state_path(&git_dir, &git_dir.join(relative));
 
-    for path in ["HEAD", "index", "packed-refs", "MERGE_HEAD", "ORIG_HEAD", "FETCH_HEAD"] {
+    // `config` too: it names each branch's upstream, so `--set-upstream-to` moves
+    // the chip's upstream and ahead/behind.
+    for path in [
+        "HEAD",
+        "index",
+        "packed-refs",
+        "MERGE_HEAD",
+        "ORIG_HEAD",
+        "FETCH_HEAD",
+        "config",
+    ] {
         assert!(matters(path), "{path} should decide a RepoInfo");
     }
     for path in [
@@ -213,7 +223,6 @@ fn only_the_paths_a_snapshot_reads_are_worth_a_recompute() {
         "MERGE_MSG",
         "objects/ab/cdef",
         "hooks/pre-commit",
-        "config",
         // The per-ref reflogs: the gitdir watch is recursive, so these arrive too,
         // and only `logs/HEAD` is read by anything.
         "logs/refs/heads/main",
@@ -269,6 +278,7 @@ fn a_linked_worktree_hears_the_shared_refs_and_not_its_siblings() {
         "refs/remotes/origin/main",
         "refs/heads/new-branch",
         "packed-refs",
+        "config",
         "worktrees/linked/HEAD",
         "worktrees/linked/index",
         "worktrees/linked/logs/HEAD",
