@@ -1050,7 +1050,7 @@ fn root_is_initializing() -> bool {
 /// real scan). Returns the temp dir backing the DB.
 fn reserve_initializing_for(volume_id: &str) -> tempfile::TempDir {
     let dir = tempfile::tempdir().expect("temp dir for init store");
-    let db_path = dir.path().join("init-phase-test.db");
+    let db_path = dir.path().join(format!("index-{volume_id}.db"));
     let store = IndexStore::open(&db_path).expect("open init store");
     let pool = Arc::new(ReadPool::new(db_path.clone()).expect("pool"));
     let pending = Arc::new(read::pending_sizes::PendingSizes::new());
@@ -1211,7 +1211,7 @@ fn clear_index_from_initializing_removes_instance_and_deletes_db() {
     reset_indexing_for_test();
 
     let tmp = install_initializing_phase();
-    let db_path = tmp.path().join("init-phase-test.db");
+    let db_path = tmp.path().join("index-root.db");
     assert!(db_path.exists(), "init store DB exists before clear");
 
     clear_index(ROOT_VOLUME_ID, crate::volume_files::Removal::Forgotten)

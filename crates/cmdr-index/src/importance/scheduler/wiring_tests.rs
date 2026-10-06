@@ -168,7 +168,7 @@ fn wire_volume_does_not_kick_a_pass_for_an_already_scored_volume() {
 /// new database on disk never receives a row.
 #[test]
 fn a_forgotten_volumes_writer_lets_go_of_its_database() {
-    use crate::volume_files::{self, Removal, VolumeStore};
+    use crate::volume_files::{self, Removal, StoreDirs};
     const VOLUME_ID: &str = "smb-wiring-forgotten";
 
     let dir = tempfile::tempdir().expect("temp dir");
@@ -190,8 +190,7 @@ fn a_forgotten_volumes_writer_lets_go_of_its_database() {
         "test setup: a live writer keeps the database, its WAL, and its SHM on disk"
     );
 
-    let index_db = VolumeStore::Index.db_path(dir.path(), VOLUME_ID);
-    volume_files::remove(&index_db, VOLUME_ID, Removal::Forgotten).expect("forget");
+    volume_files::remove(&StoreDirs::single(dir.path()), VOLUME_ID, Removal::Forgotten).expect("forget");
 
     for file in &files {
         assert!(!file.exists(), "{} must be gone", file.display());

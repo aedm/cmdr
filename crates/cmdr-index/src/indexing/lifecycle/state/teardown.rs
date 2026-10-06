@@ -21,7 +21,7 @@ use crate::indexing::read::pending_sizes::uninstall_pending_sizes;
 use crate::indexing::reconcile::verifier;
 use crate::indexing::store::IndexStore;
 use crate::indexing::volume::IndexVolumeKind;
-use crate::volume_files::{self, Removal};
+use crate::volume_files::{self, Removal, StoreDirs};
 
 /// Take a volume off the read path and drop what a stopped index is no longer
 /// owed. **The first thing every teardown does**, whatever ends it.
@@ -45,7 +45,7 @@ pub(super) fn withdraw_from_the_read_path(volume_id: &str) {
     verifier::invalidate();
     if let Some(pool) = uninstall_read_pool(volume_id) {
         pool.invalidate();
-        volume_files::retire_read_connections(pool.db_path(), volume_id);
+        volume_files::retire_read_connections(&StoreDirs::around_index_db(pool.db_path()), volume_id);
     }
     uninstall_pending_sizes(volume_id);
     // The branch set goes with the instance that watched it. A cleared index
@@ -458,7 +458,7 @@ pub(super) fn remove_instance_and_handles_on(registry: &Registry, volume_id: &st
     };
     if let Some(pool) = pool {
         pool.invalidate();
-        volume_files::retire_read_connections(pool.db_path(), volume_id);
+        volume_files::retire_read_connections(&StoreDirs::around_index_db(pool.db_path()), volume_id);
     }
 }
 
@@ -505,7 +505,7 @@ pub(crate) fn clear_index(volume_id: &str, why: Removal) -> Result<(), String> {
                 // files can go straight away.
                 drop(reg);
                 let db_path = resolved_index_db_path(volume_id)?;
-                volume_files::remove(&db_path, volume_id, why)?;
+                volume_files::remove(&StoreDirs::around_index_db(&db_path), volume_id, why)?;
                 log::info!("Drive index cleared for '{volume_id}' (no live index; database deleted)");
                 return Ok(());
             }
@@ -534,8 +534,7 @@ pub(crate) fn clear_index(volume_id: &str, why: Removal) -> Result<(), String> {
             IndexPhase::Failed { db_path, .. } => {
                 // The failed manager/writer are already torn down. This is the
                 // recovery reclaim: remove the instance and delete the (dead) DB so
-                // a fresh `start_indexing` rebuilds from scratch. The stored
-                // `db_path` avoids re-resolving it off an `AppHandle`.
+                // a fresh `start_indexing` rebuilds from scratch.
                 reg.remove(volume_id);
                 ClearTarget::NoWriter { db_path }
             }
@@ -556,7 +555,7 @@ pub(crate) fn clear_index(volume_id: &str, why: Removal) -> Result<(), String> {
     match target {
         ClearTarget::Running { mgr } => finish_clearing(volume_id, mgr, why),
         ClearTarget::NoWriter { db_path } => {
-            volume_files::remove(&db_path, volume_id, why)?;
+            volume_files::remove(&StoreDirs::around_index_db(&db_path), volume_id, why)?;
             log::info!("Drive index cleared for '{volume_id}' (DB deleted)");
             Ok(())
         }
@@ -577,7 +576,7 @@ fn finish_clearing(volume_id: &str, mut mgr: Box<IndexManager>, why: Removal) ->
     let db_path = mgr.db_path().to_path_buf();
     mgr.shutdown();
     let restart = retire_the_instance(volume_id);
-    let deleted = volume_files::remove(&db_path, volume_id, why);
+    let deleted = volume_files::remove(&StoreDirs::around_index_db(&db_path), volume_id, why);
     log::info!("Drive index cleared for '{volume_id}' (DB deleted)");
     // A start that landed mid-clear runs even if the files wouldn't go: it asked for
     // this drive to be indexed, and a locked database file is not an answer to that.

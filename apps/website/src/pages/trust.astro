@@ -305,14 +305,16 @@ const toc = [
     <h2 id="storage">What is stored where, and for how long</h2>
     <h3>On the user's Mac</h3>
     <p>
-        Cmdr keeps its data in <code>~/Library/Application Support/com.veszelovszki.cmdr/</code> and its logs in
+        Cmdr keeps its data in <code>~/Library/Application Support/com.veszelovszki.cmdr/</code>, its drive index in
+        <code>~/Library/Caches/com.veszelovszki.cmdr/</code>, and its logs in
         <code>~/Library/Logs/com.veszelovszki.cmdr/</code>. Cmdr doesn't add its own encryption, so this data is as safe
         as the Mac's FileVault. It includes:
     </p>
     <ul>
         <li>
             An index of <strong>every file and folder name and path</strong> on each indexed drive, including network
-            shares.
+            shares. It lives in <code>~/Library/Caches/com.veszelovszki.cmdr/drive-index/</code>, so Time Machine
+            doesn't back it up, and Cmdr rebuilds it if it's deleted.
         </li>
         <li>For image search: text read from images (OCR), tags, and image fingerprints.</li>
         <li>A log of every copy, move, rename, and delete, with paths (up to 3 GB by default).</li>

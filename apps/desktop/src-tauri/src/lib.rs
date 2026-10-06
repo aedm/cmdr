@@ -239,11 +239,6 @@ pub fn run() {
     // it lives in one place off the spine; see `tauri_builder.rs`.
     tauri_builder::configure(tauri::Builder::default())
         .setup(move |app| {
-            // Everything the index needs from this app, in one place. Must run
-            // before anything can start background work. Mirror of
-            // `indexing/host/`, which declares the other side of each seam.
-            index_host::install(app.handle());
-
             // Everything a storage backend needs from this app, in one place.
             // Must run before any volume is constructed. Mirror of
             // `cmdr_fs::volume::host`, which declares the other side of each seam.
@@ -281,6 +276,13 @@ pub fn run() {
                     "Couldn't resolve the data dir for the instance lock: {e}. Continuing without it."
                 ),
             }
+
+            // Everything the index needs from this app, in one place. Must run before anything
+            // can start background work, and AFTER the instance lock: building the index moves a
+            // drive index an older build left in the data dir, which is only safe while no other
+            // process can have those files open. Mirror of `indexing/host/`, which declares the
+            // other side of each seam.
+            index_host::install(app.handle());
 
             // Snapshot the diagnostics id into a cheap static before anything that might crash,
             // so the panic hook can read it without allocating or locking. Mints both install
@@ -777,6 +779,7 @@ pub fn run() {
                     // day. The data dir is the isolated one for a dev or E2E instance, so those
                     // runs can't pollute the real ledger. See `usage/CLAUDE.md`.
                     usage::record_launch(&data_dir);
+                    search::set_drive_index_dir(index_host::drive_index_dir(&data_dir));
                     search::start_importance_weight_subscriber(data_dir);
                 }
                 Err(e) => log::warn!("search importance weights and the launch-day ledger not wired: {e}"),

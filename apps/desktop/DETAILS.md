@@ -163,6 +163,10 @@ Data dirs are separate for prod, dev, and each worktree:
 `tauri-wrapper.ts` exports `CMDR_DATA_DIR` to the same path it gives Tauri's `app_data_dir()`, so direct file I/O (crash
 reports, logs, file-backed secret store) agrees without round-tripping through Tauri's API.
 
+The drive index lives apart, in the cache dir's `drive-index/` (out of Time Machine): `~/Library/Caches/<identifier>/`
+for each of the three above, through `CMDR_CACHE_DIR`. A run that sets only `CMDR_DATA_DIR` (E2E) keeps it in
+`<CMDR_DATA_DIR>/cache/drive-index/`. Resolution: `src-tauri/src/config.rs` `drive_index_dir`.
+
 - **Logging**: frontend and backend logs land together in the terminal and the log dir (dev: `<CMDR_DATA_DIR>/logs/`,
   prod: `~/Library/Logs/com.veszelovszki.cmdr/`). Read `docs/tooling/logging.md` before using `RUST_LOG`: it has
   per-subsystem recipes. Key gotcha: the Rust library target is `cmdr_lib`, not `cmdr`, so use

@@ -91,13 +91,13 @@ block: it would delay every volume's stop.
 
 ## Index retention and cleanup (retention.rs)
 
-Local disk has exactly one index DB; every SMB share and MTP storage spawns its own `index-{volume_id}.db`, so the data
-dir can accumulate one DB per drive the user ever connected. `retention.rs` bounds that.
+Local disk has exactly one index DB; every SMB share and MTP storage spawns its own `index-{volume_id}.db`, so the
+drive-index dir can accumulate one DB per drive the user ever connected. `retention.rs` bounds that.
 
 A simple COUNT cap (`MAX_EXTERNAL_INDEX_DBS = 32`) on external (non-root) index DBs, with LRU eviction of the
 least-recently-used OFFLINE ones. `enforce_external_index_cap(app)` runs after a successful SMB/MTP enable (exactly when
-accumulation can grow): it enumerates `index-*.db` in the data dir, pairs each with its mtime (the LRU proxy — a DB is
-rewritten on every scan/live write), and calls the pure, filesystem-free
+accumulation can grow): it enumerates `index-*.db` in the drive-index dir, pairs each with its mtime (the LRU proxy — a
+DB is rewritten on every scan/live write), and calls the pure, filesystem-free
 `select_evictions(candidates, registered, cap)`.
 
 SAFETY, enforced by the selector and unit-tested: a candidate whose volume id is in the registry snapshot

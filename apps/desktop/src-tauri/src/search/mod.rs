@@ -32,8 +32,8 @@ pub use index::{OptU64, SearchEntry, SearchIndex};
 // volumes.rs (per-volume registry + dialog lifecycle)
 pub(crate) use volumes::{
     DIALOG_OPEN, VolumeLoad, cancel_active_loads, cancel_idle_timer, drop_all_indices, ensure_volume, forget_volume,
-    get_loaded, has_searchable_index, reset_backstop_timer, start_idle_timer, start_importance_weight_subscriber,
-    touch_activity,
+    get_loaded, has_searchable_index, reset_backstop_timer, set_drive_index_dir, start_idle_timer,
+    start_importance_weight_subscriber, touch_activity,
 };
 
 // execute.rs (single-volume orchestration)

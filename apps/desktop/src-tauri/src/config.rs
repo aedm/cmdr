@@ -91,6 +91,50 @@ fn os_default_data_dir() -> Option<PathBuf> {
     Some(DIR.clone())
 }
 
+/// The drive index's folder inside the cache dir. Its own folder because the cache dir is
+/// shared: WebKit and Core ML keep theirs there too.
+const DRIVE_INDEX_DIR_NAME: &str = "drive-index";
+
+/// Where the drive index lives: `drive-index/` in the app's cache dir, a rebuildable cache of
+/// gigabytes that backups should skip (Time Machine excludes `~/Library/Caches` by default).
+/// The cache dir, by priority:
+/// 1. `CMDR_CACHE_DIR` (set by `tauri-wrapper.ts` for dev, mirroring Tauri's `app_cache_dir()`)
+/// 2. `<CMDR_DATA_DIR>/cache`, so an E2E or capture run that names only a data dir stays wholly
+///    inside it and never reaches the real cache
+/// 3. the OS cache dir for [`BUNDLE_ID`], the same folder Tauri's `app_cache_dir()` names
+///
+/// `None` only when the OS has no cache dir. Doesn't create it. Why the index's folders are
+/// split this way: `crates/cmdr-index/DETAILS.md` § "Where the stores live".
+pub fn drive_index_dir() -> Option<PathBuf> {
+    cache_dir_from(
+        std::env::var("CMDR_CACHE_DIR").ok().as_deref(),
+        std::env::var("CMDR_DATA_DIR").ok().as_deref(),
+    )
+    .map(|dir| dir.join(DRIVE_INDEX_DIR_NAME))
+}
+
+fn cache_dir_from(cache_env: Option<&str>, data_env: Option<&str>) -> Option<PathBuf> {
+    if let Some(dir) = data_dir_from_env(cache_env) {
+        return Some(dir);
+    }
+    if let Some(data_dir) = data_dir_from_env(data_env) {
+        return Some(data_dir.join("cache"));
+    }
+    os_default_cache_dir()
+}
+
+#[cfg(not(test))]
+fn os_default_cache_dir() -> Option<PathBuf> {
+    Some(dirs::cache_dir()?.join(BUNDLE_ID))
+}
+
+/// Under test, a scratch dir of this process's own, for the same reason as
+/// [`os_default_data_dir`]: a test must never reach the developer's real drive index.
+#[cfg(test)]
+fn os_default_cache_dir() -> Option<PathBuf> {
+    os_default_data_dir().map(|dir| dir.join("cache"))
+}
+
 /// Logs the resolved data directory once at startup.
 pub fn log_app_data_dir<R: Runtime>(app: &AppHandle<R>) {
     if let Ok(dir) = resolved_app_data_dir(app) {
@@ -189,6 +233,38 @@ mod tests {
         // allowed-fixed-temp-dir: asserts the scratch dir sits under the temp root, writes nothing
         assert!(resolved.starts_with(std::env::temp_dir()), "{}", resolved.display());
         assert_eq!(standalone_dir_from(None), Some(resolved), "stable within one process");
+    }
+
+    #[test]
+    fn a_set_cache_dir_wins_over_everything() {
+        assert_eq!(
+            cache_dir_from(Some("/tmp/cmdr-cache"), Some("/tmp/cmdr-data")),
+            Some(PathBuf::from("/tmp/cmdr-cache"))
+        );
+    }
+
+    /// An E2E or capture run names only `CMDR_DATA_DIR`. Its drive index must land inside that
+    /// isolated dir, never in the real `~/Library/Caches/com.veszelovszki.cmdr`.
+    #[test]
+    fn a_data_dir_alone_keeps_the_cache_inside_it() {
+        assert_eq!(
+            cache_dir_from(None, Some("/tmp/cmdr-data")),
+            Some(PathBuf::from("/tmp/cmdr-data/cache"))
+        );
+        assert_eq!(
+            cache_dir_from(Some(""), Some("/tmp/cmdr-data")),
+            Some(PathBuf::from("/tmp/cmdr-data/cache")),
+            "an empty CMDR_CACHE_DIR is unset"
+        );
+    }
+
+    #[test]
+    fn an_unset_cache_dir_under_test_is_never_the_real_one() {
+        let resolved = cache_dir_from(None, None).expect("a test always gets a cache dir");
+        let real = dirs::cache_dir().map(|base| base.join(BUNDLE_ID));
+        assert_ne!(Some(resolved.clone()), real, "a test resolved the real cache dir");
+        // allowed-fixed-temp-dir: asserts the scratch dir sits under the temp root, writes nothing
+        assert!(resolved.starts_with(std::env::temp_dir()), "{}", resolved.display());
     }
 
     #[test]

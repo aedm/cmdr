@@ -36,7 +36,7 @@ use std::time::SystemTime;
 
 use crate::indexing::lifecycle::state;
 use crate::indexing::volume::ROOT_VOLUME_ID;
-use crate::volume_files::{self, Removal, VolumeStore};
+use crate::volume_files::{self, Removal, StoreDirs, VolumeStore};
 
 /// Maximum number of external (non-root) index DBs to retain. Beyond this, the
 /// least-recently-used offline ones are evicted. Sized generously: a heavy user
@@ -98,21 +98,21 @@ pub(crate) fn select_evictions<'a>(
     offline.into_iter().take(to_evict).collect()
 }
 
-/// Enumerate every `index-*.db` in `data_dir` (excluding `root`), pairing each
+/// Enumerate every `index-*.db` in `drive_index_dir` (excluding `root`), pairing each
 /// with its mtime. Skips entries we can't stat (logged) and non-index files.
-fn enumerate_external_index_dbs(data_dir: &Path) -> Vec<IndexDbFile> {
-    let mut dbs = enumerate_index_dbs(data_dir);
+fn enumerate_external_index_dbs(drive_index_dir: &Path) -> Vec<IndexDbFile> {
+    let mut dbs = enumerate_index_dbs(drive_index_dir);
     dbs.retain(|db| db.volume_id != ROOT_VOLUME_ID);
     dbs
 }
 
-/// Enumerate every `index-*.db` in `data_dir`, `root` included, pairing each with
+/// Enumerate every `index-*.db` in `drive_index_dir`, `root` included, pairing each with
 /// its mtime. Skips entries we can't stat (logged) and non-index files.
-fn enumerate_index_dbs(data_dir: &Path) -> Vec<IndexDbFile> {
-    let read_dir = match std::fs::read_dir(data_dir) {
+fn enumerate_index_dbs(drive_index_dir: &Path) -> Vec<IndexDbFile> {
+    let read_dir = match std::fs::read_dir(drive_index_dir) {
         Ok(rd) => rd,
         Err(e) => {
-            log::warn!(target: "indexing::retention", "cannot read data dir {}: {e}", data_dir.display());
+            log::warn!(target: "indexing::retention", "cannot read {}: {e}", drive_index_dir.display());
             return Vec::new();
         }
     };
@@ -156,12 +156,12 @@ fn enumerate_index_dbs(data_dir: &Path) -> Vec<IndexDbFile> {
 /// clear, so the number shown is the number a clear takes to zero. Best-effort: a
 /// file it can't stat counts as zero instead of failing the whole answer.
 pub(crate) fn total_index_db_bytes() -> u64 {
-    let Some(data_dir) = data_dir_for_sweep("measure the index's disk use") else {
+    let Some(dirs) = dirs_for_sweep("measure the index's disk use") else {
         return 0;
     };
-    volume_files::volume_ids_on_disk(&data_dir, Removal::Forgotten)
+    volume_files::volume_ids_on_disk(&dirs, Removal::Forgotten)
         .iter()
-        .map(|volume_id| volume_files::bytes_on_disk(&data_dir, volume_id, Removal::Forgotten))
+        .map(|volume_id| volume_files::bytes_on_disk(&dirs, volume_id, Removal::Forgotten))
         .sum()
 }
 
@@ -169,18 +169,18 @@ pub(crate) fn total_index_db_bytes() -> u64 {
 /// `root` included and in no particular order. What the sweep needs on top of
 /// the registry, which only knows the volumes that are live right now.
 pub(crate) fn volume_ids_on_disk() -> Vec<String> {
-    let Some(data_dir) = data_dir_for_sweep("list the index databases on disk") else {
+    let Some(dirs) = dirs_for_sweep("list the index databases on disk") else {
         return Vec::new();
     };
-    volume_files::volume_ids_on_disk(&data_dir, Removal::Forgotten)
+    volume_files::volume_ids_on_disk(&dirs, Removal::Forgotten)
 }
 
-/// The data dir, or `None` with one log line naming what couldn't be done.
-fn data_dir_for_sweep(what: &str) -> Option<PathBuf> {
-    match crate::indexing::host::config::data_dir() {
-        Ok(dir) => Some(dir),
+/// The stores' folders, or `None` with one log line naming what couldn't be done.
+fn dirs_for_sweep(what: &str) -> Option<StoreDirs> {
+    match StoreDirs::configured() {
+        Ok(dirs) => Some(dirs),
         Err(e) => {
-            log::warn!(target: "indexing::retention", "cannot resolve the data dir to {what}: {e}");
+            log::warn!(target: "indexing::retention", "cannot resolve the index's folders to {what}: {e}");
             None
         }
     }
@@ -194,16 +194,16 @@ fn data_dir_for_sweep(what: &str) -> Option<PathBuf> {
 /// exactly when accumulation can grow. Never evicts a live volume's DB (see the
 /// module safety invariants) nor `root`.
 pub(crate) fn enforce_external_index_cap() {
-    let Some(data_dir) = data_dir_for_sweep("enforce the index-database cap") else {
+    let Some(dirs) = dirs_for_sweep("enforce the index-database cap") else {
         return;
     };
-    evict_over_cap(&data_dir, &state::all_registered_volume_ids(), MAX_EXTERNAL_INDEX_DBS);
+    evict_over_cap(&dirs, &state::all_registered_volume_ids(), MAX_EXTERNAL_INDEX_DBS);
 }
 
 /// [`enforce_external_index_cap`] over a data dir, a registry snapshot, and a cap
 /// passed in, so a test can drive an eviction without 33 databases.
-fn evict_over_cap(data_dir: &Path, registered: &[String], cap: usize) {
-    let candidates = enumerate_external_index_dbs(data_dir);
+fn evict_over_cap(dirs: &StoreDirs, registered: &[String], cap: usize) {
+    let candidates = enumerate_external_index_dbs(&dirs.drive_index);
     let evictions = select_evictions(&candidates, registered, cap);
 
     if evictions.is_empty() {
@@ -216,7 +216,7 @@ fn evict_over_cap(data_dir: &Path, registered: &[String], cap: usize) {
     );
     for db in evictions {
         log::info!(target: "indexing::retention", "evicting abandoned index DB {}", db.path.display());
-        if let Err(e) = volume_files::remove(&db.path, &db.volume_id, Removal::Forgotten) {
+        if let Err(e) = volume_files::remove(dirs, &db.volume_id, Removal::Forgotten) {
             log::warn!(target: "indexing::retention", "evicting '{}' left files behind: {e}", db.volume_id);
         }
     }
@@ -239,15 +239,15 @@ fn evict_over_cap(data_dir: &Path, registered: &[String], cap: usize) {
 /// shouldn't be able to be live (nothing can mint one): a registered volume's
 /// database is never deleted, whatever its ID looks like.
 pub(crate) fn sweep_legacy_scheme_dbs() {
-    let Some(data_dir) = data_dir_for_sweep("sweep index databases from the retired ID scheme") else {
+    let Some(dirs) = dirs_for_sweep("sweep index databases from the retired ID scheme") else {
         return;
     };
-    sweep_legacy_scheme_dbs_in(&data_dir, &state::all_registered_volume_ids());
+    sweep_legacy_scheme_dbs_in(&dirs, &state::all_registered_volume_ids());
 }
 
 /// [`sweep_legacy_scheme_dbs`] over a data dir and a registry snapshot passed in.
-fn sweep_legacy_scheme_dbs_in(data_dir: &Path, registered: &[String]) {
-    let stale: Vec<String> = volume_files::volume_ids_on_disk(data_dir, Removal::Unreachable)
+fn sweep_legacy_scheme_dbs_in(dirs: &StoreDirs, registered: &[String]) {
+    let stale: Vec<String> = volume_files::volume_ids_on_disk(dirs, Removal::Unreachable)
         .into_iter()
         .filter(|volume_id| cmdr_fs::volume::is_legacy_volume_id(volume_id))
         .filter(|volume_id| !registered.iter().any(|live| live == volume_id))
@@ -261,8 +261,7 @@ fn sweep_legacy_scheme_dbs_in(data_dir: &Path, registered: &[String]) {
         cmdr_fs::pluralize::pluralize(stale.len() as u64, "volume")
     );
     for volume_id in stale {
-        let index_db = VolumeStore::Index.db_path(data_dir, &volume_id);
-        if let Err(e) = volume_files::remove(&index_db, &volume_id, Removal::Unreachable) {
+        if let Err(e) = volume_files::remove(dirs, &volume_id, Removal::Unreachable) {
             log::warn!(target: "indexing::retention", "sweeping '{volume_id}' left files behind: {e}");
         }
     }
@@ -367,7 +366,7 @@ mod tests {
         .map(|name| write_aged(dir.path(), name, 300));
         let kept = ["index-smb-new.db", "importance-smb-new.db"].map(|name| write_aged(dir.path(), name, 10));
 
-        evict_over_cap(dir.path(), &[], 1);
+        evict_over_cap(&StoreDirs::single(dir.path()), &[], 1);
 
         assert!(!old_index.exists(), "the least recently used index is evicted");
         for file in &old_files {
@@ -422,7 +421,7 @@ mod tests {
         ]
         .map(write);
 
-        sweep_legacy_scheme_dbs_in(dir.path(), &[]);
+        sweep_legacy_scheme_dbs_in(&StoreDirs::single(dir.path()), &[]);
 
         for file in &swept {
             assert!(

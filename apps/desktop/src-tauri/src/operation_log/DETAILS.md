@@ -14,8 +14,9 @@ alpha dialog) builds on the read side.
 
 ## Why a separate durable DB
 
-Every other on-disk store here is a disposable cache: the drive index and `importance.db` live in `~/Library/Caches/`,
-are per-volume, and delete-and-recreate on any schema change (Time Machine skips them, the OS may purge them). A mutation
+The index's stores are per-volume and delete-and-recreate on any schema change; the biggest, the drive index, lives in
+`~/Library/Caches/` (Time Machine skips it, the OS may purge it; `crates/cmdr-index/DETAILS.md` § "Where the stores
+live"). A mutation
 history is the opposite — valuable user data that must survive for years and span volumes (a copy from disk A to disk B
 is ONE operation with one identity). So it's its own `operation-log.db` beside the durable app data
 (`resolved_app_data_dir`), which Time Machine backs up normally.

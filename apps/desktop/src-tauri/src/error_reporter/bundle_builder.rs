@@ -128,7 +128,8 @@ pub async fn build_bundle<R: tauri::Runtime>(
         // auto-send can never ship an address the user didn't consent to per report.
         email: email_for_kind(kind, email).map(AttachedEmail::into_inner),
         // Full machine snapshot incl. live state: error reports run in a healthy context. The data
-        // dir is where the drive-index DBs live; the snapshot reads only their sizes, never contents.
+        // dir names the disk to measure and, through it, the drive-index dir; the snapshot reads
+        // only the index DBs' sizes, never contents.
         system: match crate::config::resolved_app_data_dir(app) {
             Ok(dir) => crate::diagnostics_snapshot::SystemSnapshot::collect_full(&dir),
             Err(_) => crate::diagnostics_snapshot::SystemSnapshot::collect_full(Path::new("")),

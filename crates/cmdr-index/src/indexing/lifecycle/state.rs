@@ -410,11 +410,11 @@ pub fn init() {
 }
 
 /// The on-disk path of a volume's index DB (`index-<volume_id>.db` under the
-/// resolved app data dir). Single-sources the filename format shared by the
+/// configured drive-index dir). Single-sources the filename format shared by the
 /// indexer's open path and the on-connect resume probe.
 pub(crate) fn resolved_index_db_path(volume_id: &str) -> Result<PathBuf, String> {
-    let data_dir = crate::indexing::host::config::data_dir().map_err(|e| e.to_string())?;
-    Ok(crate::volume_files::VolumeStore::Index.db_path(&data_dir, volume_id))
+    let dirs = crate::volume_files::StoreDirs::configured().map_err(|e| e.to_string())?;
+    Ok(dirs.db_path(crate::volume_files::VolumeStore::Index, volume_id))
 }
 
 // ── Registry helpers ─────────────────────────────────────────────────

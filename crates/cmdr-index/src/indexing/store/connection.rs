@@ -36,6 +36,16 @@ impl IndexStore {
     ///   holds millions of entries and costs tens of minutes to rebuild, so the
     ///   caller reporting a failure always beats silently discarding a good index.
     pub fn open(db_path: &Path) -> Result<Self, IndexStoreError> {
+        // The drive index lives in a cache folder that something outside Cmdr (a
+        // cleaner app, a person) may empty while it runs. A new database then has
+        // to recreate the folder rather than fail its volume until the next launch.
+        // Best-effort: a folder that can't be made fails the open below with the
+        // real reason.
+        if let Some(parent) = db_path.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            let _ = std::fs::create_dir_all(parent);
+        }
         let mut attempt = 0usize;
         loop {
             match Self::try_open(db_path) {

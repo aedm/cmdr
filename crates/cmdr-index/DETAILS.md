@@ -39,7 +39,7 @@ Three reasons, in priority order. When a decision here is ambiguous, resolve it 
 ## What the host has to answer
 
 `indexing/host/` declares five seams and nothing else may cross the boundary. In Cmdr, `src/index_host.rs` answers all
-five in one function, at the top of `setup()`.
+five in one function, early in `setup()`, right after the instance lock.
 
 - **`EventSink`** — where the index reports. The host maps `IndexEvent` to its own wire format; error reporting rides
   the same channel, because a crate can't invoke the app's `log_error!` macro across the boundary and dropping it
@@ -135,9 +135,64 @@ upgrade. It's crate-internal and shared rather than copied per subsystem, so ONE
 (`the_fingerprint_mixes_its_input`) covers both: a hash that collided two policies into one value would pass every
 symmetric stamp-and-compare test while silently skipping the work the stamp exists to trigger.
 
+## Where the stores live
+
+`IndexConfig` carries two folders, and `volume_files::StoreDirs` says which store is in which:
+
+- **`drive_index_dir`**: the drive index. Cmdr points it at `~/Library/Caches/com.veszelovszki.cmdr/drive-index/` (app
+  side: `config::drive_index_dir`, which also covers dev, worktree, and E2E instances).
+- **`data_dir`**: importance and media, in `~/Library/Application Support/com.veszelovszki.cmdr/` beside the app's own
+  state.
+
+**Decision: only the drive index moves to Caches.** Why: it's the bulk (1.08 GB on David's Mac against 180 MB of
+importance and 31 MB of media, 2026-10-06), it changes constantly, and a rescan rebuilds every byte of it, so backing it
+up costs disk and backup time for nothing. `~/Library/Caches` is the platform's own "don't back up, may be purged"
+folder: Time Machine skips it (verified on macOS 27.0 with `tmutil isexcluded ~/Library/Caches`, 2026-10-06), and it's
+the conventional exclusion for other backup tools too (not verified tool by tool), which a per-file Time Machine
+attribute isn't. A cleaner app emptying it costs a rescan, the same path as any missing index. The other two stay in the
+data dir because they hold what a scan can't bring back: importance's `visits` table is the user's navigation history,
+and the media index is hours of OCR and embedding work. A purge of either would silently lose that, and a backup restore
+should bring it back.
+
+**Rejected: `NSURLIsExcludedFromBackupKey` on the data-dir files.** It's per file and lost when SQLite deletes and
+recreates one (a schema bump, a corruption rebuild), so it would need re-asserting on every open plus each sidecar; only
+Time Machine honors it; and excluding importance or media would drop exactly the data that justifies keeping them out of
+Caches. Excluding a dedicated FOLDER would hold up better, but nothing in the data dir is a pure cache except what
+moved.
+
+**Gotcha: importance's weights are still backed up.** Its file is 99.8% rebuildable weights (67 MB of rows, plus free
+pages, against 104 KB of visits, 2026-10-06), and they're rewritten on every rescore. Splitting `visits` into a store of
+its own would let the weights move to Caches too; not done yet.
+
+**Gotcha: the cache dir is shared.** WebKit (`WebKit/`) and Core ML (`com.apple.e5rt.e5bundlecache/`) keep their caches
+in the same `~/Library/Caches/<bundle id>/`, which is why the index has a `drive-index/` folder of its own.
+
+### Adopting an older build's drive index (`drive_index_relocation.rs`)
+
+`IndexBuilder::build` moves any `index-{id}.db` it finds in `data_dir` to `drive_index_dir`, every launch, before
+anything opens either (a no-op once the data dir has none). The module docs carry the per-volume decision table. The
+shape that makes it crash-safe: fold the WAL in with a `TRUNCATE` checkpoint, close (which deletes the empty sidecars),
+then ONE `rename` of the database file. A crash at any point leaves either nothing done or nothing left to do.
+
+- **Why move rather than delete and rescan**: a rescan of a big disk is tens of minutes of CPU and I/O, a NAS share's
+  far more, and a same-volume rename is free. Across volumes (a `CMDR_CACHE_DIR` elsewhere) a rename can't work, and a
+  copy of gigabytes isn't worth it for a cache, so that case deletes and rebuilds.
+- **Downgrade**: an older build finds no index in the data dir and rescans into it. Upgrading again finds both copies,
+  keeps the cache dir's (what this build maintained), and deletes the data dir's. No old copy outlives one launch.
+- **Why in `build` and why the lock first**: renaming and deleting database files is only safe while no other process
+  has them open, so `lib.rs` claims the data dir's instance lock BEFORE `index_host::install` builds the index. It's in
+  `build` rather than `install` so a test handle never runs it, and it's a no-op when both folders are the same (the
+  lazy no-host fallback and every test).
+- **A stray `-wal` in the destination is deleted before the move**: SQLite would replay a log that belongs to no
+  database onto the one that arrives, which is corruption
+  (`a_stray_log_in_the_new_folder_is_never_replayed_onto_the_moved_database`).
+- **`IndexStore::open` creates its parent folder**, so a cache folder emptied while Cmdr runs costs a rescan of what's
+  opened next, never a failed volume until the next launch.
+
 ## A volume's files, and the one door they leave by (`volume_files.rs`)
 
-Three stores each keep a file set per volume in the data dir, all named after the volume id:
+Three stores each keep a file set per volume, all named after the volume id, each in its own folder (§ "Where the stores
+live"):
 
 - The drive index: `index-{id}.db`, plus SQLite's `-wal` and `-shm`.
 - Folder importance: `importance-{id}.db`, plus the same two.

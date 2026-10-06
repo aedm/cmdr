@@ -1,10 +1,11 @@
 //! A volume's state on disk: every file the index keeps for one volume, and the
 //! one way any of them is removed.
 //!
-//! Three stores each keep a file set per volume in the data dir, all named after
-//! the volume id: the drive index (`index-{id}.db`), folder importance
-//! (`importance-{id}.db`), and the media index (`media-{id}.db` plus the vector
-//! index it carries beside it). Each store opens and migrates its own database;
+//! Three stores each keep a file set per volume, all named after the volume id:
+//! the drive index (`index-{id}.db`, in the drive-index dir, which the app keeps
+//! out of backups), folder importance (`importance-{id}.db`), and the media index
+//! (`media-{id}.db` plus the vector index it carries beside it), both in the data
+//! dir. [`StoreDirs`] says which folder each store is in. Each store opens and migrates its own database;
 //! what they share is here, because it's what goes wrong when it's spread out:
 //! the NAMES, and the decision of which stores go when a volume's files are
 //! removed. Removal used to live in each caller, and each one unlinked
@@ -61,6 +62,68 @@ pub(crate) fn ann_file(media_db: &Path, space: &str, extension: &str) -> PathBuf
     media_db.with_file_name(format!("{stem}.{space}.{extension}"))
 }
 
+/// The folders the per-volume stores live in: the drive index in its own,
+/// importance and media in the data dir. One folder for both is fine (tests, and
+/// a host that keeps everything together).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct StoreDirs {
+    /// Importance and media.
+    pub(crate) data: PathBuf,
+    /// The drive index.
+    pub(crate) drive_index: PathBuf,
+}
+
+impl StoreDirs {
+    /// The folders the host configured, or why there are none.
+    pub(crate) fn configured() -> Result<Self, crate::indexing::host::config::DataDirUnset> {
+        Ok(Self {
+            data: crate::indexing::host::config::data_dir()?,
+            drive_index: crate::indexing::host::config::drive_index_dir()?,
+        })
+    }
+
+    /// The folders for the volume whose index database is `index_db`: that file's own
+    /// folder for the index, and the configured data dir for the rest, or the index's
+    /// folder too when nothing is configured (every store in one folder, as a test
+    /// lays them out).
+    pub(crate) fn around_index_db(index_db: &Path) -> Self {
+        let drive_index = index_db.parent().unwrap_or(Path::new("")).to_path_buf();
+        let data = crate::indexing::host::config::data_dir().unwrap_or_else(|_| drive_index.clone());
+        Self { data, drive_index }
+    }
+
+    /// Every store in `dir`.
+    #[cfg(test)]
+    pub(crate) fn single(dir: &Path) -> Self {
+        Self {
+            data: dir.to_path_buf(),
+            drive_index: dir.to_path_buf(),
+        }
+    }
+
+    /// The folder `store` keeps its files in.
+    pub(crate) fn of(&self, store: VolumeStore) -> &Path {
+        match store {
+            VolumeStore::Index => &self.drive_index,
+            VolumeStore::Importance | VolumeStore::Media => &self.data,
+        }
+    }
+
+    /// `store`'s database for `volume_id`.
+    pub(crate) fn db_path(&self, store: VolumeStore, volume_id: &str) -> PathBuf {
+        store.db_path(self.of(store), volume_id)
+    }
+
+    /// Each distinct folder once, so a scan over both never reads one twice.
+    fn distinct(&self) -> Vec<&Path> {
+        if self.data == self.drive_index {
+            vec![&self.data]
+        } else {
+            vec![&self.data, &self.drive_index]
+        }
+    }
+}
+
 impl VolumeStore {
     /// Every store, in the order a removal works through them.
     pub(crate) const ALL: [VolumeStore; 3] = [VolumeStore::Index, VolumeStore::Importance, VolumeStore::Media];
@@ -74,9 +137,10 @@ impl VolumeStore {
         }
     }
 
-    /// The store's database for `volume_id` under `data_dir`.
-    pub(crate) fn db_path(self, data_dir: &Path, volume_id: &str) -> PathBuf {
-        data_dir.join(format!("{}{volume_id}.db", self.prefix()))
+    /// The store's database for `volume_id` in `dir`, which is this store's own
+    /// folder ([`StoreDirs::of`]).
+    pub(crate) fn db_path(self, dir: &Path, volume_id: &str) -> PathBuf {
+        dir.join(format!("{}{volume_id}.db", self.prefix()))
     }
 
     /// The volume id a database file name belongs to, or `None` for anything that
@@ -188,8 +252,8 @@ fn release_holders(store: VolumeStore, data_dir: &Path, volume_id: &str) {
     }
 }
 
-/// Remove the files `why` takes for `volume_id`, whose index database is (or
-/// was) at `index_db`. The other stores' files are looked for beside it.
+/// Remove the files `why` takes for `volume_id`, each store's from its own folder
+/// in `dirs`.
 ///
 /// Per store: ask its holders to let go, then delete the database through
 /// [`sqlite_util::delete_database`] (which retires the read connections threads
@@ -199,15 +263,11 @@ fn release_holders(store: VolumeStore, data_dir: &Path, volume_id: &str) {
 ///
 /// ⚠️ The caller has already made sure nothing reads or writes the INDEX database:
 /// its holders are the lifecycle's, not this module's.
-pub(crate) fn remove(index_db: &Path, volume_id: &str, why: Removal) -> Result<(), String> {
-    let data_dir = index_db.parent().unwrap_or(Path::new(""));
+pub(crate) fn remove(dirs: &StoreDirs, volume_id: &str, why: Removal) -> Result<(), String> {
     let mut first_refusal = None;
     for store in why.stores() {
-        let db_path = match store {
-            VolumeStore::Index => index_db.to_path_buf(),
-            VolumeStore::Importance | VolumeStore::Media => store.db_path(data_dir, volume_id),
-        };
-        release_holders(store, data_dir, volume_id);
+        let db_path = dirs.db_path(store, volume_id);
+        release_holders(store, &dirs.data, volume_id);
         if let Err(e) = sqlite_util::delete_database(&db_path) {
             first_refusal.get_or_insert(format!("Failed to delete {}: {e}", db_path.display()));
         }
@@ -231,40 +291,47 @@ pub(crate) fn remove(index_db: &Path, volume_id: &str, why: Removal) -> Result<(
 /// cache until something else pushed them out. The files stay, so a later read
 /// (an offline importance lookup, a restart of the volume) reopens.
 /// `sqlite_util::retire_read_connections` says how far a request like this reaches.
-pub(crate) fn retire_read_connections(index_db: &Path, volume_id: &str) {
-    let data_dir = index_db.parent().unwrap_or(Path::new(""));
-    sqlite_util::retire_read_connections(index_db);
-    for store in [VolumeStore::Importance, VolumeStore::Media] {
-        sqlite_util::retire_read_connections(&store.db_path(data_dir, volume_id));
+pub(crate) fn retire_read_connections(dirs: &StoreDirs, volume_id: &str) {
+    for store in VolumeStore::ALL {
+        sqlite_util::retire_read_connections(&dirs.db_path(store, volume_id));
     }
 }
 
-/// The id of every volume that has a database in `data_dir` that `why` would
-/// take, in no particular order and each one once.
+/// The id of every volume that has a database in `dirs` that `why` would take,
+/// in no particular order and each one once.
 ///
 /// Read from the files of EVERY such store and never from the index's alone: a
 /// store's database can outlive the index beside it (a share forgotten before the
 /// stores were removed together), and a sweep that only looked for indexes would
 /// never find it.
-pub(crate) fn volume_ids_on_disk(data_dir: &Path, why: Removal) -> Vec<String> {
-    let read_dir = match std::fs::read_dir(data_dir) {
-        Ok(read_dir) => read_dir,
-        Err(e) => {
-            log::warn!(target: "indexing::retention", "cannot read data dir {}: {e}", data_dir.display());
-            return Vec::new();
-        }
-    };
+pub(crate) fn volume_ids_on_disk(dirs: &StoreDirs, why: Removal) -> Vec<String> {
     let mut volume_ids: Vec<String> = Vec::new();
-    for entry in read_dir.flatten() {
-        let file_name = entry.file_name();
-        let Some(file_name) = file_name.to_str() else {
-            continue;
+    for dir in dirs.distinct() {
+        let read_dir = match std::fs::read_dir(dir) {
+            Ok(read_dir) => read_dir,
+            // A drive-index dir nothing has written yet, or one a cleaner emptied.
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(e) => {
+                log::warn!(target: "indexing::retention", "cannot read {}: {e}", dir.display());
+                continue;
+            }
         };
-        let Some(volume_id) = why.stores().find_map(|store| store.volume_id_of(file_name)) else {
-            continue;
-        };
-        if !volume_ids.iter().any(|seen| seen == volume_id) {
-            volume_ids.push(volume_id.to_string());
+        for entry in read_dir.flatten() {
+            let file_name = entry.file_name();
+            let Some(file_name) = file_name.to_str() else {
+                continue;
+            };
+            // Only a store that lives in THIS folder names a volume here.
+            let Some(volume_id) = why
+                .stores()
+                .filter(|store| dirs.of(*store) == dir)
+                .find_map(|store| store.volume_id_of(file_name))
+            else {
+                continue;
+            };
+            if !volume_ids.iter().any(|seen| seen == volume_id) {
+                volume_ids.push(volume_id.to_string());
+            }
         }
     }
     volume_ids
@@ -272,9 +339,9 @@ pub(crate) fn volume_ids_on_disk(data_dir: &Path, why: Removal) -> Vec<String> {
 
 /// How many bytes [`remove`] would give back for `volume_id` under `why`. A file
 /// that can't be read counts as zero.
-pub(crate) fn bytes_on_disk(data_dir: &Path, volume_id: &str, why: Removal) -> u64 {
+pub(crate) fn bytes_on_disk(dirs: &StoreDirs, volume_id: &str, why: Removal) -> u64 {
     why.stores()
-        .flat_map(|store| store.files(&store.db_path(data_dir, volume_id)))
+        .flat_map(|store| store.files(&dirs.db_path(store, volume_id)))
         .map(|file| std::fs::metadata(file).map(|m| m.len()).unwrap_or(0))
         .sum()
 }
@@ -287,10 +354,10 @@ mod tests {
 
     /// Write every file every store keeps for `volume_id`, and hand them back by
     /// store.
-    fn write_every_file(data_dir: &Path, volume_id: &str) -> Vec<(VolumeStore, PathBuf)> {
+    fn write_every_file(dirs: &StoreDirs, volume_id: &str) -> Vec<(VolumeStore, PathBuf)> {
         let mut written = Vec::new();
         for store in VolumeStore::ALL {
-            for file in store.files(&store.db_path(data_dir, volume_id)) {
+            for file in store.files(&dirs.db_path(store, volume_id)) {
                 std::fs::write(&file, [0u8; 16]).expect("write a store file");
                 written.push((store, file));
             }
@@ -358,11 +425,11 @@ mod tests {
             (Removal::IndexRebuild, vec![VolumeStore::Index]),
             (Removal::Unreachable, VolumeStore::ALL.to_vec()),
         ];
+        let dirs = StoreDirs::single(dir.path());
         for (why, taken) in cases {
-            let written = write_every_file(dir.path(), VOLUME_ID);
-            let index_db = VolumeStore::Index.db_path(dir.path(), VOLUME_ID);
+            let written = write_every_file(&dirs, VOLUME_ID);
 
-            remove(&index_db, VOLUME_ID, why).expect("remove");
+            remove(&dirs, VOLUME_ID, why).expect("remove");
 
             for (store, file) in &written {
                 assert_eq!(file.exists(), !taken.contains(store), "{why:?} and {}", file.display());
@@ -375,12 +442,12 @@ mod tests {
     #[test]
     fn removing_a_volume_leaves_every_other_volumes_files() {
         let dir = tempfile::tempdir().expect("temp dir");
-        write_every_file(dir.path(), "smb-nas");
-        let neighbours = write_every_file(dir.path(), "smb-nas.local-photos");
-        let root = write_every_file(dir.path(), "root");
+        let dirs = StoreDirs::single(dir.path());
+        write_every_file(&dirs, "smb-nas");
+        let neighbours = write_every_file(&dirs, "smb-nas.local-photos");
+        let root = write_every_file(&dirs, "root");
 
-        let index_db = VolumeStore::Index.db_path(dir.path(), "smb-nas");
-        remove(&index_db, "smb-nas", Removal::Unreachable).expect("remove");
+        remove(&dirs, "smb-nas", Removal::Unreachable).expect("remove");
 
         for (_, file) in neighbours.iter().chain(&root) {
             assert!(file.exists(), "{} belongs to another volume", file.display());
@@ -392,7 +459,8 @@ mod tests {
     #[test]
     fn a_stores_holder_is_asked_to_let_go_before_its_files_are_deleted() {
         let dir = tempfile::tempdir().expect("temp dir");
-        write_every_file(dir.path(), VOLUME_ID);
+        let dirs = StoreDirs::single(dir.path());
+        write_every_file(&dirs, VOLUME_ID);
         let importance_db = VolumeStore::Importance.db_path(dir.path(), VOLUME_ID);
 
         // What the holder saw when it was called: whether the database was still
@@ -409,14 +477,13 @@ mod tests {
             }),
         );
 
-        let index_db = VolumeStore::Index.db_path(dir.path(), VOLUME_ID);
-        remove(&index_db, VOLUME_ID, Removal::IndexRebuild).expect("rebuild");
+        remove(&dirs, VOLUME_ID, Removal::IndexRebuild).expect("rebuild");
         assert!(
             seen.lock_ignore_poison().is_empty(),
             "a removal that keeps the store doesn't disturb whoever holds it"
         );
 
-        remove(&index_db, VOLUME_ID, Removal::Forgotten).expect("forget");
+        remove(&dirs, VOLUME_ID, Removal::Forgotten).expect("forget");
         assert_eq!(
             *seen.lock_ignore_poison(),
             [true],
@@ -439,15 +506,48 @@ mod tests {
             std::fs::write(dir.path().join(name), [0u8; 10]).expect("write");
         }
 
-        let mut forgettable = volume_ids_on_disk(dir.path(), Removal::Forgotten);
+        let dirs = StoreDirs::single(dir.path());
+        let mut forgettable = volume_ids_on_disk(&dirs, Removal::Forgotten);
         forgettable.sort();
         assert_eq!(forgettable, ["root", "smb-index-already-gone"]);
 
-        let mut unreachable = volume_ids_on_disk(dir.path(), Removal::Unreachable);
+        let mut unreachable = volume_ids_on_disk(&dirs, Removal::Unreachable);
         unreachable.sort();
         assert_eq!(unreachable, ["root", "smb-index-already-gone", "smb-media-only"]);
 
-        assert_eq!(bytes_on_disk(dir.path(), "root", Removal::Forgotten), 30);
-        assert_eq!(bytes_on_disk(dir.path(), "root", Removal::IndexRebuild), 20);
+        assert_eq!(bytes_on_disk(&dirs, "root", Removal::Forgotten), 30);
+        assert_eq!(bytes_on_disk(&dirs, "root", Removal::IndexRebuild), 20);
+    }
+
+    /// With the drive index in a folder of its own, each store is found, measured,
+    /// and removed in ITS folder, and a stray file of one store sitting in the
+    /// other store's folder names no volume.
+    #[test]
+    fn a_drive_index_kept_apart_is_found_and_removed_in_its_own_folder() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let dirs = StoreDirs {
+            data: root.path().join("data"),
+            drive_index: root.path().join("cache"),
+        };
+        std::fs::create_dir_all(&dirs.data).expect("data");
+        std::fs::create_dir_all(&dirs.drive_index).expect("cache");
+        let written = write_every_file(&dirs, VOLUME_ID);
+        std::fs::write(dirs.drive_index.join("importance-stray.db"), [0u8; 4]).expect("stray");
+        std::fs::write(dirs.data.join("index-left-behind.db"), [0u8; 4]).expect("stray");
+
+        assert_eq!(volume_ids_on_disk(&dirs, Removal::Unreachable), [VOLUME_ID]);
+        assert_eq!(
+            bytes_on_disk(&dirs, VOLUME_ID, Removal::Unreachable),
+            16 * written.len() as u64
+        );
+        assert!(
+            dirs.db_path(VolumeStore::Index, VOLUME_ID)
+                .starts_with(&dirs.drive_index)
+        );
+
+        remove(&dirs, VOLUME_ID, Removal::Unreachable).expect("remove");
+        for (_, file) in &written {
+            assert!(!file.exists(), "{} must go", file.display());
+        }
     }
 }
