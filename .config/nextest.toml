@@ -254,6 +254,24 @@ filter = 'test(smb_integration_)'
 slow-timeout = { period = "30s", terminate-after = 1 }
 
 [[profile.default.overrides]]
+# The one `cmdr-smb` cell that blocks on the fixture Samba DELIVERING a change
+# notification (CHANGE_NOTIFY) to the share watcher. It re-seeds a fresh file each
+# second until one is heard, inside a 20 s budget; 30 s keeps that budget the
+# authority and the cap a hang-catcher.
+#
+# Delivery is ~0.3 s on a quiet stack, but it rides Samba's `notifyd`, one process in a
+# `cpus: 0.5` container that fans every write on `public` out to every recursive
+# watch on it (one per connected test volume), logging each failed send to a
+# closing one. With several worktrees' lanes on one stack it falls behind and keeps
+# draining after they stop: caught 2026-10-06 pinned at its cap at ~7,000 failed
+# sends/s with no client connected, while this cell heard nothing for its whole old
+# 6 s budget, even re-run alone. A fresh stack under three concurrent `cmdr-smb`
+# suites still delivered within 1.3 s. No group: the load is the rest of the lane,
+# not this cell.
+filter = 'test(an_outside_change_in_an_accented_directory_names_the_path_the_pane_opened)'
+slow-timeout = { period = "30s", terminate-after = 1 }
+
+[[profile.default.overrides]]
 # `cmdr-git`'s virtual-category tests, which build their fixtures by shelling out to
 # real `git` (stash create, worktree add, submodule add — `test_fixtures::git_cli`,
 # because gix exposes no public API for those three). Each test pays a handful of

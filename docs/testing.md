@@ -727,6 +727,10 @@ entry needs a real "we can't make this faster" justification, not convenience.
   drop, so two of them on one share tear down each other's mount, and the symptom lands somewhere else entirely: a wait
   expiring against a path that has stopped being a mount. The two kernel-mount tests hold `public` on the guest fixture
   and `café` on the `unicode` one.
+- **`an_outside_change_in_an_accented_directory_names_the_path_the_pane_opened`**
+  (`crates/cmdr-smb/src/volume/unicode_names_integration_test.rs`): a **20 s** delivery budget under a 30 s cap, for
+  ~0.3 s of real work. It waits on the fixture Samba's `notifyd`, which lags by seconds when several lanes share the
+  stack. The measurements are in its `.config/nextest.toml` override.
 - **`smb_integration_concurrent_streaming_writes_no_deadlock`** (~2.8-4.3 s, the integration lane's slowest local test):
   don't shrink it to buy suite time. Its shape (200 files, 60 × 1 MB writes forced through the streaming fallback at
   concurrency 8) is deliberately tuned to the production workload that surfaced the deadlock it guards, and no smaller

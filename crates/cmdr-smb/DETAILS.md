@@ -974,9 +974,10 @@ Which side each one lives on, and why: § "Which side a test lives on" above.
 - `unicode_names_integration_test.rs` — names in both Unicode forms, seeded through a raw smb2 session so they sit on
   disk exactly as spelled: every operation on a listed NFD name inside an NFC directory (read, hinted read, scan, copy
   off and within the share, rename, delete, open), and the watcher reporting an outside change under the pane's own
-  spelling of an accented directory. Then the foreign-path resolve: an all-NFD path to an NFC file and to ERR-VETBX's
-  mixed shape, a case-and-form-differing directory, look-alike twins refusing, a pane path carried over from the kernel
-  mount, and a stale remembered correction healing (§ "Resolving a foreign path").
+  spelling of an accented directory (a 20 s delivery budget, because the fixture's `notifyd` lags under a shared lane:
+  `docs/testing.md` § "Sanctioned slow-test exceptions"). Then the foreign-path resolve: an all-NFD path to an NFC file
+  and to ERR-VETBX's mixed shape, a case-and-form-differing directory, look-alike twins refusing, a pane path carried
+  over from the kernel mount, and a stale remembered correction healing (§ "Resolving a foreign path").
 - `forbidden_chars_integration_test.rs` — names carrying the characters SMB2 forbids (`?`, `*`, `:`, `\`, trailing space
   or period, and so on), which the `unicode` fixture container seeds in the private-use bytes macOS smbfs writes: they
   list as the characters themselves with no private-use code point left, open and read (also through a directory whose
