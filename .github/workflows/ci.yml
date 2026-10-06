@@ -368,10 +368,8 @@ jobs:
   #   has a green track record.
   # - The Docker fixture lanes: GitHub's macOS runners have no Docker.
   #
-  # ❗ `continue-on-error` and NOT in `ci-ok`'s `needs` while the job earns trust: a failure here
-  # shows red on the job but leaves the run (and so `ci-ok` and both release gates, which read the
-  # run's conclusion) green. Promote it by deleting `continue-on-error` and adding the job to
-  # `ci-ok`'s `needs`, in one commit, once it has a clean record. `docs/tooling/ci.md` § macOS lane.
+  # Required: in `ci-ok`'s `needs`, so a red macOS job fails the run and both release gates.
+  # `docs/tooling/ci.md` § macOS lane.
   desktop-rust-macos:
     name: Desktop (Rust, macOS)
     # Pinned to the release builder's image so the lanes lint against the SDK the app ships with;
@@ -379,7 +377,6 @@ jobs:
     runs-on: macos-26
     # A cold ~1000-crate Tauri compile on a 3-core runner, then clippy, rustdoc, and the suite.
     timeout-minutes: 75
-    continue-on-error: true
     needs: changes
     if: inputs.run_all || needs.changes.outputs.rust == 'true'
 
@@ -1129,7 +1126,18 @@ jobs:
     name: CI OK
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [desktop-rust, desktop-svelte, desktop-e2e-linux, website, api-server, dashboard, scripts, hygiene]
+    needs:
+      [
+        desktop-rust,
+        desktop-rust-macos,
+        desktop-svelte,
+        desktop-e2e-linux,
+        website,
+        api-server,
+        dashboard,
+        scripts,
+        hygiene,
+      ]
     if: always()
     steps:
       - name: Check all jobs passed

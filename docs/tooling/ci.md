@@ -158,10 +158,9 @@ SDK; free for a public repo) and asks the three questions Linux can't answer for
 `rust` filter like `desktop-rust`, so it runs in parallel and adds no wall time unless it outlasts that job (~29 min
 warm on 2026-10-05).
 
-- **Not required yet.** It carries `continue-on-error: true` and is NOT in `ci-ok`'s `needs`, so a red macOS job shows
-  on the job but leaves the run, `ci-ok`, and both release gates (which read the run's conclusion) green. Promote it
-  once it has a clean record over a couple of weeks of pushes: delete `continue-on-error` and add the job to `ci-ok`'s
-  `needs`, in one commit.
+- **Required.** It's in `ci-ok`'s `needs`, so a red macOS job fails the run, `ci-ok`, and both release gates. Its first
+  run (2026-10-06) failed on two tests that assumed David's Mac (a malloc zone macOS 26 doesn't register, a tight
+  watchdog margin); the second was green, and it was promoted then.
 - **Left out on purpose**: `macos-availability` (the committed selector list records the newest SDK it was built on, and
   an older runner SDK that knows a different selector set fails by design), `disk-images` (a candidate once the job has
   a track record), and the Docker fixture lanes (no Docker on GitHub's macOS runners).
