@@ -47,6 +47,8 @@ mod names;
 mod path_end;
 mod paths;
 #[cfg(test)]
+mod prose_tests;
+#[cfg(test)]
 mod reference_tests;
 mod references;
 #[cfg(test)]
@@ -54,7 +56,7 @@ mod tests;
 
 pub use context::RedactionContext;
 use context::TokenDomain;
-use detail::{EchoedIdentity, echoed_identities, redact_detail_field};
+use detail::{EchoedIdentity, echoed_identities, redact_detail_field, scrub_leaf_echoes};
 use fields::*;
 use names::*;
 use path_end::*;
@@ -140,8 +142,9 @@ fn redact_with<'a>(line: &'a str, context: Option<&RedactionContext>) -> Cow<'a,
     let re = redactor_regex();
     let mut out: Option<String> = None;
     let mut pos = 0usize;
-    // Collected on the first external-text field only: the whole line's keyed identities,
-    // which that field's prose may repeat bare.
+    // Collected on the first match: the identities and path leaves the whole line names,
+    // which its external-text fields and (for leaves) its plain prose may repeat bare. A line
+    // with no match names nothing, so it never pays for this.
     let mut echoed: Option<Vec<EchoedIdentity>> = None;
 
     while pos <= line.len() {
@@ -149,15 +152,15 @@ fn redact_with<'a>(line: &'a str, context: Option<&RedactionContext>) -> Cow<'a,
         // "start of line" rather than "start of the remaining slice".
         let Some(caps) = re.captures_at(line, pos) else { break };
         let Some(whole) = caps.get(0) else { break };
+        let echoed = echoed.get_or_insert_with(|| echoed_identities(line, context));
         let (replacement, consumed) = if caps.name("detail_field").is_some() {
-            let echoed = echoed.get_or_insert_with(|| echoed_identities(line, context));
             redact_detail_field(&caps, context, echoed)
         } else {
             dispatch(&caps, context)
         };
 
         let buf = out.get_or_insert_with(|| String::with_capacity(line.len()));
-        buf.push_str(&line[pos..whole.start()]);
+        buf.push_str(&scrub_leaf_echoes(&line[pos..whole.start()], echoed));
         buf.push_str(&replacement);
 
         // A rewriter that consumed nothing would spin forever on the same offset; fall
@@ -172,7 +175,10 @@ fn redact_with<'a>(line: &'a str, context: Option<&RedactionContext>) -> Cow<'a,
 
     match out {
         Some(mut buf) => {
-            buf.push_str(&line[pos.min(line.len())..]);
+            buf.push_str(&scrub_leaf_echoes(
+                &line[pos.min(line.len())..],
+                echoed.as_deref().unwrap_or_default(),
+            ));
             Cow::Owned(buf)
         }
         None => Cow::Borrowed(line),
@@ -245,6 +251,14 @@ fn redactor_regex() -> &'static Regex {
             )
             | (?P<media>          / media / [^/\s"'<>|`]+ (?: \x20 [^/\s"'<>|`]+ )*
                                   (?: / [^/\s"'<>|`]+ (?: \x20 [^/\s"'<>|`]+ )* )*
+            )
+            # An absolute path under any other prefix: `/srv/…`, `/mnt/…`, a phone's `/DCIM/…`,
+            # `/Applications/…`. Hundreds of sites log `path.display()` in prose, so no prefix
+            # list can keep up. `\B` stands in for the missing lookbehind: the slash must not
+            # follow a word character, which keeps `MB/s`, `and/or`, `3/4`, and `$HOME/…` out.
+            # Two segments at least, so a lone `/` or `/foo` stays prose.
+            | (?P<abs_path>       \B / [^/\s"'<>|`()]+
+                                  (?: / [^/\s"'<>|`]+ (?: \x20 [^/\s"'<>|`(][^/\s"'<>|`]* )* )+
             )
             | (?P<remote_url>     (?i: sftp | ssh | webdav | s3 | http | https | smb ) ://
                                   [^\s"'<>|`]+ (?: \x20 [^\s"'<>|`]+ )*
@@ -426,6 +440,17 @@ fn dispatch(caps: &Captures<'_>, context: Option<&RedactionContext>) -> (String,
     if let Some(m) = caps.name("media") {
         let (path, _) = split_trailing_noise(m.as_str());
         return (redact_media(path, context), path.len());
+    }
+    if let Some(m) = caps.name("abs_path") {
+        let (path, _) = split_trailing_noise(m.as_str());
+        if path.is_empty() {
+            // Can't happen (a path starts with its slash), but consuming nothing would skip
+            // the whole match unredacted. Hand back everything after the slash instead.
+            return ("/".to_string(), 1);
+        }
+        // A leading `/` makes the relative walker keep a system root (`/Applications`) and
+        // tokenize everything else; existing tokens stay, so a second pass is a no-op.
+        return (redact_relative_path(path, context, true), path.len());
     }
     if let Some(m) = caps.name("remote_url") {
         let (path, _) = split_trailing_noise(m.as_str());

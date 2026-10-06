@@ -36,13 +36,15 @@ overlaps, and decisions: `DETAILS.md`.
 
 ## Gotchas
 
-- **A filename repeated in plain prose is not redacted** (`the Trash refused it: “Screenshot ….jpeg”`): no pattern
-  claims a bare name. Pinned by `trash_refusal_line_redacts_its_path`.
+- **A bare name is redacted only when its line also names it in a path** (the leaf echo scrub): `the Trash refused it:
+  “Screenshot ….jpeg”` goes because the same line logs the file's path. A name with no path or key on its line still
+  ships, so key it (`file={name:?}`). Pinned by `a_path_leaf_repeated_bare_on_its_line_is_scrubbed`.
+- **Any absolute path is a path** (`abs_path`, `\B/` plus two segments), whatever its prefix; a lone `/foo` stays prose.
 - **Dispatch order mirrors regex alternation order.** Complete URLs before generic userinfo, derived IDs before IPs.
 
 ## Files
 
 `mod.rs` (API, regex, dispatch), `context.rs` (report key, token domains), `paths.rs`, `references.rs` (remote
 references, derived IDs), `fields.rs` (keyed fields), `detail.rs` (external-text fields), `path_end.rs` (where a
-prose path ends), `names.rs` (printing normalization); tests in `tests.rs`, `reference_tests.rs`, `detail_tests.rs`,
+prose path ends), `names.rs` (printing normalization); tests in `tests.rs`, `reference_tests.rs`, `detail_tests.rs`, `prose_tests.rs`,
 `consistency_tests.rs`, golden corpus in `fixtures/`.

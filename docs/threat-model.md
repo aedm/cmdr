@@ -329,7 +329,9 @@ risk.
   - **Toward subprocessors**: Discord never gets an email address, and error-report links expire after 24 hours
     (`docs/security.md` § Discord deep links).
 - **Residual risk**:
-  - **The redactor is path-shaped**: a file name in free text can pass. Listed on `/trust`.
+  - **The redactor is path-shaped**: it covers every path and a name repeated on its path's line, but a name logged with
+    no path on its line can pass (`apps/desktop/src-tauri/src/redact/DETAILS.md` § "Names in prose"). Listed on
+    `/trust`.
   - **Usage stats are opt-out during the beta**, and their settings list is kept clean by review, not a filter.
   - **Data leaves the EU** for several subprocessors (`trust.ts`'s `dataLocations`).
   - Some server-side hardening is tracked privately.

@@ -1003,9 +1003,9 @@ async fn probe_write_capability(storage: &mtp_rs::Storage, storage_name: &str) -
     match storage.create_folder(None, PROBE_FOLDER_NAME).await {
         Ok(handle) => {
             // Success! Clean up by deleting the probe folder
-            debug!("Storage '{}': write probe succeeded, cleaning up", storage_name);
+            debug!("Storage volumeName={storage_name:?}: write probe succeeded, cleaning up");
             if let Err(e) = storage.delete(handle).await {
-                warn!("Storage '{}': failed to clean up probe folder: {:?}", storage_name, e);
+                warn!("Storage volumeName={storage_name:?}: failed to clean up probe folder: {e:?}");
             }
             true
         }

@@ -9,29 +9,42 @@ use super::fields::{is_redacted_segment, redact_typed_path};
 use super::names::unescape_debug;
 use super::paths::{has_extension_like_suffix, redact_leaf};
 use super::{
-    REPORT_DETAIL_MAX_CHARS, RedactionContext, identity_token, redact_with, redactor_regex, split_trailing_noise_with,
-    whole_len,
+    REPORT_DETAIL_MAX_CHARS, RedactionContext, dispatch, identity_token, redact_with, redactor_regex,
+    split_trailing_noise, split_trailing_noise_with, whole_len,
 };
 use regex::{Captures, Regex};
+use std::borrow::Cow;
 use std::sync::OnceLock;
 
 /// Shortest keyed value worth scrubbing from prose by its spelling. Shorter ones (`tv`, `pi`)
 /// are too likely to be part of an ordinary word.
 const MIN_ECHOED_IDENTITY_CHARS: usize = 3;
 
-/// A raw identity the line's own keyed fields name, paired with the token it gets there.
+/// A raw identity the line names, paired with the token it gets there.
 pub(super) struct EchoedIdentity {
     raw: String,
     token: String,
+    /// A path's last segment: the one kind of identity scrubbed from plain prose too
+    /// ([`scrub_leaf_echoes`]), since macOS repeats a file's name in its own error text.
+    is_leaf: bool,
 }
 
-/// Collect the identities the line's keyed fields name (`host=`, `share=`, `user=`, a
-/// `path=` leaf, …), so an external-text field on the same line can scrub them when the prose
-/// repeats one bare: `tree connect failed: "Private Share"` has no path or key to catch it.
-/// The external-text fields themselves are skipped: prose never teaches the scrubber a name.
+/// Path branches whose leaf is collected for the echo scrub: the local and absolute ones.
+const ECHO_PATH_BRANCHES: &[&str] = &["win_home", "unix_home", "unix_system", "volumes", "media", "abs_path"];
+
+/// Collect the identities the line names (`host=`, `share=`, `user=`, a `path=` leaf, the leaf
+/// of any local or absolute path), so the rest of the line can be scrubbed of bare repeats:
+/// `tree connect failed: "Private Share"` has no path or key to catch it. External-text fields
+/// are skipped: prose never teaches the scrubber a name.
 pub(super) fn echoed_identities(line: &str, context: Option<&RedactionContext>) -> Vec<EchoedIdentity> {
     let mut found = Vec::new();
     for caps in redactor_regex().captures_iter(line) {
+        if let Some(branch) = ECHO_PATH_BRANCHES.iter().find_map(|g| caps.name(g)) {
+            if let Some(identity) = path_leaf_identity(branch.as_str(), &caps, context) {
+                found.push(identity);
+            }
+            continue;
+        }
         let (raw, token) = if caps.name("identity_field").is_some() {
             let key = caps.name("if_key").map_or("", |m| m.as_str());
             let value = quoted_value(caps.name("if_value").map_or("", |m| m.as_str()));
@@ -58,12 +71,53 @@ pub(super) fn echoed_identities(line: &str, context: Option<&RedactionContext>) 
             continue;
         };
         if raw != "None" && raw.chars().count() >= MIN_ECHOED_IDENTITY_CHARS {
-            found.push(EchoedIdentity { raw, token });
+            let is_leaf = caps.name("path_field").is_some();
+            found.push(EchoedIdentity { raw, token, is_leaf });
         }
     }
     // Longest first, so a share named `Plans` can't split `Client Plans` before it's seen.
     found.sort_by_key(|identity| std::cmp::Reverse(identity.raw.len()));
     found
+}
+
+/// The leaf of a prose path match, with the exact token the path's own rewrite gave it. A leaf
+/// the rewrite kept (`Documents`, a system root) or turned into something other than a name
+/// token (a bare `/Volumes/<label>`) isn't a name to scrub.
+fn path_leaf_identity(
+    matched: &str,
+    caps: &Captures<'_>,
+    context: Option<&RedactionContext>,
+) -> Option<EchoedIdentity> {
+    let (path, _) = split_trailing_noise(matched);
+    let raw = path.rsplit(['/', '\\']).find(|seg| !seg.is_empty())?;
+    let (redacted, _) = dispatch(caps, context);
+    let token = redacted.rsplit(['/', '\\']).find(|seg| !seg.is_empty())?;
+    let is_name_token = token.starts_with("<file") || token.starts_with("<dir");
+    (is_name_token && raw.chars().count() >= MIN_ECHOED_IDENTITY_CHARS).then(|| EchoedIdentity {
+        raw: raw.to_string(),
+        token: token.to_string(),
+        is_leaf: true,
+    })
+}
+
+/// Scrub whole-word repeats of the line's path leaves from a stretch of plain prose between
+/// matches: `the Trash refused it: “Screenshot ….jpeg”` after the same file's path. Stricter
+/// about glue than inside external text, since prose lines carry log targets: `media_index`
+/// and `indexing::writer` keep their words even when a folder is named `media` or `writer`.
+pub(super) fn scrub_leaf_echoes<'a>(prose: &'a str, echoed: &[EchoedIdentity]) -> Cow<'a, str> {
+    let mut out = Cow::Borrowed(prose);
+    for identity in echoed.iter().filter(|identity| identity.is_leaf) {
+        if out.contains(identity.raw.as_str()) {
+            out = Cow::Owned(replace_word(&out, &identity.raw, &identity.token, is_prose_glue));
+        }
+    }
+    out
+}
+
+/// A neighbor that makes a match part of a bigger word in a log line: a letter, a digit, `_`,
+/// or a `::` module separator.
+fn is_prose_glue(neighbor: Option<char>, beyond: Option<char>) -> bool {
+    neighbor.is_some_and(|c| c.is_alphanumeric() || c == '_') || (neighbor == Some(':') && beyond == Some(':'))
 }
 
 /// Strip `Some("…")` or `"…"` wrappers; anything else is returned as is.
@@ -90,11 +144,13 @@ pub(super) fn redact_detail_field(
     let text = unescape_debug(quoted_value(raw));
 
     let text = redact_json_identity_pairs(&text, context);
+    // Absolute paths first: the line scanner's own `abs_path` branch trims a lowercase prose
+    // run off a path's end, which in untrusted text would leave `records` of `Medical records`.
+    let text = redact_any_absolute_path(&text, context);
     let mut redacted = String::with_capacity(text.len());
     for line in text.split_inclusive('\n') {
         redacted.push_str(&redact_with(line, context));
     }
-    redacted = redact_any_absolute_path(&redacted, context);
     for identity in echoed {
         redacted = replace_whole_word(&redacted, &identity.raw, &identity.token);
     }
@@ -172,15 +228,30 @@ fn redact_any_absolute_path(text: &str, context: Option<&RedactionContext>) -> S
 /// Replace `needle` wherever it isn't glued to a neighboring letter or digit, so a share named
 /// `Plans` leaves `Planscape` alone.
 fn replace_whole_word(haystack: &str, needle: &str, replacement: &str) -> String {
+    replace_word(haystack, needle, replacement, |neighbor, _| {
+        neighbor.is_some_and(char::is_alphanumeric)
+    })
+}
+
+/// Replace `needle` wherever `is_glue` says neither neighbor joins it to a bigger word.
+/// `is_glue` gets the neighbor and the char beyond it, on each side.
+fn replace_word(
+    haystack: &str,
+    needle: &str,
+    replacement: &str,
+    is_glue: impl Fn(Option<char>, Option<char>) -> bool,
+) -> String {
     let mut out = String::with_capacity(haystack.len());
+    let mut done = 0;
     let mut rest = haystack;
     while let Some(at) = rest.find(needle) {
-        let before = rest[..at].chars().next_back();
-        let after = rest[at + needle.len()..].chars().next();
-        let glued = before.is_some_and(char::is_alphanumeric) || after.is_some_and(char::is_alphanumeric);
+        let mut before = haystack[..done + at].chars().rev();
+        let mut after = rest[at + needle.len()..].chars();
+        let glued = is_glue(before.next(), before.next()) || is_glue(after.next(), after.next());
         out.push_str(&rest[..at]);
         out.push_str(if glued { needle } else { replacement });
-        rest = &rest[at + needle.len()..];
+        done += at + needle.len();
+        rest = &haystack[done..];
     }
     out.push_str(rest);
     out

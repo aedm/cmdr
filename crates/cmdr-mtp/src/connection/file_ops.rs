@@ -326,7 +326,7 @@ impl MtpConnectionManager {
                 if is_stale {
                     log::warn!(
                         target: "mtp_upload",
-                        "SendObjectInfo rejected for {dest_folder}/{filename} on {device_id}: cached parent handle is stale (device re-keyed). Refreshing handles and signaling a one-shot retry."
+                        "SendObjectInfo rejected for dir={dest_folder:?} file={filename:?} on {device_id}: cached parent handle is stale (device re-keyed). Refreshing handles and signaling a one-shot retry."
                     );
                     self.refresh_dir_handle(device_id, storage_id, Path::new(dest_folder))
                         .await;
@@ -341,7 +341,7 @@ impl MtpConnectionManager {
                 // otherwise leave no trace (no `error-report` breadcrumb).
                 log::warn!(
                     target: "mtp_upload",
-                    "Upload failed for {dest_folder}/{filename} on {device_id}: {:?}",
+                    "Upload failed for dir={dest_folder:?} file={filename:?} on {device_id}: {:?}",
                     upload_err.source
                 );
                 return Err(self.map_device_error(upload_err.source, device_id));

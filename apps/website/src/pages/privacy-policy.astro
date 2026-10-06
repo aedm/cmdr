@@ -19,8 +19,8 @@ import LegalLayout from '../layouts/LegalLayout.astro'
             It sends crash reports (on by default, with an easy off switch), and you can send error reports if you
             want. During the open beta, the desktop app also sends usage stats (which features you use), tied to a
             random id, never to your name, with an easy off switch. Your file contents never reach us. Usage stats and
-            crash reports carry no file names, and in an error report you send, file names are replaced with
-            placeholders, with a small gap we explain below. We don't sell your data.
+            crash reports carry no file names, and in an error report you send, file and folder names are replaced
+            with placeholders, with one narrow gap we explain below. We don't sell your data.
         </p>
     </div>
 
@@ -108,8 +108,9 @@ import LegalLayout from '../layouts/LegalLayout.astro'
             <strong>Error reports</strong> (opt-in): a zip of recent app logs plus your app and macOS version, sent from
             Help &gt; Send error report. The app shows you what's inside before it goes anywhere. File and folder names
             are replaced with placeholders on your Mac first, so a path arrives as something like
-            <code>$HOME/Documents/&lt;file&gt;.pdf</code>. This isn't perfect: a file name that shows up in a log
-            message outside a path can slip through. That's why you see the preview first. If you've added a beta
+            <code>$HOME/Documents/&lt;file&gt;.pdf</code>. This covers every path, and a name repeated in the same log
+            line as its path. One gap remains: a name that appears in a log line on its own, with no path next to it,
+            can slip through. That's why you see the preview first. If you've added a beta
             contact email, you can tick a box to
             attach it so we can reply; we include it only when you do. You can also add a note or your email address to
             a report you already sent, and that goes to the same place. Everything here is kept for 90 days.
@@ -141,7 +142,7 @@ import LegalLayout from '../layouts/LegalLayout.astro'
         We <strong>never</strong> collect your file contents, keystrokes, or screenshots. Usage stats and crash reports
         never include file names, search queries, or AI prompts. The one place these can reach us is the logs of an
         error report you chose to send: file names there are replaced with placeholders, but, as explained above, a
-        stray file name can get through. Beyond the usage stats, the desktop app's network
+        name that appears on its own can get through. Beyond the usage stats, the desktop app's network
         calls are license validation (including the device identifier above), checking for updates, sending crash
         reports (unless you've turned them off), and sending error reports you choose to send.
     </p>
@@ -151,9 +152,9 @@ import LegalLayout from '../layouts/LegalLayout.astro'
         <li>
             The contents of your files, ever. We don't want to know your files. Your file and folder names don't reach
             us either: in an error report they're replaced with placeholders on your Mac, keeping only the file
-            extension and everyday folder names like Documents or Downloads. (A name mentioned outside a path can slip
-            through, which is why you see the report before you send it.) We see the shape of what happened, not what
-            you were working on.
+            extension and everyday folder names like Documents or Downloads. (A name mentioned on its own, with no path
+            next to it, can slip through, which is why you see the report before you send it.) We see the shape of what
+            happened, not what you were working on.
         </li>
         <li>
             Your prompts, the AI's answers, tool calls, etc. With a cloud provider, the app talks to it directly using

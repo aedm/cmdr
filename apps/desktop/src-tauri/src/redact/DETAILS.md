@@ -11,6 +11,7 @@ Depth and rationale. `CLAUDE.md` holds the must-knows and the pattern table.
 | `unix_system` | `/tmp/`, `/var/`, `/private/`, `/opt/` | prefix kept; tail walked with same shape rules |
 | `volumes` | `/Volumes/<label>/...` (spaces allowed) | `/Volumes/<volume>/<allowlisted-or-dir>/<file>.<ext>` |
 | `media` | `/media/<label>/...` (spaces allowed) | `/media/<volume>/<allowlisted-or-dir>/<file>.<ext>` |
+| `abs_path` | any other absolute path, two segments or more, not after a word char (`/srv/a`, `/DCIM/x.jpg`) | system root kept (`/Applications`), every other segment tokenized |
 | `remote_url` | SFTP/SSH/WebDAV/S3/HTTP(S)/SMB URL, with or without userinfo | scheme + hierarchy + port + address class + conservative extension; identities tokenized |
 | `unc` | `\\host\share\...` | `\\<host>\<share>\<redacted tail>` |
 | `url_userinfo` | another scheme's `scheme://user[:pass]@host/...` | same complete component redaction as recognized URLs |
@@ -177,12 +178,29 @@ was skipped by the scanner: `/Volumes/d/f.txt and smb://host/share/x.txt` pulled
 back as literal text, and left `//host/share/x.txt` with no pattern willing to claim it. The share name and filename
 shipped. Any future branch that hands text back needs the same treatment, which is why `dispatch` returns a length.
 
-### Known gap: a filename repeated in prose
+## Names in prose
 
-macOS puts the filename in its own error text as well as in the path (`the Trash refused it: “Screenshot ….jpeg”`).
-That copy has no path around it and no pattern claims a bare name, so in ordinary line text it still ships. Pinned by
-`trash_refusal_line_redacts_its_path`. Inside an external-text field the echo scrub below closes it for any name the
-line also logs under a key; the Trash site logs its message as plain text today, so it isn't covered.
+Rust log sites interpolate paths in prose far more often than as keyed fields: about 370 `{}` of `path.display()` and
+100 inline `{path}` captures as of 2026-10-06. Two report-side rules cover that class without touching the sites:
+
+- **`abs_path` claims an absolute path under any prefix.** The prefix branches only knew home, the system temp roots,
+  and mounts, so `/srv/clients/…`, a phone's `/DCIM/…`, or a server's `/data/…` shipped whole. The regex crate has no
+  lookbehind; `\B` before the slash (no word char in front) is what keeps `MB/s`, `and/or`, `3/4`, and `$HOME/…` out,
+  and the two-segment minimum keeps a lone `/` or `/foo` prose. It ends like every prose path (`split_trailing_noise`)
+  and walks the segments with `redact_relative_path`, so a system root stays and an over-match like an unknown-scheme
+  URL's path is tokenized rather than shipped. Inside external text `redact_any_absolute_path` runs BEFORE the line
+  scanner, because there a lowercase last word (`Medical records`) belongs to the path.
+- **The leaf echo scrub** (`detail.rs::scrub_leaf_echoes`). macOS repeats a file's name in its own error text (`the
+  Trash refused it: “Screenshot ….jpeg”`). `redact_with` collects the leaf of every local or absolute path on the line,
+  with the token the path's own rewrite gave it (`echoed_identities`), and replaces whole-word repeats in the prose
+  between matches, before or after the path. A leaf the rewrite kept (`Documents`) isn't scrubbed. Glue is stricter
+  than inside external text: a letter, digit, `_`, or `::` joins a word, so a folder named `media` leaves the
+  `media_index` log target alone.
+
+What this doesn't cover: a bare name or a relative path whose line names no path for it (`couldn't open “x.pdf”` on
+its own), and a leaf repeated after a remote URL. Those sites log the value under a key (`file={name:?}`,
+`smb_path={p:?}`); the convention is in `CLAUDE.md`, and the frontend bridge does it automatically by placeholder
+name.
 
 ## How to add a new pattern
 
@@ -247,21 +265,21 @@ around them. So it has one mechanism, used at every such site:
 - **Redaction (`detail.rs`) treats the quoted value as one unit.** It unescapes it (so a `\"` around a quoted name
   can't split a path match and strand a bare quote), runs the ordinary scanner with the same context per line, then
   scrubs whole-word repeats of every identity the SAME line logs under a key (`host=`, `server=`, `share=`, `user=`,
-  the IDs, a quoted `path=` leaf), reusing that field's token. It caps the result at `REPORT_DETAIL_MAX_CHARS` (200)
+  the IDs, a quoted `path=` leaf) or as a path's leaf, reusing that field's token. It caps the result at `REPORT_DETAIL_MAX_CHARS` (200)
   with a trailing `…` and re-escapes with `{:?}`, so the closing quote stays exact. Idempotent: a capped value sits at
   the limit.
 - **Identity-keyed JSON pairs inside the value are tokenized first** (`"server":"…"`, `"share"`, `"username"`, `"path"`,
   `"name"`, …): the frontend logs a typed error as `JSON.stringify(error)`, and its keys say what each value is, in a
   spelling the line's own keyed fields may not share. `error`, `err`, `result`, and `detail` placeholders all render
   as `detail=` fields (`log-bridge.ts`).
-- **Absolute paths under any prefix are tokenized inside the value** (`/srv/data/…`, `/mnt/…`), after the ordinary scan:
-  a server or frontend error names paths the line scanner has no prefix rule for. Already-rewritten segments keep their
-  tokens, which keeps it idempotent.
+- **Absolute paths under any prefix are tokenized inside the value** (`/srv/data/…`, `/mnt/…`), BEFORE the ordinary
+  scan, with no lowercase prose-run trim: the text is untrusted, so a trailing lowercase word goes with the path.
+  Already-rewritten segments keep their tokens, which keeps it idempotent.
 - **The echo scrub reads the whole line** (collected once per line, lazily, in `redact_with`), so a key after the field
   still counts. External-text fields never feed it: prose can't teach it a name. Values under three chars are skipped
   (too likely to be part of a word), and matches glued to a letter or digit are left alone.
 - **MCP's `cmdr://logs` gets the same treatment**, cap included, with bare tokens.
-- **What it doesn't promise:** a name the line doesn't key anywhere survives in the prose (pinned by
+- **What it doesn't promise:** a name the line neither keys nor puts in a path survives in the prose (pinned by
   `an_unkeyed_bare_name_in_prose_survives`). The cap bounds exposure; it doesn't anonymize.
 
 ## Report-scoped token identity

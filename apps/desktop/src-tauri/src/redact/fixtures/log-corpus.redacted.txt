@@ -167,3 +167,5 @@
 23:40:00.001 INFO  remote  WebDAV https://<host>:8443/<dir>/<dir>/<file>.json?<query>=<query>#<fragment>
 23:40:00.002 INFO  volume  IDs smb-<volume-id> and manual-<server-id>-1445
 23:40:00.003 INFO  identity  host="<host>" server=Some("<host>") share="<share>" volumeId="<volume-id>" serverId="<server-id>" deviceId="<device-id>"
+23:40:00.004 WARN  indexing::cover  Cover: can't walk /<dir>/<dir>/<dir>/<file>.pdf: permission denied
+23:40:00.005 WARN  trash  op 01a0 (Trash) failed: $HOME/Desktop/<file>.jpeg: the Trash refused it: “<file>.jpeg”

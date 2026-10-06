@@ -470,7 +470,7 @@ impl SmbVolume {
                     }
                     Err(e) if is_pool_member_dead(&e) => {
                         log::debug!(
-                            "smb scan pool: member {idx} died listing {smb_path:?} ({e}); retrying on a sibling"
+                            "smb scan pool: member {idx} died listing smb_path={smb_path:?} ({e}); retrying on a sibling"
                         );
                         pool.mark_member_dead(idx);
                         continue;
@@ -548,7 +548,7 @@ impl SmbVolume {
                         Ok(_) => break, // ⇒ streaming serves today's bytes
                         Err(e) if is_pool_member_dead(&e) => {
                             log::debug!(
-                                "smb scan pool: member {idx} died reading {smb_path:?} ({e}); retrying on a sibling"
+                                "smb scan pool: member {idx} died reading smb_path={smb_path:?} ({e}); retrying on a sibling"
                             );
                             pool.mark_member_dead(idx);
                             continue;

@@ -72,11 +72,11 @@ export const networkConnections: NetworkConnection[] = [
     destination: '<code>api.getcmdr.com/error-report</code>',
     when: 'When the user picks Help &gt; Send error report, which shows a preview first. Automatic sending exists but is off by default.',
     sends:
-      "A zip with the recent part of the app's log, the app and macOS version, and the user's note. Before it leaves the Mac, Cmdr replaces file and folder names in paths with placeholders, keeping only the extension and common folder names like Documents. <strong>Known gap</strong>: a file name that appears in free text (outside a path) can get through.",
+      "A zip with the recent part of the app's log, the app and macOS version, and the user's note. Before it leaves the Mac, Cmdr replaces file and folder names in every path with placeholders, keeping only the extension and common folder names like Documents. A name repeated on the same log line as its path is replaced too. <strong>Known gap</strong>: a name logged on its own, with no path on its line, can get through.",
     control:
       'Sent by hand only, by default. Automatic sending is Settings &gt; Updates &amp; privacy &gt; "Send error reports automatically", off by default. IT can turn off both kinds for everyone with <code>DisableCrashAndErrorReports</code>.',
     devTodo:
-      'Release timing: AI search and selection words stopped reaching the log in 3bfa0e246, which ships in the release after 0.50.0, so this narrowed wording is only true from then. Remaining: the redactor misses a file name in free text (<code>redact/CLAUDE.md</code> § Gotchas). Close it, then drop the "Known gap" sentence here, the matching gap in "Not in place yet", and the gap sentences in the privacy policy (section 2 and the intro).',
+      'Release timing: AI search and selection words stopped reaching the log in 3bfa0e246, and the redactor started covering paths under any prefix and a name repeated next to its path on 2026-10-06. Both ship in the release after 0.50.0, so this wording is only true from then. Remaining: a name logged with no path on its line (<code>redact/DETAILS.md</code> § "Names in prose"). If it ever closes, drop the "Known gap" sentence here, the matching gap in "Not in place yet", and the gap sentences in the privacy policy (section 2, the paragraph after the list, and the intro).',
   },
   {
     id: 'license',
@@ -316,7 +316,7 @@ export const notInPlaceYet: string[] = [
   "<strong>Data leaves the EU</strong> (see above), and Cloudflare storage isn't locked to the EU jurisdiction.",
   '<strong>No data processing agreement (DPA)</strong> ready to sign.',
   "<strong>The 90-day deletion of error-report zips isn't active yet.</strong>",
-  '<strong>Error-report cleaning has a known gap</strong>: a file name in free text can be included.',
+  '<strong>Error-report cleaning has a known gap</strong>: a file name logged on its own, with no path on the same line, can be included.',
   '<strong>No reproducible builds.</strong> Each release publishes SHA-256 checksums, signed build provenance, and signed SBOMs, and its tag is signed.',
   '<strong>No second-person code review.</strong> Cmdr has one maintainer, and development is AI-assisted. Automated checks stand in for a reviewer (<a href="/trust/development#review">details</a>).',
   '<strong>One maintainer account can publish a release</strong> to every install, and the signing keys are GitHub repository secrets without a protected environment.',
