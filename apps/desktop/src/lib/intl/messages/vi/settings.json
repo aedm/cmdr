@@ -2024,6 +2024,10 @@
   "@settings.control.backToPresetsAriaLabel": {
     "sourceHash": "1579f3f"
   },
+  "settings.control.unitItems": "items",
+  "@settings.control.unitItems": {
+    "sourceHash": "5f3c4f8"
+  },
   "settings.managed.rowNote": "Cài đặt này do tổ chức của bạn quản lý.",
   "@settings.managed.rowNote": {
     "sourceHash": "891206b"

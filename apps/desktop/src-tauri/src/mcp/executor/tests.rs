@@ -270,25 +270,28 @@ fn test_volume_list_not_empty() {
 
 #[test]
 fn test_parse_human_size_with_space() {
-    assert_eq!(parse_human_size("1 MB").unwrap(), 1_048_576);
-    assert_eq!(parse_human_size("500 KB").unwrap(), 512_000);
-    assert_eq!(parse_human_size("2 GB").unwrap(), 2_147_483_648);
-    assert_eq!(parse_human_size("1 TB").unwrap(), 1_099_511_627_776);
+    // SI symbols are base 1000, the way Cmdr's SI sizes and the "MB" in its copy mean them.
+    assert_eq!(parse_human_size("1 MB").unwrap(), 1_000_000);
+    assert_eq!(parse_human_size("500 kB").unwrap(), 500_000);
+    assert_eq!(parse_human_size("2 GB").unwrap(), 2_000_000_000);
+    assert_eq!(parse_human_size("1 TB").unwrap(), 1_000_000_000_000);
     assert_eq!(parse_human_size("100 B").unwrap(), 100);
 }
 
 #[test]
 fn test_parse_human_size_no_space() {
-    assert_eq!(parse_human_size("1MB").unwrap(), 1_048_576);
-    assert_eq!(parse_human_size("500KB").unwrap(), 512_000);
-    assert_eq!(parse_human_size("2GB").unwrap(), 2_147_483_648);
+    assert_eq!(parse_human_size("1MB").unwrap(), 1_000_000);
+    assert_eq!(parse_human_size("500KB").unwrap(), 500_000);
+    assert_eq!(parse_human_size("2GB").unwrap(), 2_000_000_000);
 }
 
 #[test]
 fn test_parse_human_size_case_insensitive() {
-    assert_eq!(parse_human_size("1 mb").unwrap(), 1_048_576);
-    assert_eq!(parse_human_size("500 kb").unwrap(), 512_000);
-    assert_eq!(parse_human_size("1 Mb").unwrap(), 1_048_576);
+    // Uppercase "KB" (no i) is read leniently as the SI kilobyte, like "kB".
+    assert_eq!(parse_human_size("1 mb").unwrap(), 1_000_000);
+    assert_eq!(parse_human_size("500 kb").unwrap(), 500_000);
+    assert_eq!(parse_human_size("500 KB").unwrap(), 500_000);
+    assert_eq!(parse_human_size("1 Mb").unwrap(), 1_000_000);
 }
 
 #[test]
@@ -303,8 +306,8 @@ fn test_parse_human_size_iec() {
 
 #[test]
 fn test_parse_human_size_decimal() {
-    assert_eq!(parse_human_size("1.5 MB").unwrap(), 1_572_864);
-    assert_eq!(parse_human_size("0.5 GB").unwrap(), 536_870_912);
+    assert_eq!(parse_human_size("1.5 MB").unwrap(), 1_500_000);
+    assert_eq!(parse_human_size("0.5 GiB").unwrap(), 536_870_912);
 }
 
 #[test]

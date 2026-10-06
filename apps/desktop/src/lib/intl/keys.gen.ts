@@ -3285,6 +3285,7 @@ export type MessageKey =
   | 'settings.control.customValuePlaceholder'
   | 'settings.control.resetToDefault'
   | 'settings.control.restartRequired'
+  | 'settings.control.unitItems'
   | 'settings.developer.mcpEnabled.description'
   | 'settings.developer.mcpEnabled.label'
   | 'settings.developer.mcpPort.description'

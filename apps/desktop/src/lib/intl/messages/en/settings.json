@@ -2465,6 +2465,10 @@
   "@settings.control.backToPresetsAriaLabel": {
     "description": "Accessibility label and tooltip for the small icon-only button that leaves the custom-value text input and returns to the preset dropdown in a settings picker. Shown as a back-arrow (corner-down-left) icon; keep it short."
   },
+  "settings.control.unitItems": "items",
+  "@settings.control.unitItems": {
+    "description": "Unit word shown right after a number input in Settings > Advanced, for the list buffer sizes (how many file-list items or rows to prepare ahead, like '200 items'). The number is whatever the person typed and changes as they edit, so use a form that reads right after any number (the general plural). Keep it short, lowercase unless your language capitalizes nouns."
+  },
   "settings.managed.rowNote": "Your organization manages this setting.",
   "@settings.managed.rowNote": {
     "description": "A note under a setting the person can't change because their organization's IT department set it through device management (MDM, a configuration profile). Shown with an info icon under a greyed-out switch. Plain and calm, not alarming; 'organization' means the employer or school that manages the Mac."

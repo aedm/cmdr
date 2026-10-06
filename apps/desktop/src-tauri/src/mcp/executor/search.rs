@@ -37,43 +37,15 @@ const FALLBACK_FLOOR: Duration = Duration::from_secs(2);
 const DEFAULT_LIMIT: u32 = 30;
 const MAX_LIMIT: u32 = 200;
 
-/// Parse a human-readable size string into bytes.
-/// Supports B, the IEC KiB/MiB/GiB/TiB that Cmdr's own sizes read in (`search::format_size`), and KB/MB/GB/TB
-/// (case-insensitive, with or without space). KB/MB/GB/TB are taken as base 1024 too, the way a model writing
-/// "files over 5 MB" usually means it.
+/// Parse a human-readable size string into bytes: SI `kB`/`MB`/`GB`/`TB` are base 1000, IEC
+/// `KiB`/`MiB`/`GiB`/`TiB` base 1024 (`search::parse_size`), case-insensitive, with or without space.
 pub fn parse_human_size(s: &str) -> Result<u64, ToolError> {
-    const KIB: u64 = 1_024;
-    // IEC suffixes first: "MIB" would otherwise match the bare "B".
-    const UNITS: &[(&str, u64)] = &[
-        ("TIB", KIB * KIB * KIB * KIB),
-        ("GIB", KIB * KIB * KIB),
-        ("MIB", KIB * KIB),
-        ("KIB", KIB),
-        ("TB", KIB * KIB * KIB * KIB),
-        ("GB", KIB * KIB * KIB),
-        ("MB", KIB * KIB),
-        ("KB", KIB),
-        ("B", 1),
-    ];
-    let s = s.trim();
-    let unparseable = || {
+    crate::search::parse_size(s).ok_or_else(|| {
         ToolError::invalid_params(format!(
-            "Couldn't parse size: \"{s}\". Use a format like \"1 MB\" or \"500 KiB\"."
+            "Couldn't parse size: \"{}\". Use a format like \"1 MB\" (1,000,000 bytes) or \"500 KiB\" (512,000 bytes).",
+            s.trim()
         ))
-    };
-
-    // Find where the numeric part ends and the unit begins
-    let s_upper = s.to_uppercase();
-    let Some((num_str, multiplier)) = UNITS
-        .iter()
-        .find_map(|&(suffix, multiplier)| s_upper.find(suffix).map(|pos| (&s[..pos], multiplier)))
-    else {
-        // Try parsing as pure number (bytes)
-        return s.parse().map_err(|_| unparseable());
-    };
-
-    let num: f64 = num_str.trim().parse().map_err(|_| unparseable())?;
-    Ok((num * multiplier as f64) as u64)
+    })
 }
 
 /// Run a search over its one target volume and wait for the answer.
