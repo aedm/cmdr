@@ -161,7 +161,7 @@
   "@commands.viewCalculateFolderSizes.label": {
     "sourceHash": "d2a83da"
   },
-  "commands.viewCalculateFolderSizes.description": "Toont de grootte van elke map in dit paneel die er nog geen heeft. Escape stopt het.",
+  "commands.viewCalculateFolderSizes.description": "Toont de grootte van elke map in dit paneel die er nog geen heeft. Escape stopt de berekening.",
   "@commands.viewCalculateFolderSizes.description": {
     "sourceHash": "2a7568d"
   },

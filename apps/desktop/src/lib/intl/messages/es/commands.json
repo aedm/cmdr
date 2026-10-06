@@ -160,7 +160,7 @@
   "@commands.viewCalculateFolderSizes.label": {
     "sourceHash": "d2a83da"
   },
-  "commands.viewCalculateFolderSizes.description": "Muestra el tamaño de cada carpeta de este panel que aún no lo tiene. La tecla Esc lo detiene.",
+  "commands.viewCalculateFolderSizes.description": "Muestra el tamaño de cada carpeta de este panel que aún no lo tiene. La tecla Esc detiene el cálculo.",
   "@commands.viewCalculateFolderSizes.description": {
     "sourceHash": "2a7568d"
   },

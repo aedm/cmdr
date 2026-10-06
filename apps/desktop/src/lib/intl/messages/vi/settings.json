@@ -300,11 +300,11 @@
   "@settings.listing.foldersFirst.description": {
     "sourceHash": "8505ff3"
   },
-  "settings.listing.spaceCalculatesFolderSize.label": "Tính kích cỡ thư mục bằng phím Space",
+  "settings.listing.spaceCalculatesFolderSize.label": "Tính toán kích cỡ thư mục bằng phím dấu cách",
   "@settings.listing.spaceCalculatesFolderSize.label": {
     "sourceHash": "1a403eb"
   },
-  "settings.listing.spaceCalculatesFolderSize.description": "Khi bạn nhấn Space để chọn một thư mục chưa biết kích cỡ, Cmdr sẽ cộng dồn nội dung bên trong và hiển thị tổng. Nhấn Escape để dừng.",
+  "settings.listing.spaceCalculatesFolderSize.description": "Khi bạn nhấn phím dấu cách để chọn một thư mục chưa biết kích cỡ, Cmdr sẽ cộng dồn nội dung bên trong và hiển thị tổng. Nhấn Escape để dừng tính toán.",
   "@settings.listing.spaceCalculatesFolderSize.description": {
     "sourceHash": "38d64c1"
   },
@@ -1254,15 +1254,15 @@
   "@settings.fileViewer.suppressBinaryWarning.label": {
     "sourceHash": "8cdaada"
   },
-  "settings.fileViewer.suppressBinaryWarning.description": "F3 mở trình xem tệp của Cmdr, vốn hiển thị byte thô (với UTF-8 mất mát cho nội dung phi văn bản). Khi bạn mở ảnh, PDF, tệp nén, hoặc tệp nhị phân khác, trình xem hiển thị biểu ngữ đỏ giải thích rằng ⇧Space (Xem nhanh) hoặc Enter (mở trong ứng dụng liên kết) có lẽ là điều bạn muốn. Bật mục này (hoặc bấm “Không hiển thị cảnh báo này nữa” trên biểu ngữ) để ẩn cảnh báo vĩnh viễn.",
+  "settings.fileViewer.suppressBinaryWarning.description": "F3 mở trình xem tệp của Cmdr, vốn hiển thị byte thô (với UTF-8 mất mát cho nội dung phi văn bản). Khi bạn mở ảnh, PDF, tệp nén, hoặc tệp nhị phân khác, trình xem hiển thị biểu ngữ đỏ giải thích rằng ⇧Dấu cách (Xem nhanh) hoặc Enter (mở trong ứng dụng liên kết) có lẽ là điều bạn muốn. Bật mục này (hoặc bấm “Không hiển thị cảnh báo này nữa” trên biểu ngữ) để ẩn cảnh báo vĩnh viễn.",
   "@settings.fileViewer.suppressBinaryWarning.description": {
     "sourceHash": "a93b4cb"
   },
-  "settings.fileExplorer.suppressQuickLookHint.label": "Ẩn gợi ý Xem nhanh bằng phím Space",
+  "settings.fileExplorer.suppressQuickLookHint.label": "Ẩn gợi ý Xem nhanh bằng phím dấu cách",
   "@settings.fileExplorer.suppressQuickLookHint.label": {
     "sourceHash": "bd9da35"
   },
-  "settings.fileExplorer.suppressQuickLookHint.description": "Cmdr dùng Space để bật/tắt chọn tệp và ⇧Space cho Xem nhanh (Finder dùng Space thường cho Xem nhanh). Mỗi lần bạn nhấn Space trong danh sách tệp, Cmdr hiển thị một đoạn nhắc về khác biệt này. Bật mục này (hoặc bấm “Không hiển thị lại” trên thông báo nhỏ) để ẩn lời nhắc vĩnh viễn.",
+  "settings.fileExplorer.suppressQuickLookHint.description": "Cmdr dùng phím dấu cách để bật/tắt chọn tệp và ⇧Dấu cách cho Xem nhanh (Finder chỉ dùng phím dấu cách cho Xem nhanh). Mỗi lần bạn nhấn phím dấu cách trong danh sách tệp, Cmdr hiển thị một đoạn nhắc về khác biệt này. Bật mục này (hoặc bấm “Không hiển thị lại” trên thông báo nhỏ) để ẩn lời nhắc vĩnh viễn.",
   "@settings.fileExplorer.suppressQuickLookHint.description": {
     "sourceHash": "10357b4"
   },

@@ -160,7 +160,7 @@
   "@commands.viewCalculateFolderSizes.label": {
     "sourceHash": "d2a83da"
   },
-  "commands.viewCalculateFolderSizes.description": "为这个窗格中还没有大小的文件夹显示大小。按 Esc 键可停止。",
+  "commands.viewCalculateFolderSizes.description": "为这个窗格中还没有大小的文件夹显示大小。按 Esc 键可停止计算。",
   "@commands.viewCalculateFolderSizes.description": {
     "sourceHash": "2a7568d"
   },

@@ -303,11 +303,16 @@
     "sources": "MS terminology (bộ đệm ẩn), plain bộ đệm for UI brevity"
   },
   "calculate": {
-    "accept": ["tính toán"],
-    "chosen": "tính",
-    "confidence": "tentative",
-    "forms": "Calculate folder sizes → Tính kích cỡ thư mục; adding up in prose → cộng dồn",
-    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+    "avoid": [
+      {
+        "form": "tính",
+        "why": "Finder writes Tính toán tất cả kích cỡ; TC 503 Tính dung lượng is the only bare use, TC 5138 also says Tính toán"
+      }
+    ],
+    "chosen": "tính toán",
+    "confidence": "high",
+    "forms": "Calculate folder sizes → Tính toán kích cỡ thư mục; stop the work → dừng tính toán; adding up in prose → cộng dồn",
+    "sources": "macOS Finder ViewOptionsWindow 65.title (Tính toán tất cả kích cỡ); TC 5138 Tính toán dung lượng chiếm (503 has bare Tính dung lượng)"
   },
   "camera-details": {
     "chosen": "thông tin máy ảnh",
@@ -3001,6 +3006,18 @@
     "chosen": "Mission Control",
     "confidence": "high",
     "sources": "live bundles, macOS 27.0 (Disk Utility.app InfoPlist.loctable, MainMenu.loctable; Activity Monitor.app InfoPlist.loctable), 2026-09-24"
+  },
+  "space-key": {
+    "avoid": [
+      {
+        "form": "Space",
+        "why": "macOS vi localizes this key (Dấu cách) though it keeps Escape and Enter Latin; TC 5139 says phím cách"
+      }
+    ],
+    "chosen": "dấu cách",
+    "confidence": "high",
+    "forms": "key label Dấu cách, chord ⇧Dấu cách (macOS: Giữ Command Dấu cách); in a sentence → phím dấu cách",
+    "sources": "macOS AppKit FunctionKeyNames (Space), SystemSettings Siri/Spotlight SPACEBAR_KEY → Dấu cách (Space bar → Thanh dấu cách); AppKit Date Picker help (phím dấu cách); TC 5139 (phím cách)"
   },
   "spaces": {
     "chosen": "Spaces",

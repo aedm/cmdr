@@ -160,7 +160,7 @@
   "@commands.viewCalculateFolderSizes.label": {
     "sourceHash": "d2a83da"
   },
-  "commands.viewCalculateFolderSizes.description": "Показать размер каждой папки на этой панели, у которой его еще нет. Остановить можно клавишей Escape.",
+  "commands.viewCalculateFolderSizes.description": "Показать размер каждой папки на этой панели, у которой его еще нет. Остановить вычисление можно клавишей Escape.",
   "@commands.viewCalculateFolderSizes.description": {
     "sourceHash": "2a7568d"
   },

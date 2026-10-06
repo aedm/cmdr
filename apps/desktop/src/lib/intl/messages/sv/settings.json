@@ -308,7 +308,7 @@
   "@settings.listing.spaceCalculatesFolderSize.label": {
     "sourceHash": "1a403eb"
   },
-  "settings.listing.spaceCalculatesFolderSize.description": "När Mellanslag markerar en mapp vars storlek inte är känd ännu räknar Cmdr ihop innehållet och visar totalen. Escape stoppar det.",
+  "settings.listing.spaceCalculatesFolderSize.description": "När Mellanslag markerar en mapp vars storlek inte är känd ännu räknar Cmdr ihop innehållet och visar totalen. Escape stoppar beräkningen.",
   "@settings.listing.spaceCalculatesFolderSize.description": {
     "sourceHash": "38d64c1"
   },

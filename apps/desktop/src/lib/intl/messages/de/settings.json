@@ -308,7 +308,7 @@
   "@settings.listing.spaceCalculatesFolderSize.label": {
     "sourceHash": "1a403eb"
   },
-  "settings.listing.spaceCalculatesFolderSize.description": "Wenn die Leertaste einen Ordner auswählt, dessen Größe noch nicht bekannt ist, rechnet Cmdr seinen Inhalt zusammen und zeigt die Gesamtgröße an. Die esc-Taste stoppt das.",
+  "settings.listing.spaceCalculatesFolderSize.description": "Wenn die Leertaste einen Ordner auswählt, dessen Größe noch nicht bekannt ist, rechnet Cmdr seinen Inhalt zusammen und zeigt die Gesamtgröße an. Die esc-Taste stoppt die Berechnung.",
   "@settings.listing.spaceCalculatesFolderSize.description": {
     "sourceHash": "38d64c1"
   },

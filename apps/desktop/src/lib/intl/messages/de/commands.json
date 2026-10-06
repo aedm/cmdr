@@ -160,7 +160,7 @@
   "@commands.viewCalculateFolderSizes.label": {
     "sourceHash": "d2a83da"
   },
-  "commands.viewCalculateFolderSizes.description": "Zeigt die Größe aller Ordner in diesem Bereich an, die noch keine haben. Die esc-Taste stoppt das.",
+  "commands.viewCalculateFolderSizes.description": "Zeigt die Größe aller Ordner in diesem Bereich an, die noch keine haben. Die esc-Taste stoppt die Berechnung.",
   "@commands.viewCalculateFolderSizes.description": {
     "sourceHash": "2a7568d"
   },

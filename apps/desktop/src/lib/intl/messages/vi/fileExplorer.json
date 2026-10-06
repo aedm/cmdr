@@ -665,7 +665,7 @@
   "@fileExplorer.compareDirectories.couldNotFinish": {
     "sourceHash": "0900bc9"
   },
-  "fileExplorer.folderSizes.notConnected": "Không thể tính kích cỡ thư mục ở đây: vị trí này hiện không được kết nối.",
+  "fileExplorer.folderSizes.notConnected": "Không thể tính toán kích cỡ thư mục ở đây: vị trí này hiện không được kết nối.",
   "@fileExplorer.folderSizes.notConnected": {
     "sourceHash": "8b51988"
   },

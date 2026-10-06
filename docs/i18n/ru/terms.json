@@ -660,9 +660,9 @@
   "calculate": {
     "accept": ["вычисл", "подсчит", "подсчет"],
     "chosen": "вычислить",
-    "confidence": "tentative",
-    "forms": "command Вычислить размеры папок; a standing switch Вычислять …; prose may say подсчитать",
-    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+    "confidence": "high",
+    "forms": "command Вычислить размеры папок; a standing switch Вычислять … (as Finder's checkbox); the running work → вычисление; prose may say подсчитать",
+    "sources": "macOS Finder ViewOptionsWindow 65.title (Вычислять все размеры); TC 503 and Double Commander say Подсчитать занимаемое место (accepted as prose)"
   },
   "camera": {
     "chosen": "камера",
@@ -4662,6 +4662,12 @@
     "confidence": "tentative",
     "sources": "MS: source code → исходный код; no source names the source-available license model",
     "note": "Say the code is readable, never that it is open."
+  },
+  "space-key": {
+    "chosen": "Пробел",
+    "confidence": "high",
+    "forms": "capitalized key name, declined: Пробелом, по Пробелу; chord ⇧Пробел",
+    "sources": "macOS AppKit FunctionKeyNames (Space), SystemSettings Siri/Spotlight SPACEBAR_KEY → Пробел (Space bar → Клавиша пробела); TC 1644, 5139 (ПРОБЕЛом); Midnight Commander Пробел; Double Commander пробелом"
   },
   "spaces": {
     "chosen": "Spaces",

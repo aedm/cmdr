@@ -308,7 +308,7 @@
   "@settings.listing.spaceCalculatesFolderSize.label": {
     "sourceHash": "1a403eb"
   },
-  "settings.listing.spaceCalculatesFolderSize.description": "Als Spatie een map selecteert waarvan de grootte nog niet bekend is, telt Cmdr de inhoud bij elkaar op en toont het totaal. Escape stopt het.",
+  "settings.listing.spaceCalculatesFolderSize.description": "Als Spatie een map selecteert waarvan de grootte nog niet bekend is, telt Cmdr de inhoud bij elkaar op en toont het totaal. Escape stopt de berekening.",
   "@settings.listing.spaceCalculatesFolderSize.description": {
     "sourceHash": "38d64c1"
   },
