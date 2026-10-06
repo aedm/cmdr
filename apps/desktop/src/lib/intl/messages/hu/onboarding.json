@@ -319,6 +319,18 @@
   "@onboarding.stepAi.off.help": {
     "sourceHash": "3f261be"
   },
+  "onboarding.localDownloadFailed.title": "The local AI model didn’t finish downloading",
+  "@onboarding.localDownloadFailed.title": {
+    "sourceHash": "9612750"
+  },
+  "onboarding.localDownloadFailed.body": "Start it again from Settings › AI.",
+  "@onboarding.localDownloadFailed.body": {
+    "sourceHash": "6601872"
+  },
+  "onboarding.localDownloadFailed.openSettings": "Open Settings",
+  "@onboarding.localDownloadFailed.openSettings": {
+    "sourceHash": "3f94010"
+  },
   "onboarding.stepBeta.footer.start": "Kezdd el használni a Cmdrt!",
   "@onboarding.stepBeta.footer.start": {
     "sourceHash": "e29bbc7"

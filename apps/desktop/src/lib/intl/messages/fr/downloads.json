@@ -128,6 +128,10 @@
   "@downloads.shortcutRow.invalidCombo": {
     "sourceHash": "d2601f3"
   },
+  "downloads.shortcutRow.unavailable": "Another app may be using that combo",
+  "@downloads.shortcutRow.unavailable": {
+    "sourceHash": "8882532"
+  },
   "downloads.shortcutRow.addModifier": "Ajoutez une touche de modification (⌘, ⌃, ⌥ ou ⇧)",
   "@downloads.shortcutRow.addModifier": {
     "sourceHash": "28a5ba2"

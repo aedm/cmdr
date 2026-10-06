@@ -23,5 +23,33 @@
   "common.downloadsFdaHint": "Cmdr 需要完全磁盘访问权限才能监视你的下载文件夹。<settingsLink>打开系统设置</settingsLink>",
   "@common.downloadsFdaHint": {
     "sourceHash": "315e1d8"
+  },
+  "common.sizeUnit.byte": "{count, plural, one {byte} other {bytes}}",
+  "@common.sizeUnit.byte": {
+    "sourceHash": "ee1f643"
+  },
+  "common.sizeUnit.kilobyteBinary": "KB",
+  "@common.sizeUnit.kilobyteBinary": {
+    "sourceHash": "59281a6"
+  },
+  "common.sizeUnit.kilobyteSi": "kB",
+  "@common.sizeUnit.kilobyteSi": {
+    "sourceHash": "591e59c"
+  },
+  "common.sizeUnit.megabyte": "MB",
+  "@common.sizeUnit.megabyte": {
+    "sourceHash": "1d09f6f"
+  },
+  "common.sizeUnit.gigabyte": "GB",
+  "@common.sizeUnit.gigabyte": {
+    "sourceHash": "b4043b0"
+  },
+  "common.sizeUnit.terabyte": "TB",
+  "@common.sizeUnit.terabyte": {
+    "sourceHash": "791b0ac"
+  },
+  "common.sizeUnit.petabyte": "PB",
+  "@common.sizeUnit.petabyte": {
+    "sourceHash": "f9085bf"
   }
 }
