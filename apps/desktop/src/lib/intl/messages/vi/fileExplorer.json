@@ -665,6 +665,10 @@
   "@fileExplorer.compareDirectories.couldNotFinish": {
     "sourceHash": "0900bc9"
   },
+  "fileExplorer.folderSizes.notConnected": "Không thể tính kích cỡ thư mục ở đây: vị trí này hiện không được kết nối.",
+  "@fileExplorer.folderSizes.notConnected": {
+    "sourceHash": "8b51988"
+  },
   "fileExplorer.clipboard.cutReady": "{countText} {count, plural, other {mục}} sẵn sàng để di chuyển. Dán để hoàn tất.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

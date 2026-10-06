@@ -269,6 +269,10 @@
   "@menu.view.swapPanes": {
     "sourceHash": "cc29396"
   },
+  "menu.view.calculateFolderSizes": "Ordnergrößen berechnen",
+  "@menu.view.calculateFolderSizes": {
+    "sourceHash": "d2a83da"
+  },
   "menu.view.commandPalette": "Befehlspalette …",
   "@menu.view.commandPalette": {
     "sourceHash": "6b1c93d"

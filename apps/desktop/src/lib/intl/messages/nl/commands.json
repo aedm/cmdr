@@ -157,6 +157,14 @@
   "@commands.viewShowHidden.label": {
     "sourceHash": "6aa9b55"
   },
+  "commands.viewCalculateFolderSizes.label": "Bereken mapgroottes",
+  "@commands.viewCalculateFolderSizes.label": {
+    "sourceHash": "d2a83da"
+  },
+  "commands.viewCalculateFolderSizes.description": "Toont de grootte van elke map in dit paneel die er nog geen heeft. Escape stopt het.",
+  "@commands.viewCalculateFolderSizes.description": {
+    "sourceHash": "2a7568d"
+  },
   "commands.viewBriefMode.label": "Schakel naar Beknopte weergave",
   "@commands.viewBriefMode.label": {
     "sourceHash": "bcf6636"

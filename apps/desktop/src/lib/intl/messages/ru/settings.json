@@ -300,6 +300,14 @@
   "@settings.listing.foldersFirst.description": {
     "sourceHash": "8505ff3"
   },
+  "settings.listing.spaceCalculatesFolderSize.label": "Вычислять размер папки по Пробелу",
+  "@settings.listing.spaceCalculatesFolderSize.label": {
+    "sourceHash": "1a403eb"
+  },
+  "settings.listing.spaceCalculatesFolderSize.description": "Если выделить Пробелом папку, размер которой еще неизвестен, Cmdr подсчитает ее содержимое и покажет общий размер. Остановить можно клавишей Escape.",
+  "@settings.listing.spaceCalculatesFolderSize.description": {
+    "sourceHash": "38d64c1"
+  },
   "settings.listing.directorySortMode.label": "Сортировка папок",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7d0b088"

@@ -300,6 +300,13 @@
     "confidence": "high",
     "sources": "MS terminology pt-BR; shipped pt catalog"
   },
+  "calculate": {
+    "accept": ["calcul"],
+    "chosen": "calcular",
+    "confidence": "tentative",
+    "forms": "Calculate folder sizes → Calcular tamanhos das pastas; the running work in prose → o cálculo",
+    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+  },
   "camera-details": {
     "chosen": "detalhes da câmera",
     "avoid": [

@@ -267,6 +267,10 @@
   "@menu.view.swapPanes": {
     "sourceHash": "cc29396"
   },
+  "menu.view.calculateFolderSizes": "計算資料夾大小",
+  "@menu.view.calculateFolderSizes": {
+    "sourceHash": "d2a83da"
+  },
   "menu.view.commandPalette": "指令面板⋯",
   "@menu.view.commandPalette": {
     "sourceHash": "6b1c93d"

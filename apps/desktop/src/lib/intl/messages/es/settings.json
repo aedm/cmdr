@@ -303,6 +303,14 @@
   "@settings.listing.foldersFirst.description": {
     "sourceHash": "8505ff3"
   },
+  "settings.listing.spaceCalculatesFolderSize.label": "Calcular el tamaño de una carpeta con Espacio",
+  "@settings.listing.spaceCalculatesFolderSize.label": {
+    "sourceHash": "1a403eb"
+  },
+  "settings.listing.spaceCalculatesFolderSize.description": "Cuando seleccionas con Espacio una carpeta cuyo tamaño aún no se conoce, Cmdr suma su contenido y muestra el total. La tecla Esc lo detiene.",
+  "@settings.listing.spaceCalculatesFolderSize.description": {
+    "sourceHash": "38d64c1"
+  },
   "settings.listing.directorySortMode.label": "Ordenar carpetas",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7d0b088"

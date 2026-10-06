@@ -269,6 +269,10 @@
   "@menu.view.swapPanes": {
     "sourceHash": "cc29396"
   },
+  "menu.view.calculateFolderSizes": "Calculer la taille des dossiers",
+  "@menu.view.calculateFolderSizes": {
+    "sourceHash": "d2a83da"
+  },
   "menu.view.commandPalette": "Palette de commandes…",
   "@menu.view.commandPalette": {
     "sourceHash": "6b1c93d"

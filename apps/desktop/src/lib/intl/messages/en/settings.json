@@ -379,11 +379,11 @@
   "@settings.listing.foldersFirst.description": {
     "description": "Help text under the \"Show folders first\" switch. \"Mix folders and files\" means that with the switch off, folders and files sort together by the active column (name, size, date, and so on) instead of folders coming first."
   },
-  "settings.listing.spaceCalculatesFolderSize.label": "Space on a folder calculates its size",
+  "settings.listing.spaceCalculatesFolderSize.label": "Calculate folder size with Space",
   "@settings.listing.spaceCalculatesFolderSize.label": {
     "description": "Settings > Appearance > Listing switch: pressing the Space key to select a folder also calculates the folder's total size, like Total Commander. \"Space\" is the key name."
   },
-  "settings.listing.spaceCalculatesFolderSize.description": "When Space selects a folder whose size isn’t known yet, Cmdr adds up its contents and shows the total. Esc stops it.",
+  "settings.listing.spaceCalculatesFolderSize.description": "When Space selects a folder whose size isn’t known yet, Cmdr adds up its contents and shows the total. Esc stops the calculation.",
   "@settings.listing.spaceCalculatesFolderSize.description": {
     "description": "Help text for the Space-calculates-folder-size switch. Esc is the key name."
   },

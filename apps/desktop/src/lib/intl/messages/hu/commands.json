@@ -156,6 +156,14 @@
   "@commands.viewShowHidden.label": {
     "sourceHash": "6aa9b55"
   },
+  "commands.viewCalculateFolderSizes.label": "Mappaméretek kiszámítása",
+  "@commands.viewCalculateFolderSizes.label": {
+    "sourceHash": "d2a83da"
+  },
+  "commands.viewCalculateFolderSizes.description": "Megjeleníti ezen a panelen minden olyan mappa méretét, amelynél még nem látszik. Az Escape billentyű leállítja.",
+  "@commands.viewCalculateFolderSizes.description": {
+    "sourceHash": "2a7568d"
+  },
   "commands.viewBriefMode.label": "Váltás Rövid nézetre",
   "@commands.viewBriefMode.label": {
     "sourceHash": "bcf6636"

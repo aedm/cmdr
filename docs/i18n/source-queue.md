@@ -148,3 +148,7 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
 - `settings.managed.*`, `ai.managed.*`, `askCmdr.error.managedByOrganization`, `onboarding.stepBeta.analyticsManaged`:
   no screenshot of the managed card or the locked rows, so value widths are guesses. Capture them under a policy. (ru)
 - `fileExplorer.compareDirectories.*`: no screenshot of the compare toasts, so their widths are unverified. (all)
+- `settings.listing.spaceCalculatesFolderSize.*`, `fileExplorer.folderSizes.notConnected`: no screenshot of the switch
+  or the Calculate-folder-sizes toast. (de…zh-Hant)
+- Space key: no `space-key` concept, so locales drift (zh `Space 键` vs `空格键`, sv `Mellanslag` / `mellanslag` /
+  `blanksteg`). Register one whose `match` can't hit disk space (e.g. `space key`, `=space`, `⇧space`). (de…zh-Hant)

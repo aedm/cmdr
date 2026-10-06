@@ -156,6 +156,14 @@
   "@commands.viewShowHidden.label": {
     "sourceHash": "6aa9b55"
   },
+  "commands.viewCalculateFolderSizes.label": "Ordnergrößen berechnen",
+  "@commands.viewCalculateFolderSizes.label": {
+    "sourceHash": "d2a83da"
+  },
+  "commands.viewCalculateFolderSizes.description": "Zeigt die Größe aller Ordner in diesem Bereich an, die noch keine haben. Die esc-Taste stoppt das.",
+  "@commands.viewCalculateFolderSizes.description": {
+    "sourceHash": "2a7568d"
+  },
   "commands.viewBriefMode.label": "Zu Kompaktansicht wechseln",
   "@commands.viewBriefMode.label": {
     "sourceHash": "bcf6636"

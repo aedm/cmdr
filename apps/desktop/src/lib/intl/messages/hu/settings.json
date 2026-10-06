@@ -302,6 +302,14 @@
   "@settings.listing.foldersFirst.description": {
     "sourceHash": "8505ff3"
   },
+  "settings.listing.spaceCalculatesFolderSize.label": "Mappaméret kiszámítása Space-szel",
+  "@settings.listing.spaceCalculatesFolderSize.label": {
+    "sourceHash": "1a403eb"
+  },
+  "settings.listing.spaceCalculatesFolderSize.description": "Ha a Space-szel kijelölsz egy mappát, amelynek még nem ismert a mérete, a Cmdr összeadja a tartalmát, és megjeleníti a teljes méretet. Az Escape billentyű leállítja.",
+  "@settings.listing.spaceCalculatesFolderSize.description": {
+    "sourceHash": "38d64c1"
+  },
   "settings.listing.directorySortMode.label": "Mappák rendezése",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7d0b088"

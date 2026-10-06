@@ -663,6 +663,10 @@
   "@fileExplorer.compareDirectories.couldNotFinish": {
     "sourceHash": "0900bc9"
   },
+  "fileExplorer.folderSizes.notConnected": "无法在这里计算文件夹大小：这个位置现在没有连接。",
+  "@fileExplorer.folderSizes.notConnected": {
+    "sourceHash": "8b51988"
+  },
   "fileExplorer.clipboard.cutReady": "{countText} {count, plural, other {个项目}}已就绪，可以移动。粘贴即可完成。",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

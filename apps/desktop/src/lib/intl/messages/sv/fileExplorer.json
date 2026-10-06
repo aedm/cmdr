@@ -665,6 +665,10 @@
   "@fileExplorer.compareDirectories.couldNotFinish": {
     "sourceHash": "0900bc9"
   },
+  "fileExplorer.folderSizes.notConnected": "Det går inte att beräkna mappstorlekar här: den här platsen är inte ansluten just nu.",
+  "@fileExplorer.folderSizes.notConnected": {
+    "sourceHash": "8b51988"
+  },
   "fileExplorer.clipboard.cutReady": "{countText} {count, plural, one {objekt} other {objekt}} redo att flyttas. Klistra in för att slutföra.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

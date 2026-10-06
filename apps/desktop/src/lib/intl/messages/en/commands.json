@@ -185,7 +185,7 @@
   "@commands.viewCalculateFolderSizes.label": {
     "description": "Command name (Alt+Shift+Enter, like Total Commander) in the command palette and View menu: shows the total size of every folder in the focused file list."
   },
-  "commands.viewCalculateFolderSizes.description": "Shows the size of every folder in this pane that doesn’t have one yet. Esc stops it.",
+  "commands.viewCalculateFolderSizes.description": "Shows the size of every folder in this pane that doesn’t have one yet. Esc stops the calculation.",
   "@commands.viewCalculateFolderSizes.description": {
     "description": "Longer help text for \"Calculate folder sizes\", shown as a secondary line in the command palette. \"Pane\" is one of the two side-by-side file lists; Esc is the key name."
   },

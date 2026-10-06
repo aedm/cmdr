@@ -666,6 +666,10 @@
   "@fileExplorer.compareDirectories.couldNotFinish": {
     "sourceHash": "0900bc9"
   },
+  "fileExplorer.folderSizes.notConnected": "Kan hier geen mapgroottes berekenen: deze locatie is nu niet verbonden.",
+  "@fileExplorer.folderSizes.notConnected": {
+    "sourceHash": "8b51988"
+  },
   "fileExplorer.clipboard.cutReady": "{countText} {count, plural, one {onderdeel} other {onderdelen}} klaar om te verplaatsen. Plak om te voltooien.",
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"

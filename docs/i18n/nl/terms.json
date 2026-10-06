@@ -354,6 +354,13 @@
     "confidence": "high",
     "sources": "MS (unchanged)"
   },
+  "calculate": {
+    "accept": ["bereken", "berekening"],
+    "chosen": "berekenen",
+    "confidence": "tentative",
+    "forms": "menu and command Bereken mapgroottes; Settings label infinitive last (Mapgrootte berekenen met Spatie)",
+    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+  },
   "camera-details": {
     "chosen": "cameragegevens",
     "confidence": "tentative",

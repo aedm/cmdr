@@ -303,6 +303,14 @@
   "@settings.listing.foldersFirst.description": {
     "sourceHash": "8505ff3"
   },
+  "settings.listing.spaceCalculatesFolderSize.label": "Calcular o tamanho da pasta com Espaço",
+  "@settings.listing.spaceCalculatesFolderSize.label": {
+    "sourceHash": "1a403eb"
+  },
+  "settings.listing.spaceCalculatesFolderSize.description": "Quando você seleciona com Espaço uma pasta cujo tamanho ainda não é conhecido, o Cmdr soma o conteúdo dela e mostra o total. Esc interrompe o cálculo.",
+  "@settings.listing.spaceCalculatesFolderSize.description": {
+    "sourceHash": "38d64c1"
+  },
   "settings.listing.directorySortMode.label": "Ordenar pastas",
   "@settings.listing.directorySortMode.label": {
     "sourceHash": "7d0b088"

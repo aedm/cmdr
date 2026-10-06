@@ -156,6 +156,14 @@
   "@commands.viewShowHidden.label": {
     "sourceHash": "6aa9b55"
   },
+  "commands.viewCalculateFolderSizes.label": "计算文件夹大小",
+  "@commands.viewCalculateFolderSizes.label": {
+    "sourceHash": "d2a83da"
+  },
+  "commands.viewCalculateFolderSizes.description": "为这个窗格中还没有大小的文件夹显示大小。按 Esc 键可停止。",
+  "@commands.viewCalculateFolderSizes.description": {
+    "sourceHash": "2a7568d"
+  },
   "commands.viewBriefMode.label": "切换到简洁视图",
   "@commands.viewBriefMode.label": {
     "sourceHash": "bcf6636"

@@ -156,6 +156,14 @@
   "@commands.viewShowHidden.label": {
     "sourceHash": "6aa9b55"
   },
+  "commands.viewCalculateFolderSizes.label": "Beräkna mappstorlekar",
+  "@commands.viewCalculateFolderSizes.label": {
+    "sourceHash": "d2a83da"
+  },
+  "commands.viewCalculateFolderSizes.description": "Visar storleken på varje mapp i den här panelen som inte har någon ännu. Escape stoppar det.",
+  "@commands.viewCalculateFolderSizes.description": {
+    "sourceHash": "2a7568d"
+  },
   "commands.viewBriefMode.label": "Byt till Kortfattad vy",
   "@commands.viewBriefMode.label": {
     "sourceHash": "bcf6636"
