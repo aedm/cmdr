@@ -91,9 +91,12 @@ System proxy changes went on the Wi-Fi service with `networksetup`, restored by 
 Not run against the live app: license validate, crash or error report upload, and model download. They share the client
 and configuration above, and sending test traffic to prod endpoints wasn't worth it.
 
-Not yet run: the positive case, with the test CA trusted in the keychain. Trusting a root needs David's password at a
-GUI prompt. The claim that a trusted company CA works rests on the source (`SecTrust` evaluation) plus the failing case
-above, whose `-67843` is macOS's own trust verdict, not a bundled root list.
+- **Env var, inspecting proxy, CA trusted**: the test CA was trusted at the admin level, the domain MDM-deployed company
+  roots live in (`security add-trusted-cert -d -r trustRoot`, which shows a GUI password prompt). GET
+  `getcmdr.com/latest.json`, `api.getcmdr.com/`, and `huggingface.co/` → all 200, and the proxy logged a completed
+  handshake on its own minted cert for each, then the decrypted request. Trust and cert were removed right after
+  (`security remove-trusted-cert -d`, `security delete-certificate`), and `find-certificate` and `dump-trust-settings`
+  confirm both are gone.
 
 Side note: this network intermittently gave `No route to host (os error 65)` for direct requests while `curl` worked
 (the host resolves to IPv6 first). It's unrelated to proxies, but it can make a PAC test look like a proxy failure.

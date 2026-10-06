@@ -136,8 +136,8 @@ const toc = [
         Cmdr sends its traffic through the web proxy set by hand in macOS's network settings, or through the one in the
         <code>HTTPS_PROXY</code> environment variable. It checks server certificates with macOS's own certificate trust,
         so a company's TLS-inspection certificate that the Mac trusts works in Cmdr too. Without that trust, Cmdr refuses
-        the connection. Tested on version 0.50.0: the proxy settings with the release app, and an untrusted inspecting
-        proxy, which Cmdr refused.
+        the connection. Tested on version 0.50.0 behind a TLS-inspecting proxy, with its certificate both trusted and
+        not trusted.
     </p>
     <p>
         <strong>What doesn't work yet</strong>: PAC files and automatic proxy discovery (Cmdr connects directly), the
