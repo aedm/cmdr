@@ -364,10 +364,20 @@
   },
   "byte": {
     "accept": ["octets"],
+    "avoid": [
+      {
+        "form": "Ko (binary or SI)",
+        "why": "Finder’s capital K for a decimal kilo-octet; SI writes the k lowercase, and the binary unit has its own IEC symbol Kio"
+      },
+      {
+        "form": "KiB, MiB, GiB (English IEC symbols)",
+        "why": "French IEC symbols swap B for o (Kio, Mio, Gio), as Microsoft and Total Commander write them"
+      }
+    ],
     "chosen": "octet",
     "confidence": "confirmed",
-    "forms": "unit word after a count → octet / octets (plural many = other); unit symbols Ko (binary KB), ko (SI kB, lowercase so the two size formats stay distinct; Finder writes Ko but has no binary setting), Mo, Go, To, Po; the Bytes size-unit option → Octets",
-    "sources": "macOS Finder (SP22–SP28: Po, To, Go, Mo, Ko, octet, octets); Nautilus and Double Commander (Ko, Mo); catalog (Octets)"
+    "forms": "unit word after a count → octet / octets (plural many = other); binary (IEC) symbols Kio, Mio, Gio, Tio, Pio; decimal (SI) symbols ko (lowercase SI k, like the English kB), Mo, Go, To, Po; the Bytes size-unit option → Octets",
+    "sources": "macOS Finder (SP22–SP28: Po, To, Go, Mo, Ko, octet, octets; decimal only); Microsoft Terminology (MiB → Mio, GiB → Gio, TiB → Tio); Total Commander (Kio); Thunar (Mio, Gio); catalog (Octets)"
   },
   "cache": {
     "chosen": "cache",

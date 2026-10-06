@@ -218,9 +218,9 @@
   "@settings.listing.sizeUnit.label": {
     "sourceHash": "2a817d3"
   },
-  "settings.listing.sizeUnit.description": "動態會為每個檔案挑選最易讀的單位（1.02 MB）。固定單位讓整個列表的大小可以直接比較。位元組顯示精確的數值，方便精準比較。",
+  "settings.listing.sizeUnit.description": "動態會為每個檔案挑選最易讀的單位。固定單位讓整個列表的大小可以直接比較。位元組顯示精確的數值，方便精準比較。",
   "@settings.listing.sizeUnit.description": {
-    "sourceHash": "702a201"
+    "sourceHash": "fae7a91"
   },
   "settings.listing.sizeUnit.opt.dynamic": "動態",
   "@settings.listing.sizeUnit.opt.dynamic": {
@@ -234,17 +234,17 @@
   "@settings.appearance.fileSizeFormat.label": {
     "sourceHash": "355c89b"
   },
-  "settings.appearance.fileSizeFormat.description": "檔案列表中檔案大小的顯示方式：二進位（KiB、MiB，其中 1 KiB = 1,024 位元組）或 SI 十進位（KB、MB，其中 1 KB = 1,000 位元組）。",
+  "settings.appearance.fileSizeFormat.description": "各處大小的顯示方式：二進位（KiB、MiB，其中 1 KiB = 1,024 位元組）或 SI 十進位（kB、MB，其中 1 kB = 1,000 位元組）。",
   "@settings.appearance.fileSizeFormat.description": {
-    "sourceHash": "8219704"
+    "sourceHash": "db264e2"
   },
   "settings.appearance.fileSizeFormat.opt.binary": "二進位（KiB、MiB、GiB）",
   "@settings.appearance.fileSizeFormat.opt.binary": {
     "sourceHash": "0a4ce4e"
   },
-  "settings.appearance.fileSizeFormat.opt.si": "SI 十進位（KB、MB、GB）",
+  "settings.appearance.fileSizeFormat.opt.si": "SI 十進位（kB、MB、GB）",
   "@settings.appearance.fileSizeFormat.opt.si": {
-    "sourceHash": "8984a13"
+    "sourceHash": "4dcc22e"
   },
   "settings.listing.sizeMismatchWarning.label": "大小不一致警告",
   "@settings.listing.sizeMismatchWarning.label": {
@@ -2024,7 +2024,7 @@
   "@settings.control.backToPresetsAriaLabel": {
     "sourceHash": "1579f3f"
   },
-  "settings.control.unitItems": "items",
+  "settings.control.unitItems": "個項目",
   "@settings.control.unitItems": {
     "sourceHash": "5f3c4f8"
   },

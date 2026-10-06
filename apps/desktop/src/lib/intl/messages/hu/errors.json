@@ -271,9 +271,9 @@
   "@errors.listing.notSupportedErrno.explanation": {
     "sourceHash": "a0ca28f"
   },
-  "errors.listing.notSupportedErrno.suggestion": "Próbálj más megoldást, vagy használd a Findert ehhez a művelethez. Ha külső meghajtóval dolgozol, lehet, hogy olyan fájlrendszerrel van formázva, aminek korlátai vannak (például a FAT32 nem tud 4 GB-nál nagyobb fájlokat tárolni).",
+  "errors.listing.notSupportedErrno.suggestion": "Próbálj más megoldást, vagy használd a Findert ehhez a művelethez. Ha külső meghajtóval dolgozol, lehet, hogy olyan fájlrendszerrel van formázva, aminek korlátai vannak (például a FAT32 nem tud 4 GiB vagy annál nagyobb méretű fájlokat tárolni).",
   "@errors.listing.notSupportedErrno.suggestion": {
-    "sourceHash": "de64ad5"
+    "sourceHash": "8fea918"
   },
   "errors.listing.networkUnreachable.title": "A hálózat nem érhető el",
   "@errors.listing.networkUnreachable.title": {

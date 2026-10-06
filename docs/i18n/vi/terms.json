@@ -293,7 +293,7 @@
   "byte": {
     "chosen": "byte",
     "confidence": "high",
-    "forms": "one ICU other arm, uninflected: {count} byte; Zero bytes → 0 byte; the setting option Bytes → Byte; KB/MB/GB/TB/PB stay Latin symbols",
+    "forms": "one ICU other arm, uninflected: {count} byte; Zero bytes → 0 byte; the setting option Bytes → Byte; unit symbols stay Latin: binary KiB/MiB/GiB/TiB/PiB (KDE Dolphin, Xfce Thunar vi), decimal kB/MB/GB/TB/PB (lowercase SI k, though macOS vi writes KB); 1.024 and 1.000 take the vi period separator",
     "sources": "macOS vi Foundation FileSizeFormatting.loctable (bytes → byte, %@ bytes → %@ byte) and Finder vi SP27/SP28 (byte), verified on macOS 26 via plutil, 2026-10-06"
   },
   "cache": {

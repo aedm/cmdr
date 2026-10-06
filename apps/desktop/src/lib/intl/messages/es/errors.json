@@ -271,9 +271,9 @@
   "@errors.listing.notSupportedErrno.explanation": {
     "sourceHash": "a0ca28f"
   },
-  "errors.listing.notSupportedErrno.suggestion": "Prueba otro enfoque, o usa el Finder para esta operación. Si trabajas con un disco externo, puede que tenga un formato de sistema de archivos con limitaciones (por ejemplo, FAT32 no puede almacenar archivos de más de 4 GB).",
+  "errors.listing.notSupportedErrno.suggestion": "Prueba otro enfoque, o usa el Finder para esta operación. Si trabajas con un disco externo, puede que tenga un formato de sistema de archivos con limitaciones (por ejemplo, FAT32 no puede almacenar archivos de 4 GiB o más).",
   "@errors.listing.notSupportedErrno.suggestion": {
-    "sourceHash": "de64ad5"
+    "sourceHash": "8fea918"
   },
   "errors.listing.networkUnreachable.title": "Red inaccesible",
   "@errors.listing.networkUnreachable.title": {

@@ -271,9 +271,9 @@
   "@errors.listing.notSupportedErrno.explanation": {
     "sourceHash": "a0ca28f"
   },
-  "errors.listing.notSupportedErrno.suggestion": "Essayez une autre approche, ou utilisez le Finder pour cette opération. Si vous travaillez avec un disque externe, il est peut-être formaté avec un système de fichiers qui a des limites (par exemple, FAT32 ne peut pas stocker de fichiers de plus de 4 Go).",
+  "errors.listing.notSupportedErrno.suggestion": "Essayez une autre approche, ou utilisez le Finder pour cette opération. Si vous travaillez avec un disque externe, il est peut-être formaté avec un système de fichiers qui a des limites (par exemple, FAT32 ne peut pas stocker de fichiers de 4 Gio ou plus).",
   "@errors.listing.notSupportedErrno.suggestion": {
-    "sourceHash": "de64ad5"
+    "sourceHash": "8fea918"
   },
   "errors.listing.networkUnreachable.title": "Réseau inaccessible",
   "@errors.listing.networkUnreachable.title": {

@@ -346,8 +346,8 @@
     "accept": ["bytes", "Bytes"],
     "chosen": "byte",
     "confidence": "high",
-    "forms": "pl. bytes (512 bytes); unit symbols KB / kB / MB / GB / TB / PB as in English",
-    "sources": "macOS Finder nl (SP27 byte, SP28 bytes; SP24–SP26 GB, MB, KB), catalog (Bytes)"
+    "forms": "pl. bytes (512 bytes); unit symbols as in English: binary (IEC) KiB / MiB / GiB / TiB / PiB, decimal (SI) kB / MB / GB / TB / PB; never KB for either",
+    "sources": "macOS Finder nl (SP27 byte, SP28 bytes; SP24–SP26 GB, MB, KB), KDE Dolphin nl (MiB), GNOME/KDE nl (kB/s), catalog (Bytes)"
   },
   "cache": {
     "chosen": "cache",

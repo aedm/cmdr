@@ -30,27 +30,33 @@
   },
   "common.sizeUnit.kibibyte": "KiB",
   "@common.sizeUnit.kibibyte": {
-    "sourceHash": "97ee1b8"
+    "sourceHash": "97ee1b8",
+    "sameAsSourceJustification": "IEC 80000-13 binary symbol, written the same in Spanish (es pile: Thunar es 512 KiB / 10 MiB, Dolphin es MiB, Microsoft terminology es MiB)."
   },
   "common.sizeUnit.mebibyte": "MiB",
   "@common.sizeUnit.mebibyte": {
-    "sourceHash": "dea6cb8"
+    "sourceHash": "dea6cb8",
+    "sameAsSourceJustification": "IEC 80000-13 binary symbol, written the same in Spanish (es pile: Thunar es 512 KiB / 10 MiB, Dolphin es MiB, Microsoft terminology es MiB)."
   },
   "common.sizeUnit.gibibyte": "GiB",
   "@common.sizeUnit.gibibyte": {
-    "sourceHash": "66a1561"
+    "sourceHash": "66a1561",
+    "sameAsSourceJustification": "IEC 80000-13 binary symbol, written the same in Spanish (es pile: Thunar es 512 KiB / 10 MiB, Dolphin es MiB, Microsoft terminology es MiB)."
   },
   "common.sizeUnit.tebibyte": "TiB",
   "@common.sizeUnit.tebibyte": {
-    "sourceHash": "15c1ec4"
+    "sourceHash": "15c1ec4",
+    "sameAsSourceJustification": "IEC 80000-13 binary symbol, written the same in Spanish (es pile: Thunar es 512 KiB / 10 MiB, Dolphin es MiB, Microsoft terminology es MiB)."
   },
   "common.sizeUnit.pebibyte": "PiB",
   "@common.sizeUnit.pebibyte": {
-    "sourceHash": "38ca5a1"
+    "sourceHash": "38ca5a1",
+    "sameAsSourceJustification": "IEC 80000-13 binary symbol, written the same in Spanish (es pile: Thunar es 512 KiB / 10 MiB, Dolphin es MiB, Microsoft terminology es MiB)."
   },
   "common.sizeUnit.kilobyte": "kB",
   "@common.sizeUnit.kilobyte": {
-    "sourceHash": "591e59c"
+    "sourceHash": "591e59c",
+    "sameAsSourceJustification": "SI symbol with the lowercase k prefix, written the same in Spanish (es pile: Nautilus es 4 kB / 4 MB); distinct from the binary KiB."
   },
   "common.sizeUnit.megabyte": "MB",
   "@common.sizeUnit.megabyte": {

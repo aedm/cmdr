@@ -271,9 +271,9 @@
   "@errors.listing.notSupportedErrno.explanation": {
     "sourceHash": "a0ca28f"
   },
-  "errors.listing.notSupportedErrno.suggestion": "Prova ett annat sätt, eller använd Finder för den här åtgärden. Om du arbetar med en extern enhet kan den vara formaterad med ett filsystem som har begränsningar (till exempel kan FAT32 inte lagra filer större än 4 GB).",
+  "errors.listing.notSupportedErrno.suggestion": "Prova ett annat sätt, eller använd Finder för den här åtgärden. Om du arbetar med en extern enhet kan den vara formaterad med ett filsystem som har begränsningar (till exempel kan FAT32 inte lagra filer på 4 GiB eller större).",
   "@errors.listing.notSupportedErrno.suggestion": {
-    "sourceHash": "de64ad5"
+    "sourceHash": "8fea918"
   },
   "errors.listing.networkUnreachable.title": "Nätverket går inte att nå",
   "@errors.listing.networkUnreachable.title": {

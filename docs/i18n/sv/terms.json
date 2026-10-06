@@ -346,8 +346,8 @@
   "byte": {
     "chosen": "byte",
     "confidence": "high",
-    "forms": "invariant plural: 1 byte / 2 byte; råa byte",
-    "sources": "standard Swedish"
+    "forms": "invariant plural: 1 byte / 2 byte; råa byte; unit symbols stay international: binary KiB, MiB, GiB, TiB, PiB and SI kB (lowercase k), MB, GB, TB, PB, never KB; 1 KiB = 1 024 byte with a non-breaking space",
+    "sources": "standard Swedish; Microsoft terminology sv (MiB, GiB); KDE Dolphin sv (MiB); GNOME Nautilus sv and Total Commander sv (kB)"
   },
   "cache": {
     "accept": ["cacha", "cachemapp"],

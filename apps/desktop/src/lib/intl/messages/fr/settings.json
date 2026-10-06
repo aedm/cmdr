@@ -219,9 +219,9 @@
   "@settings.listing.sizeUnit.label": {
     "sourceHash": "2a817d3"
   },
-  "settings.listing.sizeUnit.description": "Dynamique choisit l’unité la plus lisible par fichier (1,02 Mo). Les unités fixes rendent les tailles comparables dans toute la liste. Octets affiche le décompte exact pour une comparaison précise.",
+  "settings.listing.sizeUnit.description": "Dynamique choisit l’unité la plus lisible par fichier. Les unités fixes rendent les tailles comparables dans toute la liste. Octets affiche le décompte exact pour une comparaison précise.",
   "@settings.listing.sizeUnit.description": {
-    "sourceHash": "702a201"
+    "sourceHash": "fae7a91"
   },
   "settings.listing.sizeUnit.opt.dynamic": "Dynamique",
   "@settings.listing.sizeUnit.opt.dynamic": {
@@ -235,17 +235,17 @@
   "@settings.appearance.fileSizeFormat.label": {
     "sourceHash": "355c89b"
   },
-  "settings.appearance.fileSizeFormat.description": "Comment afficher les tailles de fichiers dans la liste des fichiers : binaire (KiB, MiB, où 1 KiB = 1024 octets) ou décimal SI (KB, MB, où 1 KB = 1000 octets).",
+  "settings.appearance.fileSizeFormat.description": "Comment afficher les tailles partout : binaire (Kio, Mio, où 1 Kio = 1024 octets) ou décimal SI (ko, Mo, où 1 ko = 1000 octets).",
   "@settings.appearance.fileSizeFormat.description": {
-    "sourceHash": "8219704"
+    "sourceHash": "db264e2"
   },
-  "settings.appearance.fileSizeFormat.opt.binary": "Binaire (KiB, MiB, GiB)",
+  "settings.appearance.fileSizeFormat.opt.binary": "Binaire (Kio, Mio, Gio)",
   "@settings.appearance.fileSizeFormat.opt.binary": {
     "sourceHash": "0a4ce4e"
   },
-  "settings.appearance.fileSizeFormat.opt.si": "Décimal SI (KB, MB, GB)",
+  "settings.appearance.fileSizeFormat.opt.si": "Décimal SI (ko, Mo, Go)",
   "@settings.appearance.fileSizeFormat.opt.si": {
-    "sourceHash": "8984a13"
+    "sourceHash": "4dcc22e"
   },
   "settings.listing.sizeMismatchWarning.label": "Avertissement d’écart de taille",
   "@settings.listing.sizeMismatchWarning.label": {
@@ -2037,7 +2037,7 @@
   "@settings.control.backToPresetsAriaLabel": {
     "sourceHash": "1579f3f"
   },
-  "settings.control.unitItems": "items",
+  "settings.control.unitItems": "éléments",
   "@settings.control.unitItems": {
     "sourceHash": "5f3c4f8"
   },

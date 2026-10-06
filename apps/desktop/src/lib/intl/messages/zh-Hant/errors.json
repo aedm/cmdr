@@ -271,9 +271,9 @@
   "@errors.listing.notSupportedErrno.explanation": {
     "sourceHash": "a0ca28f"
   },
-  "errors.listing.notSupportedErrno.suggestion": "換個做法試試，或用 Finder 來完成這項操作。如果你在用外接磁碟機，它可能格式化成了有限制的檔案系統（例如 FAT32 存不了大於 4 GB 的檔案）。",
+  "errors.listing.notSupportedErrno.suggestion": "換個做法試試，或用 Finder 來完成這項操作。如果你在用外接磁碟機，它可能格式化成了有限制的檔案系統（例如 FAT32 存不了 4 GiB 以上的檔案）。",
   "@errors.listing.notSupportedErrno.suggestion": {
-    "sourceHash": "de64ad5"
+    "sourceHash": "8fea918"
   },
   "errors.listing.networkUnreachable.title": "連不上網路",
   "@errors.listing.networkUnreachable.title": {

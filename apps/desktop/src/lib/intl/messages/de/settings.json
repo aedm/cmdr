@@ -219,9 +219,9 @@
   "@settings.listing.sizeUnit.label": {
     "sourceHash": "2a817d3"
   },
-  "settings.listing.sizeUnit.description": "Dynamisch wählt pro Datei die passendste Einheit (1,02 MB). Feste Einheiten machen Größen über die Liste hinweg direkt vergleichbar. Bytes zeigt den genauen Wert für präzise Vergleiche.",
+  "settings.listing.sizeUnit.description": "Dynamisch wählt pro Datei die passendste Einheit. Feste Einheiten machen Größen über die Liste hinweg direkt vergleichbar. Bytes zeigt den genauen Wert für präzise Vergleiche.",
   "@settings.listing.sizeUnit.description": {
-    "sourceHash": "702a201"
+    "sourceHash": "fae7a91"
   },
   "settings.listing.sizeUnit.opt.dynamic": "Dynamisch",
   "@settings.listing.sizeUnit.opt.dynamic": {
@@ -236,17 +236,17 @@
   "@settings.appearance.fileSizeFormat.label": {
     "sourceHash": "355c89b"
   },
-  "settings.appearance.fileSizeFormat.description": "Wie Dateigrößen in der Dateiliste angezeigt werden: binär (KiB, MiB, wobei 1 KiB = 1024 Bytes) oder SI-dezimal (KB, MB, wobei 1 KB = 1000 Bytes).",
+  "settings.appearance.fileSizeFormat.description": "Wie Größen überall angezeigt werden: binär (KiB, MiB, wobei 1 KiB = 1024 Bytes) oder SI-dezimal (kB, MB, wobei 1 kB = 1000 Bytes).",
   "@settings.appearance.fileSizeFormat.description": {
-    "sourceHash": "8219704"
+    "sourceHash": "db264e2"
   },
   "settings.appearance.fileSizeFormat.opt.binary": "Binär (KiB, MiB, GiB)",
   "@settings.appearance.fileSizeFormat.opt.binary": {
     "sourceHash": "0a4ce4e"
   },
-  "settings.appearance.fileSizeFormat.opt.si": "SI-dezimal (KB, MB, GB)",
+  "settings.appearance.fileSizeFormat.opt.si": "SI-dezimal (kB, MB, GB)",
   "@settings.appearance.fileSizeFormat.opt.si": {
-    "sourceHash": "8984a13"
+    "sourceHash": "4dcc22e"
   },
   "settings.listing.sizeMismatchWarning.label": "Warnung bei Größenabweichung",
   "@settings.listing.sizeMismatchWarning.label": {
@@ -2033,7 +2033,7 @@
   "@settings.control.backToPresetsAriaLabel": {
     "sourceHash": "1579f3f"
   },
-  "settings.control.unitItems": "items",
+  "settings.control.unitItems": "Objekte",
   "@settings.control.unitItems": {
     "sourceHash": "5f3c4f8"
   },

@@ -307,3 +307,7 @@ Allow `允許` (TCC's permission button), ❌ not `同意`, which is approve. Ev
 
 - `由你的組織管理` (Apple zh-TW's MDM wording), turned off `已關閉`. The summary card's Off is the state `已關閉`, ❌
   not the option label `關閉`. Your IT team → `IT 人員` (team- and department-neutral, no possessive needed).
+
+## Size units (`common.sizeUnit.*`, `settings.appearance.fileSizeFormat.*`)
+
+- IEC `KiB` and SI `kB` stay Latin (DOL `MiB`, MS `GiB`), ❌ not `KB`. `4 GiB or more` → `4 GiB 以上`.

@@ -218,9 +218,9 @@
   "@settings.listing.sizeUnit.label": {
     "sourceHash": "2a817d3"
   },
-  "settings.listing.sizeUnit.description": "Dinámica elige la unidad más legible para cada archivo (1.02 MB). Las unidades fijas permiten comparar tamaños de igual a igual en toda la lista. Bytes muestra el recuento exacto para una comparación precisa.",
+  "settings.listing.sizeUnit.description": "Dinámica elige la unidad más legible para cada archivo. Las unidades fijas permiten comparar tamaños de igual a igual en toda la lista. Bytes muestra el recuento exacto para una comparación precisa.",
   "@settings.listing.sizeUnit.description": {
-    "sourceHash": "702a201"
+    "sourceHash": "fae7a91"
   },
   "settings.listing.sizeUnit.opt.dynamic": "Dinámica",
   "@settings.listing.sizeUnit.opt.dynamic": {
@@ -235,17 +235,17 @@
   "@settings.appearance.fileSizeFormat.label": {
     "sourceHash": "355c89b"
   },
-  "settings.appearance.fileSizeFormat.description": "Cómo se muestran los tamaños de archivo en la lista: binario (KiB, MiB, donde 1 KiB = 1024 bytes) o decimal SI (KB, MB, donde 1 KB = 1000 bytes).",
+  "settings.appearance.fileSizeFormat.description": "Cómo se muestran los tamaños en todas partes: binario (KiB, MiB, donde 1 KiB = 1024 bytes) o decimal SI (kB, MB, donde 1 kB = 1000 bytes).",
   "@settings.appearance.fileSizeFormat.description": {
-    "sourceHash": "8219704"
+    "sourceHash": "db264e2"
   },
   "settings.appearance.fileSizeFormat.opt.binary": "Binario (KiB, MiB, GiB)",
   "@settings.appearance.fileSizeFormat.opt.binary": {
     "sourceHash": "0a4ce4e"
   },
-  "settings.appearance.fileSizeFormat.opt.si": "Decimal SI (KB, MB, GB)",
+  "settings.appearance.fileSizeFormat.opt.si": "Decimal SI (kB, MB, GB)",
   "@settings.appearance.fileSizeFormat.opt.si": {
-    "sourceHash": "8984a13"
+    "sourceHash": "4dcc22e"
   },
   "settings.listing.sizeMismatchWarning.label": "Aviso de discrepancia de tamaño",
   "@settings.listing.sizeMismatchWarning.label": {
@@ -2027,7 +2027,7 @@
   "@settings.control.backToPresetsAriaLabel": {
     "sourceHash": "1579f3f"
   },
-  "settings.control.unitItems": "items",
+  "settings.control.unitItems": "elementos",
   "@settings.control.unitItems": {
     "sourceHash": "5f3c4f8"
   },

@@ -358,7 +358,7 @@
   "byte": {
     "chosen": "字节",
     "confidence": "high",
-    "forms": "after a count {count} 字节 (no measure word in a size readout, like Finder's Get Info); unit symbols stay Latin: KB / kB / MB / GB / TB / PB",
+    "forms": "after a count {count} 字节 (no measure word in a size readout, like Finder's Get Info); unit symbols stay Latin: binary KiB / MiB / GiB / TiB / PiB, decimal kB / MB / GB / TB / PB (never KB)",
     "note": "Nautilus writes %s 个字节, but a size column is a readout, not a count of things; Finder and the catalog's own 字节 option drop 个.",
     "sources": "macOS Finder LocalizableMerged SP27/SP28 字节, ProgressStatusView 64.0 MB/1.33 GB; Double Commander 字节; catalog settings.listing.sizeUnit.opt.bytes, fileOperations.transferProgress.progressBytes"
   },

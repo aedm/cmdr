@@ -220,9 +220,9 @@
   "@settings.listing.sizeUnit.label": {
     "sourceHash": "2a817d3"
   },
-  "settings.listing.sizeUnit.description": "Dynamisk väljer den vänligaste enheten per fil (1,02 MB). Fasta enheter gör storlekarna jämförbara genom hela listan. Byte visar exakt antal för noggrann jämförelse.",
+  "settings.listing.sizeUnit.description": "Dynamisk väljer den vänligaste enheten per fil. Fasta enheter gör storlekarna jämförbara genom hela listan. Byte visar exakt antal för noggrann jämförelse.",
   "@settings.listing.sizeUnit.description": {
-    "sourceHash": "702a201"
+    "sourceHash": "fae7a91"
   },
   "settings.listing.sizeUnit.opt.dynamic": "Dynamisk",
   "@settings.listing.sizeUnit.opt.dynamic": {
@@ -236,17 +236,17 @@
   "@settings.appearance.fileSizeFormat.label": {
     "sourceHash": "355c89b"
   },
-  "settings.appearance.fileSizeFormat.description": "Hur filstorlekar visas i fillistan: binärt (KiB, MiB, där 1 KiB = 1024 byte) eller SI-decimal (KB, MB, där 1 KB = 1000 byte).",
+  "settings.appearance.fileSizeFormat.description": "Hur storlekar visas överallt: binärt (KiB, MiB, där 1 KiB = 1 024 byte) eller SI-decimal (kB, MB, där 1 kB = 1 000 byte).",
   "@settings.appearance.fileSizeFormat.description": {
-    "sourceHash": "8219704"
+    "sourceHash": "db264e2"
   },
   "settings.appearance.fileSizeFormat.opt.binary": "Binärt (KiB, MiB, GiB)",
   "@settings.appearance.fileSizeFormat.opt.binary": {
     "sourceHash": "0a4ce4e"
   },
-  "settings.appearance.fileSizeFormat.opt.si": "SI-decimal (KB, MB, GB)",
+  "settings.appearance.fileSizeFormat.opt.si": "SI-decimal (kB, MB, GB)",
   "@settings.appearance.fileSizeFormat.opt.si": {
-    "sourceHash": "8984a13"
+    "sourceHash": "4dcc22e"
   },
   "settings.listing.sizeMismatchWarning.label": "Varning vid storleksavvikelse",
   "@settings.listing.sizeMismatchWarning.label": {
@@ -2033,7 +2033,7 @@
   "@settings.control.backToPresetsAriaLabel": {
     "sourceHash": "1579f3f"
   },
-  "settings.control.unitItems": "items",
+  "settings.control.unitItems": "objekt",
   "@settings.control.unitItems": {
     "sourceHash": "5f3c4f8"
   },

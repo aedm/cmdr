@@ -30,27 +30,33 @@
   },
   "common.sizeUnit.kibibyte": "KiB",
   "@common.sizeUnit.kibibyte": {
-    "sourceHash": "97ee1b8"
+    "sourceHash": "97ee1b8",
+    "sameAsSourceJustification": "Swedish keeps the IEC binary symbols unchanged (Microsoft terminology sv MiB and GiB, Dolphin sv MiB), kept distinct from the SI symbols."
   },
   "common.sizeUnit.mebibyte": "MiB",
   "@common.sizeUnit.mebibyte": {
-    "sourceHash": "dea6cb8"
+    "sourceHash": "dea6cb8",
+    "sameAsSourceJustification": "Swedish keeps the IEC binary symbols unchanged (Microsoft terminology sv MiB and GiB, Dolphin sv MiB), kept distinct from the SI symbols."
   },
   "common.sizeUnit.gibibyte": "GiB",
   "@common.sizeUnit.gibibyte": {
-    "sourceHash": "66a1561"
+    "sourceHash": "66a1561",
+    "sameAsSourceJustification": "Swedish keeps the IEC binary symbols unchanged (Microsoft terminology sv MiB and GiB, Dolphin sv MiB), kept distinct from the SI symbols."
   },
   "common.sizeUnit.tebibyte": "TiB",
   "@common.sizeUnit.tebibyte": {
-    "sourceHash": "15c1ec4"
+    "sourceHash": "15c1ec4",
+    "sameAsSourceJustification": "Swedish keeps the IEC binary symbols unchanged (Microsoft terminology sv MiB and GiB, Dolphin sv MiB), kept distinct from the SI symbols."
   },
   "common.sizeUnit.pebibyte": "PiB",
   "@common.sizeUnit.pebibyte": {
-    "sourceHash": "38ca5a1"
+    "sourceHash": "38ca5a1",
+    "sameAsSourceJustification": "Swedish keeps the IEC binary symbols unchanged (Microsoft terminology sv MiB and GiB, Dolphin sv MiB), kept distinct from the SI symbols."
   },
   "common.sizeUnit.kilobyte": "kB",
   "@common.sizeUnit.kilobyte": {
-    "sourceHash": "591e59c"
+    "sourceHash": "591e59c",
+    "sameAsSourceJustification": "Swedish writes the SI symbol kB unchanged with the lowercase k (Nautilus sv 500 kB, Total Commander sv 64 kB), kept distinct from KiB."
   },
   "common.sizeUnit.megabyte": "MB",
   "@common.sizeUnit.megabyte": {

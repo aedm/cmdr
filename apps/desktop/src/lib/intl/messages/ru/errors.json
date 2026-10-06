@@ -271,9 +271,9 @@
   "@errors.listing.notSupportedErrno.explanation": {
     "sourceHash": "a0ca28f"
   },
-  "errors.listing.notSupportedErrno.suggestion": "Попробуйте другой способ или выполните операцию в Finder. На внешнем диске может использоваться файловая система с ограничениями: например, FAT32 не хранит файлы больше 4 ГБ.",
+  "errors.listing.notSupportedErrno.suggestion": "Попробуйте другой способ или выполните операцию в Finder. На внешнем диске может использоваться файловая система с ограничениями: например, FAT32 не хранит файлы размером 4 ГиБ и больше.",
   "@errors.listing.notSupportedErrno.suggestion": {
-    "sourceHash": "de64ad5"
+    "sourceHash": "8fea918"
   },
   "errors.listing.networkUnreachable.title": "Сеть недоступна",
   "@errors.listing.networkUnreachable.title": {

@@ -29,27 +29,33 @@
   },
   "common.sizeUnit.kibibyte": "KiB",
   "@common.sizeUnit.kibibyte": {
-    "sourceHash": "97ee1b8"
+    "sourceHash": "97ee1b8",
+    "sameAsSourceJustification": "IEC binary symbol shared with English: German keeps the Latin IEC 80000-13 symbols (KDE Dolphin de MiB → MiB, Microsoft Terminology de GiB/MiB unchanged), distinct from the SI kB/MB/GB."
   },
   "common.sizeUnit.mebibyte": "MiB",
   "@common.sizeUnit.mebibyte": {
-    "sourceHash": "dea6cb8"
+    "sourceHash": "dea6cb8",
+    "sameAsSourceJustification": "IEC binary symbol shared with English: German keeps the Latin IEC 80000-13 symbols (KDE Dolphin de MiB → MiB, Microsoft Terminology de GiB/MiB unchanged), distinct from the SI kB/MB/GB."
   },
   "common.sizeUnit.gibibyte": "GiB",
   "@common.sizeUnit.gibibyte": {
-    "sourceHash": "66a1561"
+    "sourceHash": "66a1561",
+    "sameAsSourceJustification": "IEC binary symbol shared with English: German keeps the Latin IEC 80000-13 symbols (KDE Dolphin de MiB → MiB, Microsoft Terminology de GiB/MiB unchanged), distinct from the SI kB/MB/GB."
   },
   "common.sizeUnit.tebibyte": "TiB",
   "@common.sizeUnit.tebibyte": {
-    "sourceHash": "15c1ec4"
+    "sourceHash": "15c1ec4",
+    "sameAsSourceJustification": "IEC binary symbol shared with English: German keeps the Latin IEC 80000-13 symbols (KDE Dolphin de MiB → MiB, Microsoft Terminology de GiB/MiB unchanged), distinct from the SI kB/MB/GB."
   },
   "common.sizeUnit.pebibyte": "PiB",
   "@common.sizeUnit.pebibyte": {
-    "sourceHash": "38ca5a1"
+    "sourceHash": "38ca5a1",
+    "sameAsSourceJustification": "IEC binary symbol shared with English: German keeps the Latin IEC 80000-13 symbols (KDE Dolphin de MiB → MiB, Microsoft Terminology de GiB/MiB unchanged), distinct from the SI kB/MB/GB."
   },
   "common.sizeUnit.kilobyte": "kB",
   "@common.sizeUnit.kilobyte": {
-    "sourceHash": "591e59c"
+    "sourceHash": "591e59c",
+    "sameAsSourceJustification": "SI symbol shared with English: German writes the decimal kilobyte as kB with the lowercase SI prefix (GNOME Nautilus de 4 kB / 4 MB), distinct from the binary KiB."
   },
   "common.sizeUnit.megabyte": "MB",
   "@common.sizeUnit.megabyte": {

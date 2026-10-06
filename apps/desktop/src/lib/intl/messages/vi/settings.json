@@ -216,9 +216,9 @@
   "@settings.listing.sizeUnit.label": {
     "sourceHash": "2a817d3"
   },
-  "settings.listing.sizeUnit.description": "Linh hoạt chọn đơn vị dễ đọc nhất cho mỗi tệp (1,02 MB). Đơn vị cố định giúp so sánh các kích cỡ đồng nhất trên cả danh sách. Byte hiển thị số chính xác để so sánh tỉ mỉ.",
+  "settings.listing.sizeUnit.description": "Linh hoạt chọn đơn vị dễ đọc nhất cho mỗi tệp. Đơn vị cố định giúp so sánh các kích cỡ đồng nhất trên cả danh sách. Byte hiển thị số chính xác để so sánh tỉ mỉ.",
   "@settings.listing.sizeUnit.description": {
-    "sourceHash": "702a201"
+    "sourceHash": "fae7a91"
   },
   "settings.listing.sizeUnit.opt.dynamic": "Linh hoạt",
   "@settings.listing.sizeUnit.opt.dynamic": {
@@ -232,17 +232,17 @@
   "@settings.appearance.fileSizeFormat.label": {
     "sourceHash": "355c89b"
   },
-  "settings.appearance.fileSizeFormat.description": "Cách hiển thị kích cỡ tệp trong danh sách tệp: nhị phân (KiB, MiB, trong đó 1 KiB = 1024 byte) hoặc thập phân SI (KB, MB, trong đó 1 KB = 1000 byte).",
+  "settings.appearance.fileSizeFormat.description": "Cách hiển thị kích cỡ ở mọi nơi: nhị phân (KiB, MiB, trong đó 1 KiB = 1.024 byte) hoặc thập phân SI (kB, MB, trong đó 1 kB = 1.000 byte).",
   "@settings.appearance.fileSizeFormat.description": {
-    "sourceHash": "8219704"
+    "sourceHash": "db264e2"
   },
   "settings.appearance.fileSizeFormat.opt.binary": "Nhị phân (KiB, MiB, GiB)",
   "@settings.appearance.fileSizeFormat.opt.binary": {
     "sourceHash": "0a4ce4e"
   },
-  "settings.appearance.fileSizeFormat.opt.si": "Thập phân SI (KB, MB, GB)",
+  "settings.appearance.fileSizeFormat.opt.si": "Thập phân SI (kB, MB, GB)",
   "@settings.appearance.fileSizeFormat.opt.si": {
-    "sourceHash": "8984a13"
+    "sourceHash": "4dcc22e"
   },
   "settings.listing.sizeMismatchWarning.label": "Cảnh báo lệch kích cỡ",
   "@settings.listing.sizeMismatchWarning.label": {
@@ -2024,7 +2024,7 @@
   "@settings.control.backToPresetsAriaLabel": {
     "sourceHash": "1579f3f"
   },
-  "settings.control.unitItems": "items",
+  "settings.control.unitItems": "mục",
   "@settings.control.unitItems": {
     "sourceHash": "5f3c4f8"
   },

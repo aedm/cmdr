@@ -147,3 +147,10 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   `managed-by-organization`. (ru, zh-Hant)
 - `settings.managed.*`, `ai.managed.*`, `askCmdr.error.managedByOrganization`, `onboarding.stepBeta.analyticsManaged`:
   no screenshot of the managed card or the locked rows, so value widths are guesses. Capture them under a policy. (ru)
+- `common.sizeUnit.kibibyte`…`pebibyte`, `kilobyte`: no `concepts.json` entry for the IEC (KiB…PiB) and SI (kB) size
+  symbols, so `i18n-terms` can't hold `settings.appearance.fileSizeFormat.*` and prose (`4 GiB`) to the catalog's
+  symbols. Add one concept per symbol family (binary vs SI) with a `notMatch` for the other. (ru)
+- `onboarding.stepAi.local.tooltip`, `onboarding.stepOptional.indexing.summary`, `.descCost`,
+  `settings.ai.tooltipLocal`: fixed copy still says `GB` / `MB` while the app now defaults to binary units; say in each
+  description whether the amount is decimal on purpose or should read `GiB` / `MiB`, so locales pick the right symbol.
+  (hu)

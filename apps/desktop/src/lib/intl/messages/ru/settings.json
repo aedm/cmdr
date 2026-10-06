@@ -216,9 +216,9 @@
   "@settings.listing.sizeUnit.label": {
     "sourceHash": "2a817d3"
   },
-  "settings.listing.sizeUnit.description": "В режиме «Автоматически» для каждого файла выбирается самая удобная единица (1,02 МБ). С фиксированной единицей размеры в списке легко сравнивать между собой. Режим «Байты» показывает размер до байта.",
+  "settings.listing.sizeUnit.description": "В режиме «Автоматически» для каждого файла выбирается самая удобная единица. С фиксированной единицей размеры в списке легко сравнивать между собой. Режим «Байты» показывает размер до байта.",
   "@settings.listing.sizeUnit.description": {
-    "sourceHash": "702a201"
+    "sourceHash": "fae7a91"
   },
   "settings.listing.sizeUnit.opt.dynamic": "Автоматически",
   "@settings.listing.sizeUnit.opt.dynamic": {
@@ -232,17 +232,17 @@
   "@settings.appearance.fileSizeFormat.label": {
     "sourceHash": "355c89b"
   },
-  "settings.appearance.fileSizeFormat.description": "Как показывать размеры файлов в списке: двоичные единицы (KiB, MiB, где 1 KiB = 1024 байта) или десятичные единицы SI (KB, MB, где 1 KB = 1000 байт).",
+  "settings.appearance.fileSizeFormat.description": "Как показывать размеры везде: двоичные единицы (КиБ, МиБ, где 1 КиБ = 1024 байта) или десятичные единицы СИ (кБ, МБ, где 1 кБ = 1000 байт).",
   "@settings.appearance.fileSizeFormat.description": {
-    "sourceHash": "8219704"
+    "sourceHash": "db264e2"
   },
-  "settings.appearance.fileSizeFormat.opt.binary": "Двоичный (KiB, MiB, GiB)",
+  "settings.appearance.fileSizeFormat.opt.binary": "Двоичный (КиБ, МиБ, ГиБ)",
   "@settings.appearance.fileSizeFormat.opt.binary": {
     "sourceHash": "0a4ce4e"
   },
-  "settings.appearance.fileSizeFormat.opt.si": "Десятичный SI (KB, MB, GB)",
+  "settings.appearance.fileSizeFormat.opt.si": "Десятичный по СИ (кБ, МБ, ГБ)",
   "@settings.appearance.fileSizeFormat.opt.si": {
-    "sourceHash": "8984a13"
+    "sourceHash": "4dcc22e"
   },
   "settings.listing.sizeMismatchWarning.label": "Предупреждать о различиях размеров",
   "@settings.listing.sizeMismatchWarning.label": {
@@ -2022,7 +2022,7 @@
   "@settings.control.backToPresetsAriaLabel": {
     "sourceHash": "1579f3f"
   },
-  "settings.control.unitItems": "items",
+  "settings.control.unitItems": "шт.",
   "@settings.control.unitItems": {
     "sourceHash": "5f3c4f8"
   },

@@ -14,8 +14,10 @@ item once settled, and record the outcome in `terms.json` or `decisions.md`.
   `Отключите и снова подключите том` clear where both senses meet?
 - **Click verb** (`settings.behavior.doubleClickPaneNavigatesToParent.label`): `нажать` / `дважды нажать` follows macOS;
   do Russian Mac users expect `щелкнуть` / `двойной щелчок` (MS and every file manager) for a mouse click?
-- **SI kilobyte** (`common.sizeUnit.kilobyte`): `кБ` sets SI apart from binary `КБ`, but Finder writes `КБ` for its own
-  decimal sizes. Does `кБ` read as a deliberate SI symbol to a Russian user, or as a typo?
+- **SI kilobyte** (`common.sizeUnit.kilobyte`): `кБ` follows SI and GOST 8.417 (uppercase `Кбайт` = 1024), but Finder
+  writes `КБ` for its own decimal sizes. Does `кБ` read as a deliberate SI symbol to a Russian user, or as a typo?
+- **Items unit** (`settings.control.unitItems`): `шт.` after a typed buffer size (`200 шт.`) fits every number but drops
+  the word `объект`; is it clear in Settings > Дополнения?
 - **F4 label** (`fileExplorer.functionKeyBar.editLabel`): `Редактировать` is long for the F-key bar; is TC's `Правка`
   acceptable? (`Regex` and `Hex` are settled in `decisions.md`.)
 - **Download wording** (`ai.toast.downloadingTitle`, `ai.local.downloadModel`): macOS uses `загрузка` for both download

@@ -631,9 +631,9 @@
   "byte": {
     "chosen": "байт",
     "accept": ["байт"],
-    "forms": "count forms one байт / few байта / many байт / other байта (common.sizeUnit.byte); unit abbreviation Б; size symbols КБ (binary) / кБ (SI) / МБ / ГБ / ТБ / ПБ",
+    "forms": "count forms one байт / few байта / many байт / other байта (common.sizeUnit.byte); unit abbreviation Б; binary (IEC) symbols КиБ / МиБ / ГиБ / ТиБ / ПиБ; SI symbols кБ / МБ / ГБ / ТБ / ПБ",
     "confidence": "high",
-    "sources": "macOS Finder LocalizableMerged SP27 (byte → байт), SP28 (bytes → Б), SP22–SP26 (PB…KB → ПБ, ТБ, ГБ, МБ, КБ); MS (byte → байт); DC, Thunar",
+    "sources": "macOS Finder LocalizableMerged SP27 (byte → байт), SP28 (bytes → Б), SP22–SP26 (PB…KB → ПБ, ТБ, ГБ, МБ, КБ); MS (byte → байт; MiB/GiB/TiB → МиБ/ГиБ/ТиБ); Dolphin (KiB/MiB/GiB → КиБ/МиБ/ГиБ); GOST 8.417-2002 annex A (uppercase Кбайт = 1024 байт); DC, Thunar",
     "decision": "Size unit symbols"
   },
   "cable": {
@@ -2388,7 +2388,8 @@
     "chosen": "объект",
     "accept": ["объект"],
     "exceptions": {
-      "errors.listing.attributeNotFound.explanation": "The item is carried by «атрибут файла» earlier in the same sentence."
+      "errors.listing.attributeNotFound.explanation": "The item is carried by «атрибут файла» earlier in the same sentence.",
+      "settings.control.unitItems": "A unit after a number the user types: объект can't agree with every number (1 объектов), so the counting unit шт. stands in, like сек. for seconds."
     },
     "forms": "plural: {countText} объект / объекта / объектов; Copied N items → Скопировано: {countText} …",
     "avoid": [

@@ -271,9 +271,9 @@
   "@errors.listing.notSupportedErrno.explanation": {
     "sourceHash": "a0ca28f"
   },
-  "errors.listing.notSupportedErrno.suggestion": "换个方式试试，或用 Finder 来完成这项操作。如果你在用外置驱动器，它可能格式化成了有限制的文件系统（比如 FAT32 无法存储大于 4 GB 的文件）。",
+  "errors.listing.notSupportedErrno.suggestion": "换个方式试试，或用 Finder 来完成这项操作。如果你在用外置驱动器，它可能格式化成了有限制的文件系统（比如 FAT32 无法存储 4 GiB 及以上的文件）。",
   "@errors.listing.notSupportedErrno.suggestion": {
-    "sourceHash": "de64ad5"
+    "sourceHash": "8fea918"
   },
   "errors.listing.networkUnreachable.title": "网络无法连到",
   "@errors.listing.networkUnreachable.title": {

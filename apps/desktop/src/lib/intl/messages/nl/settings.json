@@ -219,9 +219,9 @@
   "@settings.listing.sizeUnit.label": {
     "sourceHash": "2a817d3"
   },
-  "settings.listing.sizeUnit.description": "Dynamisch kiest de prettigste eenheid per bestand (1,02 MB). Vaste eenheden maken groottes door de hele lijst vergelijkbaar. Bytes toont de exacte telling voor een nauwkeurige vergelijking.",
+  "settings.listing.sizeUnit.description": "Dynamisch kiest de prettigste eenheid per bestand. Vaste eenheden maken groottes door de hele lijst vergelijkbaar. Bytes toont de exacte telling voor een nauwkeurige vergelijking.",
   "@settings.listing.sizeUnit.description": {
-    "sourceHash": "702a201"
+    "sourceHash": "fae7a91"
   },
   "settings.listing.sizeUnit.opt.dynamic": "Dynamisch",
   "@settings.listing.sizeUnit.opt.dynamic": {
@@ -236,17 +236,17 @@
   "@settings.appearance.fileSizeFormat.label": {
     "sourceHash": "355c89b"
   },
-  "settings.appearance.fileSizeFormat.description": "Hoe bestandsgroottes in de bestandenlijst worden weergegeven: binair (KiB, MiB, waarbij 1 KiB = 1024 bytes) of SI-decimaal (KB, MB, waarbij 1 KB = 1000 bytes).",
+  "settings.appearance.fileSizeFormat.description": "Hoe Cmdr groottes overal toont: binair (KiB, MiB, waarbij 1 KiB = 1024 bytes) of SI-decimaal (kB, MB, waarbij 1 kB = 1000 bytes).",
   "@settings.appearance.fileSizeFormat.description": {
-    "sourceHash": "8219704"
+    "sourceHash": "db264e2"
   },
   "settings.appearance.fileSizeFormat.opt.binary": "Binair (KiB, MiB, GiB)",
   "@settings.appearance.fileSizeFormat.opt.binary": {
     "sourceHash": "0a4ce4e"
   },
-  "settings.appearance.fileSizeFormat.opt.si": "SI-decimaal (KB, MB, GB)",
+  "settings.appearance.fileSizeFormat.opt.si": "SI-decimaal (kB, MB, GB)",
   "@settings.appearance.fileSizeFormat.opt.si": {
-    "sourceHash": "8984a13"
+    "sourceHash": "4dcc22e"
   },
   "settings.listing.sizeMismatchWarning.label": "Waarschuwing bij grootteverschil",
   "@settings.listing.sizeMismatchWarning.label": {
@@ -2033,7 +2033,7 @@
   "@settings.control.backToPresetsAriaLabel": {
     "sourceHash": "1579f3f"
   },
-  "settings.control.unitItems": "items",
+  "settings.control.unitItems": "onderdelen",
   "@settings.control.unitItems": {
     "sourceHash": "5f3c4f8"
   },

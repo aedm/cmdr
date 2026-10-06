@@ -401,15 +401,19 @@
   },
   "byte": {
     "chosen": "bájt",
-    "forms": "the size unit after a number → bájt in both plural branches (512 bájt); unit symbols stay as macOS writes them: KB, kB (SI), MB, GB, TB, PB",
+    "forms": "the size unit after a number → bájt in both plural branches (512 bájt); unit symbols stay Latin: binary (IEC, base 1024) KiB, MiB, GiB, TiB, PiB; decimal (SI, base 1000) kB, MB, GB, TB, PB; a suffix never hangs on a symbol (4 GiB vagy annál nagyobb méretű, {maxSize} méretnél)",
     "avoid": [
       {
         "form": "byte",
         "why": "the English spelling; macOS Finder, Nautilus, and Total Commander’s own Hungarian text all write bájt"
+      },
+      {
+        "form": "KB",
+        "why": "capital K is neither the SI kilo (kB) nor the binary KiB, so it blurs the two size formats the app keeps apart"
       }
     ],
     "confidence": "high",
-    "sources": "macOS Finder (SP27/SP28 bájt, SP22–SP26 PB/TB/GB/MB/KB); GNOME Nautilus (%s bájt in both plural slots, 4 kB / 4 MB); Total Commander (bájt fájlonként)"
+    "sources": "macOS Finder (SP27/SP28 bájt, SP22–SP26 PB/TB/GB/MB/KB); GNOME Nautilus (%s bájt in both plural slots, 4 kB / 4 MB); Total Commander (bájt fájlonként, kB/mp); Xfce Thunar (512 KiB, 1 MiB, 1 GiB); KDE Dolphin ( MiB); Microsoft Terminology (MiB, GiB)"
   },
   "button": {
     "chosen": "gomb",

@@ -345,10 +345,10 @@ status column's `Подключено` beside masculine `Сохранен` is an
 
 The `busy` ruling's neuter state word, appended to the unchanged base label, the same marker on all four.
 
-## Size unit symbols: Cyrillic (`common.sizeUnit.*`, `viewer.copyDialog.refuseBody`)
+## Size unit symbols: Cyrillic (`common.sizeUnit.*`, `settings.appearance.fileSizeFormat.*`, `viewer.copyDialog.refuseBody`)
 
-`КБ` / `МБ` / `ГБ` / `ТБ` / `ПБ` / `байт` over Latin, as Finder writes them (SP22–SP27); the file list and prose match.
-SI `кБ` (lowercase prefix, like `кбит/с`) stays distinct from binary `КБ`.
+Cyrillic, as Finder (SP22–SP27). Binary: IEC `КиБ`…`ПиБ` (Dolphin, MS). SI: `кБ`, `МБ`…`ПБ`; lowercase `к` as GOST 8.417
+reads `К` as 1024.
 
 ## Space key: Пробел (`settings.fileExplorer.suppressQuickLookHint.description`, `settings.fileViewer.suppressBinaryWarning.description`, `fileExplorer.quickLookHint.spaceSelects`)
 

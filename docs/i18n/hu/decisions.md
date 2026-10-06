@@ -61,10 +61,10 @@ collapses to `volt`.
 `errors.json` suggestions); switching is one whole-catalog migration, never piecemeal. Never do this again =
 `Soha többé` (tentative).
 
-## A FAT32-korlát üzenetei (`errors.write.filesTooLargeForFilesystem.*`, `fileOperations.errorDialog.tooLargeAndMore`)
+## A FAT32-korlát üzenetei (`errors.write.filesTooLargeForFilesystem.*`, `fileOperations.errorDialog.tooLargeAndMore`, `errors.listing.notSupportedErrno.suggestion`)
 
-larger than {maxSize} → `{maxSize} méretnél nagyobb`: the base noun takes the suffix, since a unit's spoken vowel isn't
-safe (`KB` reads kábé or kilobájt). `%` always reads `százalék`, so `{size}%-ra` stays.
+`{maxSize} méretnél nagyobb`, `4 GiB vagy annál nagyobb méretű`: suffix the base noun (a unit's vowel is unsafe). `%`
+reads `százalék`, so `{size}%-ra` stays.
 
 ## A célmappa még nem létezik (`fileOperations.transferDialog.targetWillBeCreatedCopy`/`…Move`)
 

@@ -299,9 +299,9 @@
   "byte": {
     "chosen": "byte",
     "accept": ["bytes", "Bytes"],
-    "forms": "el byte, los bytes; size unit plural one byte / many, other bytes; unit symbols KB, kB, MB, GB, TB, PB unchanged",
+    "forms": "el byte, los bytes; size unit plural one byte / many, other bytes; unit symbols unchanged from English: decimal (SI) kB, MB, GB, TB, PB; binary (IEC) KiB, MiB, GiB, TiB, PiB; ❌ KB (uppercase K is neither)",
     "confidence": "high",
-    "sources": "macOS es Finder (bytes, KB, MB, GB); RAE (byte, pl. bytes); catalog Bytes (fileOperations.transferProgress.progressBytes)"
+    "sources": "macOS es Finder (bytes, KB, MB, GB); Thunar, Dolphin, and Microsoft es (KiB, MiB); Nautilus es (kB); RAE (byte, pl. bytes); catalog Bytes (fileOperations.transferProgress.progressBytes)"
   },
   "cache": {
     "chosen": "caché",

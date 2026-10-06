@@ -30,27 +30,33 @@
   },
   "common.sizeUnit.kibibyte": "KiB",
   "@common.sizeUnit.kibibyte": {
-    "sourceHash": "97ee1b8"
+    "sourceHash": "97ee1b8",
+    "sameAsSourceJustification": "Traditional Chinese keeps the IEC binary symbols in Latin: KDE Dolphin zh-TW writes ` MiB` untranslated, and the Microsoft zh-Hant terminology keeps `GiB` as is. There is no Han symbol to localize; only the bare byte word is translated (`common.sizeUnit.byte` = `位元組`)."
   },
   "common.sizeUnit.mebibyte": "MiB",
   "@common.sizeUnit.mebibyte": {
-    "sourceHash": "dea6cb8"
+    "sourceHash": "dea6cb8",
+    "sameAsSourceJustification": "Traditional Chinese keeps the IEC binary symbols in Latin: KDE Dolphin zh-TW writes ` MiB` untranslated, and the Microsoft zh-Hant terminology keeps `GiB` as is. There is no Han symbol to localize; only the bare byte word is translated (`common.sizeUnit.byte` = `位元組`)."
   },
   "common.sizeUnit.gibibyte": "GiB",
   "@common.sizeUnit.gibibyte": {
-    "sourceHash": "66a1561"
+    "sourceHash": "66a1561",
+    "sameAsSourceJustification": "Traditional Chinese keeps the IEC binary symbols in Latin: KDE Dolphin zh-TW writes ` MiB` untranslated, and the Microsoft zh-Hant terminology keeps `GiB` as is. There is no Han symbol to localize; only the bare byte word is translated (`common.sizeUnit.byte` = `位元組`)."
   },
   "common.sizeUnit.tebibyte": "TiB",
   "@common.sizeUnit.tebibyte": {
-    "sourceHash": "15c1ec4"
+    "sourceHash": "15c1ec4",
+    "sameAsSourceJustification": "Traditional Chinese keeps the IEC binary symbols in Latin: KDE Dolphin zh-TW writes ` MiB` untranslated, and the Microsoft zh-Hant terminology keeps `GiB` as is. There is no Han symbol to localize; only the bare byte word is translated (`common.sizeUnit.byte` = `位元組`)."
   },
   "common.sizeUnit.pebibyte": "PiB",
   "@common.sizeUnit.pebibyte": {
-    "sourceHash": "38ca5a1"
+    "sourceHash": "38ca5a1",
+    "sameAsSourceJustification": "Traditional Chinese keeps the IEC binary symbols in Latin: KDE Dolphin zh-TW writes ` MiB` untranslated, and the Microsoft zh-Hant terminology keeps `GiB` as is. There is no Han symbol to localize; only the bare byte word is translated (`common.sizeUnit.byte` = `位元組`)."
   },
   "common.sizeUnit.kilobyte": "kB",
   "@common.sizeUnit.kilobyte": {
-    "sourceHash": "591e59c"
+    "sourceHash": "591e59c",
+    "sameAsSourceJustification": "Traditional Chinese writes byte-multiple unit symbols in Latin (macOS zh-TW and zh-HK, Microsoft zh-Hant, TC zh-TW). The SI lowercase k is kept so the decimal kilobyte stays distinct from the binary `KiB`; macOS and Microsoft write the decimal unit as `KB`, which here would blur with the old binary meaning."
   },
   "common.sizeUnit.megabyte": "MB",
   "@common.sizeUnit.megabyte": {

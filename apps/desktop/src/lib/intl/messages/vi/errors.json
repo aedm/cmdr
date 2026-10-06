@@ -271,9 +271,9 @@
   "@errors.listing.notSupportedErrno.explanation": {
     "sourceHash": "a0ca28f"
   },
-  "errors.listing.notSupportedErrno.suggestion": "Thử một cách khác, hoặc dùng Finder cho thao tác này. Nếu bạn đang làm việc với một ổ đĩa ngoài, có thể nó được định dạng bằng một hệ thống tệp có giới hạn (ví dụ FAT32 không lưu được tệp lớn hơn 4 GB).",
+  "errors.listing.notSupportedErrno.suggestion": "Thử một cách khác, hoặc dùng Finder cho thao tác này. Nếu bạn đang làm việc với một ổ đĩa ngoài, có thể nó được định dạng bằng một hệ thống tệp có giới hạn (ví dụ FAT32 không lưu được tệp từ 4 GiB trở lên).",
   "@errors.listing.notSupportedErrno.suggestion": {
-    "sourceHash": "de64ad5"
+    "sourceHash": "8fea918"
   },
   "errors.listing.networkUnreachable.title": "Không tới được mạng",
   "@errors.listing.networkUnreachable.title": {

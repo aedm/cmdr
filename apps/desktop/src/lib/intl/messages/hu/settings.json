@@ -218,9 +218,9 @@
   "@settings.listing.sizeUnit.label": {
     "sourceHash": "2a817d3"
   },
-  "settings.listing.sizeUnit.description": "A Dinamikus fájlonként a legbarátságosabb egységet választja (1,02 MB). A rögzített egységek összevethetővé teszik a méreteket a listában. A Bájt a pontos darabszámot mutatja a precíz összevetéshez.",
+  "settings.listing.sizeUnit.description": "A Dinamikus fájlonként a legbarátságosabb egységet választja. A rögzített egységek összevethetővé teszik a méreteket a listában. A Bájt a pontos darabszámot mutatja a precíz összevetéshez.",
   "@settings.listing.sizeUnit.description": {
-    "sourceHash": "702a201"
+    "sourceHash": "fae7a91"
   },
   "settings.listing.sizeUnit.opt.dynamic": "Dinamikus",
   "@settings.listing.sizeUnit.opt.dynamic": {
@@ -234,17 +234,17 @@
   "@settings.appearance.fileSizeFormat.label": {
     "sourceHash": "355c89b"
   },
-  "settings.appearance.fileSizeFormat.description": "Hogyan jelenjenek meg a fájlméretek a fájllistában: bináris (KiB, MiB, ahol 1 KiB = 1024 bájt) vagy SI decimális (KB, MB, ahol 1 KB = 1000 bájt).",
+  "settings.appearance.fileSizeFormat.description": "Hogyan jelenjenek meg a méretek mindenhol: bináris (KiB, MiB, ahol 1 KiB = 1024 bájt) vagy SI decimális (kB, MB, ahol 1 kB = 1000 bájt).",
   "@settings.appearance.fileSizeFormat.description": {
-    "sourceHash": "8219704"
+    "sourceHash": "db264e2"
   },
   "settings.appearance.fileSizeFormat.opt.binary": "Bináris (KiB, MiB, GiB)",
   "@settings.appearance.fileSizeFormat.opt.binary": {
     "sourceHash": "0a4ce4e"
   },
-  "settings.appearance.fileSizeFormat.opt.si": "SI decimális (KB, MB, GB)",
+  "settings.appearance.fileSizeFormat.opt.si": "SI decimális (kB, MB, GB)",
   "@settings.appearance.fileSizeFormat.opt.si": {
-    "sourceHash": "8984a13"
+    "sourceHash": "4dcc22e"
   },
   "settings.listing.sizeMismatchWarning.label": "Mérteltérés-figyelmeztetés",
   "@settings.listing.sizeMismatchWarning.label": {
@@ -2026,7 +2026,7 @@
   "@settings.control.backToPresetsAriaLabel": {
     "sourceHash": "1579f3f"
   },
-  "settings.control.unitItems": "items",
+  "settings.control.unitItems": "elem",
   "@settings.control.unitItems": {
     "sourceHash": "5f3c4f8"
   },

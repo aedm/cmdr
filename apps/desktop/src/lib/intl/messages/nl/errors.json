@@ -271,9 +271,9 @@
   "@errors.listing.notSupportedErrno.explanation": {
     "sourceHash": "a0ca28f"
   },
-  "errors.listing.notSupportedErrno.suggestion": "Probeer een andere aanpak, of gebruik Finder voor deze bewerking. Als je met een externe schijf werkt, is die misschien geformatteerd met een bestandssysteem met beperkingen (FAT32 kan bijvoorbeeld geen bestanden groter dan 4 GB opslaan).",
+  "errors.listing.notSupportedErrno.suggestion": "Probeer een andere aanpak, of gebruik Finder voor deze bewerking. Als je met een externe schijf werkt, is die misschien geformatteerd met een bestandssysteem met beperkingen (FAT32 kan bijvoorbeeld geen bestanden van 4 GiB of groter opslaan).",
   "@errors.listing.notSupportedErrno.suggestion": {
-    "sourceHash": "de64ad5"
+    "sourceHash": "8fea918"
   },
   "errors.listing.networkUnreachable.title": "Netwerk onbereikbaar",
   "@errors.listing.networkUnreachable.title": {

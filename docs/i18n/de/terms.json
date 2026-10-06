@@ -3363,8 +3363,8 @@
     "accept": ["Bytes"],
     "chosen": "Byte",
     "confidence": "high",
-    "forms": "unit word after a count → {count, plural, one {Byte} other {Bytes}}; unit symbols KB / kB / MB / GB / TB / PB stay as in English",
-    "sources": "macOS Finder (SP27 Byte / SP28 Bytes); GNOME Nautilus (%s Byte); Xfce Thunar (Größe in Bytes); Double Commander (KB); catalog (settings.listing.sizeUnit.opt.bytes Bytes)"
+    "forms": "unit word after a count → {count, plural, one {Byte} other {Bytes}}; unit symbols stay as in English: binary (IEC) KiB / MiB / GiB / TiB / PiB, decimal (SI) kB / MB / GB / TB / PB with the lowercase k",
+    "sources": "macOS Finder (SP27 Byte / SP28 Bytes); GNOME Nautilus (%s Byte); Xfce Thunar (Größe in Bytes); Double Commander (KB); KDE Dolphin ( MiB); Microsoft Terminology (MiB, GiB); GNOME Nautilus (4 kB / 4 MB); catalog (settings.listing.sizeUnit.opt.bytes Bytes)"
   },
   "local": {
     "accept": ["lokale", "lokalen", "lokaler", "lokales"],

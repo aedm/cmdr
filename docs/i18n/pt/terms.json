@@ -318,9 +318,9 @@
   },
   "byte": {
     "chosen": "byte",
-    "forms": "plural bytes, in both many and other: {count, plural, one {byte} many {bytes} other {bytes}}; the unit symbols KB / kB / MB / GB / TB / PB stay as in English",
+    "forms": "plural bytes, in both many and other: {count, plural, one {byte} many {bytes} other {bytes}}; the unit symbols stay as in English: binary (IEC) KiB / MiB / GiB / TiB / PiB, decimal (SI) kB / MB / GB / TB / PB with a lowercase k; never KB, which would blur the two",
     "confidence": "confirmed",
-    "sources": "macOS Finder pt-BR LocalizableMerged.json (SP27 byte, SP28 bytes, SP22–SP26 PB / TB / GB / MB / KB); GNOME Nautilus pt-BR (%s byte / %s bytes)"
+    "sources": "macOS Finder pt-BR LocalizableMerged.json (SP27 byte, SP28 bytes, SP22–SP26 PB / TB / GB / MB / KB); GNOME Nautilus pt-BR (%s byte / %s bytes); Microsoft terminology pt-BR (MiB, GiB); KDE Dolphin pt-BR (“ MiB”); Total Commander pt-BR (kB/s)"
   },
   "cancel": {
     "chosen": "Cancelar",
