@@ -84,6 +84,7 @@ export function makeExplorerSpy(): Record<string, ReturnType<typeof vi.fn>> {
     'setViewModeFromMenu',
     'switchPane',
     'swapPanes',
+    'calculateFolderSizes',
     'toggleVolumeChooser',
     'toggleFavoritesMenu',
     'copyPathBetweenPanes',
@@ -227,6 +228,12 @@ export const DELEGATE_ROWS: DelegateRow[] = [
     id: 'pane.switch',
     expect: (e) => {
       expect(e.switchPane).toHaveBeenCalledOnce()
+    },
+  },
+  {
+    id: 'view.calculateFolderSizes',
+    expect: (e) => {
+      expect(e.calculateFolderSizes).toHaveBeenCalledOnce()
     },
   },
   {

@@ -16,6 +16,7 @@
  *   4. Otherwise forward to the focused pane's `handleKeyDown`.
  */
 
+import { cancelCountInPane } from './folder-size-count'
 import { isTextInputTarget } from '$lib/utils/text-input-focus'
 import { isPrintableJumpContinuation, isTypeToJumpChar, isTypeToJumpResetKey } from './type-to-jump-keys'
 import type { FilePaneAPI } from './types'
@@ -97,6 +98,19 @@ export function createKeyDispatch(deps: KeyDispatchDeps): KeyDispatch {
 
     // A header menu owns the keyboard while it's open
     if (swallowedByHeaderMenu()) {
+      return
+    }
+
+    // ESC while folder sizes are being calculated stops the count (Total Commander's
+    // Esc). Not while renaming: there Esc cancels the rename.
+    const countingPane = deps.getPaneRef(deps.getFocusedPane())
+    if (
+      e.key === 'Escape' &&
+      countingPane &&
+      !countingPane.isRenaming() &&
+      cancelCountInPane(countingPane.getListingId())
+    ) {
+      e.preventDefault()
       return
     }
 

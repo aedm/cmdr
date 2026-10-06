@@ -1,7 +1,7 @@
 // On-demand virtual scrolling API (listing-based), sync status, font metrics
 
 import { type UnlistenFn } from '@tauri-apps/api/event'
-import { commands, events, type Initiator, type RowBeside } from '$lib/ipc/bindings'
+import { commands, events, type FolderSizeCountOutcome, type Initiator, type RowBeside } from '$lib/ipc/bindings'
 import type {
   FileEntry,
   ListingStats,
@@ -147,6 +147,26 @@ export async function getTotalCount(listingId: string, includeHidden: boolean): 
   const res = await commands.getTotalCount(listingId, includeHidden)
   if (res.status === 'error') throwListingLookupError(res.error)
   return res.data
+}
+
+/**
+ * Calculates folder sizes in a pane (⌥⇧⏎; `paths` for Space on a folder). Each
+ * reading arrives as `listing-index-sizes-changed`; this resolves when the count
+ * ends. Throws with `type` `gone` or `notConnected` when it can't start.
+ */
+export async function countFolderSizes(
+  listingId: string,
+  includeHidden: boolean,
+  paths: string[] | null,
+): Promise<FolderSizeCountOutcome> {
+  const res = await commands.countFolderSizes(listingId, includeHidden, paths)
+  if (res.status === 'error') throwIpcError(res.error)
+  return res.data
+}
+
+/** Stops the folder-size count running in a pane. Reports whether one was running. */
+export async function cancelFolderSizeCount(listingId: string): Promise<boolean> {
+  return commands.cancelFolderSizeCount(listingId)
 }
 
 /**

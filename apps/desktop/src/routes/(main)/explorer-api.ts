@@ -47,6 +47,8 @@ export interface ExplorerAPI {
   refocus: () => void
   switchPane: () => void
   swapPanes: () => void
+  /** Calculate folder sizes in the focused pane (⌥⇧⏎); resolves when the count ends. */
+  calculateFolderSizes: () => Promise<void>
   copyPathBetweenPanes: (args: CopyPathBetweenPanesArgs) => void
   toggleVolumeChooser: (pane: 'left' | 'right') => void
   openVolumeChooser: () => void

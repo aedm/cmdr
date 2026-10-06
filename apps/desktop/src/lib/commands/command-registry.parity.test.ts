@@ -50,6 +50,7 @@ const EXPECTED_NAMES: Record<string, string> = {
   'favorites.addFromMenu': 'Add current folder to favorites',
   'downloads.goToLatest': 'Go to latest download',
   'view.showHidden': 'Toggle hidden files',
+  'view.calculateFolderSizes': 'Calculate folder sizes',
   'view.briefMode': 'Switch to Brief view',
   'view.fullMode': 'Switch to Full view',
   'view.setMode': 'Set pane view mode',
@@ -178,6 +179,7 @@ const EXPECTED_NAMES: Record<string, string> = {
 
 /** id → exact pre-migration English `description` (only commands that had one). */
 const EXPECTED_DESCRIPTIONS: Record<string, string | undefined> = {
+  'view.calculateFolderSizes': 'Shows the size of every folder in this pane that doesn’t have one yet. Esc stops it.',
   'app.checkForUpdates': 'Check whether a newer version of Cmdr is available, and download it if so',
   'cmdr.openOnboarding': 'Reopen the onboarding wizard to review or change first-launch setup options',
   'help.openShortcuts': 'Open a read-only window listing every keyboard shortcut, live-synced with your customizations',

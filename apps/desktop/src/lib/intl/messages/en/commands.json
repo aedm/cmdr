@@ -181,6 +181,14 @@
     "description": "Command name that shows or hides hidden files (those normally not displayed, like dotfiles). Appears in the command palette and the View menu.",
     "screenshot": "settings-keyboard-shortcuts.png"
   },
+  "commands.viewCalculateFolderSizes.label": "Calculate folder sizes",
+  "@commands.viewCalculateFolderSizes.label": {
+    "description": "Command name (Alt+Shift+Enter, like Total Commander) in the command palette and View menu: shows the total size of every folder in the focused file list."
+  },
+  "commands.viewCalculateFolderSizes.description": "Shows the size of every folder in this pane that doesn’t have one yet. Esc stops it.",
+  "@commands.viewCalculateFolderSizes.description": {
+    "description": "Longer help text for \"Calculate folder sizes\", shown as a secondary line in the command palette. \"Pane\" is one of the two side-by-side file lists; Esc is the key name."
+  },
   "commands.viewBriefMode.label": "Switch to Brief view",
   "@commands.viewBriefMode.label": {
     "description": "Command name that switches the file list to Brief view (a compact, multi-column layout). \"Brief\" is the view's proper name; match the term used in the View menu.",

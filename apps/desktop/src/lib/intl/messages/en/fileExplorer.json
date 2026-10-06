@@ -966,6 +966,10 @@
       "count": "the same number of items (drives the singular/plural form)"
     }
   },
+  "fileExplorer.folderSizes.notConnected": "Can’t calculate folder sizes here: this location isn’t connected right now",
+  "@fileExplorer.folderSizes.notConnected": {
+    "description": "Toast when Calculate folder sizes (Alt+Shift+Enter) can't start because the pane's drive or server is no longer connected."
+  },
   "fileExplorer.clipboard.cutReady": "{countText} {count, plural, one {item} other {items}} ready to move. Paste to complete.",
   "@fileExplorer.clipboard.cutReady": {
     "description": "Toast confirming files were cut to the clipboard and are ready to be moved on paste, e.g. \"3 items ready to move. Paste to complete.\"",

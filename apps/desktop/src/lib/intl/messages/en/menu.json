@@ -327,6 +327,10 @@
   "@menu.view.swapPanes": {
     "description": "VERB phrase (imperative). Exchanges the two panes' contents, so the left folder appears on the right and vice versa (⌘U). ❗ Different from menu.view.switchPane, which only moves focus: this one moves the folders. Use the same word for \"pane\" as in menu.view.leftPane."
   },
+  "menu.view.calculateFolderSizes": "Calculate folder sizes",
+  "@menu.view.calculateFolderSizes": {
+    "description": "View menu item (Alt+Shift+Enter): shows the total size of every folder in the focused file list that doesn't have one yet."
+  },
 
   "menu.view.commandPalette": "Command palette…",
   "@menu.view.commandPalette": {

@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { countFoldersInPane } from './folder-size-count'
     import { onMount, onDestroy, untrack } from 'svelte'
     import FilePane from './FilePane.svelte'
     import type {
@@ -854,6 +855,16 @@
      */
     export function swapPanes(): void {
         swapper.swapPanes()
+    }
+
+    /** Calculate folder sizes in the focused pane (⌥⇧⏎), then re-sort a size-sorted pane. */
+    export async function calculateFolderSizes(): Promise<void> {
+        const pane = focusedPane
+        const listingId = getPaneRef(pane)?.getListingId() ?? ''
+        const outcome = await countFoldersInPane(listingId, showHiddenFiles)
+        if (outcome && outcome.counted > 0 && getPaneSort(pane).sortBy === 'size') {
+            await sortOps.resortPaneWithCurrentSort(pane)
+        }
     }
 
     export function toggleVolumeChooser(pane: 'left' | 'right') {

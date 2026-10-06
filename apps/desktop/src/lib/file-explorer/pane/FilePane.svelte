@@ -99,7 +99,11 @@
     import { getVolumes as getStoreVolumes } from '$lib/stores/volume-store.svelte'
     import type { UnreachableState } from '../tabs/tab-types'
     import { getUsageBar, formatBarTooltip } from '../disk-space-utils'
-    import { getFileSizeFormat, getTypeToJumpResetDelay } from '$lib/settings/reactive-settings.svelte'
+    import {
+        getFileSizeFormat,
+        getSpaceCalculatesFolderSize,
+        getTypeToJumpResetDelay,
+    } from '$lib/settings/reactive-settings.svelte'
     import { createRowOverlays } from './row-overlays.svelte'
     import { createSelectionInfoFeed } from './selection-info-feed.svelte'
     import { createPaneKeyRouter } from './pane-key-router'
@@ -111,6 +115,7 @@
     import { fetchEntriesSnapshot, fetchSelectedNames } from './entries-snapshot'
     import { resolveInitialPathAction, shouldReloadAfterReachable } from './path-sync'
     import { createHiddenFilesResync } from './hidden-files-resync'
+    import { countFolderOnSpace as countFolderOnSpaceAt } from './folder-size-count'
     import { createNetworkHostState } from './network-host-state.svelte'
     import { createMtpDisconnectWatch } from './mtp-disconnect-watch.svelte'
     import { createSnapshotSelectionSync } from './snapshot-selection-sync.svelte'
@@ -1006,7 +1011,18 @@
     }
 
     export function toggleSelectionAtCursor(): void {
-        selection.toggleAt(cursorIndex, hasParent)
+        countFolderOnSpace(selection.toggleAt(cursorIndex, hasParent))
+    }
+
+    /** Space on a folder also calculates its size, like Total Commander (`folder-size-count.ts`). */
+    function countFolderOnSpace(selected: boolean): void {
+        void countFolderOnSpaceAt({
+            listingId,
+            backendRow: hasParent ? cursorIndex - 1 : cursorIndex,
+            includeHidden,
+            selected,
+            enabled: getSpaceCalculatesFolderSize(),
+        })
     }
 
     /**
@@ -1603,7 +1619,7 @@
         openEntry: (entry) => void handleNavigate(entry),
         navigateToParent: () => void navigateToParent(),
         onCommand: (commandId) => onCommand?.(commandId),
-        toggleSelectionAtCursor: () => { selection.toggleAt(cursorIndex, hasParent); },
+        toggleSelectionAtCursor: () => { countFolderOnSpace(selection.toggleAt(cursorIndex, hasParent)); },
         toggleSelectionAndMoveDown: toggleSelectionAndMoveDownAtCursor,
         selectAll: () => { selection.selectAll(hasParent, effectiveTotalCount); },
         deselectAll: () => { selection.deselectAll(); },

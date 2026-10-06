@@ -61,3 +61,27 @@ index answers every reader the same, and tells this worker when a row flips (`re
 `DirsUpdated` for the folders whose shown hourglass a drain ended). A recheck runs at its moment, outside the cooldown:
 waiting would show the hourglass up to two seconds late, or never for a short one the webview already read. It rereads
 only the flipping rows and sends only what moved, so under churn it costs an index read, not an event.
+
+## Calculating sizes on demand (count.rs)
+
+Total Commander's ⌥⇧⏎ ("count the space subfolders occupy") and Space on a folder. The index answers the volumes it
+covers; `count.rs` walks what it can't (SFTP, WebDAV, S3, archives, a folder the index excludes).
+
+- **Walks through `Volume::scan_for_copy_batch_with_boundary`**, the copy dialog's cancellable scan, so every backend
+  that supports copying supports this, with its batching and its stop. The volume is `manager.resolve`d like a copy
+  source, so an archive or `.git` route walks its own tree.
+- **Readings travel the index's road**: written into `LISTING_CACHE` (`update_index_sizes_by_path`), then sent as
+  `listing-index-sizes-changed`. A walk longer than 250 ms sends its running total as a lower bound
+  (`recursive_size_complete: false`) with the hourglass; a finished one is exact. A short walk sends only its exact size,
+  so nothing flashes "≥ 0". The frontend has no new row path.
+- **Decision: on an indexed volume the index keeps its rows.** Only a folder it says nothing about (no size at all) is
+  walked; one it's still completing (a lower bound) is left to it. Why: the worker re-sends its own readings for rows it
+  covers, and two writers on one row overwrite each other's size and hourglass. Elsewhere every folder without an exact
+  size is walked; Space recounts its folder.
+- **One count per listing**, registered before any await, so Esc during the volume resolve has something to stop. A
+  newer count SUPERSEDES the older, which then writes nothing more (its "stopped" reading would land over the newer
+  one's). Esc (`cancel_folder_size_count`) keeps what was counted as a lower bound without the hourglass. Closing the
+  listing cancels its count (`listing_closed`), and a walk that finds its listing gone stops itself.
+- **A folder it can't read gets back what it showed before** (sent as a `full` event, since "no size" isn't a reading
+  an event can carry); the rest still get counted. `counted` only counts folders the pane still shows.
+- **Not persisted**: a refresh that re-reads the folder drops the readings, as Total Commander's does.

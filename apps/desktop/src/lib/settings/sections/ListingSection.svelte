@@ -24,6 +24,7 @@
     const appIconsDef = getSettingDefinition('appearance.useAppIconsForDocuments') ?? { label: '', description: '' }
     const fnKeyBarDef = getSettingDefinition('appearance.showFunctionKeyBar') ?? { label: '', description: '' }
     const foldersFirstDef = getSettingDefinition('listing.foldersFirst') ?? { label: '', description: '' }
+    const spaceSizeDef = getSettingDefinition('listing.spaceCalculatesFolderSize') ?? { label: '', description: '' }
     const dirSortDef = getSettingDefinition('listing.directorySortMode') ?? { label: '', description: '' }
     const showExtInNameDef = getSettingDefinition('listing.showExtensionInName') ?? { label: '', description: '' }
     const showTagsDef = getSettingDefinition('listing.showTags') ?? { label: '', description: '' }
@@ -51,7 +52,7 @@
 </script>
 
 <SettingsSection title={tString('settings.section.listing')}>
-    {#if anyVisible(shouldShow, 'listing.showHiddenFiles', 'appearance.useAppIconsForDocuments', 'appearance.showFunctionKeyBar', 'listing.foldersFirst', 'listing.directorySortMode', 'listing.showExtensionInName', 'listing.showTags')}
+    {#if anyVisible(shouldShow, 'listing.showHiddenFiles', 'appearance.useAppIconsForDocuments', 'appearance.showFunctionKeyBar', 'listing.foldersFirst', 'listing.directorySortMode', 'listing.spaceCalculatesFolderSize', 'listing.showExtensionInName', 'listing.showTags')}
         <SectionCard label={tString('settings.appearance.card.namesAndIcons')}>
             {#if shouldShow('listing.showHiddenFiles')}
                 <SettingRow
@@ -107,6 +108,16 @@
                         disabled={!foldersFirst}
                         ariaDescribedBy={foldersFirst ? undefined : disabledNoteId('listing.directorySortMode')}
                     />
+                </SettingRow>
+            {/if}
+            {#if shouldShow('listing.spaceCalculatesFolderSize')}
+                <SettingRow
+                    id="listing.spaceCalculatesFolderSize"
+                    label={spaceSizeDef.label}
+                    description={spaceSizeDef.description}
+                    {searchQuery}
+                >
+                    <SettingSwitch id="listing.spaceCalculatesFolderSize" />
                 </SettingRow>
             {/if}
             {#if shouldShow('listing.showExtensionInName')}

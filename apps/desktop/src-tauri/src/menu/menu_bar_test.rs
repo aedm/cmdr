@@ -109,12 +109,13 @@ menu menu.bar.view id=menu_view
   6 separator
   7 item switch_pane menu.view.switchPane [Tab] tracked
   8 item swap_panes menu.view.swapPanes [Cmd+U] tracked
-  9 separator
-  10 item command_palette menu.view.commandPalette [Cmd+Shift+P] tracked
-  11 item queue_show menu.view.operationQueue [Cmd+Alt+Q] tracked
-  12 item operation_log menu.view.operationLog [Cmd+Alt+L] tracked
-  13 item suggested_ops menu.view.suggestedOps tracked
-  14 item ask_cmdr menu.view.askCmdr [Cmd+Alt+A] tracked
+  9 item calculate_folder_sizes menu.view.calculateFolderSizes [Alt+Shift+Enter] tracked
+  10 separator
+  11 item command_palette menu.view.commandPalette [Cmd+Shift+P] tracked
+  12 item queue_show menu.view.operationQueue [Cmd+Alt+Q] tracked
+  13 item operation_log menu.view.operationLog [Cmd+Alt+L] tracked
+  14 item suggested_ops menu.view.suggestedOps tracked
+  15 item ask_cmdr menu.view.askCmdr [Cmd+Alt+A] tracked
 menu menu.bar.go id=menu_go
   0 item go_back menu.go.back [Cmd+[] tracked
   1 item go_forward menu.go.forward [Cmd+]] tracked
@@ -225,12 +226,13 @@ menu menu.bar.view
   6 separator
   7 item switch_pane menu.view.switchPane tracked
   8 item swap_panes menu.view.swapPanes [Cmd+U] tracked
-  9 separator
-  10 item command_palette menu.view.commandPalette [Cmd+Shift+P] tracked
-  11 item queue_show menu.view.operationQueue [Cmd+Alt+Q] tracked
-  12 item operation_log menu.view.operationLog [Cmd+Alt+L] tracked
-  13 item suggested_ops menu.view.suggestedOps tracked
-  14 item ask_cmdr menu.view.askCmdr [Cmd+Alt+A] tracked
+  9 item calculate_folder_sizes menu.view.calculateFolderSizes [Alt+Shift+Enter] tracked
+  10 separator
+  11 item command_palette menu.view.commandPalette [Cmd+Shift+P] tracked
+  12 item queue_show menu.view.operationQueue [Cmd+Alt+Q] tracked
+  13 item operation_log menu.view.operationLog [Cmd+Alt+L] tracked
+  14 item suggested_ops menu.view.suggestedOps tracked
+  15 item ask_cmdr menu.view.askCmdr [Cmd+Alt+A] tracked
 menu menu.bar.go
   0 item go_back menu.go.back [Cmd+[] tracked
   1 item go_forward menu.go.forward [Cmd+]] tracked
