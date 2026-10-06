@@ -317,8 +317,12 @@ fn the_watchers_own_reads_are_not_changes() {
     use notify::EventKind;
     use notify::event::{AccessKind, AccessMode, CreateKind, DataChange, ModifyKind, RenameMode};
 
-    let git_dir = PathBuf::from("/repo/.git");
-    let scope = crate::watcher::WatchScope::of(Path::new("/repo"));
+    // A real repository, ❌ never a made-up `/repo`: `WatchScope::of` reads the
+    // `.git` it finds there, and the Linux test container mounts a checkout at
+    // `/repo` whose `.git` is a linked worktree's gitlink.
+    let (dir, root, _fixture) = a_repo("own_reads");
+    let git_dir = root.join(".git");
+    let scope = crate::watcher::WatchScope::of(&root);
     let about = |kind: EventKind, relative: &str| {
         crate::watcher::is_repo_state_change(&scope, &notify::Event::new(kind).add_path(git_dir.join(relative)))
     };
@@ -349,6 +353,7 @@ fn the_watchers_own_reads_are_not_changes() {
     ] {
         assert!(about(kind, "HEAD"), "a write to HEAD is news whichever kind it wears");
     }
+    cleanup(&dir);
 }
 
 /// ❗ **Reading a repository leaves its gitdir untouched.** The watcher recomputes
