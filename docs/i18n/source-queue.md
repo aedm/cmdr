@@ -148,5 +148,3 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
 - `settings.managed.*`, `ai.managed.*`, `askCmdr.error.managedByOrganization`, `onboarding.stepBeta.analyticsManaged`:
   no screenshot of the managed card or the locked rows, so value widths are guesses. Capture them under a policy. (ru)
 - `fileExplorer.compareDirectories.*`: no screenshot of the compare toasts, so their widths are unverified. (all)
-- `compare-folders` and `subfolder`: rulings for de, es, fr, hu, nl, pt, sv, vi, zh (and `subfolder` zh-Hant) are
-  `tentative` because the reference pile was absent on this machine; mine TC/Finder to confirm. (all)

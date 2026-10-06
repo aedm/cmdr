@@ -542,11 +542,11 @@
     "avoid": [
       {
         "form": "Jämför kataloger",
-        "why": "TC's wording; Cmdr follows Finder's mapp"
+        "why": "DC's and MC's wording (TC's command list too); TC's menu and Finder say mapp"
       }
     ],
-    "confidence": "tentative",
-    "sources": "TC names the command Jämför kataloger; Cmdr follows the folder ruling (Finder mapp); catalog already says jämföra. Pile unavailable on this machine; TC wording from memory"
+    "confidence": "high",
+    "sources": "TC 11.58 sv menu Jämför mappar (exact match, ⇧F2; its command list says Jämför kataloger); DC and MC Jämför kataloger; Finder mapp"
   },
   "complete": {
     "accept": ["klar", "slutför", "ofullständig", "avbruten"],
@@ -2663,8 +2663,8 @@
   "subfolder": {
     "chosen": "undermapp",
     "accept": ["undermappar"],
-    "confidence": "tentative",
-    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); reference pile unavailable on this machine, so unverified against TC/Finder"
+    "confidence": "high",
+    "sources": "macOS Finder (PE26.1 … till en undermapp); TC sv (undermappar), Nautilus, Thunar agree; DC and Dolphin say underkatalog"
   },
   "subscription": {
     "chosen": "prenumeration",

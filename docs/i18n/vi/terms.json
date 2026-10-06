@@ -469,8 +469,8 @@
   "compare-folders": {
     "chosen": "So sánh thư mục",
     "accept": ["so sánh"],
-    "confidence": "tentative",
-    "sources": "catalog already says so sánh (smallerDisabledTooltip); thư mục per the folder ruling. Pile unavailable on this machine"
+    "confidence": "high",
+    "sources": "TC 11.58 vi menu So sánh thư mục (exact match, ⇧F2); compare by content → So sánh theo nội dung; Finder thư mục. DC has no vi catalog; MC vi leaves it untranslated"
   },
   "complete": {
     "accept": ["hoàn chỉnh", "đầy đủ"],
@@ -2536,8 +2536,8 @@
   },
   "subfolder": {
     "chosen": "thư mục con",
-    "confidence": "tentative",
-    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); reference pile unavailable on this machine, so unverified against TC/Finder"
+    "confidence": "high",
+    "sources": "macOS Finder (PE26.1 … các thư mục con của nó); TC vi, Nautilus, Thunar, Dolphin agree"
   },
   "subscription": {
     "chosen": "đăng ký",

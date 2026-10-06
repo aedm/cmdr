@@ -585,8 +585,8 @@
         "why": "TC's wording; Cmdr follows Finder's dossier"
       }
     ],
-    "confidence": "tentative",
-    "sources": "TC names the command Comparer les répertoires; Cmdr follows the folder ruling (Finder dossier). Pile unavailable on this machine; TC wording from memory"
+    "confidence": "high",
+    "sources": "DC Comparer les dossiers (exact match); TC 11.58 menu Comparaison de répertoires, command list Comparer les répertoires; MC Comparer des répertoires; Finder dossier"
   },
   "complete": {
     "accept": ["terminé", "finalis", "incomplet", "incomplète", "complet", "complète"],
@@ -2874,8 +2874,8 @@
   "subfolder": {
     "chosen": "sous-dossier",
     "accept": ["sous-dossiers"],
-    "confidence": "tentative",
-    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); reference pile unavailable on this machine, so unverified against TC/Finder"
+    "confidence": "high",
+    "sources": "macOS Finder (PE26.1 … dans un de ses sous-dossiers); DC, Nautilus, Thunar, Dolphin (Créer un sous-dossier) agree"
   },
   "subscription": {
     "chosen": "abonnement",

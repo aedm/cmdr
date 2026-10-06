@@ -502,8 +502,8 @@
         "why": "TC's wording; Cmdr follows Finder's carpeta"
       }
     ],
-    "confidence": "tentative",
-    "sources": "TC names the command Comparar directorios; Cmdr follows the folder ruling (Finder carpeta). Pile unavailable on this machine; TC wording from memory"
+    "confidence": "high",
+    "sources": "DC Comparar carpetas (exact match); TC 11.58 and MC say Comparar directorios; Finder carpeta"
   },
   "complete": {
     "chosen": "completar",
@@ -2603,8 +2603,8 @@
   "subfolder": {
     "chosen": "subcarpeta",
     "accept": ["subcarpetas"],
-    "confidence": "tentative",
-    "sources": "catalog (errors.write.destinationInsideSource.message.copy, fileExplorer.dirSize.lowerBoundLine); reference pile unavailable on this machine, so unverified against TC/Finder"
+    "confidence": "high",
+    "sources": "macOS Finder (PE26.1 … a una de sus subcarpetas); DC, Nautilus, Thunar, Dolphin (Crear subcarpeta) agree"
   },
   "suggestion": {
     "chosen": "sugerencia",

@@ -655,11 +655,11 @@
     "avoid": [
       {
         "form": "Könyvtárak összehasonlítása",
-        "why": "TC's wording; UI copy says mappa"
+        "why": "DC's and MC's wording; TC hu and Finder say mappa"
       }
     ],
-    "confidence": "tentative",
-    "sources": "TC names the command Könyvtárak összehasonlítása; Cmdr follows the folder ruling (mappa), nominal label like Fájlok kijelölése; catalog already says összehasonlítható. Pile unavailable on this machine; TC wording from memory"
+    "confidence": "high",
+    "sources": "TC 11.58 hu menu Mappák összehasonlítása (exact match, ⇧F2); DC and MC say Könyvtárak összehasonlítása; Finder mappa"
   },
   "complete": {
     "chosen": "befejezés",
