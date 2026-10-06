@@ -10,6 +10,10 @@ on:
   # guard refuses a dispatch on anything but a tag.
   workflow_dispatch:
 
+# The `release` job below grants what the pipeline needs; nothing else in this file gets a token.
+permissions:
+  contents: read
+
 jobs:
   # Every job lives in `release-pipeline.yml`, a reusable workflow, so the build provenance the
   # `attest` job signs names that file as the signer rather than this one. That's what lifts the

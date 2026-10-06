@@ -11,6 +11,10 @@ on:
   push:
     branches:
       - main
+
+permissions:
+  contents: read
+
 jobs:
   # ===========================================
   # Determine which jobs to run based on changed files
