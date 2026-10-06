@@ -33,9 +33,9 @@ A perpetual license verifies offline forever: the app drops it to Personal only 
 `api.getcmdr.com`, never because the server is unreachable or gone. The license email carries the full signed key, so a
 new Mac activates with no server either. So "what if the company stops?" has a code answer, not only a legal one, and an
 air-gapped install works with a pasted key. The flip side: a revoked or refunded license on a Mac that never reaches the
-server keeps saying Commercial, and `/validate` doesn't see refunds of one-time purchases at all yet
-(`apps/api-server/src/licensing/DETAILS.md` § Refunds). Mechanics: `apps/desktop/src-tauri/src/licensing/DETAILS.md` §
-Offline policy.
+server keeps saying Commercial. Online, a full refund or chargeback revokes it at the next weekly check; a partial
+refund doesn't (`apps/api-server/src/licensing/DETAILS.md` § Refunds). Mechanics:
+`apps/desktop/src-tauri/src/licensing/DETAILS.md` § Offline policy.
 
 ## Onboarding exists and is decent
 

@@ -1,11 +1,10 @@
 # Licensing
 
-Everything money touches: the Paddle webhook that fulfills a purchase, `/activate`, `/validate`, and the hand-issued
-licenses behind `/admin/generate` and `/admin/revoke`. `licensing.ts` holds the routes and mounts `manual-licenses.ts`
-plus `admin-licenses.ts` (the dashboard's list, and its note editor); `license.ts` (short codes, key signing, id
-namespaces), `license-issuance.ts` (the D1 ledger), `license-backup.ts` (the daily R2 snapshot), `paddle.ts` (HMAC
-verify, `constantTimeEqual`), `paddle-api.ts` (Paddle REST), and `device-tracking.ts` (fair-use device sets) are its
-leaves.
+Everything money touches: the Paddle webhook (fulfill a purchase, revoke on a refund), `/activate`, `/validate`, and the
+hand-issued licenses behind `/admin/generate` and `/admin/revoke`. `licensing.ts` holds the routes and mounts
+`manual-licenses.ts` plus `admin-licenses.ts` (the dashboard's list, and its note editor). Leaves: `license.ts` (codes,
+signing, id namespaces), `license-issuance.ts` (the D1 ledger), `refunds.ts` (refund and chargeback adjustments),
+`license-backup.ts`, `paddle.ts` (HMAC verify), `paddle-api.ts`, and `device-tracking.ts`.
 
 ## Must-knows
 
@@ -36,9 +35,9 @@ leaves.
   validation over device count. Alerts go to a human. DETAILS § Device tracking.
 - **Paddle preserves `custom_data` key casing**, so it's `organizationName`, ❌ never `organization_name`.
 - **A license we hand out lives in our ledger, not in Paddle.** `/validate` dispatches on the id namespace: `txn_` asks
-  Paddle, anything else resolves from `license_issuance` where `source = 'manual'`. ❌ Never answer a `txn_` id from the
-  table, a canceled subscription would keep validating. `/admin/generate` and `/admin/revoke` (`manual-licenses.ts`)
-  take `ADMIN_API_TOKEN` like every other admin route, and minting refuses without a `note`. DETAILS § Manual licenses.
+  Paddle, anything else resolves from `license_issuance` where `source = 'manual'`. For a `txn_` id the table only takes
+  the license AWAY (`revoked_at`, set by a refund, DETAILS § Refunds); ❌ never let it grant one, a canceled
+  subscription would keep validating. Minting refuses without a `note`. DETAILS § Manual licenses.
 - **`/admin/licenses` reports OUR records, ❌ never Paddle's truth.** `active` on a `paddle` row means we fulfilled the
   purchase; whether the subscription still runs only Paddle knows. DETAILS § The licenses listing.
 

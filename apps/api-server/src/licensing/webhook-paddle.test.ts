@@ -50,6 +50,7 @@ interface IssuanceRow {
   claimed_at: string
   issued_at: string | null
   emailed_at: string | null
+  revoked_at: string | null
 }
 
 /**
@@ -73,6 +74,7 @@ function createIssuanceD1(): D1Database & { rows: Map<string, IssuanceRow> } {
       claimed_at: claimedAt,
       issued_at: null,
       emailed_at: null,
+      revoked_at: null,
     })
     return { transaction_id: id }
   }

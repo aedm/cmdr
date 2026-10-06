@@ -23,10 +23,12 @@ import {
   type PriceIdMapping,
 } from './paddle-api'
 import { pruneStaleDevices, shouldAlert, type DeviceSet } from './device-tracking'
+import { parseAdjustment, processAdjustment } from './refunds'
 import {
   claimIssuance,
   classifyIssuance,
   classifyManualLicense,
+  isPaddleLicenseRevoked,
   loadIssuance,
   loadManualLicense,
   markIssuanceDelivered,
@@ -236,6 +238,14 @@ async function handleValidation(
 
   const baseTransactionId = transactionId.replace(/-\d+$/, '')
 
+  // A refund leaves the transaction `completed` in Paddle, so only our ledger knows about it. The
+  // ledger can take a Paddle license away, never grant one: anything else still comes from Paddle.
+  const revocation = await readPaddleRevocation(baseTransactionId, env.TELEMETRY_DB)
+  if (revocation === 'revoked') return { response: { body: invalidResponse(), status: 200 }, trackingPromise: null }
+  if (revocation === 'unreadable') {
+    return { response: { body: { error: 'upstream_error' }, status: 502 }, trackingPromise: null }
+  }
+
   const paddleConfig = getPaddleConfig(env)
   if (!paddleConfig) {
     console.error('No Paddle API key configured')
@@ -274,6 +284,23 @@ async function handleValidation(
     : null
 
   return { response: { body, status: 200 }, trackingPromise }
+}
+
+/**
+ * Whether the purchase was refunded. `unreadable` (the ledger read threw) answers 502
+ * `upstream_error`, the same as a Paddle outage, so the app keeps its cached status rather than
+ * reading a D1 blip as anything.
+ */
+async function readPaddleRevocation(
+  baseTransactionId: string,
+  db: D1Database,
+): Promise<'revoked' | 'not_revoked' | 'unreadable'> {
+  try {
+    return (await isPaddleLicenseRevoked(db, baseTransactionId)) ? 'revoked' : 'not_revoked'
+  } catch (error) {
+    console.error('Ledger read failed during validation:', error instanceof Error ? error.message : String(error))
+    return 'unreadable'
+  }
 }
 
 /**
@@ -340,7 +367,7 @@ function invalidResponse(): ValidationResponse {
   }
 }
 
-// Paddle webhook - called when purchase completes
+// Paddle webhook: a completed purchase mints licenses, a refund or chargeback revokes them
 licensing.post('/webhook/paddle', async (c) => {
   const body = await c.req.text()
   const signature = c.req.header('Paddle-Signature') ?? ''
@@ -364,13 +391,17 @@ licensing.post('/webhook/paddle', async (c) => {
   }
   console.log('Received webhook:', payload.event_type)
 
-  // Only handle completed purchases
-  if (payload.event_type !== 'transaction.completed') {
-    return c.json({ status: 'ignored', event: payload.event_type })
-  }
-
   try {
-    return await processCompletedTransaction(payload, c.env)
+    if (payload.event_type === 'transaction.completed') return await processCompletedTransaction(payload, c.env)
+    if (payload.event_type === 'adjustment.created' || payload.event_type === 'adjustment.updated') {
+      const adjustment = parseAdjustment(payload.data)
+      if (!adjustment) {
+        console.error('Adjustment webhook without a usable adjustment id, transaction id, action, or status')
+        return c.json({ error: 'Invalid adjustment' }, 400)
+      }
+      return await processAdjustment(adjustment, payload.event_id ?? null, c.env)
+    }
+    return c.json({ status: 'ignored', event: payload.event_type })
   } catch (error) {
     console.error('Webhook processing failed:', error instanceof Error ? error.message : String(error))
     return c.json({ error: 'Internal server error' }, 500)
@@ -485,6 +516,10 @@ async function claimFulfillment(db: D1Database, transactionId: string, eventId: 
   if (!record) return { proceed: false, response: retryLater(transactionId) }
 
   const state = classifyIssuance(record, now.getTime())
+  if (state === 'revoked') {
+    console.log('Transaction was refunded, not fulfilling it:', transactionId)
+    return { proceed: false, response: Response.json({ status: 'revoked', transactionId }) }
+  }
   if (state === 'delivered') {
     console.log('Transaction already fulfilled:', transactionId)
     return { proceed: false, response: Response.json({ status: 'already_processed', transactionId }) }

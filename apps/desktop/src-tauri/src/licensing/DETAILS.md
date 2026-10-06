@@ -46,8 +46,8 @@ Hostile cases, each deliberate:
 - **Replayed answer**: bound to a fresh nonce and the transaction id, so it fails `WrongNonce` / `WrongTransaction`.
 - **Leaked key**: works offline anywhere until revoked, and the revocation reaches only Macs that can reach the server.
   The fair-use device alert (`apps/api-server/src/licensing/DETAILS.md` § Device tracking) is how a leak gets noticed.
-- **Refund, then offline**: the Mac keeps Commercial until it reaches the server. Online, a refunded one-time Paddle
-  purchase also stays `active` today, because `/validate` doesn't look at refunds
+- **Refund, then offline**: the Mac keeps Commercial until it reaches the server. Online, a full refund or chargeback
+  comes back as a signed `invalid` at the next check, every seat of the purchase at once
   (`apps/api-server/src/licensing/DETAILS.md` § Refunds).
 - **Local tampering with `license.json`**: out of scope. The user owns the machine, and the license gates nothing
   (`docs/threat-model.md` § 7). The cache isn't re-verified on read for that reason.

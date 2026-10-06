@@ -70,7 +70,7 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 | Method  | Path                       | Auth          | Purpose                                                                                            |
 | ------- | -------------------------- | ------------- | -------------------------------------------------------------------------------------------------- |
 | GET     | `/`                        | none          | Health check                                                                                       |
-| POST    | `/webhook/paddle`          | HMAC sig      | Purchase completed → generate & email key(s)                                                       |
+| POST    | `/webhook/paddle`          | HMAC sig      | Purchase completed → generate & email key(s); full refund or chargeback → revoke them              |
 | POST    | `/activate`                | none          | Exchange short code → full cryptographic key                                                       |
 | POST    | `/validate`                | none          | Check subscription status via Paddle API                                                           |
 | POST    | `/admin/generate`          | Bearer token  | Mint a hand-issued license (evaluation, partner, thank-you, support recovery); writes the ledger   |
@@ -282,13 +282,14 @@ back to the OAuth login).
 
 **D1 for telemetry and fulfillment:** crash reports, downloads, update checks, heartbeats, relayed feature events,
 feedback, and the `license_issuance` record all live in D1 (binding `TELEMETRY_DB`, database `cmdr-telemetry`).
-Migrations live in `migrations/` (latest: `0020_heartbeat_uptime_and_events.sql`, `heartbeat.uptime_seconds` and the
-`analytics_event` table `/heartbeat` relays feature events into; `0017_manual_licenses.sql` is the `source` /
-`organization_name` / `expires_at` / `revoked_at` / `note` columns that turn `license_issuance` into the ledger for
-hand-issued licenses as well as purchases; `0016_feedback_notified_at.sql` is the `feedback.notified_at` column the
-feedback digest reads, which also stamps the pre-existing rows so the first tick doesn't mail the backlog;
-`0015_crash_app_fate.sql` adds the nullable `app_fate` column the crash email ranks rows by;
-`0014_downloads_daily_unique.sql` is the distinct-downloader rollup the retention sweep writes;
+Migrations live in `migrations/` (latest: `0021_license_adjustments.sql`, the refund and chargeback record
+`/webhook/paddle` keeps beside the ledger (`src/licensing/DETAILS.md` § Refunds); `0020_heartbeat_uptime_and_events.sql`
+is `heartbeat.uptime_seconds` and the `analytics_event` table `/heartbeat` relays feature events into;
+`0017_manual_licenses.sql` is the `source` / `organization_name` / `expires_at` / `revoked_at` / `note` columns that
+turn `license_issuance` into the ledger for hand-issued licenses as well as purchases; `0016_feedback_notified_at.sql`
+is the `feedback.notified_at` column the feedback digest reads, which also stamps the pre-existing rows so the first
+tick doesn't mail the backlog; `0015_crash_app_fate.sql` adds the nullable `app_fate` column the crash email ranks rows
+by; `0014_downloads_daily_unique.sql` is the distinct-downloader rollup the retention sweep writes;
 `0013_minimize_stored_identifiers.sql` adds `downloads.ua_family` and erases the crash-table IP hashes;
 `0012_license_issuance.sql` is the fulfillment record; `0011_crash_panic_message.sql` adds the nullable `panic_message`
 column; `0007_feedback.sql` adds the `feedback` table; `0006_crash_diag_email.sql` adds the nullable `diag_id` + `email`
@@ -452,6 +453,8 @@ triage value live in the other columns, and there's no privacy reason to lose th
   of licenses, and a manual row IS the license, so deleting it would revoke one by accident. It holds the buyer's or
   recipient's email and, for a hand-issued license, a free-text `note` naming who it's for; the privacy policy covers
   both under the license sections.
+- **`license_adjustments`**: never swept, for the same audit reason; it's how we know a license was revoked by a refund.
+  It holds no personal data (ids, amount, Paddle's reason), only purchase details the policy already covers.
 - **`heartbeat`**: rows DELETED after two years. Two years covers every window the dashboard computes (DAU, new
   installs, D7 retention) with room to spare.
 - **`analytics_event`**: rows DELETED after two years, the same "desktop usage stats" promise as `heartbeat`. Aged by
