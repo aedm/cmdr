@@ -301,6 +301,7 @@ export const serverRetention: RetentionRule[] = [
     rule: "PostHog's free plan keeps them for at least one year and sets no end date. PostHog doesn't offer a shorter setting.",
   },
   { what: 'Website visit recordings (PostHog)', rule: 'Deleted after 30 days.' },
+  { what: 'Website visits (Umami)', rule: 'Deleted after two years.' },
   { what: 'Purchase records at Paddle', rule: 'Seven years, as Swedish accounting law requires. Paddle keeps these.' },
 ]
 
