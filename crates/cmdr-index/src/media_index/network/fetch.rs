@@ -647,6 +647,10 @@ mod tests {
             fn bytes_read(&self) -> u64 {
                 if self.sent { 1024 } else { 0 }
             }
+
+            fn modified_at(&self) -> Option<std::time::SystemTime> {
+                None
+            }
         }
 
         struct YankedVolume;

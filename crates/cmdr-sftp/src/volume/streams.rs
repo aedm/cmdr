@@ -239,6 +239,7 @@ impl SftpVolume {
             Err(_) => return Err(VolumeError::DeviceDisconnected(self.inner.volume_id.clone())),
         };
 
+        // TODO(mtime): chain `.with_modified_at(..)` with the date the open already learned.
         Ok(ChannelReadStream::new(
             chunk_rx,
             cancel_tx,

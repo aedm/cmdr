@@ -185,6 +185,11 @@ impl VolumeReadStream for InlineReadStream {
     fn bytes_read(&self) -> u64 {
         self.bytes_read
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        // TODO(mtime): report the date the compound fast path's CREATE response already carries.
+        None
+    }
 }
 
 impl SmbVolume {
@@ -319,6 +324,7 @@ impl SmbVolume {
             }
         };
 
+        // TODO(mtime): chain `.with_modified_at(..)` with the date the open already learned.
         Ok(ChannelReadStream::new(
             chunk_rx,
             cancel_tx,

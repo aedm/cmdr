@@ -240,6 +240,10 @@ impl VolumeReadStream for ChunkedSource {
     fn bytes_read(&self) -> u64 {
         self.read
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        None
+    }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

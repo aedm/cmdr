@@ -104,6 +104,10 @@ impl VolumeReadStream for BufferSource {
     fn bytes_read(&self) -> u64 {
         self.at as u64
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        None
+    }
 }
 
 /// Reads a whole file back, the way the copy path does.

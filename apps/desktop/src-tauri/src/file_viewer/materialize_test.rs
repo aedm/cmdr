@@ -363,6 +363,10 @@ impl crate::file_system::volume::VolumeReadStream for CountingStream {
     fn bytes_read(&self) -> u64 {
         self.inner.bytes_read()
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        self.inner.modified_at()
+    }
 }
 
 impl crate::file_system::volume::Volume for SlowPhone {

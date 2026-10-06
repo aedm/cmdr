@@ -58,6 +58,10 @@ impl VolumeReadStream for PausableSpoolStream {
             Arc::clone(&self.state) as Arc<dyn crate::file_system::volume::ScanStopSignal>
         )
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        self.inner.modified_at()
+    }
 }
 
 #[allow(

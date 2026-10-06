@@ -82,6 +82,10 @@ impl VolumeReadStream for FailingReadStream {
     fn bytes_read(&self) -> u64 {
         if self.first_chunk_sent { 1024 } else { 0 }
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        None
+    }
 }
 
 /// A volume whose `open_read_stream` hands back a stream that fails mid-way.

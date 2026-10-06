@@ -50,6 +50,10 @@ impl VolumeReadStream for LyingSource {
     fn bytes_read(&self) -> u64 {
         0
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        None
+    }
 }
 
 async fn put(promised: usize, actual: usize, fail: bool) -> (FakeS3, Result<u64, VolumeError>) {

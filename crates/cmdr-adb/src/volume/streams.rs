@@ -69,6 +69,7 @@ impl AdbVolume {
             .runtime()
             .spawn(async move { produce(inner, session, device, offset, chunk_tx, cancel_rx).await });
 
+        // TODO(mtime): chain `.with_modified_at(..)` with the date the open already learned.
         Ok(ChannelReadStream::new(
             chunk_rx,
             cancel_tx,
@@ -345,5 +346,10 @@ impl VolumeReadStream for BytesReadStream {
 
     fn bytes_read(&self) -> u64 {
         self.read
+    }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        // `create_file`'s fresh bytes: the device stamps its own date.
+        None
     }
 }

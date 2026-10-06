@@ -42,15 +42,18 @@ pub trait VolumeReadStream: Send {
     /// Bytes read so far (for progress tracking).
     fn bytes_read(&self) -> u64;
 
-    /// When the file being read was last modified, if the backend knows without
-    /// asking again. A destination that stores modification times as data (S3's
-    /// `x-amz-meta-mtime`) writes this one, so the copy keeps the source's date.
+    /// When the file being read was last modified, from the stat or listing the
+    /// open already did (no extra round trip). Every destination that can store a
+    /// date writes this one, so a copy keeps the source's date.
     ///
-    /// Default `None`: the destination then stores no mtime of its own, never a
-    /// made-up one. ❗ A wrapper stream forwards its inner stream's answer.
-    fn modified_at(&self) -> Option<std::time::SystemTime> {
-        None
-    }
+    /// Required on purpose, so a new backend can't silently drop dates: a source
+    /// that knows its file's date returns it, and only a stream with no
+    /// meaningful date (fresh `create_file` bytes, a generated archive, a git
+    /// blob, a test double) returns `None`, which leaves the destination's own
+    /// date. ❗ A wrapper stream forwards its inner stream's answer. The contract
+    /// and where each backend stands: `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md`
+    /// § "Copies keep the source's date".
+    fn modified_at(&self) -> Option<std::time::SystemTime>;
 
     /// The operation's Cancel and pause, for a destination that reads AHEAD of
     /// the wire. A pause parks the stream's own `next_chunk`, which stops a

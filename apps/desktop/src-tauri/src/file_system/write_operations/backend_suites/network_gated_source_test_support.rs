@@ -66,6 +66,10 @@ impl VolumeReadStream for GatedChunks {
     fn bytes_read(&self) -> u64 {
         self.emitted as u64
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        None
+    }
 }
 
 /// A source volume whose files' bytes only move when the cell says so, every
@@ -235,6 +239,10 @@ impl VolumeReadStream for GatedLiveStream {
 
     fn bytes_read(&self) -> u64 {
         self.inner.bytes_read()
+    }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        self.inner.modified_at()
     }
 }
 

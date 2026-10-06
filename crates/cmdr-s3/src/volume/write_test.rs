@@ -150,6 +150,10 @@ impl VolumeReadStream for StallingSource {
     fn bytes_read(&self) -> u64 {
         0
     }
+
+    fn modified_at(&self) -> Option<SystemTime> {
+        None
+    }
 }
 
 /// ❗ A single PUT cancelled while its source stalls leaves nothing under the
@@ -440,6 +444,10 @@ impl VolumeReadStream for RacedSource {
 
     fn bytes_read(&self) -> u64 {
         self.inner.bytes_read()
+    }
+
+    fn modified_at(&self) -> Option<SystemTime> {
+        None
     }
 }
 

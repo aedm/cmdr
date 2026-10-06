@@ -266,6 +266,11 @@ impl VolumeReadStream for FreshZipStream {
     fn bytes_read(&self) -> u64 {
         self.bytes_read
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        // A ZIP being made right now: no source date to keep.
+        None
+    }
 }
 
 impl Drop for FreshZipStream {

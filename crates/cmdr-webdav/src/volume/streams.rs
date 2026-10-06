@@ -80,6 +80,11 @@ impl VolumeReadStream for WebdavReadStream {
     fn bytes_read(&self) -> u64 {
         self.read
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        // TODO(mtime): report the date the open already learns (PROPFIND getlastmodified, or the GET's `Last-Modified`).
+        None
+    }
 }
 
 /// The file's full length from a 206's `Content-Range: bytes a-b/total`.

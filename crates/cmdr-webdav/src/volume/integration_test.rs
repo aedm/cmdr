@@ -130,6 +130,10 @@ impl VolumeReadStream for BufferSource {
     fn bytes_read(&self) -> u64 {
         self.at as u64
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        None
+    }
 }
 
 /// The piece size a source here hands its bytes over in by default: a number

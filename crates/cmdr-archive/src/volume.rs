@@ -722,6 +722,11 @@ impl VolumeReadStream for ArchiveVolumeReadStream {
     fn bytes_read(&self) -> u64 {
         self.delivered
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        // TODO(mtime): report the entry's date from the archive's own index.
+        None
+    }
 }
 
 /// The [`SequentialExtract`] over an archive subtree: the [`Volume`] adapter for
@@ -810,6 +815,11 @@ impl VolumeReadStream for MemberStream {
 
     fn bytes_read(&self) -> u64 {
         self.delivered
+    }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        // TODO(mtime): report the entry's date from the archive's own index.
+        None
     }
 }
 

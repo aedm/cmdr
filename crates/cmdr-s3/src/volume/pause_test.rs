@@ -72,6 +72,10 @@ impl VolumeReadStream for PausableSource {
     fn stop_signal(&self) -> ScanStop {
         ScanStop::new(Arc::clone(&self.signal) as Arc<dyn ScanStopSignal>)
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        None
+    }
 }
 
 fn pattern(len: usize) -> Vec<u8> {

@@ -21,6 +21,10 @@ impl VolumeReadStream for Pieces {
     fn bytes_read(&self) -> u64 {
         0
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        None
+    }
 }
 
 /// Pieces numbered by their position in the stream, so a part that took the
@@ -90,6 +94,10 @@ impl VolumeReadStream for StallsAtEnd {
 
     fn bytes_read(&self) -> u64 {
         0
+    }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        None
     }
 }
 

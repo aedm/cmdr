@@ -320,6 +320,10 @@ impl super::VolumeReadStream for PollCountingUnknownStream {
     fn bytes_read(&self) -> u64 {
         0
     }
+
+    fn modified_at(&self) -> Option<std::time::SystemTime> {
+        None
+    }
 }
 
 async fn read_all(volume: &dyn Volume, path: &Path) -> Vec<u8> {
