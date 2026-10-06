@@ -290,6 +290,12 @@
     "forms": "the + button → nút “+”; the button below → nút bên dưới",
     "sources": "macOS AppKit (\"the Add (+) button\" → \"nút Thêm (+)\", \"this button\" → \"nút này\"); catalog (8 of 8 keys)"
   },
+  "byte": {
+    "chosen": "byte",
+    "confidence": "high",
+    "forms": "one ICU other arm, uninflected: {count} byte; Zero bytes → 0 byte; the setting option Bytes → Byte; KB/MB/GB/TB/PB stay Latin symbols",
+    "sources": "macOS vi Foundation FileSizeFormatting.loctable (bytes → byte, %@ bytes → %@ byte) and Finder vi SP27/SP28 (byte), verified on macOS 26 via plutil, 2026-10-06"
+  },
   "cache": {
     "chosen": "bộ đệm",
     "confidence": "high",

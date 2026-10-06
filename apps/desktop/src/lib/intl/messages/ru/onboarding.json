@@ -319,15 +319,15 @@
   "@onboarding.stepAi.off.help": {
     "sourceHash": "3f261be"
   },
-  "onboarding.localDownloadFailed.title": "The local AI model didn’t finish downloading",
+  "onboarding.localDownloadFailed.title": "Загрузка локальной модели ИИ не завершилась",
   "@onboarding.localDownloadFailed.title": {
     "sourceHash": "9612750"
   },
-  "onboarding.localDownloadFailed.body": "Start it again from Settings › AI.",
+  "onboarding.localDownloadFailed.body": "Запустите загрузку снова в разделе «Настройки › ИИ».",
   "@onboarding.localDownloadFailed.body": {
     "sourceHash": "6601872"
   },
-  "onboarding.localDownloadFailed.openSettings": "Open Settings",
+  "onboarding.localDownloadFailed.openSettings": "Открыть настройки",
   "@onboarding.localDownloadFailed.openSettings": {
     "sourceHash": "3f94010"
   },

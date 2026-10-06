@@ -68,6 +68,9 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
   hand only; confirm it reads as update checks, or whether `Bara när du söker själv` is clearer.
 - **`din organisation håller den här Macen på {ceiling} eller tidigare`** (`updates.status.heldByPolicy`): confirm
   `håller … på` reads naturally for a version cap.
+- **`Ångrade ”…” från {time}` / `Ångrades senast av ”…” från {time}`** (`operationLog.dialog.rollbackOf`,
+  `.latestRollback`): verbs over the stilted noun `ångring`; confirm the past tense reads right on a row whose rollback
+  is still running, and that `från {time}` reads as dated.
 
 ## Layout (overflow-check against the pseudolocale)
 

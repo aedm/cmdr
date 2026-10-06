@@ -53,10 +53,10 @@ after Total Commander's "snelste compressie" / "maximale compressie".
 
 ## Bewerkingenlogboek (`operationLog.*`, `commands.logOperationLog.*`)
 
-- Rename summary `Naam van {countText} onderdeel gewijzigd` / `Namen van … gewijzigd` (Finder's "De naam van het
-  onderdeel … gewijzigd").
-- Lifecycle words reuse `queue.row.status` (`Wachten`, `Bezig`, `Gereed`, `Niet voltooid`, `Geannuleerd`).
+- Rename summary `Naam van {countText} onderdeel gewijzigd` (Finder: "De naam van het onderdeel … gewijzigd").
+- Lifecycle words reuse `queue.row.status`.
 - Initiator You → `Jij` (contrastive, standalone); recorded → `vastgelegd` (tentative); `Niet terug te draaien`.
+- Rollback noun (`rollbackOf`, …) → `Terugdraaibewerking`, not `Terugdraaiing`.
 
 ## Ask Cmdr: chat, hulpmiddelen en kosten (`askCmdr.*`, `settings.askCmdr.*`, `commands.askCmdrToggle.*`)
 

@@ -127,23 +127,23 @@
   "@suggestedOps.approvalUnsure": {
     "sourceHash": "fba515a"
   },
-  "suggestedOps.refusal.label": "Why this didn’t start",
+  "suggestedOps.refusal.label": "Pourquoi rien n’a démarré",
   "@suggestedOps.refusal.label": {
     "sourceHash": "e176570"
   },
-  "suggestedOps.refusal.nothingToRun.message": "Cmdr couldn’t read any of these files when you approved, so nothing ran.",
+  "suggestedOps.refusal.nothingToRun.message": "Cmdr n’a pu lire aucun de ces fichiers au moment de votre approbation, il n’a donc rien lancé.",
   "@suggestedOps.refusal.nothingToRun.message": {
     "sourceHash": "3018819"
   },
-  "suggestedOps.refusal.nothingToRun.suggestion": "Check that they’re still there, then approve it again, or reject it.",
+  "suggestedOps.refusal.nothingToRun.suggestion": "Vérifiez qu’ils sont toujours là, puis approuvez à nouveau cette suggestion ou refusez-la.",
   "@suggestedOps.refusal.nothingToRun.suggestion": {
     "sourceHash": "f4cfc9e"
   },
-  "suggestedOps.refusal.couldNotStart.message": "Cmdr couldn’t turn this suggestion into an operation, so nothing ran.",
+  "suggestedOps.refusal.couldNotStart.message": "Cmdr n’a pas pu transformer cette suggestion en opération, il n’a donc rien lancé.",
   "@suggestedOps.refusal.couldNotStart.message": {
     "sourceHash": "77ef48b"
   },
-  "suggestedOps.refusal.couldNotStart.suggestion": "Reject it, and ask the AI to suggest it again.",
+  "suggestedOps.refusal.couldNotStart.suggestion": "Refusez-la, puis demandez à l’IA de la suggérer à nouveau.",
   "@suggestedOps.refusal.couldNotStart.suggestion": {
     "sourceHash": "5b5b779"
   },

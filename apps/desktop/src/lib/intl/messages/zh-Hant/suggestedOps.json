@@ -127,23 +127,23 @@
   "@suggestedOps.approvalUnsure": {
     "sourceHash": "fba515a"
   },
-  "suggestedOps.refusal.label": "Why this didn’t start",
+  "suggestedOps.refusal.label": "沒有開始的原因",
   "@suggestedOps.refusal.label": {
     "sourceHash": "e176570"
   },
-  "suggestedOps.refusal.nothingToRun.message": "Cmdr couldn’t read any of these files when you approved, so nothing ran.",
+  "suggestedOps.refusal.nothingToRun.message": "你同意的時候，這些檔案 Cmdr 一個都無法讀取，所以什麼都沒有執行。",
   "@suggestedOps.refusal.nothingToRun.message": {
     "sourceHash": "3018819"
   },
-  "suggestedOps.refusal.nothingToRun.suggestion": "Check that they’re still there, then approve it again, or reject it.",
+  "suggestedOps.refusal.nothingToRun.suggestion": "請確認這些檔案還在，然後再次同意，或是拒絕這項建議。",
   "@suggestedOps.refusal.nothingToRun.suggestion": {
     "sourceHash": "f4cfc9e"
   },
-  "suggestedOps.refusal.couldNotStart.message": "Cmdr couldn’t turn this suggestion into an operation, so nothing ran.",
+  "suggestedOps.refusal.couldNotStart.message": "Cmdr 無法把這項建議轉成操作，所以什麼都沒有執行。",
   "@suggestedOps.refusal.couldNotStart.message": {
     "sourceHash": "77ef48b"
   },
-  "suggestedOps.refusal.couldNotStart.suggestion": "Reject it, and ask the AI to suggest it again.",
+  "suggestedOps.refusal.couldNotStart.suggestion": "請拒絕這項建議，然後讓 AI 再建議一次。",
   "@suggestedOps.refusal.couldNotStart.suggestion": {
     "sourceHash": "5b5b779"
   },

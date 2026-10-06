@@ -39,15 +39,15 @@
   "@operationLog.dialog.finishRollBack": {
     "sourceHash": "dbe3771"
   },
-  "operationLog.dialog.rollbackOf": "Rollback of “<operationLink>{operation}</operationLink>” from {time}",
+  "operationLog.dialog.rollbackOf": "Reversión de “<operationLink>{operation}</operationLink>” ({time})",
   "@operationLog.dialog.rollbackOf": {
     "sourceHash": "4885c73"
   },
-  "operationLog.dialog.rollbackOfUnlisted": "Rollback of an earlier operation",
+  "operationLog.dialog.rollbackOfUnlisted": "Reversión de una operación anterior",
   "@operationLog.dialog.rollbackOfUnlisted": {
     "sourceHash": "50d060d"
   },
-  "operationLog.dialog.latestRollback": "Latest rollback: “<operationLink>{operation}</operationLink>” from {time}",
+  "operationLog.dialog.latestRollback": "Última reversión: “<operationLink>{operation}</operationLink>” ({time})",
   "@operationLog.dialog.latestRollback": {
     "sourceHash": "a8275f9"
   },

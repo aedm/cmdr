@@ -399,6 +399,18 @@
     "sources": "ms (foglalt, the line-busy sense); catalog (menu.volume.*Busy)",
     "decision": "busy: a kiszürkített menüpontok jelölője"
   },
+  "byte": {
+    "chosen": "bájt",
+    "forms": "the size unit after a number → bájt in both plural branches (512 bájt); unit symbols stay as macOS writes them: KB, kB (SI), MB, GB, TB, PB",
+    "avoid": [
+      {
+        "form": "byte",
+        "why": "the English spelling; macOS Finder, Nautilus, and Total Commander’s own Hungarian text all write bájt"
+      }
+    ],
+    "confidence": "high",
+    "sources": "macOS Finder (SP27/SP28 bájt, SP22–SP26 PB/TB/GB/MB/KB); GNOME Nautilus (%s bájt in both plural slots, 4 kB / 4 MB); Total Commander (bájt fájlonként)"
+  },
   "button": {
     "chosen": "gomb",
     "forms": "click the X button → kattints a … gombra, the label quoted byte for byte (kattints a „Ne jelenjen meg többé” gombra); the button below → lent a gombra",
@@ -2634,7 +2646,7 @@
   },
   "reject": {
     "chosen": "Elutasítás",
-    "accept": ["elutasít"],
+    "accept": ["elutasít", "utasítsd el"],
     "confidence": "high",
     "sources": "macOS Finder AirDrop panel"
   },

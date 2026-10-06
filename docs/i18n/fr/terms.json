@@ -362,6 +362,13 @@
     "forms": "click the + button → cliquez sur le bouton « + »",
     "sources": "macOS System Settings (puis sur le bouton Ajouter (+)); catalog"
   },
+  "byte": {
+    "accept": ["octets"],
+    "chosen": "octet",
+    "confidence": "confirmed",
+    "forms": "unit word after a count → octet / octets (plural many = other); unit symbols Ko (binary KB), ko (SI kB, lowercase so the two size formats stay distinct; Finder writes Ko but has no binary setting), Mo, Go, To, Po; the Bytes size-unit option → Octets",
+    "sources": "macOS Finder (SP22–SP28: Po, To, Go, Mo, Ko, octet, octets); Nautilus and Double Commander (Ko, Mo); catalog (Octets)"
+  },
   "cache": {
     "chosen": "cache",
     "confidence": "high",
@@ -1498,6 +1505,13 @@
     "decision": "Mots qui ont divergé sans qu'aucun check puisse le voir",
     "forms": "conserver = preserve a thing or a duration (Conserver les fichiers, Conserver l’ancienne); garder = leave as is or keep running (Garder les deux, a gardé son nom)",
     "sources": "macOS fr (Garder les deux / Conserver la copie partielle)"
+  },
+  "key-combination": {
+    "accept": ["combinaisons", "combinaison de touches"],
+    "chosen": "combinaison",
+    "confidence": "high",
+    "forms": "combo in a shortcut warning → cette combinaison; spelled out → combinaison de touches",
+    "sources": "MS terminology FRA (combinaison de touches, seven uses; its key combination entry gives touche de raccourci, which names a single key); catalog (downloads.shortcutRow.invalidCombo, shortcuts.*: combinaison)"
   },
   "key-file": {
     "accept": ["phrase secrète"],

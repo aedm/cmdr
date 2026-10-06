@@ -319,15 +319,15 @@
   "@onboarding.stepAi.off.help": {
     "sourceHash": "3f261be"
   },
-  "onboarding.localDownloadFailed.title": "The local AI model didn’t finish downloading",
+  "onboarding.localDownloadFailed.title": "本地 AI 模型没能完成下载",
   "@onboarding.localDownloadFailed.title": {
     "sourceHash": "9612750"
   },
-  "onboarding.localDownloadFailed.body": "Start it again from Settings › AI.",
+  "onboarding.localDownloadFailed.body": "在“设置 › AI”中重新开始下载。",
   "@onboarding.localDownloadFailed.body": {
     "sourceHash": "6601872"
   },
-  "onboarding.localDownloadFailed.openSettings": "Open Settings",
+  "onboarding.localDownloadFailed.openSettings": "打开设置",
   "@onboarding.localDownloadFailed.openSettings": {
     "sourceHash": "3f94010"
   },

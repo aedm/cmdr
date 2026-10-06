@@ -211,7 +211,7 @@
     "sources": "macOS AppKit (NSFontOptionsPanel 100411.title, NSPreferences 7TY-1Z-cs2.title = Anwenden)"
   },
   "approve": {
-    "accept": ["zugestimmt", "Zustimmung", "stimmst", "genehmig"],
+    "accept": ["zugestimmt", "Zustimmung", "stimmst", "stimme", "genehmig"],
     "chosen": "zustimmen",
     "confidence": "high",
     "sources": "catalog (askCmdr.decision.approved, ai.cloudConsent.askCmdr.contentsRule bevor du zustimmst)"
@@ -238,6 +238,7 @@
     "chosen": "Fragen",
     "confidence": "high",
     "forms": "segmented cell Fragen; prose ask each time → jedes Mal fragen",
+    "proseAccept": ["bitte die KI"],
     "sources": "MS terminology (Ask → Fragen); macOS nachfragen is the confirm-prompt sense"
   },
   "ask-cmdr": {
@@ -3358,6 +3359,13 @@
     "exceptions": {
       "errors.write.originalsKeptAside.message.many": "verb sense (the details list every one) → führt … auf, not the noun Liste"
     }
+  },
+  "byte": {
+    "accept": ["Bytes"],
+    "chosen": "Byte",
+    "confidence": "high",
+    "forms": "unit word after a count → {count, plural, one {Byte} other {Bytes}}; unit symbols KB / kB / MB / GB / TB / PB stay as in English",
+    "sources": "macOS Finder (SP27 Byte / SP28 Bytes); GNOME Nautilus (%s Byte); Xfce Thunar (Größe in Bytes); Double Commander (KB); catalog (settings.listing.sizeUnit.opt.bytes Bytes)"
   },
   "local": {
     "accept": ["lokale", "lokalen", "lokaler", "lokales"],

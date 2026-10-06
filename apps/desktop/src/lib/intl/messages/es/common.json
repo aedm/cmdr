@@ -23,32 +23,39 @@
   "@common.downloadsFdaHint": {
     "sourceHash": "315e1d8"
   },
-  "common.sizeUnit.byte": "{count, plural, one {byte} other {bytes}}",
+  "common.sizeUnit.byte": "{count, plural, one {byte} many {bytes} other {bytes}}",
   "@common.sizeUnit.byte": {
-    "sourceHash": "ee1f643"
+    "sourceHash": "ee1f643",
+    "sameAsSourceJustification": "byte / bytes is the Spanish unit noun too (RAE: el byte, los bytes; macOS es Finder writes bytes); only the CLDR many branch is added."
   },
   "common.sizeUnit.kilobyteBinary": "KB",
   "@common.sizeUnit.kilobyteBinary": {
-    "sourceHash": "59281a6"
+    "sourceHash": "59281a6",
+    "sameAsSourceJustification": "Unit symbol; macOS es writes KB too (Finder size strings in the es pile)."
   },
   "common.sizeUnit.kilobyteSi": "kB",
   "@common.sizeUnit.kilobyteSi": {
-    "sourceHash": "591e59c"
+    "sourceHash": "591e59c",
+    "sameAsSourceJustification": "SI unit symbol, identical in Spanish (lowercase k prefix per the SI/RAE)."
   },
   "common.sizeUnit.megabyte": "MB",
   "@common.sizeUnit.megabyte": {
-    "sourceHash": "1d09f6f"
+    "sourceHash": "1d09f6f",
+    "sameAsSourceJustification": "Unit symbol; macOS es writes MB too (Finder size strings in the es pile)."
   },
   "common.sizeUnit.gigabyte": "GB",
   "@common.sizeUnit.gigabyte": {
-    "sourceHash": "b4043b0"
+    "sourceHash": "b4043b0",
+    "sameAsSourceJustification": "Unit symbol; macOS es writes GB too (Finder size strings in the es pile)."
   },
   "common.sizeUnit.terabyte": "TB",
   "@common.sizeUnit.terabyte": {
-    "sourceHash": "791b0ac"
+    "sourceHash": "791b0ac",
+    "sameAsSourceJustification": "SI unit symbol, identical in Spanish (same family as KB, MB, GB, which macOS es writes unchanged)."
   },
   "common.sizeUnit.petabyte": "PB",
   "@common.sizeUnit.petabyte": {
-    "sourceHash": "f9085bf"
+    "sourceHash": "f9085bf",
+    "sameAsSourceJustification": "SI unit symbol, identical in Spanish (same family as KB, MB, GB, which macOS es writes unchanged)."
   }
 }

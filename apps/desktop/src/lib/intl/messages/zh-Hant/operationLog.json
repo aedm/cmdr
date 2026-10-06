@@ -39,15 +39,15 @@
   "@operationLog.dialog.finishRollBack": {
     "sourceHash": "dbe3771"
   },
-  "operationLog.dialog.rollbackOf": "Rollback of “<operationLink>{operation}</operationLink>” from {time}",
+  "operationLog.dialog.rollbackOf": "復原的對象：{time} 的「<operationLink>{operation}</operationLink>」",
   "@operationLog.dialog.rollbackOf": {
     "sourceHash": "4885c73"
   },
-  "operationLog.dialog.rollbackOfUnlisted": "Rollback of an earlier operation",
+  "operationLog.dialog.rollbackOfUnlisted": "復原的對象：更早的一項操作",
   "@operationLog.dialog.rollbackOfUnlisted": {
     "sourceHash": "50d060d"
   },
-  "operationLog.dialog.latestRollback": "Latest rollback: “<operationLink>{operation}</operationLink>” from {time}",
+  "operationLog.dialog.latestRollback": "最近一次復原：{time} 的「<operationLink>{operation}</operationLink>」",
   "@operationLog.dialog.latestRollback": {
     "sourceHash": "a8275f9"
   },

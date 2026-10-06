@@ -342,6 +342,13 @@
     "confidence": "high",
     "sources": "decisions.md \"S3\" (MS bucket); catalog servers.sheet.s3Bucket"
   },
+  "byte": {
+    "accept": ["bytes", "Bytes"],
+    "chosen": "byte",
+    "confidence": "high",
+    "forms": "pl. bytes (512 bytes); unit symbols KB / kB / MB / GB / TB / PB as in English",
+    "sources": "macOS Finder nl (SP27 byte, SP28 bytes; SP24–SP26 GB, MB, KB), catalog (Bytes)"
+  },
   "cache": {
     "chosen": "cache",
     "confidence": "high",
@@ -1464,6 +1471,13 @@
     },
     "forms": "rollback prompt's safe button Behoud de bestanden; a rename that kept its name → behoudt zijn naam",
     "sources": "macOS AppKit Revisions (Behoud beide), Finder (Behoud origineel)"
+  },
+  "key-combination": {
+    "accept": ["combinaties", "toetsencombinatie", "toetsencombinaties"],
+    "chosen": "combinatie",
+    "confidence": "high",
+    "forms": "combo → combinatie (Kies een andere combinatie); spelled out: toetsencombinatie",
+    "sources": "catalog (4 keys: shortcuts.conflict.*, downloads.shortcutRow.invalidCombo), Microsoft Terminology (key combination → toetsencombinatie), Double Commander / KDE (Toetsencombinaties); macOS nl has no hit"
   },
   "key-file": {
     "accept": ["wachtzin", "Sleutelwachtzin"],

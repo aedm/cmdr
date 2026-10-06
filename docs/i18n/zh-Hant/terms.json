@@ -282,6 +282,13 @@
     "forms": "same word as the archive-file noun, unambiguous in context",
     "sources": "AP-TW = AP-HK (Archive → 封存)"
   },
+  "ask": {
+    "accept": ["請", "讓", "問"],
+    "chosen": "詢問",
+    "confidence": "high",
+    "forms": "the option label → 詢問; Don’t ask again → 別再詢問; asking the AI to do something in prose → 讓 AI 再建議一次 / 請 AI⋯",
+    "sources": "AP-TW (詢問, 2) + MS zh-Hant (詢問, 7) + TC; catalog settings.archives.opt.ask, search.coverage.dontAskAgain"
+  },
   "ask-cmdr": {
     "chosen": "Ask Cmdr",
     "confidence": "confirmed",
@@ -1711,6 +1718,14 @@
     "confidence": "high",
     "forms": "kept its name → 保留了原本的名稱",
     "sources": "AP-TW = AP-HK (Would you like to keep it? → 你要保留它嗎？); catalog fileExplorer.rename.keptOriginalName"
+  },
+  "key-combination": {
+    "accept": ["組合鍵"],
+    "chosen": "按鍵組合",
+    "confidence": "high",
+    "forms": "English combo → 按鍵組合 too (無法註冊：按鍵組合無效; 可能有其他 App 正在使用這個按鍵組合)",
+    "note": "The catalog is split 3 按鍵組合 (the downloads shortcut row and its settings label) vs 3 組合鍵 (that label's description, shortcuts.conflict.*); 按鍵組合 wins as MS's term and the label's own word, 組合鍵 stays accepted in prose. Unifying is in review-queue.md.",
+    "sources": "MS zh-Hant TBX (key combination → 按鍵組合, 5); Apple silent; catalog downloads.shortcutRow.invalidCombo, settings.behavior.fileSystemWatching.globalGoToLatestShortcut.binding.label"
   },
   "key-file": {
     "accept": ["密語"],
@@ -3226,6 +3241,12 @@
     "confidence": "high",
     "forms": "a subscription as an item → 訂閱項目",
     "sources": "AP-TW App Store, AppStoreKit"
+  },
+  "suggestion": {
+    "chosen": "建議",
+    "confidence": "high",
+    "forms": "one AI-suggested group → 這項建議; suggest again → 再建議一次; Suggested operations → 建議的操作",
+    "sources": "AP-TW (12) = AP-HK (11) + MS zh-Hant (101); catalog suggestedOps.title, askCmdr.wakeToast.title"
   },
   "supported": {
     "chosen": "支援",

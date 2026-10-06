@@ -63,7 +63,7 @@ The must-know rules; the rest of this file elaborates them.
 - **Typography** (`mechanics.json`): quotes `«…»`, nested `„…“`; ellipsis is the single `…`, hugging its word
   (`Копирование…`); a no-break space before `%` (`42 %`) and before a dash `—` (`Cmdr — файловый менеджер`); `е`
   everywhere, never `ё`; en dash for ranges (`2–3`); decimal comma and space-grouped thousands come from the formatter.
-  Size units stay Latin (`100 MB`) to match the file list.
+  Size units are Cyrillic, as Finder writes them (`100 МБ`, `512 байт`), in the file list and prose alike.
 - **No hedged grammar**: ❌ no `файл(ы)`, `удалил(а)`, `объект/а`, no guessed ending glued to an insert (`{name}а`). Use
   ICU `plural` / `select`, or restructure.
 - **Top traps** (details in `terms.json`):
@@ -328,9 +328,9 @@ The machine-checked rules live in `mechanics.json` (`pnpm i18n:check-mechanics`)
   tight).
 - **Numbers**: decimal comma, space-grouped thousands (`16 384`). They come from the formatter; never hand-format a
   number inside a message.
-- **Units**: size unit symbols stay Latin (`100 MB`, `4 GB`) because Cmdr's formatter prints them in Latin in the file
-  list, and prose should match what the user sees there. Words like `байт` and time abbreviations are Russian (`с`,
-  `мин`, `ч`). See `review-queue.md` for the open МБ/ГБ question.
+- **Units**: size unit symbols are Cyrillic, as Russian Finder writes them (`КБ`, `МБ`, `ГБ`, `ТБ`, `ПБ`, `байт`). The
+  file list takes them from `common.sizeUnit.*`, so prose and option labels write the same symbols (`100 МБ`, `(МБ)`).
+  Binary kilobyte is `КБ`, SI kilobyte `кБ`. Time abbreviations are Russian too (`с`, `мин`, `ч`).
 - **Letters**: `е` everywhere, ❌ never `ё` (zero `ё` in macOS ru). Where `все` could read as `всё`, recast
   (`Все изображения проиндексированы`, not `Проиндексировано все`). Pure Cyrillic in Russian words: no Latin `a`, `c`,
   `e`, `o`, `p`, `x` look-alikes.

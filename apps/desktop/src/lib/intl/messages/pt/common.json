@@ -23,32 +23,39 @@
   "@common.downloadsFdaHint": {
     "sourceHash": "315e1d8"
   },
-  "common.sizeUnit.byte": "{count, plural, one {byte} other {bytes}}",
+  "common.sizeUnit.byte": "{count, plural, one {byte} many {bytes} other {bytes}}",
   "@common.sizeUnit.byte": {
-    "sourceHash": "ee1f643"
+    "sourceHash": "ee1f643",
+    "sameAsSourceJustification": "pt-BR uses the English word: the macOS pt-BR Finder writes “byte” / “bytes” (LocalizableMerged.json SP27, SP28), and GNOME Nautilus pt-BR “%s byte” / “%s bytes”. Only the many branch is added for pt plurals."
   },
   "common.sizeUnit.kilobyteBinary": "KB",
   "@common.sizeUnit.kilobyteBinary": {
-    "sourceHash": "59281a6"
+    "sourceHash": "59281a6",
+    "sameAsSourceJustification": "Unit symbol: the macOS pt-BR Finder writes the same symbol (LocalizableMerged.json SP26 “KB”), so pt-BR keeps it."
   },
   "common.sizeUnit.kilobyteSi": "kB",
   "@common.sizeUnit.kilobyteSi": {
-    "sourceHash": "591e59c"
+    "sourceHash": "591e59c",
+    "sameAsSourceJustification": "SI unit symbol with the lowercase k prefix, written the same in pt-BR (Total Commander pt-BR WCMD.LNG 1657 “kB/s”; GNOME formats decimal sizes as kB); kept distinct from the binary “KB” the macOS pt-BR Finder uses (LocalizableMerged.json SP26)."
   },
   "common.sizeUnit.megabyte": "MB",
   "@common.sizeUnit.megabyte": {
-    "sourceHash": "1d09f6f"
+    "sourceHash": "1d09f6f",
+    "sameAsSourceJustification": "Unit symbol: the macOS pt-BR Finder writes the same symbol (LocalizableMerged.json SP25 “MB”), so pt-BR keeps it."
   },
   "common.sizeUnit.gigabyte": "GB",
   "@common.sizeUnit.gigabyte": {
-    "sourceHash": "b4043b0"
+    "sourceHash": "b4043b0",
+    "sameAsSourceJustification": "Unit symbol: the macOS pt-BR Finder writes the same symbol (LocalizableMerged.json SP24 “GB”), so pt-BR keeps it."
   },
   "common.sizeUnit.terabyte": "TB",
   "@common.sizeUnit.terabyte": {
-    "sourceHash": "791b0ac"
+    "sourceHash": "791b0ac",
+    "sameAsSourceJustification": "Unit symbol: the macOS pt-BR Finder writes the same symbol (LocalizableMerged.json SP23 “TB”), so pt-BR keeps it."
   },
   "common.sizeUnit.petabyte": "PB",
   "@common.sizeUnit.petabyte": {
-    "sourceHash": "f9085bf"
+    "sourceHash": "f9085bf",
+    "sameAsSourceJustification": "Unit symbol: the macOS pt-BR Finder writes the same symbol (LocalizableMerged.json SP22 “PB”), so pt-BR keeps it."
   }
 }

@@ -316,7 +316,7 @@
   "@viewer.copyDialog.copy": {
     "sourceHash": "e21f935"
   },
-  "viewer.copyDialog.refuseBody": "Это больше лимита буфера обмена в 100 MB. Попробуйте найти нужное поиском (⌘F) или сохраните выделение как файл.",
+  "viewer.copyDialog.refuseBody": "Это больше лимита буфера обмена в 100 МБ. Попробуйте найти нужное поиском (⌘F) или сохраните выделение как файл.",
   "@viewer.copyDialog.refuseBody": {
     "sourceHash": "3eaf921"
   },

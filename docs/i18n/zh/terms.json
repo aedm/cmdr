@@ -251,6 +251,9 @@
   "ask": {
     "chosen": "询问",
     "confidence": "tentative",
+    "exceptions": {
+      "suggestedOps.refusal.couldNotStart.suggestion": "Asking the AI to DO something is a request, not a question: 让 AI 再建议一次."
+    },
     "proseAccept": ["问你"],
     "forms": "setting option 询问 / 每次询问; don't-ask-again 不再询问; prose asking the user (问你要不要信任它, 问你要密码) → 问你",
     "sources": "catalog"
@@ -354,6 +357,13 @@
     "confidence": "high",
     "forms": "a quoted button in prose: 点按“+”按钮 / 点按下面的按钮",
     "sources": "macOS Finder + AppKit; MS TBX; Nautilus, Thunar, Dolphin, Total/Double Commander; 8 catalog keys"
+  },
+  "byte": {
+    "chosen": "字节",
+    "confidence": "high",
+    "forms": "after a count {count} 字节 (no measure word in a size readout, like Finder's Get Info); unit symbols stay Latin: KB / kB / MB / GB / TB / PB",
+    "note": "Nautilus writes %s 个字节, but a size column is a readout, not a count of things; Finder and the catalog's own 字节 option drop 个.",
+    "sources": "macOS Finder LocalizableMerged SP27/SP28 字节, ProgressStatusView 64.0 MB/1.33 GB; Double Commander 字节; catalog settings.listing.sizeUnit.opt.bytes, fileOperations.transferProgress.progressBytes"
   },
   "cache": {
     "chosen": "缓存",
@@ -1499,6 +1509,16 @@
     "confidence": "high",
     "forms": "Keep them (the safe rollback answer) → 保留文件 (a bare 保留 beside 回滚 could mean keeping the operation); kept its name → 保留了原来的名称",
     "sources": "macOS (Keep → 保留)"
+  },
+  "key-combination": {
+    "accept": ["组合键"],
+    "avoid": [
+      { "form": "快捷键", "why": "that's the shortcut concept; the keys a shortcut is bound to are a different noun" }
+    ],
+    "chosen": "按键组合",
+    "confidence": "high",
+    "forms": "that combo → 这个按键组合; invalid combo → 按键组合无效",
+    "sources": "catalog (shortcuts.conflict.reservedByMacOs, shortcuts.conflict.fixedKey, downloads.shortcutRow.invalidCombo, and the shortcut ruling's forms); MS TBX key combination → 快捷键 rejected as it collides with shortcut"
   },
   "key-file": {
     "accept": ["密码短语"],

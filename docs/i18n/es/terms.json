@@ -296,6 +296,13 @@
     "confidence": "high",
     "sources": "decisions.md \"S3\" (AWS console and docs in this language (outside the pile, not verified live)); catalog servers.sheet.s3Bucket"
   },
+  "byte": {
+    "chosen": "byte",
+    "accept": ["bytes", "Bytes"],
+    "forms": "el byte, los bytes; size unit plural one byte / many, other bytes; unit symbols KB, kB, MB, GB, TB, PB unchanged",
+    "confidence": "high",
+    "sources": "macOS es Finder (bytes, KB, MB, GB); RAE (byte, pl. bytes); catalog Bytes (fileOperations.transferProgress.progressBytes)"
+  },
   "cache": {
     "chosen": "caché",
     "confidence": "high",
@@ -541,6 +548,13 @@
     "confidence": "high",
     "sources": "macOS Finder (Conectar, MN1 Conectándose a ^0…, Conectarse a un servidor), NetAuthAgent (Conectando…)",
     "decision": "El hub de servidores: conectar, desconectar y olvidar"
+  },
+  "key-combination": {
+    "chosen": "combinación",
+    "accept": ["combinación de teclas", "combinaciones"],
+    "forms": "short form combinación in shortcut rows and conflict warnings (Elige otra combinación); full combinación de teclas where the context lacks keys",
+    "confidence": "high",
+    "sources": "macOS/Microsoft es (combinación de teclas, 7 hits in the pile); catalog combinación (shortcuts.conflict.*, downloads.shortcutRow.invalidCombo)"
   },
   "provider-console": {
     "chosen": "consola",

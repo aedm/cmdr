@@ -319,15 +319,15 @@
   "@onboarding.stepAi.off.help": {
     "sourceHash": "3f261be"
   },
-  "onboarding.localDownloadFailed.title": "The local AI model didn’t finish downloading",
+  "onboarding.localDownloadFailed.title": "El modelo de IA local no ha terminado de descargarse",
   "@onboarding.localDownloadFailed.title": {
     "sourceHash": "9612750"
   },
-  "onboarding.localDownloadFailed.body": "Start it again from Settings › AI.",
+  "onboarding.localDownloadFailed.body": "Vuelve a iniciar la descarga desde Ajustes › IA.",
   "@onboarding.localDownloadFailed.body": {
     "sourceHash": "6601872"
   },
-  "onboarding.localDownloadFailed.openSettings": "Open Settings",
+  "onboarding.localDownloadFailed.openSettings": "Abrir Ajustes",
   "@onboarding.localDownloadFailed.openSettings": {
     "sourceHash": "3f94010"
   },

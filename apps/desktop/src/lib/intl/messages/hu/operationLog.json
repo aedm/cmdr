@@ -39,15 +39,15 @@
   "@operationLog.dialog.finishRollBack": {
     "sourceHash": "dbe3771"
   },
-  "operationLog.dialog.rollbackOf": "Rollback of “<operationLink>{operation}</operationLink>” from {time}",
+  "operationLog.dialog.rollbackOf": "Ennek a visszagörgetése: „<operationLink>{operation}</operationLink>” ({time})",
   "@operationLog.dialog.rollbackOf": {
     "sourceHash": "4885c73"
   },
-  "operationLog.dialog.rollbackOfUnlisted": "Rollback of an earlier operation",
+  "operationLog.dialog.rollbackOfUnlisted": "Egy korábbi művelet visszagörgetése",
   "@operationLog.dialog.rollbackOfUnlisted": {
     "sourceHash": "50d060d"
   },
-  "operationLog.dialog.latestRollback": "Latest rollback: “<operationLink>{operation}</operationLink>” from {time}",
+  "operationLog.dialog.latestRollback": "Legutóbbi visszagörgetés: „<operationLink>{operation}</operationLink>” ({time})",
   "@operationLog.dialog.latestRollback": {
     "sourceHash": "a8275f9"
   },

@@ -48,8 +48,8 @@
   },
   "ai-feature": {
     "chosen": "recursos de IA",
-    "accept": ["a IA", "de IA", "por IA"],
-    "forms": "AI features → os recursos de IA; the AI (sentence subject) → a IA (A IA está desativada)",
+    "accept": ["a IA", "à IA", "de IA", "por IA"],
+    "forms": "AI features → os recursos de IA; the AI (sentence subject) → a IA (A IA está desativada); ask the AI → peça à IA",
     "confidence": "high",
     "sources": "shipped pt catalog (ai.translateError.*, settings.ai.tooltipOff)",
     "decision": "Ask Cmdr names only the chat panel"
@@ -315,6 +315,12 @@
     "confidence": "high",
     "sources": "MS terminology pt-BR (câmera id 27160); shipped pt catalog (askCmdr.renameReview.evidence.metadata detalhes)",
     "decision": "What Ask Cmdr reads inside files"
+  },
+  "byte": {
+    "chosen": "byte",
+    "forms": "plural bytes, in both many and other: {count, plural, one {byte} many {bytes} other {bytes}}; the unit symbols KB / kB / MB / GB / TB / PB stay as in English",
+    "confidence": "confirmed",
+    "sources": "macOS Finder pt-BR LocalizableMerged.json (SP27 byte, SP28 bytes, SP22–SP26 PB / TB / GB / MB / KB); GNOME Nautilus pt-BR (%s byte / %s bytes)"
   },
   "cancel": {
     "chosen": "Cancelar",
@@ -1322,6 +1328,13 @@
     "forms": "Keep them → Manter os arquivos; kept its name → manteve o nome",
     "confidence": "high",
     "sources": "macOS Finder pt-BR (Manter Ambos, Manter Original)"
+  },
+  "key-combination": {
+    "chosen": "combinação",
+    "accept": ["combinação de teclas"],
+    "forms": "combinação on a shortcut row, where the shortcut already sets the context (Outro app pode estar usando essa combinação); combinação de teclas standing alone",
+    "confidence": "high",
+    "sources": "MS terminology pt-BR (key combination → combinação de teclas); shipped sibling downloads.shortcutRow.invalidCombo (combinação inválida)"
   },
   "key-file": {
     "chosen": "arquivo de chave",

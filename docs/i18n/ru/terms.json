@@ -388,7 +388,10 @@
     ],
     "confidence": "high",
     "sources": "macOS live Mail MainMenu (Ask → Спрашивать), Podcasts (Always Ask → Спрашивать всегда); DC (Ask;Overwrite;Skip → Спрашивать;Перезаписывать;Пропускать); Dolphin (Always ask → Всегда спрашивать)",
-    "decision": "Option labels"
+    "decision": "Option labels",
+    "exceptions": {
+      "suggestedOps.refusal.couldNotStart.suggestion": "\"Ask the AI to\" is a request, not the ask-every-time option: Russian says попросить (попросите ИИ предложить его заново)."
+    }
   },
   "ask-cmdr": {
     "chosen": "Ask Cmdr",
@@ -631,10 +634,10 @@
   "byte": {
     "chosen": "байт",
     "accept": ["байт"],
-    "forms": "count forms байт / байта / байт; unit abbreviation Б",
+    "forms": "count forms one байт / few байта / many байт / other байта (common.sizeUnit.byte); unit abbreviation Б; size symbols КБ (binary) / кБ (SI) / МБ / ГБ / ТБ / ПБ",
     "confidence": "high",
-    "sources": "macOS Finder LocalizableMerged SP27 (byte → байт), SP28 (bytes → Б); MS (byte → байт); DC, Thunar",
-    "decision": "Counts without a plural param"
+    "sources": "macOS Finder LocalizableMerged SP27 (byte → байт), SP28 (bytes → Б), SP22–SP26 (PB…KB → ПБ, ТБ, ГБ, МБ, КБ); MS (byte → байт); DC, Thunar",
+    "decision": "Size unit symbols"
   },
   "cable": {
     "chosen": "кабель",

@@ -127,7 +127,7 @@
   "@downloads.shortcutRow.invalidCombo": {
     "sourceHash": "d2601f3"
   },
-  "downloads.shortcutRow.unavailable": "Another app may be using that combo",
+  "downloads.shortcutRow.unavailable": "Có thể một ứng dụng khác đang dùng tổ hợp phím đó",
   "@downloads.shortcutRow.unavailable": {
     "sourceHash": "8882532"
   },

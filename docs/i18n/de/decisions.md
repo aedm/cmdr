@@ -63,14 +63,13 @@ backticks. Term rulings live in `terms.json`, open questions in `review-queue.md
 
 ## Operation log (`operationLog.*`, `commands.logOperationLog.*`, `settings.operationLog.*`)
 
-- `Operation` survives only in the protocol sense (`settings.network.smbConcurrency.label`,
-  `settings.network.customTimeout.description`) and the Settings titles; anything a user started is a `Vorgang`, in
-  tooltips and descriptions too.
 - The dialog title and `commands.logOperationLog.label` must equal the Settings card name `Vorgangsprotokoll`.
 - Prose says `rückgängig machen`; status chips keep the short noun `Rollback` (`Rollback möglich`, `Rollback läuft`
   without an ellipsis like its sibling chips, `Teilweises Rollback`) to fit the chip width.
 - Lifecycle chips reuse `queue.row.status` verbatim (`Wartet`, `Läuft`, `Fertig`, `Nicht abgeschlossen`, `Abgebrochen`).
 - The more-items line declines inside each branch (`weiteres Objekt` / `weitere Objekte`) because `Objekt` is neuter.
+- Rollback lines share `Rollback des Vorgangs „…“` / `eines früheren Vorgangs`; latest → `Letztes` (macOS
+  `Letzte Synchronisierung`).
 
 ## Ask Cmdr (`askCmdr.*`, `settings.askCmdr.*`, `settings.advanced.logLlmCalls.*`, `commands.askCmdrToggle.*`)
 

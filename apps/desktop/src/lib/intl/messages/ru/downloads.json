@@ -127,7 +127,7 @@
   "@downloads.shortcutRow.invalidCombo": {
     "sourceHash": "d2601f3"
   },
-  "downloads.shortcutRow.unavailable": "Another app may be using that combo",
+  "downloads.shortcutRow.unavailable": "Возможно, это сочетание занято другим приложением",
   "@downloads.shortcutRow.unavailable": {
     "sourceHash": "8882532"
   },

@@ -57,6 +57,9 @@ wording into `terms.json` (and `decisions.md` when the reason is worth keeping).
   many Vietnamese devs say; `Lưu trữ lạnh` / `kho lưu trữ lạnh` for "Archived"; `tự triển khai` for self-hosted.
   `servers.sheet.s3GcsKeyHelp` keeps Google's `Interoperability` tab name English: the vi Google Cloud console's own
   label is unverified.
+- **Rollback captions** (`operationLog.dialog.rollbackOf`, `.rollbackOfUnlisted`, `.latestRollback`):
+  `Hoàn tác cho thao tác “…” lúc {time}` puts `thao tác` before the quote so `lúc {time}` binds to the undone operation,
+  not the rollback row. Confirm it reads as a caption, not a command.
 
 ## Layout
 

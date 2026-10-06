@@ -319,15 +319,15 @@
   "@onboarding.stepAi.off.help": {
     "sourceHash": "3f261be"
   },
-  "onboarding.localDownloadFailed.title": "The local AI model didn’t finish downloading",
+  "onboarding.localDownloadFailed.title": "Hämtningen av den lokala AI-modellen blev inte klar",
   "@onboarding.localDownloadFailed.title": {
     "sourceHash": "9612750"
   },
-  "onboarding.localDownloadFailed.body": "Start it again from Settings › AI.",
+  "onboarding.localDownloadFailed.body": "Starta hämtningen igen i Inställningar › AI.",
   "@onboarding.localDownloadFailed.body": {
     "sourceHash": "6601872"
   },
-  "onboarding.localDownloadFailed.openSettings": "Open Settings",
+  "onboarding.localDownloadFailed.openSettings": "Öppna inställningar",
   "@onboarding.localDownloadFailed.openSettings": {
     "sourceHash": "3f94010"
   },
