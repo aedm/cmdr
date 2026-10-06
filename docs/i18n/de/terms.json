@@ -278,7 +278,10 @@
     "chosen": "beschädigt",
     "confidence": "high",
     "avoid": [
-      { "form": "defekt", "why": "Finder uses it once (NE59) against beschädigt in LA33 / LA34 and every catalog key" }
+      {
+        "form": "defekt",
+        "why": "Finder uses it once (NE59) against beschädigt in LA33 / LA34 and every catalog key"
+      }
     ],
     "sources": "macOS Finder (LA33 / LA34 möglicherweise beschädigt); catalog"
   },
@@ -1249,6 +1252,36 @@
     "confidence": "high",
     "forms": "the whole-run time-left label → Insgesamt: {eta}",
     "sources": "GN insgesamt; DC Gesamt: (the label form, read stiffer before a time phrase)"
+  },
+  "size-unit-gibibyte": {
+    "chosen": "GiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.gibibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-kibibyte": {
+    "chosen": "KiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.kibibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-kilobyte": {
+    "chosen": "kB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.kilobyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-mebibyte": {
+    "chosen": "MiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.mebibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-pebibyte": {
+    "chosen": "PiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.pebibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-tebibyte": {
+    "chosen": "TiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.tebibyte; IEC 80000-13 (binary) / SI (decimal)"
   },
   "step": {
     "chosen": "Schritt",

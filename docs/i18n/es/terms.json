@@ -1217,7 +1217,12 @@
   "go-to-path": {
     "chosen": "Ir a la carpeta",
     "forms": "menu item and palette command Ir a la carpeta…; dialog title and its confirm button Ir a la carpeta, as Finder's Go to Folder dialog",
-    "avoid": [{ "form": "Ir a la ruta", "why": "English moved from path to folder to match Finder" }],
+    "avoid": [
+      {
+        "form": "Ir a la ruta",
+        "why": "English moved from path to folder to match Finder"
+      }
+    ],
     "confidence": "confirmed",
     "sources": "macOS Finder es and es_419 (MenuBar 261.title / N83 Ir a la carpeta…; GT8 and Go To Folder Ir a la carpeta)"
   },
@@ -2444,6 +2449,36 @@
     "forms": "{name} is {size} → {name} ocupa {size}",
     "confidence": "high",
     "sources": "macOS (Restablecer tamaños)"
+  },
+  "size-unit-gibibyte": {
+    "chosen": "GiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.gibibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-kibibyte": {
+    "chosen": "KiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.kibibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-kilobyte": {
+    "chosen": "kB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.kilobyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-mebibyte": {
+    "chosen": "MiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.mebibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-pebibyte": {
+    "chosen": "PiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.pebibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-tebibyte": {
+    "chosen": "TiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.tebibyte; IEC 80000-13 (binary) / SI (decimal)"
   },
   "skip": {
     "chosen": "Omitir",

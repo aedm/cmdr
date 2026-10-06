@@ -1153,7 +1153,12 @@
     "chosen": "Példa:",
     "accept": ["Példa", "például", "pl."],
     "forms": "Example: {x} → Példa: {x}; \"like …\" inside a sentence → például",
-    "avoid": [{ "form": "Például: (as the prefix)", "why": "the catalog’s placeholders all say Példa:" }],
+    "avoid": [
+      {
+        "form": "Például: (as the prefix)",
+        "why": "the catalog’s placeholders all say Példa:"
+      }
+    ],
     "confidence": "high",
     "sources": "catalog (servers.sheet.usernamePlaceholder, ai.cloud.modelPlaceholderExample, onboarding.cloudSetup.step.endpointPlaceholder)"
   },
@@ -1430,6 +1435,36 @@
     "sources": "macOS AppKit Revisions (Restore → Visszaállítás); ms (restore → visszaállítás); catalog (Visszaállítás 3×)",
     "decision": "S3"
   },
+  "size-unit-gibibyte": {
+    "chosen": "GiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.gibibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-kibibyte": {
+    "chosen": "KiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.kibibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-kilobyte": {
+    "chosen": "kB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.kilobyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-mebibyte": {
+    "chosen": "MiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.mebibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-pebibyte": {
+    "chosen": "PiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.pebibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-tebibyte": {
+    "chosen": "TiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.tebibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
   "step": {
     "chosen": "lépés",
     "confidence": "high",
@@ -1457,7 +1492,12 @@
     "chosen": "színezés",
     "accept": ["színez"],
     "forms": "Tint X panes → X-panelek színezése; Background tint → Háttérszínezés",
-    "avoid": [{ "form": "tónus", "why": "Microsoft’s color-mixing sense, not a pane background" }],
+    "avoid": [
+      {
+        "form": "tónus",
+        "why": "Microsoft’s color-mixing sense, not a pane background"
+      }
+    ],
     "confidence": "high",
     "sources": "catalog (… színezése 6×, Háttérszínezés 3×); ms tint → tónus (other sense)"
   },

@@ -2383,7 +2383,12 @@
     "chosen": "有密碼保護",
     "confidence": "high",
     "forms": "This archive is password-protected → 這個壓縮檔有密碼保護; a password-protected archive → 有密碼保護的封存檔",
-    "avoid": [{ "form": "已被密碼保護", "why": "GNOME's passive; reads stiff next to the catalog's 有密碼保護" }],
+    "avoid": [
+      {
+        "form": "已被密碼保護",
+        "why": "GNOME's passive; reads stiff next to the catalog's 有密碼保護"
+      }
+    ],
     "sources": "GNOME Nautilus zh-TW (受密碼保護的封存檔); catalog (errors.volume.needsPassword, the archive-password prompt)"
   },
   "paste": {
@@ -3114,6 +3119,36 @@
     "confidence": "high",
     "forms": "pairs with 內容 (Content) as English pairs On disk with Content",
     "sources": "AP-TW/HK IN_G1 (^1（磁碟上^0）), 9/9 pile, 7/7 live"
+  },
+  "size-unit-gibibyte": {
+    "chosen": "GiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.gibibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-kibibyte": {
+    "chosen": "KiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.kibibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-kilobyte": {
+    "chosen": "kB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.kilobyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-mebibyte": {
+    "chosen": "MiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.mebibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-pebibyte": {
+    "chosen": "PiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.pebibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-tebibyte": {
+    "chosen": "TiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.tebibyte; IEC 80000-13 (binary) / SI (decimal)"
   },
   "skip": {
     "avoid": [

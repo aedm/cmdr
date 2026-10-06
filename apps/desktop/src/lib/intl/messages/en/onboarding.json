@@ -395,7 +395,7 @@
   },
   "onboarding.stepAi.local.tooltip": "The local model is significantly dumber than cloud models, and it takes up about 2 GB of space and some RAM and CPU at every use.\nIn return, no data leaves your machine.\nCmdr tries to ship updates so you can use the best small model that’s available. But if you want privacy <em>and</em> a decent model, running your own ollama server and setting it up with option <strong>Yes, I want AI</strong> below is your best choice.",
   "@onboarding.stepAi.local.tooltip": {
-    "description": "The local-AI option's full explanation, in the tooltip behind the info glyph beside it: a weaker on-device model that keeps everything local, and the better route for someone who wants both privacy and quality. Honest, plain tone (\"dumber\" is deliberate). <em> emphasizes \"and\"; <strong> wraps the name of the cloud option below, so keep that wording matching onboarding.stepAi.cloud.label. \"Cmdr\" is the product name; \"GB\" is gigabytes; \"RAM\" and \"CPU\" are the memory and the processor; \"ollama\" is a product name; all stay untranslated. \"2 GB\" is an approximate disk-size figure. Each sentence sits on its own line (the newlines are real line breaks in the tooltip); keep one line per sentence in your translation.",
+    "description": "The local-AI option's full explanation, in the tooltip behind the info glyph beside it: a weaker on-device model that keeps everything local, and the better route for someone who wants both privacy and quality. Honest, plain tone (\"dumber\" is deliberate). <em> emphasizes \"and\"; <strong> wraps the name of the cloud option below, so keep that wording matching onboarding.stepAi.cloud.label. \"Cmdr\" is the product name; \"RAM\" and \"CPU\" are the memory and the processor; \"ollama\" is a product name; all stay untranslated. \"2 GB\" is a rough decimal disk-size figure: write the unit as your common.sizeUnit.gigabyte. Each sentence sits on its own line (the newlines are real line breaks in the tooltip); keep one line per sentence in your translation.",
     "screenshot": "onboarding-ai.png"
   },
   "onboarding.stepAi.local.note": "Started downloading the local model in the background. You can finish onboarding now; the toast in the corner will keep you posted.",
@@ -636,7 +636,7 @@
   },
   "onboarding.stepOptional.indexing.summary": "Takes 1 GB space, speeds up searches, shows folder sizes",
   "@onboarding.stepOptional.indexing.summary": {
-    "description": "Half-line summary under the drive-indexing toggle's title: one cost and two benefits. The full explanation sits behind the info glyph beside the title. \"1 GB\" is the approximate index size. Keep it to one short line.",
+    "description": "Half-line summary under the drive-indexing toggle's title: one cost and two benefits. The full explanation sits behind the info glyph beside the title. \"1 GB\" is the approximate index size, a rough decimal figure: write the unit as your common.sizeUnit.gigabyte. Keep it to one short line.",
     "screenshot": "onboarding-optional.png"
   },
   "onboarding.stepOptional.indexing.descIntro": "Drive indexing is totally cool! Gives you two main things:",
@@ -656,7 +656,7 @@
   },
   "onboarding.stepOptional.indexing.descCost": "If you turn this off, you only get <code>{dirPlaceholder}</code> for the sizes.\nThe cost is around 1 GB of index on your drive for a few million files, but no extra CPU or memory use after the first 2–3 minutes of you first starting the app, or starting it after a long time.\nIt’s a cheap feature considering the benefits.",
   "@onboarding.stepOptional.indexing.descCost": {
-    "description": "Explains the trade-off of disabling indexing (folders show a placeholder instead of a size) and its cost (disk space, brief startup work). <code> wraps the placeholder the Size column shows for an unmeasured folder, supplied as {dirPlaceholder}. \"1 GB\" is the index size and it scales with how many files the user has, not with the size of the drive; \"CPU\" is the processor; both stay as-is. Each sentence sits on its own line (the newlines are real line breaks in the tooltip); keep one line per sentence in your translation.",
+    "description": "Explains the trade-off of disabling indexing (folders show a placeholder instead of a size) and its cost (disk space, brief startup work). <code> wraps the placeholder the Size column shows for an unmeasured folder, supplied as {dirPlaceholder}. \"1 GB\" is the index size, a rough decimal figure that scales with how many files the user has, not with the size of the drive: write the unit as your common.sizeUnit.gigabyte. \"CPU\" is the processor; keep it. Each sentence sits on its own line (the newlines are real line breaks in the tooltip); keep one line per sentence in your translation.",
     "placeholders": {
       "dirPlaceholder": "the literal text the Size column shows for a folder whose size isn't computed yet, taken from fileExplorer.dirSize.dirPlaceholder (for example \"<dir>\")"
     },

@@ -2671,7 +2671,7 @@
   },
   "settings.ai.tooltipLocal": "Runs a small language model entirely on your device. Maximum privacy: nothing leaves your computer. Works offline. Uses ~2 GB disk space and ~400 MB memory (varies with context size). Requires Apple silicon (M1+).",
   "@settings.ai.tooltipLocal": {
-    "description": "Tooltip for the AI \"Local LLM\" provider option. \"~2 GB\" and \"~400 MB\" are approximate literal sizes (keep the unit symbols and tilde). \"M1\" is an Apple chip name; keep it. \"Apple silicon\" is Apple’s name for its own M-series Mac chips: use the form your language’s termbase settles, since Apple frames it in its own words in some languages. \"M1+\" means M1 or later. \"context size\" ties to the local context-window setting."
+    "description": "Tooltip for the AI \"Local LLM\" provider option. \"~2 GB\" and \"~400 MB\" are rough decimal sizes: keep the tilde and write the units as your common.sizeUnit.gigabyte and common.sizeUnit.megabyte. \"M1\" is an Apple chip name; keep it. \"Apple silicon\" is Apple’s name for its own M-series Mac chips: use the form your language’s termbase settles, since Apple frames it in its own words in some languages. \"M1+\" means M1 or later. \"context size\" ties to the local context-window setting."
   },
   "settings.ai.tooltipLocalDisabled": "Local AI requires Apple silicon (M1 or later). Use Cloud AI instead.",
   "@settings.ai.tooltipLocalDisabled": {

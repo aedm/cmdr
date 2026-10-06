@@ -1510,7 +1510,10 @@
   "key-combination": {
     "accept": ["组合键"],
     "avoid": [
-      { "form": "快捷键", "why": "that's the shortcut concept; the keys a shortcut is bound to are a different noun" }
+      {
+        "form": "快捷键",
+        "why": "that's the shortcut concept; the keys a shortcut is bound to are a different noun"
+      }
     ],
     "chosen": "按键组合",
     "confidence": "high",
@@ -2752,6 +2755,36 @@
       "fileOperations.transferDialog.spaceInfoUnbounded": "A storage \"size limit\" is its capacity (容量上限)."
     },
     "sources": "macOS"
+  },
+  "size-unit-gibibyte": {
+    "chosen": "GiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.gibibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-kibibyte": {
+    "chosen": "KiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.kibibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-kilobyte": {
+    "chosen": "kB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.kilobyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-mebibyte": {
+    "chosen": "MiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.mebibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-pebibyte": {
+    "chosen": "PiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.pebibyte; IEC 80000-13 (binary) / SI (decimal)"
+  },
+  "size-unit-tebibyte": {
+    "chosen": "TiB",
+    "confidence": "high",
+    "sources": "catalog common.sizeUnit.tebibyte; IEC 80000-13 (binary) / SI (decimal)"
   },
   "skip": {
     "chosen": "跳过",
