@@ -157,8 +157,9 @@ const toc = [
                 </li>
                 <li>The code that writes files may not reference the AI assistant's code.</li>
                 <li>
-                    Every GitHub Actions step from a third party is pinned to an exact commit, and the risky
-                    <code>pull_request_target</code> trigger and workflow-wide <code>id-token: write</code> are banned.
+                    Every GitHub Actions step from a third party is pinned to an exact commit, every workflow's
+                    default token is read-only, and the risky <code>pull_request_target</code> trigger and
+                    workflow-wide <code>id-token: write</code> are banned.
                 </li>
                 <li>Every dependency's license notice must match the lockfiles.</li>
             </ul>
@@ -166,6 +167,11 @@ const toc = [
         <li>
             <strong>Secret scanning</strong>: GitHub secret scanning with push protection, and GitGuardian, check every
             push for leaked keys. Recent commits are signed.
+        </li>
+        <li>
+            <strong>OpenSSF Scorecard</strong> grades the repo's supply-chain practices on every push to
+            <code>main</code>, and the
+            <a href="https://scorecard.dev/viewer/?uri=github.com/vdavid/cmdr">results are public</a>.
         </li>
     </ul>
 

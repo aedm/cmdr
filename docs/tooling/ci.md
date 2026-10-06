@@ -14,6 +14,7 @@ How the GitHub workflows fit together, and the invariants that keep them honest.
 | `deploy-dashboard.yml`  | Push to main touching the dashboard     | Builds and deploys the analytics dashboard to Cloudflare Pages.                                      |
 | `release.yml`           | `v*` tags                               | Only calls `release-pipeline.yml` (so attestations name the reusable workflow as signer).            |
 | `release-pipeline.yml`  | Called by `release.yml`                 | Builds, signs, and publishes the desktop app on macOS runners. `docs/guides/releasing.md`            |
+| `scorecard.yml`         | Push to main, weekly, rule edits        | OpenSSF Scorecard: publishes the score (README badge) and SARIF to code scanning. § below            |
 
 `slow-checks.yml` also runs the fuzz smoke job (120 s per target, findings uploaded as `fuzz-artifacts`;
 `fuzz/CLAUDE.md`). `ci.yml`'s `Full run (run_all)` job runs only on a `run_all` dispatch: both release gates match it by
@@ -170,6 +171,28 @@ warm on 2026-10-05).
   `gh cache list`.
 
 The CI failure history that motivated it: `docs/notes/ci-health-2026-10.md`.
+
+## OpenSSF Scorecard
+
+`scorecard.yml` runs `ossf/scorecard-action` and publishes to the public API that backs the README badge and
+`https://scorecard.dev/viewer/?uri=github.com/vdavid/cmdr`; the SARIF lands in the repo's code-scanning tab. The API
+verifies the workflow before accepting a result, so keep it minimal (the header comment lists the rules). Run it locally
+with the `scorecard` release binary:
+`GITHUB_AUTH_TOKEN=$(gh auth token) scorecard --repo=github.com/vdavid/cmdr --show-details` (the `gcr.io` image needs a
+billed GCP project).
+
+Where the score stands (scorecard v5.5.0 against the pushed `main`, 2026-10-06, 5.5 before the permissions fix):
+
+- **Held by `workflows-hardening`**: Pinned-Dependencies' GitHub Actions half, Token-Permissions (every workflow has a
+  read-only top-level `permissions:`, jobs ask for write themselves), and part of Dangerous-Workflow (no
+  `pull_request_target`).
+- **Structurally low for a solo, no-PR project**: Branch-Protection, Code-Review, CI-Tests (n/a), and SAST, which reads
+  check runs on merged PRs and, with none, scores only on whether a CodeQL workflow exists.
+- **Structurally capped**: License (BSL isn't OSI, 9), CII-Best-Practices (needs an OSI license), Contributors.
+- **Vulnerabilities is a raw OSV count**, not cargo-deny's macOS-scoped view: it counts the Linux-only GTK crates, the
+  test-only `async-std`, the accepted `rsa` advisory (`deny.toml`), and every PyPI advisory against the
+  provenance-record pins in `apps/desktop/scripts/convert-clip-model/requirements.txt`, which nothing installs.
+- **Pinned-Dependencies' other half**: the test-fixture and infra Dockerfiles pin images by tag, not digest.
 
 ## Branch protection
 
