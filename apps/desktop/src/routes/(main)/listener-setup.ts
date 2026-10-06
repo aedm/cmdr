@@ -470,7 +470,7 @@ export async function setupDialogListeners(ctx: ListenerSetupContext): Promise<v
       const rows = getMainWindowOperationRows()
       const operation = adoptedOperationFor(rows, payload.operationId)
       if (!operation) {
-        log.warn('Nothing to show for op={operationId}: this window has no such operation ({rowCount} rows)', {
+        log.warn('Nothing to show for op={operationId}: this window has no such operation (row count: {rowCount})', {
           operationId: payload.operationId,
           rowCount: rows.length,
         })
