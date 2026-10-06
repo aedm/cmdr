@@ -37,14 +37,47 @@ doesn't change.
 - `kCFProxyTypeNone` → direct.
 - `kCFProxyTypeHTTP` / `kCFProxyTypeHTTPS` → `http://host:port` (the HTTPS type is an HTTP proxy that tunnels with
   `CONNECT`, so the proxy URL's scheme stays `http`). Username and password are embedded when CFNetwork supplies both.
+- `kCFProxyTypeAutoConfigurationURL` / `…JavaScript` → the PAC's own list for this URL, walked the same way (a PAC
+  answer never names another PAC). A PAC that can't run moves on to the next entry.
 - SOCKS, FTP, or an entry missing its host → skipped, logged at debug; the next entry decides.
 - An exhausted list → direct.
 
 When a PAC file is configured, the list is `[AutoConfigurationURL, None]`: CFNetwork appends its own DIRECT fallback
-(verified on macOS 27.0, `system_test.rs::a_pac_setting_surfaces_as_its_url`, 2026-10-06).
+(verified on macOS 27.0, `system_test.rs::a_pac_setting_surfaces_as_its_url`, 2026-10-06). So a PAC that can't be
+fetched, throws, or times out ends in direct, which is what macOS does too.
+
+**WPAD needs nothing of its own.** With "Auto proxy discovery" on, the live settings carry
+`ProxyAutoConfigURLString = http://wpad/wpad.dat` (DNS discovery) and the list is the same PAC entry (verified on macOS
+27.0 by turning discovery on and printing `entries_for` over `CFNetworkCopySystemProxySettings()`, 2026-10-06).
 
 Cost: about 15 µs per lookup in a release build, almost all of it `CFNetworkCopyProxiesForURL` (macOS 27.0, M3 MacBook
-Pro, 1,000 lookups of `https://api.getcmdr.com`, 2026-10-06). That's noise next to a connection, so there's no cache.
+Pro, 1,000 lookups of `https://api.getcmdr.com`, 2026-10-06). That's noise next to a connection, so the static path has
+no cache.
+
+## PAC evaluation
+
+`CFNetworkExecuteProxyAutoConfigurationURL` (or `…Script` for an inline one) fetches the file itself and answers through
+a callback on a run loop. reqwest's closure is synchronous, so `MacPac::evaluate`:
+
+1. Checks the cache, keyed by the PAC source and `scheme://host[:port]` (reqwest never passes a path, so a rule on the
+   path sees `/`).
+2. Takes the one evaluation turn, then checks again: a burst of first connections to one host (an S3 upload's parts)
+   waits for one answer instead of running the PAC N times.
+3. Spawns `cmdr-http-pac`, a short-lived thread that adds the source to its own run loop in a private mode and runs that
+   mode until the callback fills a stack slot or `TIMEOUT` (3 s) passes, then invalidates the source so the callback
+   can't fire into a dead frame. The asking thread waits on a channel for at most `TIMEOUT` + 1 s.
+4. Caches the answer for 5 minutes, or a failure for 30 seconds (a dead PAC host costs one timeout per host per half
+   minute), capped at 256 entries.
+
+A thread per miss, not a long-lived run-loop thread: misses are rare (one per host per five minutes), and a fresh thread
+needs no cross-thread wakeup source and holds nothing while idle.
+
+One evaluation can make CFNetwork fetch the PAC more than once (three connections per evaluation on macOS 27.0,
+`pac_test.rs::an_answer_is_cached_per_host`), which is why the cache test counts what the repeats add.
+
+❗ The two `Execute…` functions are declared in `pac.rs` with raw pointers rather than taken from `objc2-cf-network`
+0.3.2: its `CFProxyAutoConfigurationResultCallback` types the proxy list as `NonNull`, and CFNetwork passes null when
+the PAC fails, which would be undefined behavior in a `NonNull` parameter.
 
 ## Testing
 
@@ -52,4 +85,8 @@ Pro, 1,000 lookups of `https://api.getcmdr.com`, 2026-10-06). That's noise next 
   system layer. ❌ Never `std::env::set_var` in a test: the runner is parallel.
 - `system_test.rs`: `first_route` everywhere, plus the real CFNetwork call on macOS against a settings dictionary the
   test builds (`mac::settings`), so it never reads or changes this Mac's own settings.
+- `pac_test.rs`: real PAC evaluation against a PAC file served from loopback, an inline script, the cache, an
+  unreachable PAC host, one that never answers, and a broken script.
 - `lib_test.rs`: the built client end to end, with a fake proxy and origin on loopback.
+- Against the real system settings: `docs/notes/proxy-and-tls-inspection-2026-10.md` § "After the fixes" (a probe on
+  this crate, the Wi-Fi proxy set to a manual proxy, a bypass list, and a PAC file in turn).

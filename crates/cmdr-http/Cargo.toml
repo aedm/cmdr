@@ -27,8 +27,11 @@ log = "0.4"
 objc2-core-foundation = { version = "0.3.2", default-features = false, features = [
   "std",
   "CFArray",
+  "CFDate",
   "CFDictionary",
+  "CFError",
   "CFNumber",
+  "CFRunLoop",
   "CFString",
   "CFURL",
 ] }

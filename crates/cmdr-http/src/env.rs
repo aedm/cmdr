@@ -9,7 +9,7 @@ use std::net::IpAddr;
 use reqwest::Url;
 use url::Host;
 
-use crate::route::{Route, host_ip};
+use crate::Route;
 
 /// The proxy environment, snapshotted when the first client is built.
 #[derive(Debug, Default)]
@@ -111,6 +111,15 @@ impl NoProxy {
                     .strip_suffix(domain.as_str())
                     .is_some_and(|rest| rest.ends_with('.'))
         })
+    }
+}
+
+/// `host` as an IP address, when it is one.
+fn host_ip(host: &Host<&str>) -> Option<IpAddr> {
+    match host {
+        Host::Domain(_) => None,
+        Host::Ipv4(ip) => Some(IpAddr::V4(*ip)),
+        Host::Ipv6(ip) => Some(IpAddr::V6(*ip)),
     }
 }
 

@@ -5,17 +5,34 @@
 //!
 //! [`client_builder`] is `reqwest::Client::builder()` plus Cmdr's proxy decision, made per
 //! destination: loopback and link-local hosts always go direct, then the `*_PROXY` environment
-//! variables decide, then macOS's own answer for that URL (the proxy settings and their bypass
-//! list). `DETAILS.md` has the order and the why.
+//! variables decide, then macOS's own answer for that URL (the proxy settings, their bypass list,
+//! and a PAC file). `DETAILS.md` has the order and the why.
 
+mod entries;
 mod env;
+#[cfg(target_os = "macos")]
+mod pac;
 mod route;
 mod system;
 
 use std::sync::{Arc, OnceLock};
 
 use env::EnvProxies;
-use route::{Route, SystemProxies};
+use reqwest::Url;
+
+/// The routing verdict for one destination.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Route {
+    Direct,
+    /// A proxy URL reqwest can tunnel or forward through: `http://host:port`, with
+    /// `user:password@` when the source carried credentials.
+    Proxy(String),
+}
+
+/// What the operating system says about a URL, once the earlier layers have had no say.
+pub(crate) trait SystemProxies: Send + Sync {
+    fn route(&self, url: &Url) -> Route;
+}
 
 /// A `reqwest::ClientBuilder` that routes every request the way macOS would, minus the cases
 /// where that hurts (a proxy can't reach this Mac's own loopback). Callers add their own timeouts,

@@ -133,22 +133,30 @@ const toc = [
         }
     </ul>
     <p>
-        Cmdr sends its traffic through the web proxy set by hand in macOS's network settings, or through the one in the
-        <code>HTTPS_PROXY</code> environment variable. It checks server certificates with macOS's own certificate trust,
-        so a company's TLS-inspection certificate that the Mac trusts works in Cmdr too. Without that trust, Cmdr refuses
-        the connection. Tested on version 0.50.0 behind a TLS-inspecting proxy, with its certificate both trusted and
-        not trusted.
+        Cmdr follows macOS's proxy settings: a proxy set by hand, the list of hosts that bypass it, and automatic
+        configuration with a PAC file, which macOS itself runs. If the PAC file can't be loaded, Cmdr connects
+        directly, as macOS does. The <code>HTTPS_PROXY</code>,
+        <code>HTTP_PROXY</code>, and <code>NO_PROXY</code> environment variables work too and take precedence.
+        Addresses on the Mac itself always go direct, so on-device AI keeps working behind a proxy.
     </p>
     <p>
-        <strong>What doesn't work yet</strong>: PAC files and automatic proxy discovery (Cmdr connects directly), the
-        list of hosts that bypass the proxy, and proxies that need a sign-in, unless the user name and password are in
-        the <code>HTTPS_PROXY</code> address. Remote file servers on the local network and Cmdr's on-device AI also go
-        through the proxy when one is set, so they may not connect.
+        Cmdr checks server certificates with macOS's own certificate trust, so a company's TLS-inspection certificate
+        that the Mac trusts works in Cmdr too. Without that trust, Cmdr refuses the connection.
+    </p>
+    <p>
+        Tested on macOS 27 behind a TLS-inspecting proxy, with its certificate trusted and not trusted, and with a proxy
+        set by hand, a bypass list, a PAC file, and a PAC file that can't be reached.
+    </p>
+    <p>
+        <strong>What doesn't work yet</strong>: SOCKS proxies, and proxies that need a sign-in, unless the user name and
+        password are in the <code>HTTPS_PROXY</code> address.
     </p>
     <DevTodo>
-        Fixes are sized in <code>docs/notes/proxy-and-tls-inspection-2026-10.md</code>: never proxying local addresses
-        and honoring the bypass list (about a day), and PAC support (two to three days). Update this paragraph when
-        either ships.
+        Release timing: PAC files, the bypass list, and "the Mac itself always goes direct" ship in the release after
+        0.50.0 (<code>cmdr-http</code>). Until then this section is ahead of the app: 0.50.0 follows only a proxy set by
+        hand and the environment variables, and it sends local addresses through the proxy. Automatic proxy discovery
+        (WPAD) also works through the PAC path, but wasn't tested end to end, so it isn't claimed above. Evidence:
+        <code>docs/notes/proxy-and-tls-inspection-2026-10.md</code>.
     </DevTodo>
 
     <h3 id="website">The website</h3>

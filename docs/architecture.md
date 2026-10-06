@@ -377,8 +377,8 @@ numbers their audits landed on. The two dev CLIs and the vendored fork are ordin
     `crates/cmdr-fs/src/volume/host/CLAUDE.md`
 - `crates/cmdr-http/`: the one door every HTTP client is built through (`client_builder()`), and the proxy routing
   behind it: loopback and link-local always direct, then the `*_PROXY` variables, then macOS's own verdict per URL
-  (manual proxy and its bypass list). The app, `cmdr-webdav`, and `cmdr-s3` all build on it, and `clippy.toml` refuses a
-  bare reqwest client. See `crates/cmdr-http/CLAUDE.md`
+  (manual proxy, bypass list, PAC, WPAD). The app, `cmdr-webdav`, and `cmdr-s3` all build on it, and `clippy.toml`
+  refuses a bare reqwest client. See `crates/cmdr-http/CLAUDE.md`
 - `crates/cmdr-archive/`: the archive backend — a `Volume` over a zip / tar / 7z file that physically lives on another
   volume. Browse + extract for every format, plus temp+rename WRITES for zip, over a decoupled `Volume`-free reading
   core (central-directory parse, synthetic tree, streaming decompress, Zip Slip defense) and the shared boundary

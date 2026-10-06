@@ -5,7 +5,10 @@ TLS-inspecting proxy whose root CA is trusted on the Mac. Verified on Cmdr 0.50.
 worktree at `3095412ec`, macOS 27.0 (Darwin 27.0.0), 2026-10-06. This answers the `/trust` gap "Not tested behind a
 TLS-inspecting proxy" (vdavid/cmdr#118).
 
-## Summary
+The gaps it found are fixed (§ "Fixes"), and § "After the fixes" re-runs the system-proxy tests against the new client
+builder. The mechanism now lives in `crates/cmdr-http/DETAILS.md`; this note keeps the evidence.
+
+## Summary (0.50.0, before the fixes)
 
 - **Every HTTP request Cmdr makes goes through one reqwest configuration**, so they all behave the same: reqwest 0.13.4,
   rustls with `rustls-platform-verifier` 0.7.0, and hyper-util 0.1.20's system-proxy matcher. No call site sets
@@ -87,10 +90,6 @@ System proxy changes went on the Wi-Fi service with `networksetup`, restored by 
   Cmdr's own log (`~/Library/Logs/com.veszelovszki.cmdr/cmdr.log`) shows
   `reqwest::connect proxy(http://127.0.0.1:18444/) intercepts 'Some("api.getcmdr.com")'`. That DEBUG line is the
   quickest way to see whether a user's Cmdr is using their proxy.
-
-Not run against the live app: license validate, crash or error report upload, and model download. They share the client
-and configuration above, and sending test traffic to prod endpoints wasn't worth it.
-
 - **Env var, inspecting proxy, CA trusted**: the test CA was trusted at the admin level, the domain MDM-deployed company
   roots live in (`security add-trusted-cert -d -r trustRoot`, which shows a GUI password prompt). GET
   `getcmdr.com/latest.json`, `api.getcmdr.com/`, and `huggingface.co/` → all 200, and the proxy logged a completed
@@ -98,26 +97,52 @@ and configuration above, and sending test traffic to prod endpoints wasn't worth
   (`security remove-trusted-cert -d`, `security delete-certificate`), and `find-certificate` and `dump-trust-settings`
   confirm both are gone.
 
+Not run against the live app: license validate, crash or error report upload, and model download. They share the client
+and configuration above, and sending test traffic to prod endpoints wasn't worth it.
+
 Side note: this network intermittently gave `No route to host (os error 65)` for direct requests while `curl` worked
 (the host resolves to IPv6 first). It's unrelated to proxies, but it can make a PAC test look like a proxy failure.
 Rerun before drawing conclusions.
 
-## Proposed fixes (not implemented)
+## Fixes
 
-1. **Declare `system-proxy` on the app's own reqwest dependency.** Removes the dependency on `genai` unifying it in. One
-   line in `apps/desktop/src-tauri/Cargo.toml` (and the WebDAV/S3 crates if they're meant to work standalone). Size: XS.
-   Clear win.
-2. **Never proxy loopback, and honor the system bypass list.** Build every client through one shared helper that reads
-   `ExceptionsList` and `ExcludeSimpleHostnames` from `SCDynamicStore`, adds `localhost`, `127.0.0.1`, and `::1`, and
-   passes the result as `reqwest::NoProxy` (`Proxy::no_proxy`). Fixes local AI and LAN WebDAV/S3 on proxied networks.
-   The helper also gives one place to add fix 3. Size: S (about a day with tests; 15 builder call sites in the app, plus
-   the WebDAV and S3 crates to route through it). The loopback-only part alone (`.no_proxy()` on the local AI clients)
-   is XS. Clear win.
-3. **PAC and WPAD support.** Use a `reqwest::Proxy::custom` closure that asks CFNetwork per URL:
-   `CFNetworkCopyProxiesForURL` over `CFNetworkCopySystemProxySettings`, and, when the answer is an auto-config URL,
-   `CFNetworkExecuteProxyAutoConfigurationURL` on a dedicated run-loop thread, with a short per-host cache (the closure
-   is sync and runs per request). Size: M (two to three days with a test harness that serves a PAC file). Tradeoff: a
-   new piece of FFI to own, for a setup some corporate networks require. An alternative is documenting `HTTPS_PROXY` set
-   via a launch agent, which works today but is clumsy for IT.
-4. **Proxy authentication** (Basic from the keychain, NTLM/Kerberos): out of scope until someone asks; mention it on
-   `/trust` if a reviewer does.
+All three landed on 2026-10-06, after 0.50.0:
+
+1. **`system-proxy` declared on the app's own reqwest line** (`a2a4f302d`), so it no longer rode in on `genai`. Made
+   moot by fix 2 the same day: a `Proxy::custom` switches reqwest's own system reader off, so the feature was dropped
+   again.
+2. **One client builder, `cmdr_http::client_builder()`** (`8ff40f9c5`), that every client goes through (`clippy.toml`
+   refuses a bare reqwest client): loopback and link-local always direct, then `NO_PROXY` and the `*_PROXY` variables,
+   then macOS's own verdict per URL via `CFNetworkCopyProxiesForURL`, which applies the bypass list and "Exclude simple
+   hostnames". The `genai` clients get it through `.with_reqwest`.
+3. **PAC and WPAD** (the commit after it): a PAC entry in macOS's answer is run by
+   `CFNetworkExecuteProxyAutoConfigurationURL` on a short-lived run-loop thread, with a 3-second limit, a direct
+   fallback, and a per-host cache. WPAD needed nothing extra: with discovery on, macOS hands over `http://wpad/wpad.dat`
+   as an ordinary PAC URL.
+
+How it all works: `crates/cmdr-http/DETAILS.md`.
+
+Still open: **proxy authentication** beyond credentials in a proxy URL (Basic from the keychain, NTLM, Kerberos), and
+SOCKS proxies (skipped; the next entry in macOS's list decides). Out of scope until someone asks.
+
+## After the fixes
+
+Same Go proxy, now with a probe built on `cmdr-http` (the app's reqwest features, `client_builder()` plus timeouts), on
+macOS 27.0, 2026-10-06. Each run set the Wi-Fi proxy with `networksetup`, requested `https://getcmdr.com/latest.json`,
+`http://127.0.0.1:18443/` (loopback), and `http://intranet-cmdr-test.local:18443/` (a `.local` host that doesn't
+resolve), then restored the settings through a `trap`.
+
+- **PAC file** (`PROXY 127.0.0.1:18444` for every non-local host): `CFNetworkAgent` fetched the PAC, the proxy logged
+  `CONNECT getcmdr.com:443` (200), and the `.local` request reached the proxy too, as the PAC said. Loopback went
+  direct.
+- **Unreachable PAC** (`http://127.0.0.1:18445/proxy.pac`, nothing listening): every request went direct and succeeded,
+  without a noticeable wait.
+- **Manual proxy, default bypass list** (`*.local`, `169.254/16`): `getcmdr.com` went through the proxy; the `.local`
+  host went direct (a local DNS failure, and nothing at the proxy); loopback went direct.
+- **Manual proxy, bypass list plus `getcmdr.com` and `127.0.0.1`**: nothing reached the proxy.
+- **WPAD**: not run end to end (it needs a `wpad` DNS name on the network). With discovery switched on, macOS's answer
+  for a URL was the PAC entry `http://wpad/wpad.dat` followed by DIRECT, which is the path the PAC test exercises.
+
+After the runs the Wi-Fi service was back to no manual proxy, no PAC, no discovery, and the default bypass list
+(`scutil --proxy`, `networksetup -get…`). One leftover: `networksetup` can't clear a stored auto-proxy URL, so a
+disabled `http://127.0.0.1:18445/proxy.pac` stays in the Wi-Fi settings, inactive.

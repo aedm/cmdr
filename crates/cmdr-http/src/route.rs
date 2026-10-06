@@ -1,26 +1,13 @@
 //! Where one request goes: straight to its host, or through a proxy. The layers, in order:
 //! this Mac's own addresses, then the environment, then the system settings.
 
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 use reqwest::Url;
 use url::Host;
 
 use crate::env::EnvProxies;
-
-/// The routing verdict for one destination.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum Route {
-    Direct,
-    /// A proxy URL reqwest can tunnel or forward through: `http://host:port`, with
-    /// `user:password@` when the source carried credentials.
-    Proxy(String),
-}
-
-/// What the operating system says about a URL, once the earlier layers have had no say.
-pub(crate) trait SystemProxies: Send + Sync {
-    fn route(&self, url: &Url) -> Route;
-}
+use crate::{Route, SystemProxies};
 
 /// The routing decision for `url`.
 pub(crate) fn decide(url: &Url, env: &EnvProxies, system: &dyn SystemProxies) -> Route {
@@ -61,15 +48,6 @@ fn is_local_v6(ip: Ipv6Addr) -> bool {
         return is_local_v4(v4);
     }
     ip.is_loopback() || ip.is_unicast_link_local() || ip.is_unspecified()
-}
-
-/// `host` as an IP address, when it is one.
-pub(crate) fn host_ip(host: &Host<&str>) -> Option<IpAddr> {
-    match host {
-        Host::Domain(_) => None,
-        Host::Ipv4(ip) => Some(IpAddr::V4(*ip)),
-        Host::Ipv6(ip) => Some(IpAddr::V6(*ip)),
-    }
 }
 
 #[cfg(test)]

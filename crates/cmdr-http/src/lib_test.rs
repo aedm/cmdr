@@ -12,7 +12,7 @@ use super::*;
 struct FixedSystem(Route);
 
 impl SystemProxies for FixedSystem {
-    fn route(&self, _url: &reqwest::Url) -> Route {
+    fn route(&self, _url: &Url) -> Route {
         self.0.clone()
     }
 }
