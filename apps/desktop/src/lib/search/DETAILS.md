@@ -389,7 +389,7 @@ Search-only contracts (cross-consumer ones live in `../query-ui/CLAUDE.md`):
 - The Search façade's `recordAiTranslation` (composed call) overwrites the matching hand-typed buffer
   (`handTyped.filename` for a glob, `handTyped.regex` for a regex) so a fresh AI run clobbers the user's earlier
   hand-typed pattern in the same kind.
-- `filter-chip-state.ts::deriveSizeChip` accepts a `FileSizeFormat` argument; the chip follows the popover's `kB`/`KB`
+- `filter-chip-state.ts::deriveSizeChip` accepts a `FileSizeFormat` argument; the chip follows the popover's `kB`/`KiB`
   mapping instead of printing the raw enum value.
 - `path-pills-layout.ts::scheduleStableWidthMeasure` runs a follow-up re-measure on the next animation frame and again
   ~80ms later. Catches the CSS grid race where `el.clientWidth` reads stale before the parent track settles, which would

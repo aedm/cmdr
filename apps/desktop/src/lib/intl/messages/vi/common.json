@@ -28,15 +28,29 @@
     "sourceHash": "ee1f643",
     "sameAsSourceJustification": "Vietnamese nouns don't inflect, so one `other` arm with the loanword `byte`, exactly as macOS vi Foundation `FileSizeFormatting.loctable` writes it (`bytes` → `byte`, `Zero bytes` → `0 byte`; verified on macOS 26, plutil, 2026-10-06) and as the shipped `settings.listing.sizeUnit.opt.bytes` (`Byte`)."
   },
-  "common.sizeUnit.kilobyteBinary": "KB",
-  "@common.sizeUnit.kilobyteBinary": {
-    "sourceHash": "59281a6",
-    "sameAsSourceJustification": "Unit symbol: macOS vi Foundation `FileSizeFormatting.loctable` keeps KB/MB/GB/TB/PB as Latin symbols (verified on macOS 26, plutil, 2026-10-06), and Finder vi (`SP24`–`SP26`) agrees."
+  "common.sizeUnit.kibibyte": "KiB",
+  "@common.sizeUnit.kibibyte": {
+    "sourceHash": "97ee1b8"
   },
-  "common.sizeUnit.kilobyteSi": "kB",
-  "@common.sizeUnit.kilobyteSi": {
-    "sourceHash": "591e59c",
-    "sameAsSourceJustification": "SI unit symbol: lowercase k is the SI prefix, and macOS vi keeps every size unit as the Latin symbol (S vi Foundation `FileSizeFormatting.loctable` keeps KB/MB/GB/TB/PB as Latin symbols (verified on macOS 26, plutil, 2026-10-06), and Finder vi (`SP24`–`SP26`) agrees); kept distinct from KB as English does."
+  "common.sizeUnit.mebibyte": "MiB",
+  "@common.sizeUnit.mebibyte": {
+    "sourceHash": "dea6cb8"
+  },
+  "common.sizeUnit.gibibyte": "GiB",
+  "@common.sizeUnit.gibibyte": {
+    "sourceHash": "66a1561"
+  },
+  "common.sizeUnit.tebibyte": "TiB",
+  "@common.sizeUnit.tebibyte": {
+    "sourceHash": "15c1ec4"
+  },
+  "common.sizeUnit.pebibyte": "PiB",
+  "@common.sizeUnit.pebibyte": {
+    "sourceHash": "38ca5a1"
+  },
+  "common.sizeUnit.kilobyte": "kB",
+  "@common.sizeUnit.kilobyte": {
+    "sourceHash": "591e59c"
   },
   "common.sizeUnit.megabyte": "MB",
   "@common.sizeUnit.megabyte": {

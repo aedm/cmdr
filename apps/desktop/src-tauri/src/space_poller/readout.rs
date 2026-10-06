@@ -220,7 +220,7 @@ mod tests {
     /// `displayed_size` rendered the way the webview's `formatDriveFigure` writes it in en-US.
     fn en_text(size: DisplayedSize, format: FileSizeFormat) -> String {
         let labels = match format {
-            FileSizeFormat::Binary => ["bytes", "KB", "MB", "GB", "TB", "PB"],
+            FileSizeFormat::Binary => ["bytes", "KiB", "MiB", "GiB", "TiB", "PiB"],
             FileSizeFormat::Si => ["bytes", "kB", "MB", "GB", "TB", "PB"],
         };
         let digits = usize::from(size.digits);

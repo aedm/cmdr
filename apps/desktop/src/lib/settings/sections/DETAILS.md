@@ -17,7 +17,7 @@ sections compose).
   (`src-tauri/src/analytics/DETAILS.md`); the onboarding wizard's picker is the other caller
 - **`AppearanceZoomSection.svelte`**: `Appearance > Zoom and density`: text size slider and UI density
 - **`AppearanceSizesSection.svelte`**: `Appearance > File and folder sizes`: size display, size unit (binary/SI drives
-  `kB`↔`KB` label override), file size format, size mismatch warning
+  `kB`↔`KiB`, `MB`↔`MiB`, `GB`↔`GiB` label overrides), file size format, size mismatch warning
 - **`ListingSection.svelte`**: `Appearance > Listing`: document icons, directory sort, brief column width. The width row
   is one control, not two: the `listing.briefColumnWidthMode` radio group carries the `briefColumnWidthMaxPx` number
   field on its "Limit to" option's own line (`SettingRadioGroup`'s `itemTrailing`), greyed out while the other option is

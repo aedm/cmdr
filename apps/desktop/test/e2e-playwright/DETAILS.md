@@ -505,11 +505,11 @@ the switcher row's → submenu "Reconnect automatically" checkbox, and Disconnec
 ## Transfer-dialog counters + programmatic drop entry
 
 **`expectDialogCounters(tauriPage, { bytes?, files, dirs, allowSkipped? })`** (helpers.ts) asserts the transfer dialog's
-counter line ("3.19 KB / 1 file / 0 folders") race-free. It polls the `data-scan-state` attribute on the dialog's
+counter line ("3.19 KiB / 1 file / 0 folders") race-free. It polls the `data-scan-state` attribute on the dialog's
 `.scan-stats` element to a terminal state (`done`, or `done`/`skipped` when `allowSkipped` is set) BEFORE reading, so an
 assertion never fires mid-scan. Call it right after `waitForSelector(TRANSFER_DIALOG, …)` and after any Copy/Move toggle
 (the toggle restarts the scan; the poll re-synchronises). `files` / `dirs` are exact RECURSIVE totals; `bytes` is the
-FE-rendered string (`<Size>` dynamic mode, e.g. `"1.00 KB"`, `"50 bytes"` — NOT a raw byte count), passed as an exact
+FE-rendered string (`<Size>` dynamic mode, e.g. `"1.00 KiB"`, `"50 bytes"` — NOT a raw byte count), passed as an exact
 string or a RegExp, or omitted. For selections that drag in the `bulk/` tree, compute the counts off disk with
 `countTree(absPaths)` rather than hardcoding the ~23-file / ~170 MB shape.
 
@@ -622,8 +622,8 @@ Callers: `apps/desktop/scripts/e2e-linux.sh` (settings half only), `apps/desktop
   go red, asserting `"Appearance"` against `"Megjelenés"` and failing every `clickSectionByTextJs` that steers by an
   English label. With the pin, all eleven pass under the same preference.
 - **Formatting.** A US-English Mac set to the Swedish region (`AppleLocale = en_US@rg=sezzzz`, a shape a developer
-  really has) composes `en-SE`, and the copy dialog renders `1,00 KB` where `file-operations.spec.ts` asserts `1.00 KB`:
-  four specs red on a machine nobody would call non-English. With `-AppleLocale en_US`, all seventeen
+  really has) composes `en-SE`, and the copy dialog renders `1,00 KiB` where `file-operations.spec.ts` asserts
+  `1.00 KiB`: four specs red on a machine nobody would call non-English. With `-AppleLocale en_US`, all seventeen
   `file-operations.spec.ts` tests pass on that same machine.
 
 Both failure modes read as product regressions, which is what makes them worth pinning rather than documenting.

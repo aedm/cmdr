@@ -296,19 +296,19 @@
     "description": "Label for the binary-vs-decimal size-base picker in Settings > Appearance > File and folder sizes.",
     "screenshot": "settings-appearance-sizes.png"
   },
-  "settings.appearance.fileSizeFormat.description": "How to show file sizes in the file list: binary (KiB, MiB, where 1 KiB = 1,024 bytes) or SI decimal (KB, MB, where 1 KB = 1,000 bytes).",
+  "settings.appearance.fileSizeFormat.description": "How to show sizes everywhere: binary (KiB, MiB, where 1 KiB = 1,024 bytes) or SI decimal (kB, MB, where 1 kB = 1,000 bytes).",
   "@settings.appearance.fileSizeFormat.description": {
-    "description": "Help text for the file-size-format setting. Keep the unit symbols exact (KiB, MiB, KB, MB are standards-defined). Localize everything else for your language: translate \"bytes\" to the local term, and write the numbers 1024 and 1000 with your language's own convention (thousands separator, or none) rather than the English \"1,024\"/\"1,000\".",
+    "description": "Help text for the file-size-format setting. KiB and MiB are the binary (base 1024, IEC) symbols; kB and MB are the decimal (base 1000, SI) symbols. Write each one exactly as your translations of common.sizeUnit.kibibyte, common.sizeUnit.mebibyte, common.sizeUnit.kilobyte, and common.sizeUnit.megabyte do, so this text names what the app then shows. Localize everything else: translate \"bytes\" to the local term, and write the numbers 1024 and 1000 with your language's own convention (thousands separator, or none) rather than the English \"1,024\"/\"1,000\".",
     "screenshot": "settings-appearance-sizes.png"
   },
   "settings.appearance.fileSizeFormat.opt.binary": "Binary (KiB, MiB, GiB)",
   "@settings.appearance.fileSizeFormat.opt.binary": {
-    "description": "File-size-format option: binary base (powers of 1024). The unit symbols \"KiB, MiB, GiB\" in parentheses are standards-defined; keep them as-is. \"Binary\" may be translated.",
+    "description": "File-size-format option: binary base (powers of 1024). The unit symbols in parentheses are the IEC binary ones; write them exactly as your translations of common.sizeUnit.kibibyte, common.sizeUnit.mebibyte, and common.sizeUnit.gibibyte do. \"Binary\" may be translated.",
     "screenshot": "settings-appearance-sizes.png"
   },
-  "settings.appearance.fileSizeFormat.opt.si": "SI decimal (KB, MB, GB)",
+  "settings.appearance.fileSizeFormat.opt.si": "SI decimal (kB, MB, GB)",
   "@settings.appearance.fileSizeFormat.opt.si": {
-    "description": "File-size-format option: SI decimal base (powers of 1000). \"SI\" is the metric-standard abbreviation and \"KB, MB, GB\" are unit symbols; keep them as-is. \"decimal\" may be translated.",
+    "description": "File-size-format option: SI decimal base (powers of 1000). \"SI\" is the metric-standard abbreviation. The unit symbols in parentheses are the SI decimal ones (lowercase k); write them exactly as your translations of common.sizeUnit.kilobyte, common.sizeUnit.megabyte, and common.sizeUnit.gigabyte do. \"decimal\" may be translated.",
     "screenshot": "settings-appearance-sizes.png"
   },
   "settings.listing.sizeMismatchWarning.label": "Size mismatch warning",
@@ -318,7 +318,7 @@
   },
   "settings.listing.sizeMismatchWarning.description": "Shows a warning icon on folders where content and on-disk sizes differ by more than 50% and 200 MB.",
   "@settings.listing.sizeMismatchWarning.description": {
-    "description": "Help text for the size-mismatch-warning toggle. \"50%\" and \"200 MB\" are literal thresholds; keep the percent sign and the unit symbol \"MB\".",
+    "description": "Help text for the size-mismatch-warning toggle. \"50%\" and \"200 MB\" are literal thresholds; keep the percent sign. \"MB\" is the decimal (base 1000) megabyte: write it as your translation of common.sizeUnit.megabyte.",
     "screenshot": "settings-appearance-sizes.png"
   },
   "settings.appearance.useAppIconsForDocuments.label": "Use app icons for documents",
@@ -568,7 +568,7 @@
   },
   "settings.mediaIndex.clip.download": "Download model (~{sizeText} MB)",
   "@settings.mediaIndex.clip.download": {
-    "description": "Label for the button that downloads the on-device semantic-search AI model. The ~ means “about”; MB is the megabytes unit (leave as “MB”).",
+    "description": "Label for the button that downloads the on-device semantic-search AI model. The ~ means “about”; MB is the decimal (base 1000) megabyte: write it as your translation of common.sizeUnit.megabyte.",
     "placeholders": {
       "sizeText": "the download size in whole megabytes, locale-formatted (for example “276”); the unit MB follows it in the message"
     }
@@ -1503,7 +1503,7 @@
   },
   "settings.advanced.diskSpaceChangeThreshold.label": "Disk space change threshold (MB)",
   "@settings.advanced.diskSpaceChangeThreshold.label": {
-    "description": "Advanced-section label for the disk-space change threshold number input. \"(MB)\" is the unit symbol megabytes; keep it.",
+    "description": "Advanced-section label for the disk-space change threshold number input. \"(MB)\" is the decimal (base 1000) megabyte symbol: write it as your translation of common.sizeUnit.megabyte.",
     "screenshot": "settings-advanced.png"
   },
   "settings.advanced.diskSpaceChangeThreshold.description": "Minimum change in available disk space before updating the status bar. The status bar polls disk space every few seconds; small changes below this threshold are ignored to reduce visual noise.",
@@ -1601,7 +1601,7 @@
   },
   "settings.advanced.maxLogStorageMb.label": "Maximum disk space for log files (MB)",
   "@settings.advanced.maxLogStorageMb.label": {
-    "description": "Advanced-section label for the number input capping log-file disk usage. \"(MB)\" is the unit symbol megabytes; keep it.",
+    "description": "Advanced-section label for the number input capping log-file disk usage. \"(MB)\" is the decimal (base 1000) megabyte symbol: write it as your translation of common.sizeUnit.megabyte.",
     "screenshot": "settings-advanced.png"
   },
   "settings.advanced.maxLogStorageMb.description": "Maximum disk space for log files. Set to 0 to disable log storage; error reports cannot be sent without logs. Changes to a non-zero value take effect on next app launch.",
@@ -2333,36 +2333,6 @@
   "settings.operationLog.maxSize.description": "The most disk space the operation log can use. When it fills up, Cmdr removes the oldest operations first.",
   "@settings.operationLog.maxSize.description": {
     "description": "Help text under the size-limit picker (settings.operationLog.maxSize.label).",
-    "screenshot": "settings-behavior-navigation-and-file-ops.png"
-  },
-  "settings.operationLog.maxSize.opt.mb100": "100 MB",
-  "@settings.operationLog.maxSize.opt.mb100": {
-    "description": "Size-limit option: 100 MB. The numeral and unit (MB) are literal.",
-    "screenshot": "settings-behavior-navigation-and-file-ops.png"
-  },
-  "settings.operationLog.maxSize.opt.mb250": "250 MB",
-  "@settings.operationLog.maxSize.opt.mb250": {
-    "description": "Size-limit option: 250 MB. The numeral and unit (MB) are literal.",
-    "screenshot": "settings-behavior-navigation-and-file-ops.png"
-  },
-  "settings.operationLog.maxSize.opt.gb1": "1 GB",
-  "@settings.operationLog.maxSize.opt.gb1": {
-    "description": "Size-limit option: 1 GB. The numeral and unit (GB) are literal.",
-    "screenshot": "settings-behavior-navigation-and-file-ops.png"
-  },
-  "settings.operationLog.maxSize.opt.gb2": "2 GB",
-  "@settings.operationLog.maxSize.opt.gb2": {
-    "description": "Size-limit option: 2 GB. The numeral and unit (GB) are literal.",
-    "screenshot": "settings-behavior-navigation-and-file-ops.png"
-  },
-  "settings.operationLog.maxSize.opt.gb3": "3 GB",
-  "@settings.operationLog.maxSize.opt.gb3": {
-    "description": "Size-limit option: 3 GB. The numeral and unit (GB) are literal.",
-    "screenshot": "settings-behavior-navigation-and-file-ops.png"
-  },
-  "settings.operationLog.maxSize.opt.gb5": "5 GB",
-  "@settings.operationLog.maxSize.opt.gb5": {
-    "description": "Size-limit option: 5 GB. The numeral and unit (GB) are literal.",
     "screenshot": "settings-behavior-navigation-and-file-ops.png"
   },
   "settings.section.mcpServer": "MCP server",

@@ -25,8 +25,8 @@
         disabled?: boolean
         /**
          * Optional per-value label overrides. Use when a button label must
-         * reflect another reactive setting (for example, the kilobyte
-         * casing on `listing.sizeUnit` swapping `kB` ↔ `KB` with binary/SI).
+         * reflect another reactive setting (for example, the unit tiles on
+         * `listing.sizeUnit` swapping `kB` ↔ `KiB` with binary/SI).
          * Keys are stringified option values; missing entries fall back to
          * the definition label.
          */

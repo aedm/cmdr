@@ -17,7 +17,7 @@ So: one implementation per quantity, and a lint that keeps it that way.
 
 ## The contract
 
-- **A size** is `formatByteSize(bytes)` — friendliest unit, two fraction digits above the base, base and kilobyte casing
+- **A size** is `formatByteSize(bytes)` — friendliest unit, two fraction digits above the base, base and unit symbols
   from `appearance.fileSizeFormat`. `<Size bytes>` is the same output plus tier colors. A forced unit
   (`'kB'`/`'MB'`/`'GB'`) keeps a directory's sizes comparable; the file list's own unit mode routes through
   `formatSizeForDisplay`.
@@ -45,16 +45,24 @@ So: one implementation per quantity, and a lint that keeps it that way.
 
 ## Unit words: the catalog for sizes, `Intl` for time
 
-- **Size units are catalog keys**
-  (`common.sizeUnit.{byte,kilobyteBinary,kilobyteSi,megabyte,gigabyte,terabyte,petabyte}`), resolved in the UI language
-  like any copy: French writes `Ko` / `Mo` / `Go`, and `octet` / `octets`. `Intl`'s `style: 'unit'` has CLDR's symbols
-  too, but it can't tell binary `KB` from SI `kB`, and it puts a no-break space between value and unit. The byte word is
-  an ICU plural on the count, so "1 byte" and French "0 octet" read right.
+- **Size units are catalog keys, one per unit per base**: `common.sizeUnit.byte`, the binary (IEC 80000-13, base 1024)
+  `kibibyte` … `pebibyte` (`KiB` … `PiB`), and the decimal (SI, base 1000) `kilobyte` … `petabyte` (`kB` … `PB`). They
+  resolve in the UI language like any copy (French `Kio` / `Mio` against `ko` / `Mo`, and `octet` / `octets`), and each
+  `@key` tells the translator which base it is. One symbol shared by both bases was the bug this split fixed: binary
+  sizes read "MB" while the setting promised "MiB". `Intl`'s `style: 'unit'` has CLDR's symbols too, but it has no IEC
+  units at all, and it puts a no-break space between value and unit. The byte word is an ICU plural on the count, so "1
+  byte" and French "0 octet" read right.
+- **Fixed copy that names an amount follows the constant behind it.** Decimal limits are written in decimal (the
+  viewer's 100 MB clipboard cap is `100_000_000`, the log cap and disk-space threshold settings multiply by 1,000,000),
+  so their "MB" is honest. Binary presets (the operation-log size options) are labelled in code by
+  `formatRoundSize(n, 'binary')` ("100 MiB", "3 GiB") rather than as catalog literals. The default display base is
+  binary (`appearance.fileSizeFormat`).
 - **The size tier travels with the text** (`TieredSize`, from `formatTieredSize` / `formatByteSizeTiered`). Coloring
   once recovered the tier by parsing the unit word off the end of the string, which broke the moment a translator wrote
   `Mo`.
 - **Every size-unit surface goes through here**: the file list, `<Size>`, tooltips (including the "(1,234 bytes)" line),
-  the Size filter popover and chips, and the Settings unit tiles.
+  the Size filter popover and chips, the Settings unit tiles, and the operation-log size options. The Rust side writes
+  its own model- and log-facing sizes with `search::query::format_size` (base 1024, IEC symbols).
 - **Time units need no catalog.** CLDR's narrow units are what `formatDuration` already speaks, and `formatMilliseconds`
   uses the same style through `formatNarrowMeasure` (`$lib/intl/duration-format`): unit from the UI language, digits
   from the formatting locale ("1,4 Sek." in German, "1.4 s" for French on a US-formatted Mac).

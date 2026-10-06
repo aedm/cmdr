@@ -28,15 +28,29 @@
     "sourceHash": "ee1f643",
     "sameAsSourceJustification": "pt-BR uses the English word: the macOS pt-BR Finder writes “byte” / “bytes” (LocalizableMerged.json SP27, SP28), and GNOME Nautilus pt-BR “%s byte” / “%s bytes”. Only the many branch is added for pt plurals."
   },
-  "common.sizeUnit.kilobyteBinary": "KB",
-  "@common.sizeUnit.kilobyteBinary": {
-    "sourceHash": "59281a6",
-    "sameAsSourceJustification": "Unit symbol: the macOS pt-BR Finder writes the same symbol (LocalizableMerged.json SP26 “KB”), so pt-BR keeps it."
+  "common.sizeUnit.kibibyte": "KiB",
+  "@common.sizeUnit.kibibyte": {
+    "sourceHash": "97ee1b8"
   },
-  "common.sizeUnit.kilobyteSi": "kB",
-  "@common.sizeUnit.kilobyteSi": {
-    "sourceHash": "591e59c",
-    "sameAsSourceJustification": "SI unit symbol with the lowercase k prefix, written the same in pt-BR (Total Commander pt-BR WCMD.LNG 1657 “kB/s”; GNOME formats decimal sizes as kB); kept distinct from the binary “KB” the macOS pt-BR Finder uses (LocalizableMerged.json SP26)."
+  "common.sizeUnit.mebibyte": "MiB",
+  "@common.sizeUnit.mebibyte": {
+    "sourceHash": "dea6cb8"
+  },
+  "common.sizeUnit.gibibyte": "GiB",
+  "@common.sizeUnit.gibibyte": {
+    "sourceHash": "66a1561"
+  },
+  "common.sizeUnit.tebibyte": "TiB",
+  "@common.sizeUnit.tebibyte": {
+    "sourceHash": "15c1ec4"
+  },
+  "common.sizeUnit.pebibyte": "PiB",
+  "@common.sizeUnit.pebibyte": {
+    "sourceHash": "38ca5a1"
+  },
+  "common.sizeUnit.kilobyte": "kB",
+  "@common.sizeUnit.kilobyte": {
+    "sourceHash": "591e59c"
   },
   "common.sizeUnit.megabyte": "MB",
   "@common.sizeUnit.megabyte": {

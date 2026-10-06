@@ -394,7 +394,7 @@
   },
   "errors.listing.notSupportedErrno.title": "Not supported",
   "errors.listing.notSupportedErrno.explanation": "This operation isn’t supported on this file system. Different file systems (like FAT32, NTFS, or network shares) support different features, and this one doesn’t support what Cmdr is trying to do.",
-  "errors.listing.notSupportedErrno.suggestion": "Try a different approach, or use Finder for this operation. If you’re working with an external drive, it might be formatted with a file system that has limitations (for example, FAT32 can’t store files larger than 4 GB).",
+  "errors.listing.notSupportedErrno.suggestion": "Try a different approach, or use Finder for this operation. If you’re working with an external drive, it might be formatted with a file system that has limitations (for example, FAT32 can’t store files of 4 GiB or more).",
   "@errors.listing.notSupportedErrno.title": {
     "description": "Title of the listing error panel when the operation isn't supported by the file system (errno path). Plain text.",
     "screenshot": "error-message-example.png",
@@ -406,7 +406,7 @@
     "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "@errors.listing.notSupportedErrno.suggestion": {
-    "description": "Recovery suggestion for an unsupported operation (errno path). Markdown. \"Finder\", \"FAT32\", and the size \"4 GB\" are literal; do NOT translate.",
+    "description": "Recovery suggestion for an unsupported operation (errno path). Markdown. \"Finder\" and \"FAT32\" are literal; do NOT translate. \"4 GiB\" is FAT32's real limit (4 × 1,024³ bytes, the IEC binary gibibyte): keep the number and write the symbol as your translation of common.sizeUnit.gibibyte.",
     "screenshot": "error-message-example.png",
     "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },

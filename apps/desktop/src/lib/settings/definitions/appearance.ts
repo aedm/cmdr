@@ -361,8 +361,8 @@ export const appearanceSettings: SettingDefinitionSource[] = [
       options: [
         { value: 'dynamic', labelKey: 'settings.listing.sizeUnit.opt.dynamic' },
         { value: 'bytes', labelKey: 'settings.listing.sizeUnit.opt.bytes' },
-        // The fixed units read as the sizes they produce ($lib/units, UI language). The live kilobyte casing follows
-        // `appearance.fileSizeFormat` through `AppearanceSizesSection`'s override; SI `kB` stands in here.
+        // The fixed units read as the sizes they produce ($lib/units, UI language). The live IEC/SI symbol follows
+        // `appearance.fileSizeFormat` through `AppearanceSizesSection`'s override; the SI symbol stands in here.
         sizeUnitOption('kB'),
         sizeUnitOption('MB'),
         sizeUnitOption('GB'),

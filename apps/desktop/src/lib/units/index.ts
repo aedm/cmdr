@@ -3,7 +3,7 @@
  * text a person reads.
  *
  * Start here. `formatByteSize` honors the user's `appearance.fileSizeFormat`
- * (binary KB / SI kB) automatically; `formatFileSizeWithFormat` takes the base
+ * (binary KiB, MiB / SI kB, MB) automatically; `formatFileSizeWithFormat` takes the base
  * explicitly for pure code and tests. The component form of a size is
  * `<Size bytes>` (`$lib/ui/Size.svelte`), which also carries the size-tier
  * colors.
@@ -11,7 +11,7 @@
  * ```ts
  * import { formatByteSize, formatDuration, seconds } from '$lib/units'
  *
- * formatByteSize(87_654_321)   // "83.59 MB" (binary) or "87.65 MB" (SI)
+ * formatByteSize(87_654_321)   // "83.59 MiB" (binary) or "87.65 MB" (SI)
  * formatDuration(seconds(492)) // "8m 12s"
  * ```
  *

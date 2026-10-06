@@ -61,8 +61,8 @@ describe('getUserFriendlyMessage', () => {
       const result = getUserFriendlyMessage(error)
 
       expect(result.title).toBe('The destination may not have enough space')
-      expect(result.message).toContain('1.00 GB')
-      expect(result.message).toContain('512.00 MB')
+      expect(result.message).toContain('1.00 GiB')
+      expect(result.message).toContain('512.00 MiB')
     })
 
     it('returns user-friendly message for destination_inside_source error', () => {
@@ -607,8 +607,8 @@ describe('getTechnicalDetails', () => {
     }
     const result = getTechnicalDetails(error)
 
-    expect(result).toContain('Required: 1.00 GB')
-    expect(result).toContain('Available: 512.00 MB')
+    expect(result).toContain('Required: 1.00 GiB')
+    expect(result).toContain('Available: 512.00 MiB')
     expect(result).toContain('Volume: Test Volume')
   })
 

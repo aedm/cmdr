@@ -312,7 +312,7 @@ export function getSizeMismatchWarning(): boolean {
  * Get the current size-unit mode. `'dynamic'` picks the friendliest unit per
  * file ("1.02 MB"); `'bytes'` shows raw byte triads for precise comparison;
  * `'kB'`/`'MB'`/`'GB'` force a fixed unit so sizes are apples-to-apples across
- * a directory. The chosen base (binary KB / SI kB) follows
+ * a directory. The chosen base (binary KiB / SI kB) follows
  * `appearance.fileSizeFormat`.
  */
 export function getFileSizeUnit(): FileSizeUnit {

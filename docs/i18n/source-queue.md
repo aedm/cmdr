@@ -147,11 +147,3 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   `managed-by-organization`. (ru, zh-Hant)
 - `settings.managed.*`, `ai.managed.*`, `askCmdr.error.managedByOrganization`, `onboarding.stepBeta.analyticsManaged`:
   no screenshot of the managed card or the locked rows, so value widths are guesses. Capture them under a policy. (ru)
-- `settings.appearance.fileSizeFormat.description`, `.opt.binary`, `.opt.si`: they say binary is KiB/MiB and SI is KB,
-  while the formatter shows binary as `common.sizeUnit.kilobyteBinary` ("KB") and SI as `kilobyteSi` ("kB"). Align the
-  English with what the list shows (or have these strings name the catalog symbols), then rebrief every locale. (fr, ru)
-- Hard-coded unit literals outside `common.sizeUnit.*` (`settings.operationLog.maxSize.opt.*`,
-  `settings.listing.sizeMismatchWarning.description`, `settings.mediaIndex.clip.download`,
-  `settings.advanced.diskSpaceChangeThreshold.label`, `settings.advanced.maxLogStorageMb.label`) weren't in the unit
-  batch, and several locales justify them as identical to English. Brief them with any unit change, or build them from
-  `formatByteSize`. (fr, ru)

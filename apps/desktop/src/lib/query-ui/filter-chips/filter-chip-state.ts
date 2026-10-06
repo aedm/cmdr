@@ -20,7 +20,7 @@ export interface FilterChipState {
 
 /**
  * Renders a `SizeUnit` for display: the kilobyte, megabyte, and gigabyte go
- * through `$lib/units` (the UI language's symbols, and `KB` / `kB` by the
+ * through `$lib/units` (the UI language's symbols, IEC `KiB` or SI `kB` by the
  * user's `appearance.fileSizeFormat`), so the chip and the popover can't
  * disagree. The byte word takes the plural form for `count` ("> 500 bytes").
  */
@@ -32,7 +32,7 @@ function renderUnit(unit: SizeUnit, format: FileSizeFormat, count: number): stri
 /**
  * Returns the chip state for the Size filter. R3 B3: pipes the user's
  * `appearance.fileSizeFormat` through so the chip reads "100 kB" with SI
- * selected (matching the popover) instead of always showing "100 KB".
+ * selected (matching the popover) instead of always showing "100 KiB".
  */
 export function deriveSizeChip(
   sizeFilter: SizeFilter,

@@ -55,8 +55,8 @@ describe('failureReasonFor', () => {
     }
     const reason = failureReasonFor(snapshot(error))
     expect(reason?.title).toBe('The destination may not have enough space')
-    expect(reason?.message).toContain('1.00 GB')
-    expect(reason?.message).toContain('512.00 MB')
+    expect(reason?.message).toContain('1.00 GiB')
+    expect(reason?.message).toContain('512.00 MiB')
   })
 
   it('borrows the copy wording for the operation types the catalog has no arm for', () => {

@@ -228,7 +228,7 @@
     "category": "needs_action",
     "explanation": "This operation isn’t supported on this file system. Different file systems (like FAT32, NTFS, or network shares) support different features, and this one doesn’t support what Cmdr is trying to do.",
     "retryHint": false,
-    "suggestion": "Try a different approach, or use Finder for this operation. If you’re working with an external drive, it might be formatted with a file system that has limitations (for example, FAT32 can’t store files larger than 4 GB).",
+    "suggestion": "Try a different approach, or use Finder for this operation. If you’re working with an external drive, it might be formatted with a file system that has limitations (for example, FAT32 can’t store files of 4 GiB or more).",
     "title": "Not supported"
   },
   "errno:5": {

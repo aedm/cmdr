@@ -33,21 +33,21 @@ describe('deriveSizeChip', () => {
   it('treats a zero bound as a real value in a between range', () => {
     expect(deriveSizeChip('between', '0', 'B', '5', 'MB')).toEqual({
       configured: true,
-      summary: '0 bytes – 5 MB',
+      summary: '0 bytes – 5 MiB',
     })
   })
 
   it('formats a gte filter as "> N UNIT"', () => {
     expect(deriveSizeChip('gte', '100', 'MB', '', 'MB')).toEqual({
       configured: true,
-      summary: '> 100 MB',
+      summary: '> 100 MiB',
     })
   })
 
   it('formats a lte filter as "< N UNIT"', () => {
     expect(deriveSizeChip('lte', '5', 'GB', '', 'MB')).toEqual({
       configured: true,
-      summary: '< 5 GB',
+      summary: '< 5 GiB',
     })
   })
 
@@ -56,15 +56,15 @@ describe('deriveSizeChip', () => {
     expect(result.configured).toBe(true)
     expect(result.summary).toContain('–') // en dash
     expect(result.summary).not.toContain('—') // never em dash
-    expect(result.summary).toBe('10 MB – 500 MB')
+    expect(result.summary).toBe('10 MiB – 500 MiB')
   })
 
   it('between with only min behaves like gte', () => {
-    expect(deriveSizeChip('between', '10', 'MB', '', 'MB').summary).toBe('> 10 MB')
+    expect(deriveSizeChip('between', '10', 'MB', '', 'MB').summary).toBe('> 10 MiB')
   })
 
   it('between with only max behaves like lte', () => {
-    expect(deriveSizeChip('between', '', 'MB', '500', 'MB').summary).toBe('< 500 MB')
+    expect(deriveSizeChip('between', '', 'MB', '500', 'MB').summary).toBe('< 500 MiB')
   })
 
   // The chip respects the user's `appearance.fileSizeFormat` setting — same
@@ -75,9 +75,9 @@ describe('deriveSizeChip', () => {
     expect(deriveSizeChip('between', '10', 'KB', '500', 'KB', 'si').summary).toBe('10 kB – 500 kB')
   })
 
-  it('renders KB (uppercase K) when format is binary', () => {
-    expect(deriveSizeChip('gte', '100', 'KB', '', 'KB', 'binary').summary).toBe('> 100 KB')
-    expect(deriveSizeChip('between', '10', 'KB', '500', 'KB', 'binary').summary).toBe('10 KB – 500 KB')
+  it('renders the IEC KiB when format is binary', () => {
+    expect(deriveSizeChip('gte', '100', 'KB', '', 'KB', 'binary').summary).toBe('> 100 KiB')
+    expect(deriveSizeChip('between', '10', 'KB', '500', 'KB', 'binary').summary).toBe('10 KiB – 500 KiB')
   })
 
   it('format only affects KB; MB / GB / B remain stable', () => {
@@ -92,13 +92,13 @@ describe('deriveSizeChip', () => {
   })
 
   it('format defaults to binary when omitted (back-compat)', () => {
-    expect(deriveSizeChip('gte', '100', 'KB', '', 'KB').summary).toBe('> 100 KB')
+    expect(deriveSizeChip('gte', '100', 'KB', '', 'KB').summary).toBe('> 100 KiB')
   })
 
   it('formats an eq filter as "= N UNIT"', () => {
     expect(deriveSizeChip('eq', '5', 'MB', '', 'MB')).toEqual({
       configured: true,
-      summary: '= 5 MB',
+      summary: '= 5 MiB',
     })
   })
 

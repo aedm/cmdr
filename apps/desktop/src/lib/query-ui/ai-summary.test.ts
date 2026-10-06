@@ -33,7 +33,7 @@ describe('buildAiSummary', () => {
 
   it('renders the size filter line when configured', () => {
     const s = buildAiSummary(baseInput({ sizeFilter: 'gte', sizeValue: '5', sizeUnit: 'MB' }))
-    expect(s.filters).toContainEqual({ label: 'Size', value: '> 5 MB' })
+    expect(s.filters).toContainEqual({ label: 'Size', value: '> 5 MiB' })
   })
 
   it('renders an exact (eq) size as "= N"', () => {

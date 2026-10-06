@@ -362,7 +362,7 @@ describe('TransferProgressDialog conflict — file → folder, destinationSize k
   it('renders the destination size in the Existing slot (not "(unknown)")', async () => {
     const target = await mountDialogWithConflict(event)
     const existingSize = target.querySelector('.conflict-file .conflict-file-size')
-    expect(existingSize?.textContent.trim()).toBe('4.00 KB')
+    expect(existingSize?.textContent.trim()).toBe('4.00 KiB')
     expect(existingSize?.classList.contains('unknown')).toBe(false)
   })
 
@@ -445,7 +445,7 @@ describe('TransferProgressDialog conflict — folder → file, sourceSize null',
   it('still renders the known destination size in the Existing slot', async () => {
     const target = await mountDialogWithConflict(event)
     const existingSize = target.querySelector('.conflict-file .conflict-file-size')
-    expect(existingSize?.textContent.trim()).toBe('1.00 KB')
+    expect(existingSize?.textContent.trim()).toBe('1.00 KiB')
     expect(existingSize?.classList.contains('unknown')).toBe(false)
   })
 
