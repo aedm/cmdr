@@ -259,15 +259,25 @@ slow-timeout = { period = "30s", terminate-after = 1 }
 # second until one is heard, inside a 20 s budget; 30 s keeps that budget the
 # authority and the cap a hang-catcher.
 #
-# Delivery is ~0.3 s on a quiet stack, but it rides Samba's `notifyd`, one process in a
-# `cpus: 0.5` container that fans every write on `public` out to every recursive
-# watch on it (one per connected test volume), logging each failed send to a
-# closing one. With several worktrees' lanes on one stack it falls behind and keeps
-# draining after they stop: caught 2026-10-06 pinned at its cap at ~7,000 failed
+# Delivery is ~0.3 s on a quiet stack, but it rides Samba's `notifyd`, one process in
+# the `guest` container (`cpus: 1.0`) that fans every write on `public` out to every
+# recursive watch on it (one per connected test volume), logging each failed send to
+# a closing one. With several worktrees' lanes on one stack it falls behind and keeps
+# draining after they stop: caught 2026-10-06 pinned at a 0.5 cap at ~7,000 failed
 # sends/s with no client connected, while this cell heard nothing for its whole old
 # 6 s budget, even re-run alone. A fresh stack under three concurrent `cmdr-smb`
 # suites still delivered within 1.3 s. No group: the load is the rest of the lane,
 # not this cell.
+#
+# Why it degrades over a stack's life: a test process killed mid-run (a nextest
+# timeout, a cancelled lane) leaks its watches in `notifyd` for good. Its dead-peer
+# cleanup, `notifyd_send_delete`, addresses the delete to the dead process instead of
+# itself, so it fails `NT_STATUS_OBJECT_NAME_NOT_FOUND` on every write (Samba 4.23.8;
+# 4.17 sent it to itself via `messaging_send_iov_from`). A clean run leaks nothing.
+# Under load, timeouts kill tests, which leak, which slows delivery further. Measured
+# 2026-10-06, four concurrent `cmdr-smb` suites on a probe container: 10–14.5 s at
+# `cpus: 0.5` with ~110 leaked watches; 3.5–5.3 s at 1.0, then 11–13.7 s on the next
+# round once that round's timeouts had leaked theirs. So 20 s stays.
 filter = 'test(an_outside_change_in_an_accented_directory_names_the_path_the_pane_opened)'
 slow-timeout = { period = "30s", terminate-after = 1 }
 
