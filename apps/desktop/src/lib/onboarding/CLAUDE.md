@@ -7,8 +7,8 @@ analytics disclosure and the terms (3) → Optional settings (4). Linux starts a
 
 `OnboardingWizard` (shell) + `OnboardingStepShell` (per-step frame), `StepFda` / `StepAi` / `StepBeta` / `StepOptional`,
 `CloudProviderPicker` / `CloudProviderSetup`, `OnboardingLanguagePicker`, `onboarding-state.svelte.ts` (state machine),
-`fda-status.svelte.ts` (the reactive "does this Mac grant FDA" fact) + `FdaBadge.svelte` (rendered by
-`$lib/status-corner/`), `local-download-notice.ts` (failed model download → post-wizard toast).
+`fda-status.svelte.ts` (the reactive FDA fact) + `FdaBadge.svelte` (rendered by `$lib/status-corner/`),
+`local-download-notice.ts` (failed model download → post-wizard toast).
 
 ## Must-knows
 
