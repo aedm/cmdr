@@ -1,6 +1,7 @@
 <script lang="ts">
     import { compareDirectories as runCompareDirectories } from './compare-directories'
     import type { CompareDirectoriesMode } from '$lib/tauri-commands'
+    import { countFoldersInPane } from './folder-size-count'
     import { onMount, onDestroy, untrack } from 'svelte'
     import FilePane from './FilePane.svelte'
     import type {
@@ -861,6 +862,16 @@
     /** Compare directories (⇧F2), `compare-directories.ts`. */
     export function compareDirectories(mode: CompareDirectoriesMode): Promise<void> {
         return runCompareDirectories({ getPaneRef, getShowHiddenFiles: () => showHiddenFiles }, mode)
+    }
+
+    /** Calculate folder sizes in the focused pane (⌥⇧⏎), then re-sort a size-sorted pane. */
+    export async function calculateFolderSizes(): Promise<void> {
+        const pane = focusedPane
+        const listingId = getPaneRef(pane)?.getListingId() ?? ''
+        const outcome = await countFoldersInPane(listingId, showHiddenFiles)
+        if (outcome && outcome.counted > 0 && getPaneSort(pane).sortBy === 'size') {
+            await sortOps.resortPaneWithCurrentSort(pane)
+        }
     }
 
     export function toggleVolumeChooser(pane: 'left' | 'right') {

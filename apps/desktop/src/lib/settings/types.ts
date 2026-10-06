@@ -359,6 +359,7 @@ export interface SettingsValues {
   // Listing
   'listing.showHiddenFiles': boolean
   'listing.foldersFirst': boolean
+  'listing.spaceCalculatesFolderSize': boolean
   'listing.directorySortMode': DirectorySortMode
   'listing.sizeDisplay': SizeDisplayMode
   'listing.sizeUnit': FileSizeUnit

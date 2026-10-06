@@ -1996,6 +1996,7 @@
     "listing.sizeDisplay": "smart",
     "listing.sizeMismatchWarning": true,
     "listing.sizeUnit": "dynamic",
+    "listing.spaceCalculatesFolderSize": true,
     "listing.stripedRows": false,
     "mediaIndex.enabled": false,
     "mediaIndex.importanceThreshold": 0,

@@ -302,6 +302,7 @@ export const menuCommands = [
   // Panes
   'pane.switch',
   'pane.swap',
+  'view.calculateFolderSizes',
   // Search
   'search.open',
   // Sort

@@ -85,6 +85,7 @@ export function makeExplorerSpy(): Record<string, ReturnType<typeof vi.fn>> {
     'switchPane',
     'swapPanes',
     'compareDirectories',
+    'calculateFolderSizes',
     'toggleVolumeChooser',
     'toggleFavoritesMenu',
     'copyPathBetweenPanes',
@@ -246,6 +247,12 @@ export const DELEGATE_ROWS: DelegateRow[] = [
     id: 'selection.compareDirectoriesSize',
     expect: (e) => {
       expect(e.compareDirectories).toHaveBeenCalledExactlyOnceWith('sizeAndMissing')
+    },
+  },
+  {
+    id: 'view.calculateFolderSizes',
+    expect: (e) => {
+      expect(e.calculateFolderSizes).toHaveBeenCalledOnce()
     },
   },
   {

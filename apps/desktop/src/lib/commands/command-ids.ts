@@ -74,6 +74,7 @@ export const COMMAND_IDS = [
 
   // View commands
   'view.showHidden',
+  'view.calculateFolderSizes',
   'view.briefMode',
   'view.fullMode',
   'view.setMode',

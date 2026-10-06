@@ -9,6 +9,8 @@ export {
   getFileRange,
   findFileIndex,
   compareDirectories,
+  countFolderSizes,
+  cancelFolderSizeCount,
   findFileIndices,
   findFirstFuzzyMatch,
   getFileAt,

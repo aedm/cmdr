@@ -497,6 +497,18 @@ export const commands = {
         mode,
       }),
     ),
+  /**
+   *  Calculates the sizes of folders the pane shows (⌥⇧⏎; `paths` for Space on a
+   *  folder), sending each reading as `listing-index-sizes-changed`. Resolves when
+   *  the count ends: done, or stopped by [`cancel_folder_size_count`] or a newer
+   *  count of the same listing. See `listing_index_sizes/count.rs`.
+   */
+  countFolderSizes: (listingId: string, includeHidden: boolean, paths: string[] | null) =>
+    typedError<FolderSizeCountOutcome, CountFolderSizesError>(
+      __TAURI_INVOKE('count_folder_sizes', { listingId, includeHidden, paths }),
+    ),
+  // Stops the folder-size count running for `listing_id` (Esc). Reports whether one was running.
+  cancelFolderSizeCount: (listingId: string) => __TAURI_INVOKE<boolean>('cancel_folder_size_count', { listingId }),
   findFileIndices: (listingId: string, names: string[], includeHidden: boolean) =>
     typedError<{ [key in string]: number }, ListingLookupError>(
       __TAURI_INVOKE('find_file_indices', { listingId, names, includeHidden }),
@@ -6453,6 +6465,13 @@ export type CostSummary = {
 // The operation a dialog is about to start.
 export type CostedOperation = 'copy' | 'move' | 'delete'
 
+// Why a count didn't start. Typed, so the frontend never reads a message.
+export type CountFolderSizesError =
+  // The pane's listing is no longer cached (it moved on).
+  | { type: 'gone'; listingId: string }
+  // No volume answers for the listing's folder (unplugged, disconnected).
+  | { type: 'notConnected'; volumeId: string }
+
 /**
  *  What ground a run's answer was drawn from: the index, a live walk, or both.
  *
@@ -7821,6 +7840,14 @@ export type FolderCoverage = {
   eligible: number
   // Of those, how many have a stored `done`/`failed` row (both count as accounted).
   accounted: number
+}
+
+// How a count ended.
+export type FolderSizeCountOutcome = {
+  // Folders whose exact size landed in a pane that still shows them.
+  counted: number
+  // Stopped early: by [`cancel`], or by a newer count of the same listing.
+  cancelled: boolean
 }
 
 // One folder row's fresh index reading.

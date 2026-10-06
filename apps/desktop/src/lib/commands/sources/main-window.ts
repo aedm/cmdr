@@ -96,6 +96,17 @@ export const mainWindowCommands: CommandSource[] = [
     whileDialogOpen: BLOCKED_BY_DIALOGS,
   },
   {
+    // Total Commander's Alt+Shift+Enter: the size of every folder in the pane
+    // whose exact size isn't known yet. Esc stops it.
+    id: 'view.calculateFolderSizes',
+    nameKey: 'commands.viewCalculateFolderSizes.label',
+    scope: 'Main window',
+    showInPalette: true,
+    shortcuts: ['⌥⇧Enter'],
+    whileDialogOpen: BLOCKED_BY_DIALOGS,
+    descriptionKey: 'commands.viewCalculateFolderSizes.description',
+  },
+  {
     id: 'view.briefMode',
     nameKey: 'commands.viewBriefMode.label',
     scope: 'Main window',

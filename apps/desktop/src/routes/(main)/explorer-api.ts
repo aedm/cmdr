@@ -50,6 +50,8 @@ export interface ExplorerAPI {
   swapPanes: () => void
   /** Compare directories (⇧F2): mark what differs between the two panes. */
   compareDirectories: (mode: CompareDirectoriesMode) => Promise<void>
+  /** Calculate folder sizes in the focused pane (⌥⇧⏎); resolves when the count ends. */
+  calculateFolderSizes: () => Promise<void>
   copyPathBetweenPanes: (args: CopyPathBetweenPanesArgs) => void
   toggleVolumeChooser: (pane: 'left' | 'right') => void
   openVolumeChooser: () => void

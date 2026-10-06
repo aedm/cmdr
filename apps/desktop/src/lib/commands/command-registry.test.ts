@@ -42,6 +42,7 @@ const EXPECTED_PALETTE_IDS: readonly CommandId[] = [
   'favorites.open',
   'downloads.goToLatest',
   'view.showHidden',
+  'view.calculateFolderSizes',
   'view.briefMode',
   'view.fullMode',
   'view.zoom.set75',

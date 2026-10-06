@@ -26,6 +26,7 @@ use crate::file_system::listing::fuzzy_jump::FuzzyJumpError;
 use crate::file_system::validation::{MAX_NAME_BYTES, MAX_PATH_BYTES};
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::file_system::write_operations::held_in_another_spelling;
+use crate::listing_index_sizes::count::{CountFolderSizesError, FolderSizeCountOutcome};
 use cmdr_fs::volume::WatchCoverage;
 
 use super::expand_tilde;
@@ -424,6 +425,32 @@ pub async fn compare_directories(
         },
     )
     .await
+}
+
+/// Calculates the sizes of folders the pane shows (⌥⇧⏎; `paths` for Space on a
+/// folder), sending each reading as `listing-index-sizes-changed`. Resolves when
+/// the count ends: done, or stopped by [`cancel_folder_size_count`] or a newer
+/// count of the same listing. See `listing_index_sizes/count.rs`.
+#[tauri::command]
+#[specta::specta]
+pub async fn count_folder_sizes(
+    app: tauri::AppHandle,
+    listing_id: String,
+    include_hidden: bool,
+    paths: Option<Vec<String>>,
+) -> Result<FolderSizeCountOutcome, CountFolderSizesError> {
+    use tauri_specta::Event;
+    let sink = move |event: crate::listing_index_sizes::ListingIndexSizesChanged| {
+        let _ = event.emit(&app);
+    };
+    crate::listing_index_sizes::count::count(&listing_id, include_hidden, paths.as_deref(), &sink).await
+}
+
+/// Stops the folder-size count running for `listing_id` (Esc). Reports whether one was running.
+#[tauri::command]
+#[specta::specta]
+pub async fn cancel_folder_size_count(listing_id: String) -> bool {
+    crate::listing_index_sizes::count::cancel(&listing_id)
 }
 
 #[tauri::command]

@@ -469,6 +469,19 @@ export const appearanceSettings: SettingDefinitionSource[] = [
     component: 'switch',
   },
   {
+    // Total Commander's "Calculate space occupied by subdirectories when selecting
+    // with the space bar". `file-explorer/pane/folder-size-count.ts` owns it.
+    id: 'listing.spaceCalculatesFolderSize',
+    section: ['Appearance', 'Listing'],
+    labelKey: 'settings.listing.spaceCalculatesFolderSize.label',
+    descriptionKey: 'settings.listing.spaceCalculatesFolderSize.description',
+    cardKey: 'settings.appearance.card.namesAndIcons',
+    keywords: ['space', 'size', 'folder', 'folders', 'directory', 'calculate', 'count', 'select', 'total commander'],
+    type: 'boolean',
+    default: true,
+    component: 'switch',
+  },
+  {
     id: 'listing.directorySortMode',
     section: ['Appearance', 'Listing'],
     labelKey: 'settings.listing.directorySortMode.label',
