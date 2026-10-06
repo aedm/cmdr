@@ -40,7 +40,7 @@ const MAX_LIMIT: u32 = 200;
 /// Parse a human-readable size string into bytes: SI `kB`/`MB`/`GB`/`TB` are base 1000, IEC
 /// `KiB`/`MiB`/`GiB`/`TiB` base 1024 (`search::parse_size`), case-insensitive, with or without space.
 pub fn parse_human_size(s: &str) -> Result<u64, ToolError> {
-    crate::search::parse_size(s).ok_or_else(|| {
+    search::parse_size(s).ok_or_else(|| {
         ToolError::invalid_params(format!(
             "Couldn't parse size: \"{}\". Use a format like \"1 MB\" (1,000,000 bytes) or \"500 KiB\" (512,000 bytes).",
             s.trim()

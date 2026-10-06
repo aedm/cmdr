@@ -211,7 +211,7 @@ pub(crate) fn parse_size(text: &str) -> Option<u64> {
         return lower.parse().ok();
     };
     let value: f64 = number.trim().parse().ok()?;
-    (value.is_finite() && value >= 0.0).then(|| (value * multiplier as f64) as u64)
+    (value.is_finite() && value >= 0.0).then_some((value * multiplier as f64) as u64)
 }
 
 pub(crate) fn format_timestamp(ts: u64) -> String {
