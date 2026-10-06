@@ -271,9 +271,9 @@
   "calculate": {
     "accept": ["berechne", "Berechnung", "rechnet"],
     "chosen": "berechnen",
-    "confidence": "tentative",
-    "forms": "Calculate folder sizes → Ordnergrößen berechnen; adding a folder's contents up in prose → rechnet … zusammen",
-    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+    "confidence": "high",
+    "forms": "Calculate folder sizes → Ordnergrößen berechnen; the running work → die Berechnung; adding a folder's contents up in prose → rechnet … zusammen",
+    "sources": "macOS Finder ViewOptionsWindow 65.title (Calculate all sizes → Alle Größen berechnen); Double Commander (Belegten Speicherplatz berechnen); TC says Speicherbedarf ermitteln (503, 5138), same feature, other verb"
   },
   "column": {
     "chosen": "Spalte",
@@ -3348,6 +3348,12 @@
     "chosen": "Mission Control",
     "confidence": "high",
     "sources": "macOS de app names; macOS pile (Spotlight/Mission Control/Spaces kept), 2026-06-21"
+  },
+  "space-key": {
+    "chosen": "Leertaste",
+    "confidence": "high",
+    "forms": "⇧Leertaste for the chord; prose → die Leertaste; compounds Leertasten-Hinweis",
+    "sources": "macOS AppKit FunctionKeyNames (Space), SystemSettings Siri/Spotlight SPACEBAR_KEY → Leertaste; AppKit Date Picker help (die Leertaste); TC 5139 (beim Markieren mit der Leertaste); Double Commander [Leertaste]"
   },
   "spaces": {
     "chosen": "Spaces",

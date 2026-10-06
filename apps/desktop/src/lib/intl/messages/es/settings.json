@@ -307,7 +307,7 @@
   "@settings.listing.spaceCalculatesFolderSize.label": {
     "sourceHash": "1a403eb"
   },
-  "settings.listing.spaceCalculatesFolderSize.description": "Cuando seleccionas con Espacio una carpeta cuyo tamaño aún no se conoce, Cmdr suma su contenido y muestra el total. La tecla Esc lo detiene.",
+  "settings.listing.spaceCalculatesFolderSize.description": "Cuando seleccionas con Espacio una carpeta cuyo tamaño aún no se conoce, Cmdr suma su contenido y muestra el total. La tecla Esc detiene el cálculo.",
   "@settings.listing.spaceCalculatesFolderSize.description": {
     "sourceHash": "38d64c1"
   },

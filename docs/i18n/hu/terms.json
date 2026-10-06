@@ -430,9 +430,9 @@
   "calculate": {
     "accept": ["kiszámít", "számol", "számít"],
     "chosen": "kiszámítás",
-    "confidence": "tentative",
-    "forms": "Calculate folder sizes → Mappaméretek kiszámítása; adding up in prose → összeadja",
-    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+    "confidence": "high",
+    "forms": "Calculate folder sizes → Mappaméretek kiszámítása; the running work → a számítás; adding up in prose → összeadja",
+    "sources": "macOS Finder ViewOptionsWindow 65.title (Minden méret kiszámítása); TC 503, 5138 (Elfoglalt terület számítása); Double Commander Foglalt terület számítása"
   },
   "camera-details": {
     "chosen": "kameraadatok",
@@ -3686,6 +3686,19 @@
     "chosen": "Mission Control",
     "confidence": "high",
     "sources": "macOS 27.0 (26A428) Disk Utility.app InfoPlist.loctable (Lemezkezelő) and Localizable.loctable (Elsősegély), Activity Monitor.app InfoPlist.loctable (Tevékenységfigyelő), Mission Control.app (Mission Control), 2026-09-24"
+  },
+  "space-key": {
+    "accept": ["szóközbillentyű"],
+    "avoid": [
+      {
+        "form": "Space",
+        "why": "macOS hu names the key Szóköz (FunctionKeyNames, Siri, Spotlight), as do TC 5139 and Midnight Commander"
+      }
+    ],
+    "chosen": "Szóköz",
+    "confidence": "high",
+    "forms": "instrumental Szóközzel, accusative a Szóközt, chord ⇧Szóköz; adjective szóközbillentyűs",
+    "sources": "macOS AppKit FunctionKeyNames (Space), SystemSettings Siri/Spotlight SPACEBAR_KEY → Szóköz (Space bar → Szóközbillentyű); AppKit Date Picker help (a szóközbillentyűvel); TC 5139 (Szóközzel kijelöléskor); Midnight Commander Szóköz"
   },
   "spaces": {
     "chosen": "Spaces",

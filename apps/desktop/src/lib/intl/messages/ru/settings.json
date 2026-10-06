@@ -304,7 +304,7 @@
   "@settings.listing.spaceCalculatesFolderSize.label": {
     "sourceHash": "1a403eb"
   },
-  "settings.listing.spaceCalculatesFolderSize.description": "Если выделить Пробелом папку, размер которой еще неизвестен, Cmdr подсчитает ее содержимое и покажет общий размер. Остановить можно клавишей Escape.",
+  "settings.listing.spaceCalculatesFolderSize.description": "Если выделить Пробелом папку, размер которой еще неизвестен, Cmdr подсчитает ее содержимое и покажет общий размер. Остановить вычисление можно клавишей Escape.",
   "@settings.listing.spaceCalculatesFolderSize.description": {
     "sourceHash": "38d64c1"
   },

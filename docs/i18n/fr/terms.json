@@ -387,9 +387,9 @@
   "calculate": {
     "accept": ["calcul"],
     "chosen": "calculer",
-    "confidence": "tentative",
+    "confidence": "high",
     "forms": "Calculate folder sizes → Calculer la taille des dossiers; the running work in prose → le calcul",
-    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+    "sources": "macOS Finder ViewOptionsWindow 65.title (Calculer toutes les tailles); TC 503, 5138 (Calculer l'espace occupé); Double Commander Calculer l'espace occupé"
   },
   "camera": {
     "accept": ["appareils photo"],
@@ -3355,6 +3355,13 @@
     "chosen": "Mission Control",
     "confidence": "high",
     "sources": "macOS app names"
+  },
+  "space-key": {
+    "accept": ["barre d’espace"],
+    "chosen": "Espace",
+    "confidence": "high",
+    "forms": "key name Espace, ⇧Espace; prose → la touche Espace",
+    "sources": "macOS AppKit FunctionKeyNames (Space), SystemSettings Siri/Spotlight SPACEBAR_KEY → Espace (Space bar → Barre d’espace); TC 5139 barre-espace; Midnight Commander Espace; Double Commander barre d'espace"
   },
   "spaces": {
     "chosen": "Spaces",

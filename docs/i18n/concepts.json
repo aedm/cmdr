@@ -3026,6 +3026,24 @@
     "note": "Never translate as \"open source\": that claim is false for Cmdr.",
     "sense": "Cmdr's license model: the code is public to read under the BSL, which isn't an open-source license."
   },
+  "space-key": {
+    "distinct": ["free-space", "spaces"],
+    "en": "Space",
+    "match": [
+      "=space",
+      "(space)",
+      "with space",
+      "when space",
+      "uses space",
+      "plain space",
+      "press space",
+      "space key",
+      "space-key",
+      "⇧space"
+    ],
+    "note": "Matches only the key: disk space, free space, and empty space around the list are other senses, so no bare `space` form.",
+    "sense": "The Space bar as a key (Space selects, ⇧Space for Quick Look, Calculate folder size with Space)."
+  },
   "spaces": {
     "en": "Spaces",
     "match": ["=spaces"],

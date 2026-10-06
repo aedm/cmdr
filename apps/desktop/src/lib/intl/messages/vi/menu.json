@@ -264,7 +264,7 @@
   "@menu.view.swapPanes": {
     "sourceHash": "cc29396"
   },
-  "menu.view.calculateFolderSizes": "Tính kích cỡ thư mục",
+  "menu.view.calculateFolderSizes": "Tính toán kích cỡ thư mục",
   "@menu.view.calculateFolderSizes": {
     "sourceHash": "d2a83da"
   },

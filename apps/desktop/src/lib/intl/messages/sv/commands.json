@@ -160,7 +160,7 @@
   "@commands.viewCalculateFolderSizes.label": {
     "sourceHash": "d2a83da"
   },
-  "commands.viewCalculateFolderSizes.description": "Visar storleken på varje mapp i den här panelen som inte har någon ännu. Escape stoppar det.",
+  "commands.viewCalculateFolderSizes.description": "Visar storleken på varje mapp i den här panelen som inte har någon ännu. Escape stoppar beräkningen.",
   "@commands.viewCalculateFolderSizes.description": {
     "sourceHash": "2a7568d"
   },

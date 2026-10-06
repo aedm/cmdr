@@ -160,7 +160,7 @@
   "@commands.viewCalculateFolderSizes.label": {
     "sourceHash": "d2a83da"
   },
-  "commands.viewCalculateFolderSizes.description": "Megjeleníti ezen a panelen minden olyan mappa méretét, amelynél még nem látszik. Az Escape billentyű leállítja.",
+  "commands.viewCalculateFolderSizes.description": "Megjeleníti ezen a panelen minden olyan mappa méretét, amelynél még nem látszik. Az Escape billentyű leállítja a számítást.",
   "@commands.viewCalculateFolderSizes.description": {
     "sourceHash": "2a7568d"
   },

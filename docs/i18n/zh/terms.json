@@ -369,9 +369,9 @@
   },
   "calculate": {
     "chosen": "计算",
-    "confidence": "tentative",
-    "forms": "Calculate folder sizes → 计算文件夹大小",
-    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+    "confidence": "high",
+    "forms": "Calculate folder sizes → 计算文件夹大小; stop the work → 停止计算",
+    "sources": "macOS Finder ViewOptionsWindow 65.title (计算所有大小); TC zh-CN 503 计算占用空间, 5138 计算文件夹大小; Double Commander 计算占用空间"
   },
   "camera-details": {
     "avoid": [
@@ -3322,6 +3322,18 @@
     "chosen": "调度中心",
     "confidence": "high",
     "sources": "macOS"
+  },
+  "space-key": {
+    "avoid": [
+      {
+        "form": "Space 键",
+        "why": "unlike Esc and Enter, macOS zh-CN localizes this key name (空格键) in FunctionKeyNames, Siri and Spotlight; TC, DC and MC agree"
+      }
+    ],
+    "chosen": "空格键",
+    "confidence": "high",
+    "forms": "按空格键 + verb; chord ⇧空格键 (macOS: Command-空格键)",
+    "sources": "macOS AppKit FunctionKeyNames (Space), SystemSettings Siri/Spotlight SPACEBAR_KEY → 空格键; TC zh-CN 1644, 5139 (用空格键选择时); Double Commander 空格键; Midnight Commander 空格键"
   },
   "spaces": {
     "chosen": "空间",

@@ -449,7 +449,7 @@
   "@askCmdr.renameReview.openPreview": {
     "sourceHash": "f687d18"
   },
-  "askCmdr.renameReview.openPreviewTooltip": "Öppna filen för att kontrollera namnet (blanksteg)",
+  "askCmdr.renameReview.openPreviewTooltip": "Öppna filen för att kontrollera namnet (Mellanslag)",
   "@askCmdr.renameReview.openPreviewTooltip": {
     "sourceHash": "17163aa"
   },

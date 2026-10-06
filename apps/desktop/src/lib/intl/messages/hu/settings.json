@@ -302,11 +302,11 @@
   "@settings.listing.foldersFirst.description": {
     "sourceHash": "8505ff3"
   },
-  "settings.listing.spaceCalculatesFolderSize.label": "Mappaméret kiszámítása Space-szel",
+  "settings.listing.spaceCalculatesFolderSize.label": "Mappaméret kiszámítása Szóközzel",
   "@settings.listing.spaceCalculatesFolderSize.label": {
     "sourceHash": "1a403eb"
   },
-  "settings.listing.spaceCalculatesFolderSize.description": "Ha a Space-szel kijelölsz egy mappát, amelynek még nem ismert a mérete, a Cmdr összeadja a tartalmát, és megjeleníti a teljes méretet. Az Escape billentyű leállítja.",
+  "settings.listing.spaceCalculatesFolderSize.description": "Ha a Szóközzel kijelölsz egy mappát, amelynek még nem ismert a mérete, a Cmdr összeadja a tartalmát, és megjeleníti a teljes méretet. Az Escape billentyű leállítja a számítást.",
   "@settings.listing.spaceCalculatesFolderSize.description": {
     "sourceHash": "38d64c1"
   },
@@ -1257,15 +1257,15 @@
   "@settings.fileViewer.suppressBinaryWarning.label": {
     "sourceHash": "8cdaada"
   },
-  "settings.fileViewer.suppressBinaryWarning.description": "Az F3 megnyitja a Cmdr fájlmegjelenítőjét, amely nyers bájtokat mutat (nem szöveges tartalomnál veszteséges UTF-8-cal). Amikor képet, PDF-et, archívumot vagy más bináris fájlt nyitsz meg, a megjelenítő piros sávot mutat, amely elmagyarázza, hogy valószínűleg a ⇧Space (Gyorsnézet) vagy az Enter (megnyitás a társított appban) az, amit szerettél volna. Kapcsold ezt be (vagy kattints a sávban a „Ne jelenjen meg többé ez a figyelmeztetés” gombra), hogy végleg elnyomd a figyelmeztetést.",
+  "settings.fileViewer.suppressBinaryWarning.description": "Az F3 megnyitja a Cmdr fájlmegjelenítőjét, amely nyers bájtokat mutat (nem szöveges tartalomnál veszteséges UTF-8-cal). Amikor képet, PDF-et, archívumot vagy más bináris fájlt nyitsz meg, a megjelenítő piros sávot mutat, amely elmagyarázza, hogy valószínűleg a ⇧Szóköz (Gyorsnézet) vagy az Enter (megnyitás a társított appban) az, amit szerettél volna. Kapcsold ezt be (vagy kattints a sávban a „Ne jelenjen meg többé ez a figyelmeztetés” gombra), hogy végleg elnyomd a figyelmeztetést.",
   "@settings.fileViewer.suppressBinaryWarning.description": {
     "sourceHash": "a93b4cb"
   },
-  "settings.fileExplorer.suppressQuickLookHint.label": "Space-billentyűs Gyorsnézet tipp elnyomása",
+  "settings.fileExplorer.suppressQuickLookHint.label": "Szóközbillentyűs Gyorsnézet tipp elnyomása",
   "@settings.fileExplorer.suppressQuickLookHint.label": {
     "sourceHash": "bd9da35"
   },
-  "settings.fileExplorer.suppressQuickLookHint.description": "A Cmdr a Space-szel váltja a fájlkijelölést, és a ⇧Space-szel a Gyorsnézetet (a Finder sima Space-szel hozza a Gyorsnézetet). Valahányszor megnyomod a Space-t a fájllistában, a Cmdr egy bekezdésnyi emlékeztetőt mutat erről a különbségről. Kapcsold ezt be (vagy kattints a buborékban a „Ne jelenjen meg többé” gombra), hogy végleg elnyomd az emlékeztetőt.",
+  "settings.fileExplorer.suppressQuickLookHint.description": "A Cmdr a Szóközzel váltja a fájlkijelölést, és a ⇧Szóközzel a Gyorsnézetet (a Finder sima Szóközzel hozza a Gyorsnézetet). Valahányszor megnyomod a Szóközt a fájllistában, a Cmdr egy bekezdésnyi emlékeztetőt mutat erről a különbségről. Kapcsold ezt be (vagy kattints a buborékban a „Ne jelenjen meg többé” gombra), hogy végleg elnyomd az emlékeztetőt.",
   "@settings.fileExplorer.suppressQuickLookHint.description": {
     "sourceHash": "10357b4"
   },

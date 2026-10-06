@@ -446,9 +446,9 @@
   },
   "calculate": {
     "chosen": "計算",
-    "confidence": "tentative",
-    "forms": "Calculate folder sizes → 計算資料夾大小",
-    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+    "confidence": "high",
+    "forms": "Calculate folder sizes → 計算資料夾大小; stop the work → 停止計算",
+    "sources": "macOS Finder ViewOptionsWindow 65.title (計算所有大小); TC zh-TW 503 計算佔用空間; Double Commander 計算佔用空間"
   },
   "camera": {
     "chosen": "相機",
@@ -3779,6 +3779,22 @@
     "chosen": "指揮中心",
     "confidence": "high",
     "sources": "AP-TW = AP-HK (NSTouchBarControlStripSpotlightTemplate = Spotlight); catalog"
+  },
+  "space-key": {
+    "avoid": [
+      {
+        "form": "Space 鍵",
+        "why": "unlike Esc and Enter, macOS zh-TW localizes this key name (空白鍵); DC and MC agree"
+      },
+      {
+        "form": "空格鍵",
+        "why": "TC zh-TW only; macOS zh-TW, DC and MC say 空白鍵"
+      }
+    ],
+    "chosen": "空白鍵",
+    "confidence": "high",
+    "forms": "按空白鍵 + verb; chord ⇧空白鍵 (macOS: Command + 空白鍵)",
+    "sources": "macOS AppKit FunctionKeyNames (Space), SystemSettings Siri/Spotlight SPACEBAR_KEY → 空白鍵; AppKit Date Picker help (空白鍵); Double Commander <空白鍵>; Midnight Commander 空白鍵; TC zh-TW 5139 says 空格鍵"
   },
   "spaces": {
     "chosen": "空間",

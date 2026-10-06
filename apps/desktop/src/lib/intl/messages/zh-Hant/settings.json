@@ -302,11 +302,11 @@
   "@settings.listing.foldersFirst.description": {
     "sourceHash": "8505ff3"
   },
-  "settings.listing.spaceCalculatesFolderSize.label": "按 Space 鍵計算資料夾大小",
+  "settings.listing.spaceCalculatesFolderSize.label": "按空白鍵計算資料夾大小",
   "@settings.listing.spaceCalculatesFolderSize.label": {
     "sourceHash": "1a403eb"
   },
-  "settings.listing.spaceCalculatesFolderSize.description": "用 Space 鍵選取一個還不知道大小的資料夾時，Cmdr 會把裡面的內容加起來並顯示總大小。按 Esc 鍵即可停止。",
+  "settings.listing.spaceCalculatesFolderSize.description": "用空白鍵選取一個還不知道大小的資料夾時，Cmdr 會把裡面的內容加起來並顯示總大小。按 Esc 鍵即可停止計算。",
   "@settings.listing.spaceCalculatesFolderSize.description": {
     "sourceHash": "38d64c1"
   },
@@ -1256,15 +1256,15 @@
   "@settings.fileViewer.suppressBinaryWarning.label": {
     "sourceHash": "8cdaada"
   },
-  "settings.fileViewer.suppressBinaryWarning.description": "F3 會開啟 Cmdr 的檔案檢視器，它顯示的是原始位元組（非文字內容採用有損的 UTF-8）。當你開啟影像、PDF、壓縮檔或其他二進位檔案時，檢視器會顯示一條紅色橫幅，說明 ⇧Space（快速查看）或 Enter（在關聯的 App 中開啟）很可能才是你想要的。開啟這一項（或按一下橫幅中的「不要再顯示這個警告」）就能永久關閉這個警告。",
+  "settings.fileViewer.suppressBinaryWarning.description": "F3 會開啟 Cmdr 的檔案檢視器，它顯示的是原始位元組（非文字內容採用有損的 UTF-8）。當你開啟影像、PDF、壓縮檔或其他二進位檔案時，檢視器會顯示一條紅色橫幅，說明⇧空白鍵（快速查看）或 Enter（在關聯的 App 中開啟）很可能才是你想要的。開啟這一項（或按一下橫幅中的「不要再顯示這個警告」）就能永久關閉這個警告。",
   "@settings.fileViewer.suppressBinaryWarning.description": {
     "sourceHash": "a93b4cb"
   },
-  "settings.fileExplorer.suppressQuickLookHint.label": "不顯示 Space 鍵的快速查看提示",
+  "settings.fileExplorer.suppressQuickLookHint.label": "不顯示空白鍵的快速查看提示",
   "@settings.fileExplorer.suppressQuickLookHint.label": {
     "sourceHash": "bd9da35"
   },
-  "settings.fileExplorer.suppressQuickLookHint.description": "Cmdr 用 Space 切換檔案選取，用 ⇧Space 觸發快速查看（Finder 用單獨的 Space 觸發快速查看）。每次你在檔案列表中按 Space，Cmdr 都會顯示一段簡短的提醒說明這個差別。開啟這一項（或按一下提示中的「不要再顯示」）就能永久關閉這個提醒。",
+  "settings.fileExplorer.suppressQuickLookHint.description": "Cmdr 用空白鍵切換檔案選取，用⇧空白鍵觸發快速查看（Finder 用單獨的空白鍵觸發快速查看）。每次你在檔案列表中按空白鍵，Cmdr 都會顯示一段簡短的提醒說明這個差別。開啟這一項（或按一下提示中的「不要再顯示」）就能永久關閉這個提醒。",
   "@settings.fileExplorer.suppressQuickLookHint.description": {
     "sourceHash": "10357b4"
   },

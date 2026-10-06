@@ -449,7 +449,7 @@
   "@askCmdr.renameReview.openPreview": {
     "sourceHash": "f687d18"
   },
-  "askCmdr.renameReview.openPreviewTooltip": "Mở tệp để kiểm tra tên (Space)",
+  "askCmdr.renameReview.openPreviewTooltip": "Mở tệp để kiểm tra tên (Dấu cách)",
   "@askCmdr.renameReview.openPreviewTooltip": {
     "sourceHash": "17163aa"
   },

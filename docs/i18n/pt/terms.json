@@ -303,9 +303,9 @@
   "calculate": {
     "accept": ["calcul"],
     "chosen": "calcular",
-    "confidence": "tentative",
+    "confidence": "high",
     "forms": "Calculate folder sizes → Calcular tamanhos das pastas; the running work in prose → o cálculo",
-    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+    "sources": "macOS Finder ViewOptionsWindow 65.title pt-BR (Calcular o tamanho de tudo); TC pt-BR 503 Calcular espaço, 5138; Double Commander pt-BR Calcular Espaço Ocupado"
   },
   "camera-details": {
     "chosen": "detalhes da câmera",
@@ -2958,6 +2958,13 @@
     "chosen": "Mission Control",
     "confidence": "high",
     "sources": "standard macOS pt-BR app and feature names"
+  },
+  "space-key": {
+    "accept": ["barra de espaço"],
+    "chosen": "Espaço",
+    "confidence": "high",
+    "forms": "key name Espaço, ⇧Espaço; prose → a tecla Espaço",
+    "sources": "macOS AppKit FunctionKeyNames (Space), SystemSettings Siri/Spotlight SPACEBAR_KEY pt-BR → Espaço (Space bar → Barra de espaço); TC pt-BR 5139 barra de espaço; Midnight Commander pt-BR Tecla de espaço; Double Commander BARRA DE ESPAÇO"
   },
   "spaces": {
     "chosen": "Spaces",

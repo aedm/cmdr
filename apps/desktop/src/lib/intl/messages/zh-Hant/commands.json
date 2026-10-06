@@ -160,7 +160,7 @@
   "@commands.viewCalculateFolderSizes.label": {
     "sourceHash": "d2a83da"
   },
-  "commands.viewCalculateFolderSizes.description": "為這個窗格中還沒有大小的資料夾顯示大小。按 Esc 鍵即可停止。",
+  "commands.viewCalculateFolderSizes.description": "為這個窗格中還沒有大小的資料夾顯示大小。按 Esc 鍵即可停止計算。",
   "@commands.viewCalculateFolderSizes.description": {
     "sourceHash": "2a7568d"
   },

@@ -357,9 +357,9 @@
   "calculate": {
     "accept": ["bereken", "berekening"],
     "chosen": "berekenen",
-    "confidence": "tentative",
-    "forms": "menu and command Bereken mapgroottes; Settings label infinitive last (Mapgrootte berekenen met Spatie)",
-    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+    "confidence": "high",
+    "forms": "menu and command Bereken mapgroottes (imperative first, like Finder); Settings label infinitive last (Mapgrootte berekenen met Spatie); the running work → de berekening",
+    "sources": "macOS Finder ViewOptionsWindow 65.title (Bereken alle grootten); TC 503 Ruimte berekenen, 5138; Double Commander Bereken in gebruik zijnde ruimte"
   },
   "camera-details": {
     "chosen": "cameragegevens",
@@ -3199,6 +3199,13 @@
     "chosen": "Mission Control",
     "confidence": "high",
     "sources": "Apple-name literals kept per their @key notes; Mission Control / Spotlight / Spaces stay English in Dutch macOS"
+  },
+  "space-key": {
+    "accept": ["spatiebalk", "spatietoets"],
+    "chosen": "Spatie",
+    "confidence": "high",
+    "forms": "key name Spatie, ⇧Spatie; prose may say de spatietoets or (macOS) de spatiebalk",
+    "sources": "macOS AppKit FunctionKeyNames (Space), SystemSettings Siri/Spotlight SPACEBAR_KEY → Spatie (Space bar → Spatiebalk); TC 5139 spatiebalk; Midnight Commander Spatie; Double Commander SPATIEBALK"
   },
   "spaces": {
     "chosen": "Spaces",

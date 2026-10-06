@@ -359,9 +359,9 @@
   "calculate": {
     "accept": ["beräkn", "räknar"],
     "chosen": "beräkna",
-    "confidence": "tentative",
-    "forms": "Calculate folder sizes → Beräkna mappstorlekar; adding up in prose → räknar ihop",
-    "sources": "Cmdr catalog (indexing.step.computeFolderSizes); Finder View Options Calculate all sizes recalled, not verified: the reference pile was unavailable on this machine"
+    "confidence": "high",
+    "forms": "Calculate folder sizes → Beräkna mappstorlekar; the running work → beräkningen; adding up in prose → räknar ihop",
+    "sources": "macOS Finder ViewOptionsWindow 65.title (Beräkna alla storlekar); TC 503 Beräkna utrymme, 5138; Double Commander Beräkna upptaget utrymme"
   },
   "camera-details": {
     "avoid": [
@@ -3102,6 +3102,18 @@
     "chosen": "Mission Control",
     "confidence": "high",
     "sources": "macOS Disk Utility.app sv (2026-08-30)"
+  },
+  "space-key": {
+    "avoid": [
+      {
+        "form": "blanksteg",
+        "why": "macOS sv names the key Mellanslag everywhere (FunctionKeyNames, Siri, Spotlight, Date Picker help), as do TC, Midnight Commander and Double Commander"
+      }
+    ],
+    "chosen": "Mellanslag",
+    "confidence": "high",
+    "forms": "key name Mellanslag, ⇧Mellanslag; lowercase mellanslag in running prose is fine",
+    "sources": "macOS AppKit FunctionKeyNames (Space), SystemSettings Siri/Spotlight SPACEBAR_KEY → Mellanslag; AppKit Date Picker help (mellanslag); TC 5139 mellanslagstangenten; Midnight Commander Mellanslag; Double Commander MELLANSLAG"
   },
   "spaces": {
     "chosen": "Spaces",
