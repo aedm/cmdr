@@ -28,6 +28,11 @@ Some notes here are load-bearing rather than historical. Those are grouped below
   the last gap. It also carries the verified move recipe and the step everyone gets wrong (a copied bundle keeps its
   quarantine xattr and is translocated again **even from `/Applications`** until the xattr is stripped). Read it before
   anyone reopens the auto-move question, or repeats the claim that changing the `.app` inode costs FDA.
+- `ci-health-2026-10.md` — why `main` was red on 44% of pushes from July to October 2026, classified from every failed
+  run's log. **Infra caused none and flakes about 4%; the rest was real breakage a Mac-only `pnpm check` can't see**,
+  led by Linux-only Rust (79 runs) and formatting (63, fixed by the git hooks). It carries the open calls: run the Linux
+  lanes by default, regenerate the license notices in pre-push, and when to make the macOS CI job required. Read it
+  before changing what CI or the hooks run.
 - `rust-test-flake-analysis-2026-08-23.md` — what actually makes the Rust lanes go red, measured rather than assumed.
   **What predicts a starvation kill is a test's MARGIN (per-test cap ÷ idle runtime), not its duration**: every test two
   saturated full-suite runs killed sits at the thin end of that ratio, while three of the four causes found have no

@@ -148,7 +148,31 @@ schedule would let it go cold every time, defeating the cache. `*/6` on day-of-m
   starts compiling cold again despite the cron, check `gh cache list` and consider dropping this cache (the per-push one
   is far more valuable).
 
+## macOS lane (`desktop-rust-macos`)
+
+Every other `ci.yml` job runs on ubuntu, so code under `cfg(target_os = "macos")` used to be compiled only on whichever
+Mac last ran `pnpm check`. This job runs on `macos-26` (the release builder's image, so it lints against the shipping
+SDK; free for a public repo) and asks the three questions Linux can't answer for that code: `desktop-rust-clippy`,
+`desktop-rust-rustdoc`, and `desktop-rust-tests`. The platform-blind scanners stay in `desktop-rust` alone. Gated on the
+`rust` filter like `desktop-rust`, so it runs in parallel and adds no wall time unless it outlasts that job (~29 min
+warm on 2026-10-05).
+
+- **Not required yet.** It carries `continue-on-error: true` and is NOT in `ci-ok`'s `needs`, so a red macOS job shows
+  on the job but leaves the run, `ci-ok`, and both release gates (which read the run's conclusion) green. Promote it
+  once it has a clean record over a couple of weeks of pushes: delete `continue-on-error` and add the job to `ci-ok`'s
+  `needs`, in one commit.
+- **Left out on purpose**: `macos-availability` (the committed selector list records the newest SDK it was built on, and
+  an older runner SDK that knows a different selector set fails by design), `disk-images` (a candidate once the job has
+  a track record), and the Docker fixture lanes (no Docker on GitHub's macOS runners).
+- **Cache**: its own rust-cache entry (keys are per job and OS), saved only from `main` so a PR can't add a second
+  multi-GB entry. The repo already sits at the 10 GB ceiling (11.6 GB on 2026-10-06, three ~1.9 GB `docker-e2e` entries,
+  one per `Cargo.lock`), so LRU evicts the stale E2E entries first; if this job starts building cold, check
+  `gh cache list`.
+
+The CI failure history that motivated it: `docs/notes/ci-health-2026-10.md`.
+
 ## Branch protection
 
 `ci-ok` is the single required status check. It needs every first-class job and fails if any needed job failed or was
-cancelled; skipped jobs (change detection said "not affected") count as OK.
+cancelled; skipped jobs (change detection said "not affected") count as OK. `desktop-rust-macos` isn't one of them yet
+(see § macOS lane).

@@ -51,7 +51,7 @@ var AllChecks = []CheckDefinition{
 		// A periodic gate: it guards a build nobody ships today, in a build
 		// directory of its own, so a plain `pnpm check` shouldn't pay for it.
 		IsSlow:    true,
-		NotInCI:   "every CI runner is ubuntu, where mimalloc is the default and the plain clippy step covers it; the macOS-only mimalloc readers need a Mac",
+		NotInCI:   "on CI's ubuntu lanes mimalloc is the default and the plain clippy step covers it; the macOS-only mimalloc readers are a build nobody ships, so CI's macOS job doesn't pay for them",
 		DependsOn: []string{"desktop-rust-clippy"},
 		Inputs:    inputs(rustCompileInputs, []string{"clippy.toml"}),
 		Run:       RunClippyMimalloc,
@@ -148,13 +148,13 @@ var AllChecks = []CheckDefinition{
 		DisplayName: "Rust module cycles",
 		App:         AppDesktop,
 		Tech:        "🦀 Rust",
-		// The baseline is a macOS module graph, and every CI runner is ubuntu. A
+		// The baseline is a macOS module graph, and CI's cheap Rust lanes are ubuntu. A
 		// Linux analysis drops the macOS-gated modules (`drag_image_detection` and
 		// `drag_image_swap` ARE one of the seeded tangles), so its numbers would
 		// disagree with the baseline for reasons that have nothing to do with
 		// coupling. Warn-only besides, so a CI step could only ever print into a log
 		// nobody reads, at the cost of a multi-minute `cargo install`.
-		NotInCI: "warn-only metric measured against a macOS module graph; every runner is ubuntu, which analyzes a different set of cfg-gated modules",
+		NotInCI: "warn-only metric measured against a macOS module graph; CI's ubuntu lanes analyze a different set of cfg-gated modules, and a warn-only step on the macOS job would print into a log nobody reads",
 		// ~30 s across the five library crates, most of it the app crate, and the
 		// thing it measures moves on the scale of a refactor rather than a commit.
 		IsSlow:    true,
@@ -791,7 +791,7 @@ var AllChecks = []CheckDefinition{
 		// default `pnpm check` should do. `--include-slow` and `pnpm check
 		// disk-images` are the two ways in; off macOS it answers OK untouched.
 		IsSlow:    true,
-		NotInCI:   "every CI runner is ubuntu, and hdiutil and diskutil have no Linux counterpart; runs locally via --include-slow",
+		NotInCI:   "hdiutil and diskutil have no Linux counterpart, and CI's macOS job leaves it out until that job has a green record; runs locally via --include-slow",
 		DependsOn: []string{"desktop-rust-clippy"},
 		Inputs:    rustCompileInputs,
 		Run:       RunDiskImageTests,

@@ -441,8 +441,9 @@ jobs:
       # link is a hard `LC_LOAD_DYLIB`, so one that arrived after the floor we promise
       # makes dyld refuse the app before `main`, with no runtime gate able to help.
       # v0.42.0 shipped exactly that and could not launch on Catalina at all. This is
-      # the only run that sees the real bundled binary: every CI runner is ubuntu, where
-      # there is no Mach-O to read, so `desktop-macos-framework-floor` skips there.
+      # the only run that sees the real bundled binary: `ci.yml` never links the app (its
+      # macOS job lints and tests), so there's no Mach-O to read and `desktop-macos-framework-floor`
+      # skips there.
       - name: Check the bundled binary's frameworks against the macOS floor
         run: |
           (cd scripts/check && go build -o check .)

@@ -1677,8 +1677,9 @@ the transfer's real-detach pins, and the unmount approver's pins.
   30 s cap, and the set reads the same before and after the approver landed (22.6 s at `56eca71f4`; 22.2 s and 24.1 s at
   `270a97766`). It can't be the approver by construction either: no approval session exists in a test process at all,
   since `install_for_app` runs only from the app's Tauri setup and the approver's own pins drop their session per test.
-- **When it skips**: off macOS it answers OK with "skipped: macOS only" and never touches cargo. It's `NotInCI`: every
-  CI runner is ubuntu, and `hdiutil` has no Linux counterpart.
+- **When it skips**: off macOS it answers OK with "skipped: macOS only" and never touches cargo. It's `NotInCI`:
+  `hdiutil` has no Linux counterpart, and CI's one macOS job (`desktop-rust-macos`) leaves it out until that job has a
+  green record.
 - **What it runs**: `cargo nextest run --run-ignored only` with `HostCargoLaneArgs`, so it reuses `desktop-rust-tests`'
   build, over a filter built from two lists: the union of `diskImageLaneTestAtoms` (module paths ending in `::`) minus
   every `diskImageHandRunTestAtoms` entry. A run that selects zero tests fails, since a moved module would otherwise
@@ -1769,10 +1770,10 @@ How it decides:
   lists the ones (like `objc2` itself) that legitimately bind no framework. `Headers` is a symlink into `Versions/`, and
   a walk doesn't follow one, so it's resolved before reading.
 - **The answer is committed**, in `macos-availability-selectors.json` (floor, SDK name, and every selector above the
-  floor). CI is Linux end to end, so a check that needed the SDK would never gate anything; a macOS run refreshes the
-  file from the installed SDK and every run scans against it. A stale file under `--ci` is an error, and a file built
-  against a different floor is too, since it only lists what was above the floor at the time. Not hand-edited: run
-  `pnpm check macos-availability` on a Mac and commit the rewrite.
+  floor). CI's Linux lanes have no SDK, and its macOS job's SDK lags the newest Mac's, so a check that needed the SDK
+  would never gate anything; a macOS run refreshes the file from the installed SDK and every run scans against it. A
+  stale file under `--ci` is an error, and a file built against a different floor is too, since it only lists what was
+  above the floor at the time. Not hand-edited: run `pnpm check macos-availability` on a Mac and commit the rewrite.
 - ❗ **The recorded SDK only moves FORWARD, so two Macs on different SDKs can't rewrite the file back and forth.** `sdk`
   is the resolved version from `xcrun --show-sdk-version` (`27.0`), ❌ never `filepath.Base` of `--show-sdk-path`, which
   answers the unversioned `MacOSX.sdk` symlink and reads identical on every machine — the reason this went unnoticed. A
@@ -1834,11 +1835,11 @@ How it decides:
   the binary's reach silently. Several entries are the release a framework left an umbrella and became loadable on its
   own (`CoreGraphics`, `CoreText`, and `ImageIO` left `ApplicationServices` in 10.8), which is the date that matters
   here.
-- **Where it runs.** It needs a built Mach-O, so it skips where there is none, which is every CI runner (all ubuntu).
-  Locally it reads `target/release/Cmdr` if there is one, else `target/debug/Cmdr`, so any Mac that has run the app is
-  covered. The gate that can't be skipped is `release-pipeline.yml`, which points `CMDR_MACOS_BINARY` at the signed
-  bundled binary right after `tauri-action` builds it; that's the only run that sees what users actually get, which is
-  also why `ci-coverage` counts it as wired without a `ci.yml` step.
+- **Where it runs.** It needs a built Mach-O, so it skips where there is none, which is every CI run (`ci.yml`'s macOS
+  job never links the app). Locally it reads `target/release/Cmdr` if there is one, else `target/debug/Cmdr`, so any Mac
+  that has run the app is covered. The gate that can't be skipped is `release-pipeline.yml`, which points
+  `CMDR_MACOS_BINARY` at the signed bundled binary right after `tauri-action` builds it; that's the only run that sees
+  what users actually get, which is also why `ci-coverage` counts it as wired without a `ci.yml` step.
 
 ## macOS symbol floor
 
