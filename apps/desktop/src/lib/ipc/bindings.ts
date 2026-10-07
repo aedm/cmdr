@@ -499,9 +499,10 @@ export const commands = {
     ),
   /**
    *  Calculates the sizes of folders the pane shows (⌥⇧⏎; `paths` for Space on a
-   *  folder), sending each reading as `listing-index-sizes-changed`. Resolves when
-   *  the count ends: done, or stopped by [`cancel_folder_size_count`] or a newer
-   *  count of the same listing. See `listing_index_sizes/count.rs`.
+   *  folder), sending each reading as `listing-index-sizes-changed`. A request
+   *  while a count of the same listing runs joins its queue. Resolves when the
+   *  count ends: done, or stopped by [`cancel_folder_size_count`]. See
+   *  `listing_index_sizes/count/`.
    */
   countFolderSizes: (listingId: string, includeHidden: boolean, paths: string[] | null) =>
     typedError<FolderSizeCountOutcome, CountFolderSizesError>(
@@ -7842,11 +7843,19 @@ export type FolderCoverage = {
   accounted: number
 }
 
-// How a count ended.
+// How a count ended. A request that joined a running count gets that count's outcome.
 export type FolderSizeCountOutcome = {
-  // Folders whose exact size landed in a pane that still shows them.
+  /**
+   *  Folders whose size landed in a pane that still shows them (exact, or a
+   *  lower bound when parts couldn't be read).
+   */
   counted: number
-  // Stopped early: by [`cancel`], or by a newer count of the same listing.
+  /**
+   *  Folders it couldn't read, wholly (their rows went back to what they showed)
+   *  or in part (their size is a lower bound).
+   */
+  unreadable: number
+  // Stopped early: Esc, or the listing closing.
   cancelled: boolean
 }
 

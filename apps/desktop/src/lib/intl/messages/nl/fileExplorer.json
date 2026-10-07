@@ -1735,5 +1735,9 @@
   "fileExplorer.dragOut.partial": "{summary} {count, plural, =1 {Kon ‘{name}’ niet kopiëren.} one {Kon {countText} onderdeel niet kopiëren.} other {Kon {countText} onderdelen niet kopiëren.}}",
   "@fileExplorer.dragOut.partial": {
     "sourceHash": "9215226"
+  },
+  "fileExplorer.folderSizes.unreadable": "{count, plural, one {Kon # map niet volledig lezen, dus de grootte ervan is misschien onvolledig.} other {Kon # mappen niet volledig lezen, dus de groottes ervan zijn misschien onvolledig.}}",
+  "@fileExplorer.folderSizes.unreadable": {
+    "sourceHash": "ad31a56"
   }
 }

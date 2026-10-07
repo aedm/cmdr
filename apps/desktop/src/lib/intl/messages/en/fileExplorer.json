@@ -2520,5 +2520,12 @@
       "countText": "the same number, formatted for display (for example 1,234)",
       "name": "the one item’s file or folder name, uncontrolled (any length, any language); only used when exactly one item didn’t arrive"
     }
+  },
+  "fileExplorer.folderSizes.unreadable": "{count, plural, one {Couldn’t fully read # folder, so its size may be incomplete.} other {Couldn’t fully read # folders, so their sizes may be incomplete.}}",
+  "@fileExplorer.folderSizes.unreadable": {
+    "description": "Info toast after Calculate folder sizes (⌥⇧⏎, or Space on a folder) when some folders, or parts of them, couldn't be read (no permission, or gone). A partly read folder shows a lower bound (≥); a wholly unreadable one keeps whatever it showed before (an older size, or no size). Either way its size may be incomplete, so don't say it's missing. {count} is how many folders. The singular branch is for exactly one folder: in a language whose `one` category also covers 21, 31, …, use an `=1` arm for the singular wording.",
+    "placeholders": {
+      "count": "how many folders couldn't be read, wholly or in part"
+    }
   }
 }

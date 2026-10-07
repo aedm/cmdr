@@ -1731,5 +1731,9 @@
   "fileExplorer.dragOut.partial": "{summary} {count, plural, =1 {Copie de « {name} » impossible.} one {Copie de {countText} élément impossible.} many {Copie de {countText} éléments impossible.} other {Copie de {countText} éléments impossible.}}",
   "@fileExplorer.dragOut.partial": {
     "sourceHash": "9215226"
+  },
+  "fileExplorer.folderSizes.unreadable": "{count, plural, one {Lecture complète impossible pour # dossier : sa taille est donc peut-être incomplète.} many {Lecture complète impossible pour # dossiers : leurs tailles sont donc peut-être incomplètes.} other {Lecture complète impossible pour # dossiers : leurs tailles sont donc peut-être incomplètes.}}",
+  "@fileExplorer.folderSizes.unreadable": {
+    "sourceHash": "ad31a56"
   }
 }

@@ -1727,5 +1727,9 @@
   "fileExplorer.dragOut.partial": "{summary} {count, plural, =1 {No se ha podido copiar “{name}”.} one {No se ha podido copiar {countText} elemento.} many {No se han podido copiar {countText} elementos.} other {No se han podido copiar {countText} elementos.}}",
   "@fileExplorer.dragOut.partial": {
     "sourceHash": "9215226"
+  },
+  "fileExplorer.folderSizes.unreadable": "{count, plural, one {No se ha podido leer por completo # carpeta, así que puede que su tamaño esté incompleto.} many {No se han podido leer por completo # carpetas, así que puede que sus tamaños estén incompletos.} other {No se han podido leer por completo # carpetas, así que puede que sus tamaños estén incompletos.}}",
+  "@fileExplorer.folderSizes.unreadable": {
+    "sourceHash": "ad31a56"
   }
 }

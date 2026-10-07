@@ -1358,6 +1358,7 @@ export type MessageKey =
   | 'fileExplorer.extensionChange.title'
   | 'fileExplorer.extensionChange.useNew'
   | 'fileExplorer.folderSizes.notConnected'
+  | 'fileExplorer.folderSizes.unreadable'
   | 'fileExplorer.functionKeyBar.actionWithShortcut'
   | 'fileExplorer.functionKeyBar.copyAction'
   | 'fileExplorer.functionKeyBar.copyLabel'

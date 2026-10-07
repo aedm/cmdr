@@ -428,9 +428,10 @@ pub async fn compare_directories(
 }
 
 /// Calculates the sizes of folders the pane shows (⌥⇧⏎; `paths` for Space on a
-/// folder), sending each reading as `listing-index-sizes-changed`. Resolves when
-/// the count ends: done, or stopped by [`cancel_folder_size_count`] or a newer
-/// count of the same listing. See `listing_index_sizes/count.rs`.
+/// folder), sending each reading as `listing-index-sizes-changed`. A request
+/// while a count of the same listing runs joins its queue. Resolves when the
+/// count ends: done, or stopped by [`cancel_folder_size_count`]. See
+/// `listing_index_sizes/count/`.
 #[tauri::command]
 #[specta::specta]
 pub async fn count_folder_sizes(

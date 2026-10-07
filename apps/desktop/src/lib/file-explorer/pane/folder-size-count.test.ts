@@ -42,16 +42,16 @@ describe('countFoldersInPane', () => {
   })
 
   it('asks the backend for the pane’s folders and returns the outcome', async () => {
-    ipc.countFolderSizes.mockResolvedValue({ counted: 3, cancelled: false })
+    ipc.countFolderSizes.mockResolvedValue({ counted: 3, unreadable: 0, cancelled: false })
 
     const outcome = await countFoldersInPane('L', true)
 
     expect(ipc.countFolderSizes).toHaveBeenCalledWith('L', true, null)
-    expect(outcome).toEqual({ counted: 3, cancelled: false })
+    expect(outcome).toEqual({ counted: 3, unreadable: 0, cancelled: false })
   })
 
   it('passes the folder Space selected', async () => {
-    ipc.countFolderSizes.mockResolvedValue({ counted: 1, cancelled: false })
+    ipc.countFolderSizes.mockResolvedValue({ counted: 1, unreadable: 0, cancelled: false })
 
     await countFoldersInPane('L', false, ['/data/photos'])
 
@@ -59,7 +59,7 @@ describe('countFoldersInPane', () => {
   })
 
   it('lets Esc stop a running count, and only a running one', async () => {
-    const pending = deferred<{ counted: number; cancelled: boolean }>()
+    const pending = deferred<{ counted: number; unreadable: number; cancelled: boolean }>()
     ipc.countFolderSizes.mockReturnValue(pending.promise)
 
     const counting = countFoldersInPane('L', false)
@@ -69,39 +69,39 @@ describe('countFoldersInPane', () => {
 
     expect(cancelCountInPane('L')).toBe(true) // still running until the backend answers
 
-    pending.resolve({ counted: 0, cancelled: true })
+    pending.resolve({ counted: 0, unreadable: 0, cancelled: true })
     await counting
     expect(cancelCountInPane('L')).toBe(false)
   })
 
   it('keeps a newer count stoppable after Esc stopped the older one', async () => {
-    const first = deferred<{ counted: number; cancelled: boolean }>()
-    const second = deferred<{ counted: number; cancelled: boolean }>()
+    const first = deferred<{ counted: number; unreadable: number; cancelled: boolean }>()
+    const second = deferred<{ counted: number; unreadable: number; cancelled: boolean }>()
     ipc.countFolderSizes.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
 
     const a = countFoldersInPane('L', false)
     cancelCountInPane('L')
     const b = countFoldersInPane('L', false)
-    first.resolve({ counted: 0, cancelled: true })
+    first.resolve({ counted: 0, unreadable: 0, cancelled: true })
     await a
 
     expect(cancelCountInPane('L')).toBe(true)
-    second.resolve({ counted: 0, cancelled: true })
+    second.resolve({ counted: 0, unreadable: 0, cancelled: true })
     await b
   })
 
   it('keeps a pane running until its last overlapping count ends', async () => {
-    const first = deferred<{ counted: number; cancelled: boolean }>()
-    const second = deferred<{ counted: number; cancelled: boolean }>()
+    const first = deferred<{ counted: number; unreadable: number; cancelled: boolean }>()
+    const second = deferred<{ counted: number; unreadable: number; cancelled: boolean }>()
     ipc.countFolderSizes.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
 
     const a = countFoldersInPane('L', false)
     const b = countFoldersInPane('L', false)
-    first.resolve({ counted: 0, cancelled: true })
+    first.resolve({ counted: 0, unreadable: 0, cancelled: true })
     await a
 
     expect(cancelCountInPane('L')).toBe(true)
-    second.resolve({ counted: 0, cancelled: true })
+    second.resolve({ counted: 0, unreadable: 0, cancelled: true })
     await b
   })
 
@@ -144,7 +144,7 @@ describe('shouldCountOnSpace', () => {
 describe('countFolderOnSpace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    ipc.countFolderSizes.mockResolvedValue({ counted: 1, cancelled: false })
+    ipc.countFolderSizes.mockResolvedValue({ counted: 1, unreadable: 0, cancelled: false })
   })
 
   it('counts the folder at the row Space selected, read from the backend', async () => {
@@ -164,5 +164,19 @@ describe('countFolderOnSpace', () => {
     await countFolderOnSpace({ listingId: 'L', backendRow: 1, includeHidden: false, selected: true, enabled: true })
 
     expect(ipc.countFolderSizes).not.toHaveBeenCalled()
+  })
+
+  it('says how many folders it couldn’t read, once per count', async () => {
+    ipc.countFolderSizes.mockResolvedValue({ counted: 2, unreadable: 3, cancelled: false })
+
+    await countFoldersInPane('L', false)
+    await countFoldersInPane('L', false, ['/a'])
+
+    const unreadable = addToast.mock.calls.filter(([text]) =>
+      String(text).includes('fileExplorer.folderSizes.unreadable'),
+    )
+    expect(unreadable).toHaveLength(2)
+    // Same dedup id: a queued Space and the count it joined replace, never stack.
+    expect(unreadable.every(([, opts]) => (opts as { id?: string }).id === 'folder-sizes-unreadable')).toBe(true)
   })
 })
