@@ -354,6 +354,15 @@ pub struct CopyScanResult {
     /// issuing a separate `is_directory` probe per source, saving one round-trip
     /// per file on network-backed volumes (SMB, MTP).
     pub top_level_is_directory: bool,
+    /// The scanned top-level path's own modification date (Unix seconds), from
+    /// the same stat, or `None` when that stat carried none (an S3 prefix) or
+    /// the result is an aggregate over several paths.
+    ///
+    /// The copy pipeline dates a copied top-level FOLDER with it, once the
+    /// folder's contents have landed, so that date costs no round trip of its
+    /// own. `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md`
+    /// § "Copies keep the source's date".
+    pub top_level_modified_at: Option<u64>,
 }
 
 /// Result of a batch scan over multiple source paths.

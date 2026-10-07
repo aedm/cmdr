@@ -134,6 +134,21 @@ async fn a_copy_keeps_the_source_date_per_the_shared_contract() {
     cmdr_fs::volume::conformance::assert_read_stream_reports_the_listed_date(&volume, Path::new("dated.txt")).await;
 }
 
+/// A copy onto local disk dates the folders it created, once their contents
+/// landed.
+#[tokio::test]
+async fn set_modified_honors_the_shared_folder_date_contract() {
+    let test_dir = TestDir::new("folder_date_conformance_test");
+    let volume = LocalPosixVolume::new("Test", &*test_dir);
+
+    cmdr_fs::volume::conformance::assert_set_modified_dates_a_folder(
+        &volume,
+        Path::new("dated"),
+        std::time::Duration::ZERO,
+    )
+    .await;
+}
+
 #[tokio::test]
 async fn unknown_write_streams_all_bytes_and_reports_the_accepted_count() {
     let test_dir = TestDir::new("unknown_write_conformance_test");

@@ -414,8 +414,7 @@ pub(crate) async fn move_volumes_with_progress(
                             Ok(is_dir) => is_dir,
                             Err(e) => return Err(map_volume_error(&source_path.display().to_string(), PathRole::Source, e)),
                         };
-                    let source_facts =
-                        SourceFileFacts::from_size_hint(hint.and_then(|h| (!h.is_directory).then_some(h.size)));
+                    let source_facts = SourceFileFacts::from_hint(hint);
 
                     let file_name = source_path.file_name().map(|n| n.to_string_lossy().to_string());
                     // The driver's tally of every PRIOR source, which the leaves

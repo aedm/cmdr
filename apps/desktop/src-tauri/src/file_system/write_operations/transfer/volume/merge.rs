@@ -37,6 +37,7 @@ use super::super::dest_name_index::DestNameIndex;
 use super::super::transfer_driver::SourceProgress;
 use super::super::transfer_probe::{CURRENT_TASK_PROBE, TaskPhase, TaskProbeHandle, TaskRole, set_task_phase};
 use super::conflict::{ResolvedConflict, resolve_volume_conflict};
+use super::folder_dates::FolderDates;
 use super::landing::{DestFolder, NewName, where_it_lands};
 use super::merge_ctx::{CreatedPaths, FileWindow, MergeCtx, MergeProbe};
 use super::naming::take_back_reservation;
@@ -46,7 +47,7 @@ use super::strategy::Replaces;
 use super::strategy::{LandingName, WriteStaging, note_pending_for_local_dest, staging_for, stream_pipe_file};
 use super::transfer_error::{AtPath, PathedVolumeError};
 use crate::file_system::listing::FileEntry;
-use crate::file_system::volume::{ChildName, Volume, VolumeError};
+use crate::file_system::volume::{ChildName, DirectoryCreation, Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
 
 /// What one leaf file's copy reports back to the walker.
@@ -61,7 +62,7 @@ struct LeafRow {
 }
 
 /// The leaves this operation currently has in flight, plus the running totals
-/// the walker reads once the tree is walked.
+/// and the created folders the walker reads once the tree is walked.
 ///
 /// The `FuturesUnordered` is LOCAL to one top-level source's walk (it lives on
 /// that walker's task, so nothing here needs `'static` or a spawn), while the
@@ -82,6 +83,9 @@ struct LeafPool<'a> {
     /// file that actually broke, and a second error piled on top of it says
     /// nothing the user can act on (same rule `cleanup.rs::remove_tree` follows).
     first_error: Option<PathedVolumeError>,
+    /// Every folder below the root this walk created, noted as the walk leaves
+    /// it, so the subtree can date them once its leaves have drained.
+    folders: FolderDates,
 }
 
 impl<'a> LeafPool<'a> {
@@ -93,6 +97,7 @@ impl<'a> LeafPool<'a> {
             in_flight: FuturesUnordered::new(),
             bytes: 0,
             first_error: None,
+            folders: FolderDates::default(),
         }
     }
 
@@ -349,6 +354,10 @@ pub(super) async fn copy_directory_streaming(
     // in the plan and leave the byte write to the caller's single decode pass.
     // `None` ⇒ normal streaming copy.
     plan: Option<&super::sequential_extract::ExtractPlan>,
+    // The source folder's own date, from the scan's stat of it
+    // (`SourceHint::modified_at`): the one date no listing in the walk carries.
+    // Dates `dest_path` once the subtree landed, if the walk created it.
+    source_modified_at: Option<u64>,
 ) -> Result<u64, PathedVolumeError> {
     // ONE pool for this whole subtree, so a file at depth 5 shares the window
     // with a file at depth 1 instead of opening one of its own per level.
@@ -372,20 +381,37 @@ pub(super) async fn copy_directory_streaming(
     // Unconditional: nothing may still be writing to the destination when this
     // returns, whether the walk finished, failed, or hit a cancel.
     pool.drain().await;
-    match walked {
+    let root = match walked {
         // The walk's own error is the FIRST failure by construction (it stops
         // the moment a leaf reports one), so it outranks anything the drain
         // then collected from leaves that were already in flight.
-        Err(e) => Err(e),
-        Ok(()) => match pool.first_error.take() {
-            Some(e) => Err(e),
-            None => Ok(pool.bytes),
-        },
+        Err(e) => return Err(e),
+        Ok(root) => root,
+    };
+    if let Some(e) = pool.first_error.take() {
+        return Err(e);
     }
+
+    // Every leaf landed, so no write can bump a folder's date after this. A
+    // failed or cancelled subtree returned above and dates nothing.
+    let mut folders = std::mem::take(&mut pool.folders);
+    if root == DirectoryCreation::Created {
+        folders.note_filled(dest_path.to_path_buf(), source_modified_at);
+    }
+    match plan {
+        // PLAN MODE wrote no file yet: the data pass dates the folders once its
+        // decode lands every member.
+        Some(plan) => plan.hold_folder_dates(folders),
+        None => folders.stamp(dest_volume, state).await,
+    }
+    Ok(pool.bytes)
 }
 
 /// One level of the merge walk. Recurses into directory children and submits
 /// file children to `pool`; see [`copy_directory_streaming`] for the semantics.
+///
+/// Answers whether THIS walk created the level (`Created`), which is what
+/// earns a folder its source's date; `AlreadyExisted` when in doubt.
 #[allow(
     clippy::too_many_arguments,
     reason = "Mirrors copy_single_path's argument list plus the rollback ledger, merge context, the sequential-extract plan sink, and the leaf pool."
@@ -401,7 +427,7 @@ async fn merge_level<'a>(
     merge: Option<&MergeCtx<'_>>,
     plan: Option<&super::sequential_extract::ExtractPlan>,
     pool: &mut LeafPool<'a>,
-) -> Result<(), PathedVolumeError> {
+) -> Result<DirectoryCreation, PathedVolumeError> {
     note_pending_for_local_dest(dest_volume, dest_path);
     // Say what this task is doing before the first `.await` of the level. A
     // walk parks on listings, so a stack sample sees nothing and the dump would
@@ -546,7 +572,7 @@ async fn merge_level<'a>(
             // entry in hand answers it, so a real folder costs no probe.
             let dir_clashes_with_leaf = dest_hit.is_some_and(|d| !merges_as_a_directory(d));
             if !dir_clashes_with_leaf {
-                Box::pin(merge_level(
+                let level = Box::pin(merge_level(
                     source_volume,
                     &child_source,
                     dest_volume,
@@ -559,6 +585,9 @@ async fn merge_level<'a>(
                     pool,
                 ))
                 .await?;
+                if level == DirectoryCreation::Created {
+                    pool.folders.note_filled(child_dest, entry.modified_at);
+                }
                 continue;
             }
         }
@@ -621,7 +650,7 @@ async fn merge_level<'a>(
             // Type-mismatch Overwrite/Rename that resolved to Proceed: the
             // resolver already set aside/relocated the dest leaf, so recurse
             // into `write_dest` as a fresh (or renamed) directory root.
-            Box::pin(merge_level(
+            let level = Box::pin(merge_level(
                 source_volume,
                 &child_source,
                 dest_volume,
@@ -634,6 +663,9 @@ async fn merge_level<'a>(
                 pool,
             ))
             .await?;
+            if level == DirectoryCreation::Created {
+                pool.folders.note_filled(write_dest, entry.modified_at);
+            }
             continue;
         }
 
@@ -693,7 +725,11 @@ async fn merge_level<'a>(
         .await?;
     }
 
-    Ok(())
+    Ok(if level_made_here {
+        DirectoryCreation::Created
+    } else {
+        DirectoryCreation::AlreadyExisted
+    })
 }
 
 /// Whether this backend's `create_directory` reliably returns

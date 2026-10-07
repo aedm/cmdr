@@ -561,6 +561,13 @@ impl InMemoryVolume {
         {
             return Err(VolumeError::IsADirectory(normalized.display().to_string()));
         }
+        Self::insert_file(&mut entries, normalized, data);
+        Ok(())
+    }
+
+    /// Puts a fresh file holding `data` at `normalized`, dated now, replacing
+    /// whatever entry is there. The caller has already decided it may.
+    fn insert_file(entries: &mut HashMap<PathBuf, InMemoryEntry>, normalized: PathBuf, data: Vec<u8>) {
         let name = normalized
             .file_name()
             .map(|s| s.to_string_lossy().to_string())
@@ -575,6 +582,7 @@ impl InMemoryVolume {
             extended_metadata_loaded: true,
             ..FileEntry::new(name, normalized.display().to_string(), false, false)
         };
+        Self::touch_parent_of(entries, &normalized);
         entries.insert(
             normalized,
             InMemoryEntry {
@@ -582,7 +590,17 @@ impl InMemoryVolume {
                 content: Some(data),
             },
         );
-        Ok(())
+    }
+
+    /// Moves a folder's date to now when an entry lands in it or leaves it, as on
+    /// every real store, so an engine test can tell a folder dated after its
+    /// contents landed from one dated before them.
+    fn touch_parent_of(entries: &mut HashMap<PathBuf, InMemoryEntry>, child: &Path) {
+        if let Some(parent) = child.parent().and_then(|parent| entries.get_mut(parent))
+            && parent.metadata.is_directory
+        {
+            parent.metadata.modified_at = Some(Self::now_secs());
+        }
     }
 
     /// Gets current timestamp as seconds since Unix epoch.

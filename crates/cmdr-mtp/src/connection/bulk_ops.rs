@@ -86,6 +86,9 @@ impl MtpConnectionManager {
                     // MTP has no hardlinks: source footprint == write footprint.
                     dedup_bytes: 0,
                     top_level_is_directory: true,
+                    // This path listed the folder, never its parent, so nothing
+                    // here carried the folder's own date.
+                    top_level_modified_at: None,
                 })
             }
             Err(e) => {
@@ -161,6 +164,9 @@ impl MtpConnectionManager {
             // (caller already listed the path). Setting `true` keeps downstream
             // callers from re-issuing a type probe.
             top_level_is_directory: true,
+            // The caller listed the folder's CONTENTS; its own date was in a
+            // parent listing this walk never made.
+            top_level_modified_at: None,
         })
     }
 
@@ -196,6 +202,7 @@ impl MtpConnectionManager {
             // MTP has no hardlinks: source footprint == write footprint.
             dedup_bytes: entry.size.unwrap_or(0),
             top_level_is_directory: false,
+            top_level_modified_at: entry.modified_at,
         })
     }
 }

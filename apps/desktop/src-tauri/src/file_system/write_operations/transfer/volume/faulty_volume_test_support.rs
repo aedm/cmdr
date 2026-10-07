@@ -126,6 +126,15 @@ macro_rules! forward_volume_methods {
             self.$inner.create_directory_all(path)
         }
     };
+    (@one $inner:ident, set_modified) => {
+        fn set_modified<'a>(
+            &'a self,
+            path: &'a ::std::path::Path,
+            modified: ::std::time::SystemTime,
+        ) -> ::std::pin::Pin<Box<dyn ::std::future::Future<Output = Result<(), $crate::file_system::volume::VolumeError>> + Send + 'a>> {
+            self.$inner.set_modified(path, modified)
+        }
+    };
     (@one $inner:ident, delete) => {
         fn delete<'a>(&'a self, path: &'a ::std::path::Path) -> ::std::pin::Pin<Box<dyn ::std::future::Future<Output = Result<(), $crate::file_system::volume::VolumeError>> + Send + 'a>> {
             self.$inner.delete(path)
@@ -361,6 +370,7 @@ impl<V: Volume + 'static> Volume for FaultyVolume<V> {
         scan_for_copy,
         scan_for_copy_batch,
         scan_for_conflicts,
+        set_modified,
         supports_unknown_length_writes, write_is_single_shot, publishes_writes_whole,
     );
 

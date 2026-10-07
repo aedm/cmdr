@@ -283,6 +283,14 @@ async fn a_copy_keeps_the_source_date_per_the_shared_contract() {
     conformance::assert_read_stream_reports_the_listed_date(&volume, Path::new("/dated.txt")).await;
 }
 
+/// And dates a folder, so an engine test can see a copied folder keep its date.
+#[tokio::test]
+async fn set_modified_honors_the_shared_folder_date_contract() {
+    let volume = InMemoryVolume::new("Test");
+
+    conformance::assert_set_modified_dates_a_folder(&volume, Path::new("/dated"), std::time::Duration::ZERO).await;
+}
+
 #[tokio::test]
 async fn unknown_write_honors_the_shared_early_refusal_contract() {
     let volume = InMemoryVolume::new("Test");

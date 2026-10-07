@@ -563,6 +563,33 @@ pub trait Volume: Send + Sync {
         })
     }
 
+    /// Sets the modification date of the file or folder at `path`, at the finest
+    /// precision the backend keeps (whole seconds on most).
+    ///
+    /// The cross-volume copy calls it on every FOLDER it created, once that
+    /// folder's contents have landed (writing a child bumps its folder's date).
+    /// A file's date travels on its write instead (`write_from_stream` reads
+    /// [`VolumeReadStream::modified_at`]), so a backend needn't route that here.
+    /// Best effort for the caller: an error is logged and the copy stands. The
+    /// contract: `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md`
+    /// § "Copies keep the source's date".
+    ///
+    /// **A shared conformance assertion enforces it**: every backend that
+    /// implements it runs `conformance::assert_set_modified_dates_a_folder`
+    /// (test builds only).
+    ///
+    /// Default: `NotSupported`, for a store with no folder date to set (S3's
+    /// prefixes, an MTP device, WebDAV) or no way to set one (ADB's sync
+    /// protocol), and for every read-only backend.
+    fn set_modified<'a>(
+        &'a self,
+        path: &'a Path,
+        modified: std::time::SystemTime,
+    ) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
+        let _ = (path, modified);
+        Box::pin(async { Err(VolumeError::NotSupported) })
+    }
+
     /// Deletes a single file or **empty** directory.
     ///
     /// **Strict contract: must NOT recurse.** If `path` is a non-empty directory,
@@ -1221,6 +1248,7 @@ pub trait Volume: Send + Sync {
                 // Aggregate over multiple paths: meaningless for a batch.
                 // Callers that need per-path type should read `per_path`.
                 top_level_is_directory: false,
+                top_level_modified_at: None,
             };
             let mut per_path = Vec::with_capacity(paths.len());
             for path in paths {

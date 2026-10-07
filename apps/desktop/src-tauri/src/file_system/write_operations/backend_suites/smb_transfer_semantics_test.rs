@@ -14,6 +14,7 @@
 
 use super::network_dates_test_support::{
     a_copy_off_the_server_keeps_the_source_date, a_copy_onto_the_server_keeps_the_source_date,
+    copied_folders_off_the_server_keep_their_dates, copied_folders_onto_the_server_keep_their_dates,
 };
 use super::network_move_drift_test_support::{
     a_file_added_mid_move_off_the_server_stays, a_file_saved_over_mid_move_off_the_server_stays,
@@ -382,4 +383,18 @@ async fn smb_integration_a_copy_onto_a_share_keeps_the_source_date() {
 async fn smb_integration_a_copy_off_a_share_keeps_the_source_date() {
     let (remote, dir) = fixture().await;
     a_copy_off_the_server_keeps_the_source_date(remote, dir, Duration::ZERO).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_folders_copied_onto_a_share_keep_their_dates() {
+    let (remote, dir) = fixture().await;
+    copied_folders_onto_the_server_keep_their_dates(remote, dir, Duration::ZERO).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_folders_copied_off_a_share_keep_their_dates() {
+    let (remote, dir) = fixture().await;
+    copied_folders_off_the_server_keep_their_dates(remote, dir).await;
 }

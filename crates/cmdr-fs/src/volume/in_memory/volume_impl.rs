@@ -176,30 +176,7 @@ impl Volume for InMemoryVolume {
                 return Err(VolumeError::AlreadyExists(normalized.display().to_string()));
             }
 
-            let name = normalized
-                .file_name()
-                .map(|s| s.to_string_lossy().to_string())
-                .unwrap_or_default();
-
-            let metadata = FileEntry {
-                size: Some(content.len() as u64),
-                modified_at: Some(Self::now_secs()),
-                created_at: Some(Self::now_secs()),
-                permissions: 0o644,
-                owner: "testuser".to_string(),
-                group: "staff".to_string(),
-                extended_metadata_loaded: true,
-                ..FileEntry::new(name, normalized.display().to_string(), false, false)
-            };
-
-            entries.insert(
-                normalized,
-                InMemoryEntry {
-                    metadata,
-                    content: Some(content.to_vec()),
-                },
-            );
-
+            Self::insert_file(&mut entries, normalized, content.to_vec());
             Ok(())
         })
     }
@@ -243,6 +220,7 @@ impl Volume for InMemoryVolume {
                 ..FileEntry::new(name, normalized.display().to_string(), true, false)
             };
 
+            Self::touch_parent_of(&mut entries, &normalized);
             entries.insert(
                 normalized,
                 InMemoryEntry {
@@ -251,6 +229,27 @@ impl Volume for InMemoryVolume {
                 },
             );
 
+            Ok(())
+        })
+    }
+
+    fn set_modified<'a>(
+        &'a self,
+        path: &'a Path,
+        modified: std::time::SystemTime,
+    ) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
+        Box::pin(async move {
+            // Whole seconds, like the listing it shows up in.
+            let secs = modified
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_err(|_| VolumeError::NotSupported)?
+                .as_secs();
+            let normalized = self.normalize(path);
+            let mut entries = self.entries.write_ignore_poison();
+            let entry = entries
+                .get_mut(&normalized)
+                .ok_or_else(|| VolumeError::NotFound(normalized.display().to_string()))?;
+            entry.metadata.modified_at = Some(secs);
             Ok(())
         })
     }
@@ -290,8 +289,9 @@ impl Volume for InMemoryVolume {
 
             entries
                 .remove(&normalized)
-                .map(|_| ())
-                .ok_or_else(|| VolumeError::NotFound(normalized.display().to_string()))
+                .ok_or_else(|| VolumeError::NotFound(normalized.display().to_string()))?;
+            Self::touch_parent_of(&mut entries, &normalized);
+            Ok(())
         })
     }
 
@@ -377,6 +377,8 @@ impl Volume for InMemoryVolume {
             entry.metadata.path = to_normalized.display().to_string();
             let was_directory = entry.metadata.is_directory;
 
+            Self::touch_parent_of(&mut entries, &from_normalized);
+            Self::touch_parent_of(&mut entries, &to_normalized);
             entries.insert(to_normalized.clone(), entry);
 
             // Renaming a DIRECTORY carries its whole subtree along — that's the
@@ -440,6 +442,7 @@ impl Volume for InMemoryVolume {
                     // In-memory volume has no hardlinks: footprints are equal.
                     dedup_bytes: entry.metadata.size.unwrap_or(0),
                     top_level_is_directory: false,
+                    top_level_modified_at: entry.metadata.modified_at,
                 });
             }
 
@@ -477,6 +480,7 @@ impl Volume for InMemoryVolume {
                 // behave like empty directories, which is the existing
                 // contract on this backend.
                 top_level_is_directory: true,
+                top_level_modified_at: entries.get(&normalized).and_then(|entry| entry.metadata.modified_at),
             })
         })
     }

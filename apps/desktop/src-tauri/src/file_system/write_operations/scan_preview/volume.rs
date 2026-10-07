@@ -254,6 +254,7 @@ pub(in crate::file_system::write_operations) async fn run_oracle_aware_batch_sca
         dedup_bytes: 0,
         // Aggregate across multiple paths — meaningless, per the BatchScanResult contract.
         top_level_is_directory: false,
+        top_level_modified_at: None,
     };
     let mut per_path_unordered: HashMap<PathBuf, CopyScanResult> = HashMap::new();
     // Every file's size and date, for a cost estimate, while every group came
@@ -372,6 +373,7 @@ pub(in crate::file_system::write_operations) async fn run_oracle_aware_batch_sca
                             total_bytes: subtree.total_bytes,
                             dedup_bytes: subtree.dedup_bytes,
                             top_level_is_directory: true,
+                            top_level_modified_at: entry.modified_at,
                         },
                     );
                 } else {
@@ -394,6 +396,7 @@ pub(in crate::file_system::write_operations) async fn run_oracle_aware_batch_sca
                             total_bytes: size,
                             dedup_bytes: dedup_contribution,
                             top_level_is_directory: false,
+                            top_level_modified_at: entry.modified_at,
                         },
                     );
                     on_progress(ListingProgress {

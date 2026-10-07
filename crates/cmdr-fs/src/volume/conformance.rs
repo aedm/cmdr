@@ -32,7 +32,7 @@ pub use directory_creation::{
 };
 pub use modification_date::{
     SOURCE_DATE_NANOS, SOURCE_DATE_SECS, assert_read_stream_reports_the_listed_date,
-    assert_write_from_stream_keeps_the_source_date,
+    assert_set_modified_dates_a_folder, assert_write_from_stream_keeps_the_source_date,
 };
 
 /// The size `path` reports right now, for a fixture precondition or an

@@ -298,6 +298,10 @@ this is how SFTP keeps it.
 - **SFTP v3 times are a `u32` of whole seconds**, and atime rides along (the attribute carries both), so atime gets the
   same value. A sub-second source date truncates; one before 1970 or past 2106 can't be said at all.
 - **Best effort**: a refused `SETSTAT` or an unsayable date is a `warn!`, and the copy still succeeds.
+- **Folders**: `set_modified` sends the same path `SETSTAT` (`mutation.rs::set_modified_impl`), then patches the parent
+  listing with a `Modified`. The copy engine calls it on each folder it created once the contents landed; an unsayable
+  date is an `IoError` there, which the engine logs. Pinned by `conformance_test.rs::set_modified_dates_a_folder` and
+  the engine's `sftp_integration_folders_copied_*` cells.
 - **Pinned by** `conformance_test::a_copy_keeps_the_source_date` (both halves against stock OpenSSH),
   `copy_test::sftp_integration_a_server_side_copy_keeps_the_source_date`, and the two
   `sftp_integration_*_keeps_the_source_date` engine cells in

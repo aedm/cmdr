@@ -99,6 +99,7 @@ fn scan_tree_keeping<'a>(
                 total_bytes: size,
                 dedup_bytes: size,
                 top_level_is_directory: false,
+                top_level_modified_at: top.modified_at,
             });
         }
         let mut result = CopyScanResult {
@@ -107,6 +108,7 @@ fn scan_tree_keeping<'a>(
             total_bytes: 0,
             dedup_bytes: 0,
             top_level_is_directory: true,
+            top_level_modified_at: top.modified_at,
         };
         walk_directory(source, path, boundary, &mut result, files).await?;
         Ok(result)
@@ -163,10 +165,11 @@ pub fn scan_trees<'a>(
 
 /// Folds per-path scans into the aggregate the batch method answers with.
 ///
-/// ❗ `top_level_is_directory` is only meaningful for a single path: an
-/// aggregate over several has no one type, and callers that need it read
-/// `per_path`. Public because a backend with its own batch strategy (SMB's
-/// oracle short-circuit, MTP's parent grouping) still owes the same fold.
+/// ❗ `top_level_is_directory` and `top_level_modified_at` are only meaningful
+/// for a single path: an aggregate over several has no one type or date, and
+/// callers that need them read `per_path`. Public because a backend with its own
+/// batch strategy (SMB's oracle short-circuit, MTP's parent grouping) still owes
+/// the same fold.
 pub fn fold_batch(per_path: Vec<(PathBuf, CopyScanResult)>) -> BatchScanResult {
     let mut aggregate = CopyScanResult {
         file_count: 0,
@@ -174,6 +177,7 @@ pub fn fold_batch(per_path: Vec<(PathBuf, CopyScanResult)>) -> BatchScanResult {
         total_bytes: 0,
         dedup_bytes: 0,
         top_level_is_directory: false,
+        top_level_modified_at: None,
     };
     for (_, scan) in &per_path {
         aggregate.file_count += scan.file_count;
@@ -183,6 +187,7 @@ pub fn fold_batch(per_path: Vec<(PathBuf, CopyScanResult)>) -> BatchScanResult {
     }
     if let [(_, only)] = per_path.as_slice() {
         aggregate.top_level_is_directory = only.top_level_is_directory;
+        aggregate.top_level_modified_at = only.top_level_modified_at;
     }
     BatchScanResult {
         aggregate,

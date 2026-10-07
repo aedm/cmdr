@@ -27,7 +27,8 @@ invariants: `CLAUDE.md`. Only the layout facts neither of those carries live her
   `stream_pipe_file`, both cancel tiers, `copy_single_path`); the vocabulary both halves and both drivers speak
   (`FileWindow`, `MergeCtx`, `MergeProbe`, `CreatedPaths`) sits beside it in `merge_ctx.rs`. `merge.rs` walks a tree (`copy_directory_streaming`, `resolve_merge_child`): a directory child
   recurses there, a file child goes to `strategy.rs`. `sequential_extract.rs` reuses the same walk in plan mode, which
-  is why the merge/conflict/rollback code is not reimplemented for one-pass archives.
+  is why the merge/conflict/rollback code is not reimplemented for one-pass archives. `folder_dates.rs` holds what the
+  walk notes about the folders it created, dated once the subtree landed (§ "Copies keep the source's date").
 - **The move is three files, and the dependency runs ONE way.** `r#move` is the DISPATCHER and nothing else: it picks
   same-volume (`move_same`), both-local (`move_files_start`, one level up), or cross-volume (`move_cross`), then owns
   the managed-op lifecycle around whichever it picked. Both engines are leaves under it. ❗ Nothing in an engine may
@@ -802,7 +803,7 @@ inside a folder — the two shapes take different routes through the engine), `m
 
 **The rule: the source REPORTS its file's modification date on the read stream, the destination WRITES it.** This is
 the canonical home of the contract; the trait doc, the conformance assertions, and the backend docs point here. Local →
-local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile) and aren't covered here.
+local copies keep file dates on their own path (`chunked_copy.rs`, copyfile/clonefile); their folder dates are below.
 
 - **Source half**: `VolumeReadStream::modified_at` is a REQUIRED trait method, so a new backend can't skip it by
   omission. A stream answers the date its open already learned (the stat or listing it did anyway), ❌ never an extra
@@ -816,16 +817,47 @@ local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile
 - **Best effort**: a date that won't set is a `log::warn!`, and the copy still succeeds; the bytes are the copy.
 - **`None` leaves the destination's own date**, ❌ never an invented one. Only mtime is in scope: where a protocol
   forces atime alongside (SFTP `ATTR_ACMODTIME`), atime gets the same value. Sub-second where both ends keep it.
-- **Not covered**: folder dates (writing children bumps them, which needs a post-order pass), birth time, and
-  permissions (§ "What mode a landed file wears").
+- **Not covered**: birth time and permissions (§ "What mode a landed file wears").
+
+**Folders keep their source's date too, set AFTER their contents land.** Writing a child bumps its folder's date on
+every real store, so a folder dated when it's created lists "now" by the end of the copy.
+
+- **Cross-volume** (`folder_dates.rs`): `merge_level` answers whether IT created a level (`DirectoryCreation`), and its
+  parent notes each created child folder with the source date the parent's listing carried, as the walk leaves it
+  (post-order). `copy_directory_streaming` stamps the list through `Volume::set_modified` only once the subtree's leaves
+  have drained with no error, then the top-level folder last. Its date is the one no walk listing carries, so it rides
+  in from the preflight scan's stat of the top-level path (`CopyScanResult::top_level_modified_at` → `SourceHint` →
+  `SourceFileFacts::modified_at`) at no round trip of its own. A source whose scan carried none (an S3 prefix, MTP's
+  single-path scan, a top-level dispatch with no hint) leaves it the destination's. The one-pass sequential extract
+  hands the list to its `ExtractPlan` and stamps after the data pass, since the planning pass writes no file.
+- **Decision/Why the scan carries the root's date, ❌ not a `get_metadata` at stamp time**: that stat was one more
+  request per top-level folder, which `s3_engine_integration_test.rs::the_engine_sends_what_the_estimate_counts`
+  caught as a HEAD and a LIST over the cost estimate (an S3 prefix has no date to find, so it was pure cost), and a
+  whole parent listing on MTP.
+- **Local → local and the cross-FS local move** (`../copy/scanned_dirs.rs::date_created_dirs_like_their_sources`):
+  after the file loop and the empty-folder pass, every folder in the transaction's `created_dirs` takes its scanned
+  source folder's `lstat` mtime. The move dates its STAGED folders, and Phase 3's rename carries each date along.
+- **Only folders the copy CREATED.** A merge into a folder the user already had leaves it to the store: it's theirs,
+  and the copy only added to it. A folder the merge created inside it is the copy's own and is dated.
+- **Never on a failed or stopped copy**: one failure fails the whole subtree, so nothing in it is dated, not even a
+  folder whose own contents all landed. Every stamp also checks the intent first.
+- **Best effort, and cheap where it can't happen**: a refusal is a `log::warn!`. `set_modified` defaults to
+  `NotSupported` (S3's prefixes, MTP, WebDAV, ADB's sync protocol has no setstat, read-only backends), and the first
+  `NotSupported` ends the pass.
+- **Decision/Why a defaulted trait method, ❌ not a required one**: every mutation on the trait defaults to
+  `NotSupported` and opts in, and over 20 test doubles and wrappers would each need a refusal body. The omission a
+  required method would catch is caught instead by `conformance::assert_set_modified_dates_a_folder`, which every
+  backend that implements it runs. ❗ A wrapper volume forwards it explicitly (`forward_volume_methods!`'s
+  `set_modified`), or it silently takes the default.
 
 **Where each backend stands.**
 
 - **Local** (`local_posix/streams.rs`): reports the open's `stat` date; writes it with `File::set_modified` on the open
-  handle after the last byte, before `sync_data`.
+  handle after the last byte, before `sync_data`. Dates a folder with `filetime::set_file_mtime`.
 - **S3**: reports and writes the date as `x-amz-meta-mtime` (`crates/cmdr-s3/DETAILS.md`).
 - **`InMemoryVolume`**: keeps the stream's date (whole seconds), so an engine test copying onto it sees what a real
-  destination does.
+  destination does. It also moves a folder's date to now when an entry lands in or leaves it, which is what lets an
+  engine test tell a folder dated after its contents from one dated before.
 - **ADB**: reports the open's `STAT`/`STA2` date; writes it as the push's `DONE` mtime (a u32: whole seconds, clamped
   at 2106), falling back to now only for a dateless source (`crates/cmdr-adb/DETAILS.md`).
 - **MTP**: reports the `DateModified` from the `ObjectInfo` the read's open already fetched; writes it as the upload's
@@ -834,13 +866,13 @@ local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile
 - **SMB**: reports the server's `LastWriteTime` on both foreground read paths (streamed and one-frame compound); writes
   `LastWriteTime` alone through SET_INFO, on the streaming writer's own handle before it closes, or by path right after
   a one-frame compound write (one more frame). The read date rides on the read's own CREATE response
-  (`crates/cmdr-smb/DETAILS.md` § "Dates on copies").
+  (`crates/cmdr-smb/DETAILS.md` § "Dates on copies"). Dates a folder by path (`Tree::set_times`, one frame).
 - **Archive (source only)**: reports each entry's date from the parsed index, on random-access reads and the one-pass
   sequential extract alike (whole seconds; zip's DOS time keeps even seconds).
 - **SFTP**: reports the mtime from the `fstat` its open already sends; writes it with a path `SETSTAT` on the staging
   temp after the awaited close (so a server buffering until close can't bump it), before the final rename. Whole
   seconds, atime set alongside. Server-side `copy-data` copies keep it too (`crates/cmdr-sftp/DETAILS.md` § "Dates on
-  copies").
+  copies"). Dates a folder with the same path `SETSTAT`.
 - **WebDAV**: reports the GET's `Last-Modified`; writes it as an `X-OC-Mtime` header on the PUT, which Nextcloud,
   ownCloud, and rclone honor. ❗ Plain Apache `mod_dav` can't store a date at all, so a copy onto it keeps the server's
   own: best effort by design, with the destination half pinned on Nextcloud (`crates/cmdr-webdav/DETAILS.md` §
@@ -859,6 +891,11 @@ local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile
   fixture dated. Plus `in_memory_dates_test.rs`, which pins the engine's own half (the checkpoint wrapper,
   staging, the final rename) against the double in the unit lane. S3's engine cell is
   `s3_transfer_integration_test.rs::copying_onto_a_bucket_lands_every_byte_and_the_mtime`.
+- **Folder dates**: `conformance::assert_set_modified_dates_a_folder` per backend (local, in-memory, SFTP, SMB);
+  `copied_folders_onto_the_server_keep_their_dates` and `copied_folders_off_the_server_keep_their_dates` through the
+  engine (in-memory, SFTP, SMB cells); `folder_dates_tests.rs` (both drivers, a merge, a failure partway);
+  `strategy_sequential_tests.rs::sequential_extract_keeps_the_folders_dates`; and for the local engine
+  `../copy/folder_dates_tests.rs` plus `move_op_tests.rs::cross_fs_move_keeps_folder_dates`.
 
 **Why it took a test layer of its own.** Every copy suite checksums both ends, and a destination stamping its own date
 passes all of them. On 2026-10-07 a 562-photo copy from a Pixel (ADB) onto a QNAP (SFTP) landed every file dated to

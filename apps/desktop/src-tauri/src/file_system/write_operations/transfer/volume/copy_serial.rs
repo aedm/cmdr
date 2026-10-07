@@ -390,8 +390,7 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
                             ));
                         }
                     };
-                    let source_facts =
-                        SourceFileFacts::from_size_hint(hint.and_then(|h| (!h.is_directory).then_some(h.size)));
+                    let source_facts = SourceFileFacts::from_hint(hint);
 
                     // Per-file intra-progress: a fresh per-source
                     // throttle mutex (the serial-path closure outlives

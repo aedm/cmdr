@@ -242,6 +242,25 @@ async fn smb_integration_a_copy_keeps_the_source_date_per_the_shared_contract() 
     ensure_clean(&smb_vol, &base).await;
 }
 
+/// A folder dated after a file landed in it lists that date.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_set_modified_dates_a_folder() {
+    let smb_vol = Arc::new(make_docker_volume().await);
+    let base = test_dir_name();
+    ensure_clean(&smb_vol, &base).await;
+    smb_vol.create_directory(Path::new(&base)).await.unwrap();
+
+    cmdr_fs::volume::conformance::assert_set_modified_dates_a_folder(
+        smb_vol.as_ref(),
+        Path::new(&format!("{base}/dated")),
+        Duration::ZERO,
+    )
+    .await;
+
+    ensure_clean(&smb_vol, &base).await;
+}
+
 /// A write too big for one frame keeps the source's date too: the streaming
 /// writer stamps its OWN handle before `finish()`, since the server rewrites
 /// the date when a writing handle closes and a path stamp while it's open

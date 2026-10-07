@@ -1,5 +1,6 @@
 //! The date scenarios every backend owes, written once: a copy keeps the
-//! source's modification date, onto the server and off it.
+//! source's modification date, onto the server and off it, for files and for
+//! the folders it creates.
 //!
 //! These run the app's whole pipeline, so they catch what the per-backend
 //! conformance cells (`cmdr_fs::volume::conformance`'s two date assertions)
@@ -84,6 +85,138 @@ pub(super) async fn a_copy_off_the_server_keeps_the_source_date(
     let on_server = dir.join("dated.txt");
     assert_write_from_stream_keeps_the_source_date(remote.as_ref(), &on_server, tolerance).await;
     a_copy_off_the_server_keeps_the_date_it_lists(Arc::clone(&remote), on_server).await;
+    clean_deep(remote.as_ref(), &dir).await;
+}
+
+/// The date a scenario's copied folder carries: 2021-01-29 08:30:15 UTC.
+const FOLDER_DATE_SECS: u64 = SOURCE_DATE_SECS;
+/// The folder inside it, dated apart so a stamp on the wrong level can't pass.
+const INNER_FOLDER_DATE_SECS: u64 = 1_577_836_800; // 2020-01-01
+
+/// `album/` with a file and `inner/` (holding a file of its own) on local disk
+/// under `root`, both folders dated after their contents, the way an old folder
+/// lists.
+fn seed_dated_local_folder(root: &Path) {
+    let album = root.join("album");
+    let inner = album.join("inner");
+    std::fs::create_dir_all(&inner).expect("seed the local folders");
+    std::fs::write(album.join("photo.bin"), self_describing_bytes(3_000, "photo.bin")).expect("seed a file");
+    std::fs::write(inner.join("deep.bin"), self_describing_bytes(2_000, "deep.bin")).expect("seed a file");
+    date_local_folder(&inner, INNER_FOLDER_DATE_SECS);
+    date_local_folder(&album, FOLDER_DATE_SECS);
+}
+
+fn date_local_folder(path: &Path, secs: u64) {
+    filetime::set_file_mtime(path, filetime::FileTime::from_unix_time(secs as i64, 0))
+        .unwrap_or_else(|e| panic!("date {}: {e}", path.display()));
+}
+
+fn assert_dated(listed: u64, expected: u64, tolerance: Duration, what: &str) {
+    let off_by = listed.abs_diff(expected);
+    assert!(
+        off_by <= tolerance.as_secs(),
+        "{what} must keep its source folder's date ({expected}); it lists {listed}, {off_by} s off"
+    );
+}
+
+/// A folder copied onto the server keeps its date, and so does the folder
+/// inside it, through the app's whole pipeline. Writing each child bumps its
+/// folder's date on the server, so this only passes when the copy dates every
+/// folder AFTER its contents landed.
+///
+/// `tolerance` as for [`a_copy_onto_the_server_keeps_the_source_date`].
+pub(super) async fn copied_folders_onto_the_server_keep_their_dates(
+    remote: Arc<dyn Volume>,
+    dir: PathBuf,
+    tolerance: Duration,
+) {
+    let local_dir = TestDir::new("network_dated_folders_onto_server");
+    seed_dated_local_folder(&local_dir);
+    let local: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Local", &*local_dir));
+
+    run_copy(
+        "dated-folders-onto-server",
+        Arc::clone(&local),
+        vec![PathBuf::from("album")],
+        Arc::clone(&remote),
+        dir.clone(),
+    )
+    .await;
+
+    let album = dir.join("album");
+    let listed = listed_date(remote.as_ref(), &album, "the copied folder").await;
+    assert_dated(listed, FOLDER_DATE_SECS, tolerance, "the copied folder on the server");
+    let listed = listed_date(remote.as_ref(), &album.join("inner"), "the folder inside it").await;
+    assert_dated(
+        listed,
+        INNER_FOLDER_DATE_SECS,
+        tolerance,
+        "the folder inside it on the server",
+    );
+
+    clean_deep(remote.as_ref(), &dir).await;
+}
+
+/// A folder copied off the server keeps the date the server lists for it, and
+/// so does the folder inside it.
+///
+/// The seed lands through a plain copy onto the server, then the server's own
+/// [`Volume::set_modified`] ages both folders (deepest first), so this pins the
+/// copy-off half on its own.
+pub(super) async fn copied_folders_off_the_server_keep_their_dates(remote: Arc<dyn Volume>, dir: PathBuf) {
+    let seed_dir = TestDir::new("network_dated_folders_seed");
+    seed_dated_local_folder(&seed_dir);
+    let seed: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Seed", &*seed_dir));
+    run_copy(
+        "dated-folders-seed",
+        seed,
+        vec![PathBuf::from("album")],
+        Arc::clone(&remote),
+        dir.clone(),
+    )
+    .await;
+    let album = dir.join("album");
+    let at = |secs: u64| std::time::UNIX_EPOCH + Duration::from_secs(secs);
+    for (folder, secs) in [
+        (album.join("inner"), INNER_FOLDER_DATE_SECS),
+        (album.clone(), FOLDER_DATE_SECS),
+    ] {
+        remote
+            .set_modified(&folder, at(secs))
+            .await
+            .unwrap_or_else(|e| panic!("fixture: date {} on the server, got {e:?}", folder.display()));
+    }
+    let listed_album = listed_date(remote.as_ref(), &album, "the seed").await;
+    let listed_inner = listed_date(remote.as_ref(), &album.join("inner"), "the seed").await;
+
+    let local_dir = TestDir::new("network_dated_folders_off_server");
+    let local: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Local", &*local_dir));
+    run_copy(
+        "dated-folders-off-server",
+        Arc::clone(&remote),
+        vec![album],
+        Arc::clone(&local),
+        PathBuf::from(""),
+    )
+    .await;
+
+    // Local disk keeps nanoseconds, so only the server's rounding can put the
+    // two a second apart.
+    let landed = listed_date(local.as_ref(), Path::new("album"), "after the copy").await;
+    assert_dated(
+        landed,
+        listed_album,
+        Duration::from_secs(1),
+        "the copied folder on local disk",
+    );
+    let landed = listed_date(local.as_ref(), Path::new("album/inner"), "after the copy").await;
+    assert_dated(
+        landed,
+        listed_inner,
+        Duration::from_secs(1),
+        "the folder inside it on local disk",
+    );
+
     clean_deep(remote.as_ref(), &dir).await;
 }
 

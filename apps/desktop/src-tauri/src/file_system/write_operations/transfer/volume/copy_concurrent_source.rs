@@ -208,7 +208,7 @@ impl ConcurrentCopy<'_> {
             apply_to_all: Arc::clone(&self.apply_to_all_cell),
             source_path: source_path.to_path_buf(),
             source_is_dir,
-            source_facts: SourceFileFacts::from_size_hint(source_size_hint),
+            source_facts: SourceFileFacts::from_hint(source_hint),
             dest_path: dest_item_path,
             replaces,
             dest_name_claimed,

@@ -10,6 +10,7 @@ use cmdr_fs::volume::{InMemoryVolume, Volume};
 
 use super::network_dates_test_support::{
     a_copy_off_the_server_keeps_the_source_date, a_copy_onto_the_server_keeps_the_source_date,
+    copied_folders_off_the_server_keep_their_dates, copied_folders_onto_the_server_keep_their_dates,
 };
 
 fn double() -> Arc<dyn Volume> {
@@ -34,4 +35,24 @@ async fn a_copy_onto_local_disk_keeps_the_source_date() {
         .await
         .expect("make the source folder");
     a_copy_off_the_server_keeps_the_source_date(remote, "/dated".into(), Duration::ZERO).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn folders_copied_from_local_disk_keep_their_dates() {
+    let remote = double();
+    remote
+        .create_directory(std::path::Path::new("/dated"))
+        .await
+        .expect("make the destination folder");
+    copied_folders_onto_the_server_keep_their_dates(remote, "/dated".into(), Duration::ZERO).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn folders_copied_onto_local_disk_keep_their_dates() {
+    let remote = double();
+    remote
+        .create_directory(std::path::Path::new("/dated"))
+        .await
+        .expect("make the source folder");
+    copied_folders_off_the_server_keep_their_dates(remote, "/dated".into()).await;
 }

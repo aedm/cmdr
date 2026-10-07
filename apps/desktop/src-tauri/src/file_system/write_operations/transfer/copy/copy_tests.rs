@@ -304,6 +304,7 @@ fn a_local_copy_never_acts_on_a_preview_of_a_different_selection() {
                     total_bytes: other_metadata.len(),
                     dedup_bytes: other_metadata.len(),
                     top_level_is_directory: false,
+                    top_level_modified_at: None,
                 },
             )],
             None,

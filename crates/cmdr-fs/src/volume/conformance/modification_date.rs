@@ -149,6 +149,60 @@ pub async fn assert_read_stream_reports_the_listed_date(volume: &dyn Volume, pat
     );
 }
 
+/// A folder [`Volume::set_modified`] dated lists that date, though writing its
+/// contents bumped it to "now" first.
+///
+/// Creates `dir`, writes a file into it (which is what bumps a folder's date on
+/// every real store), sets the folder's date to [`SOURCE_DATE_SECS`], and
+/// insists the folder lists it. `dir` must not exist yet; `tolerance` as for
+/// [`assert_write_from_stream_keeps_the_source_date`].
+///
+/// **Why this one is worth a shared assertion.** A copied folder's date is set
+/// AFTER its contents land, by a call nothing else exercises, and a backend
+/// answering `Ok` without storing anything passes every copy suite: the bytes
+/// are all there.
+pub async fn assert_set_modified_dates_a_folder(volume: &dyn Volume, dir: &Path, tolerance: Duration) {
+    assert!(
+        !volume.exists(dir).await,
+        "fixture precondition: {} must not exist yet",
+        dir.display()
+    );
+    volume
+        .create_directory(dir)
+        .await
+        .unwrap_or_else(|e| panic!("{} must be creatable, got {e:?}", dir.display()));
+    let content = b"a file that lands before its folder is dated\n".to_vec();
+    let length = content.len() as u64;
+    volume
+        .write_from_stream(
+            &dir.join("inside.txt"),
+            WriteMode::CreateNew,
+            StreamLength::Known(length),
+            Box::new(DatedSource::new(content)),
+            &|_| std::ops::ControlFlow::Continue(()),
+        )
+        .await
+        .unwrap_or_else(|e| panic!("a file must land in {}, got {e:?}", dir.display()));
+
+    volume
+        .set_modified(dir, UNIX_EPOCH + Duration::new(SOURCE_DATE_SECS, SOURCE_DATE_NANOS))
+        .await
+        .unwrap_or_else(|e| panic!("dating the folder {} must succeed, got {e:?}", dir.display()));
+
+    let listed = volume
+        .get_metadata(dir)
+        .await
+        .unwrap_or_else(|e| panic!("{} must be stattable after dating it, got {e:?}", dir.display()))
+        .modified_at
+        .unwrap_or_else(|| panic!("the folder {} lists no modification date at all", dir.display()));
+    let off_by = listed.abs_diff(SOURCE_DATE_SECS);
+    assert!(
+        off_by <= tolerance.as_secs(),
+        "the folder {} must list the date it was given (Unix {SOURCE_DATE_SECS}); it lists {listed}, {off_by} s off",
+        dir.display()
+    );
+}
+
 /// A source stream over bytes in hand that reports [`SOURCE_DATE_SECS`] as its
 /// file's date, the way a real backend's stream reports what its open learned.
 struct DatedSource {

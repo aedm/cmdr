@@ -578,6 +578,10 @@ source's date".
   fixture container with `touch -d`);
   `wire_shape_integration_test.rs::smb_integration_a_dated_single_shot_write_adds_one_frame_for_its_date` counts the
   stamp's frame.
+- **Folders: `set_modified` stamps `LastWriteTime` by path** (`mutation.rs`, `Tree::set_times`, which opens with no
+  create options so a directory opens like a file; one frame), then patches the parent listing with a `Modified`. The
+  copy engine calls it on each folder it created once the contents landed. Pinned by
+  `smb_integration_set_modified_dates_a_folder` and the engine's `smb_integration_folders_copied_*` cells.
 
 ## Copy concurrency and the credit window
 

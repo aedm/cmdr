@@ -37,7 +37,7 @@ mod scanned_dirs;
 mod single_item;
 
 use rollback::rollback_with_progress;
-pub(super) use scanned_dirs::create_scanned_dirs_at_destination;
+pub(super) use scanned_dirs::{create_scanned_dirs_at_destination, date_created_dirs_like_their_sources};
 pub(super) use single_item::{JournalDestUnder, copy_single_item};
 
 /// Rewrites `dest` by replacing the longest ancestor that appears as a key in
@@ -628,6 +628,17 @@ pub(in crate::file_system::write_operations) fn copy_files_with_progress_inner(
                 return Err(e);
             }
 
+            // Every file and folder has landed, so the folders this copy created
+            // can take their source dates without a later write bumping them.
+            date_created_dirs_like_their_sources(
+                &scan_result.dirs,
+                sources,
+                destination,
+                state,
+                &transaction.created_dirs,
+                &dir_remap,
+            );
+
             // Flush every created file and every directory that gained an entry
             // before reporting complete, so "complete" means durable. Reuses the
             // transaction's own ledgers; skips data the strategy already synced.
@@ -766,3 +777,7 @@ mod copy_failure_tests;
 #[cfg(test)]
 #[path = "copy_dest_link_tests.rs"]
 mod copy_dest_link_tests;
+
+#[cfg(test)]
+#[path = "folder_dates_tests.rs"]
+mod folder_dates_tests;

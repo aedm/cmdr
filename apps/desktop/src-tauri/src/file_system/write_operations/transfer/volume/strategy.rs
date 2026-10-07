@@ -198,6 +198,7 @@ pub(super) async fn copy_single_path(
                 created,
                 progress,
                 merge,
+                source_facts.modified_at,
             ))
             .await;
         }
@@ -211,6 +212,7 @@ pub(super) async fn copy_single_path(
             progress,
             merge,
             None,
+            source_facts.modified_at,
         ))
         .await
     } else {

@@ -93,6 +93,7 @@ impl MtpVolume {
                         total_bytes: 0,
                         dedup_bytes: 0,
                         top_level_is_directory: false,
+                        top_level_modified_at: None,
                     },
                     per_path: Vec::new(),
                     files: None,
@@ -150,6 +151,7 @@ impl MtpVolume {
                 dedup_bytes: 0,
                 // Aggregate over multiple paths: not meaningful for a batch.
                 top_level_is_directory: false,
+                top_level_modified_at: None,
             };
 
             for group in groups.values() {
@@ -207,7 +209,10 @@ impl MtpVolume {
 
                     if let Some(entry) = entries_by_name.get(name).copied() {
                         if entry.is_directory {
-                            let scan = self.scan_subtree_with_stop(child_path, &stop).await?;
+                            let mut scan = self.scan_subtree_with_stop(child_path, &stop).await?;
+                            // The parent listing in hand carries the folder's
+                            // own date, which the subtree walk never sees.
+                            scan.top_level_modified_at = entry.modified_at;
                             aggregate.file_count += scan.file_count;
                             aggregate.dir_count += scan.dir_count;
                             aggregate.total_bytes += scan.total_bytes;
@@ -226,6 +231,7 @@ impl MtpVolume {
                                     total_bytes: size,
                                     dedup_bytes: size,
                                     top_level_is_directory: false,
+                                    top_level_modified_at: entry.modified_at,
                                 },
                             );
                         }

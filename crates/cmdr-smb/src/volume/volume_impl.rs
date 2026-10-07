@@ -295,6 +295,14 @@ impl Volume for SmbVolume {
         Box::pin(self.create_directory_impl(path))
     }
 
+    fn set_modified<'a>(
+        &'a self,
+        path: &'a Path,
+        modified: std::time::SystemTime,
+    ) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
+        Box::pin(self.set_modified_impl(path, modified))
+    }
+
     fn delete<'a>(&'a self, path: &'a Path) -> Pin<Box<dyn Future<Output = Result<(), VolumeError>> + Send + 'a>> {
         Box::pin(self.delete_impl(path))
     }

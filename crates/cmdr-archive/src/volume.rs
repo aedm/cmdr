@@ -546,8 +546,10 @@ impl Volume for ArchiveVolume {
                     // No hardlinks in a zip: the two footprints are equal.
                     dedup_bytes: size,
                     top_level_is_directory: false,
+                    top_level_modified_at: node.modified.and_then(|secs| u64::try_from(secs).ok()),
                 });
             }
+            let top_level_modified_at = node.modified.and_then(|secs| u64::try_from(secs).ok());
 
             // A directory: walk the subtree via the index's per-dir child lists.
             // Counts and byte totals come from the central directory — no
@@ -575,6 +577,7 @@ impl Volume for ArchiveVolume {
                 total_bytes,
                 dedup_bytes: total_bytes,
                 top_level_is_directory: true,
+                top_level_modified_at,
             })
         })
     }
