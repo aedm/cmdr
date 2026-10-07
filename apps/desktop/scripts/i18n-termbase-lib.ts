@@ -290,10 +290,13 @@ export function englishMatchText(key: string, value: string): string {
  * concept like "name" or "folder" would otherwise match them dozens of times.
  */
 function stripRawIdentifiers(value: string): string {
-  return value
-    .replace(/\{[^{}]*\}/g, '')
-    .replace(/<\/?[A-Za-z][\w-]*>/g, '')
-    .replace(/\]\([^)\s]*\)/g, ']')
+  let text = value.replace(/\{[^{}]*\}/g, '')
+  // Repeat until stable: one pass over `<a<b>>` leaves a new `<a>` behind.
+  for (let prev = ''; prev !== text;) {
+    prev = text
+    text = text.replace(/<\/?[A-Za-z][\w-]*>/g, '')
+  }
+  return text.replace(/\]\([^)\s]*\)/g, ']')
 }
 
 /** Compiled matchers, one per concept, reused across a run. */
