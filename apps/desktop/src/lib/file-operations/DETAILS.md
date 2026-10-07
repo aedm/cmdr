@@ -48,6 +48,8 @@ Umbrella-level files:
   the New folder and New file dialogs share, and the rune-backed check behind it (sync validators, then the debounced
   clash lookup against the listing, re-run on every `directory-diff`). The field runs the check's lifecycle; the dialog
   reads `errorMessage` / `isChecking` and writes `errorMessage` back when the create is refused.
+- `create-submission.svelte.ts` + `StillCreatingNotice.svelte`: the same two dialogs' submit, from OK to how the create
+  really ended, slow volumes included (§ "Mutation refusals").
 - `cursor-entry.ts`: `getCursorEntry()`, the backend entry under the pane's cursor with the `..` row shift applied once,
   so the two dialogs' pre-fills (`getInitialFolderName` / `getInitialFileName`) can't drift.
 - `S3CostLine.svelte` + `s3-cost-line.ts`: the list-price cost estimate under the Copy, Move, and Delete dialogs' scan
@@ -104,8 +106,15 @@ technical detail beside it there.)
   flattened into a generic "the volume refused".
 - **`technicalDetail(error)` is the ONLY way the backend's own words reach a surface**, and it's for a details
   disclosure or a log. ❌ Never render it as the message; it's untranslated diagnostic text.
-- **`timedOut` is not a failure.** The backend's deadline detaches rather than cancels, so the write may still land; the
-  copy says so, and `NewFolderDialog` offers Refresh instead of pretending the folder is there.
+- **`timedOut` is not a failure.** The backend's deadline detaches rather than cancels, so the work may still land; the
+  copy says so. Rename, new folder, and new file never answer it: past their deadline they're `stillRunning` and
+  `awaitMutation` waits for the real end (`$lib/tauri-commands/mutation-reply.ts`), so only the reads and the trash
+  calls can still produce it.
+- **The create dialogs' submit is `create-submission.svelte.ts`** (`editing` → `creating` → `stillCreating`), shared by
+  both dialogs. OK goes busy at once; past the deadline `StillCreatingNotice.svelte` says the volume is slow and Cancel
+  becomes Close (closing doesn't stop a write already in flight). A landing closes the dialog like any create; a refusal
+  goes under the name as usual. Once the dialog is gone, a landing steers nothing (no cursor yank), and a refusal is a
+  persistent toast, the only word the person would otherwise get.
 - `mutation-error-messages.test.ts` walks every variant of both enums: exhaustiveness is compiler-enforced, so what it
   catches is a missing catalog key (which renders the key itself) and a message that breaks the error-copy writing
   rules.

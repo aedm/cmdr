@@ -681,6 +681,7 @@ export type {
 // Rename
 export { checkRenamePermission, checkRenameValidity, getTrashDir, moveToTrash, renameFile } from './rename'
 export type { RenameConflictFileInfo, RenameValidityResult } from './rename'
+export type { MutationWaitOptions } from './mutation-reply'
 
 // Settings and AI
 export {

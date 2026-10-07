@@ -156,18 +156,6 @@
   "@fileOperations.mkdir.placeholder": {
     "sourceHash": "7612b56"
   },
-  "fileOperations.mkdir.timeoutMessage": "Det gick inte att bekräfta att mappen skapades. Volymen kan vara långsam, så mappen kan ändå ha skapats.",
-  "@fileOperations.mkdir.timeoutMessage": {
-    "sourceHash": "8bc758a"
-  },
-  "fileOperations.mkdir.timeoutRefresh": "Uppdatera listan",
-  "@fileOperations.mkdir.timeoutRefresh": {
-    "sourceHash": "b0e5436"
-  },
-  "fileOperations.mkdir.timeoutDismiss": "Avfärda",
-  "@fileOperations.mkdir.timeoutDismiss": {
-    "sourceHash": "48845bf"
-  },
   "fileOperations.mkdir.aiSuggestionsAria": "AI-förslag",
   "@fileOperations.mkdir.aiSuggestionsAria": {
     "sourceHash": "1a1f5b9"

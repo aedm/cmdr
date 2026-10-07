@@ -2,6 +2,7 @@
 
 import { commands, type Initiator, type RenameByMove, type ValidationError } from '$lib/ipc/bindings'
 import { throwMutationError } from '$lib/file-operations/mutation-error'
+import { awaitMutation, type MutationWaitOptions } from './mutation-reply'
 
 export interface RenameConflictFileInfo {
   name: string
@@ -45,17 +46,20 @@ export async function checkRenameValidity(
   return res.data
 }
 
+/**
+ * Renames, resolving once the rename landed however slow the volume is;
+ * `wait.onStillRunning` says when it's being slow (`./mutation-reply.ts`). A
+ * refusal throws typed, all the way to the surface that words it.
+ */
 export async function renameFile(
   from: string,
   to: string,
   force: boolean,
   volumeId?: string,
   initiator?: Initiator,
+  wait?: MutationWaitOptions,
 ): Promise<void> {
-  const res = await commands.renameFile(from, to, force, volumeId ?? null, initiator ?? null)
-  // Typed all the way to the surface that words it: `throwIpcError` would flatten
-  // a `MutationError` into a JSON string, which is what this path exists to end.
-  if (res.status === 'error') throwMutationError(res.error)
+  await awaitMutation(() => commands.renameFile(from, to, force, volumeId ?? null, initiator ?? null), wait)
 }
 
 export async function moveToTrash(path: string): Promise<void> {

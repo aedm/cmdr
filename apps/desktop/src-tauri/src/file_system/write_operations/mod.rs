@@ -39,6 +39,7 @@ mod look_alike;
 mod look_alike_instant_tests;
 mod manager;
 mod mutation_error;
+mod mutation_reply;
 mod operation_intent;
 mod overwrite;
 #[cfg(target_os = "macos")]
@@ -244,6 +245,10 @@ pub(crate) fn test_retain_failure(operation_id: &str, operation_type: WriteOpera
 // reached through `super::` inside this module and are NOT re-exported: one
 // routing, one place to keep it right.
 pub use mutation_error::MutationError;
+#[cfg(test)]
+pub(crate) use mutation_reply::MutationSettledOutcome;
+pub(crate) use mutation_reply::{MUTATION_REPLY_DEADLINE, broadcast_settled, reply_within};
+pub use mutation_reply::{MutationReply, MutationSettled};
 pub use types::VolumeCopyConfig;
 // The transfer dialog's pre-flight conflict check: `commands/file_system/
 // volume_copy.rs`'s `scan_volume_for_conflicts` is a thin wrapper around

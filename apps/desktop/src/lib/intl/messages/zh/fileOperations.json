@@ -155,18 +155,6 @@
   "@fileOperations.mkdir.placeholder": {
     "sourceHash": "7612b56"
   },
-  "fileOperations.mkdir.timeoutMessage": "无法确认文件夹是否已创建。这个宗卷可能比较慢，所以文件夹也许已经创建好了。",
-  "@fileOperations.mkdir.timeoutMessage": {
-    "sourceHash": "8bc758a"
-  },
-  "fileOperations.mkdir.timeoutRefresh": "刷新列表",
-  "@fileOperations.mkdir.timeoutRefresh": {
-    "sourceHash": "b0e5436"
-  },
-  "fileOperations.mkdir.timeoutDismiss": "关闭",
-  "@fileOperations.mkdir.timeoutDismiss": {
-    "sourceHash": "48845bf"
-  },
   "fileOperations.mkdir.aiSuggestionsAria": "AI 建议",
   "@fileOperations.mkdir.aiSuggestionsAria": {
     "sourceHash": "1a1f5b9"

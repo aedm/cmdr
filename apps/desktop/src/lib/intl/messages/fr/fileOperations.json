@@ -156,18 +156,6 @@
   "@fileOperations.mkdir.placeholder": {
     "sourceHash": "7612b56"
   },
-  "fileOperations.mkdir.timeoutMessage": "Impossible de confirmer la création du dossier. Le volume est peut-être lent, donc le dossier a peut-être quand même été créé.",
-  "@fileOperations.mkdir.timeoutMessage": {
-    "sourceHash": "8bc758a"
-  },
-  "fileOperations.mkdir.timeoutRefresh": "Actualiser la liste",
-  "@fileOperations.mkdir.timeoutRefresh": {
-    "sourceHash": "b0e5436"
-  },
-  "fileOperations.mkdir.timeoutDismiss": "Ignorer",
-  "@fileOperations.mkdir.timeoutDismiss": {
-    "sourceHash": "48845bf"
-  },
   "fileOperations.mkdir.aiSuggestionsAria": "Suggestions de l’IA",
   "@fileOperations.mkdir.aiSuggestionsAria": {
     "sourceHash": "1a1f5b9"

@@ -199,7 +199,7 @@ over a pile-ideal form that would fork a term mid-catalog.
 ## Đổi tên không xác nhận được + tên không dùng được (`fileExplorer.rename.unconfirmed`/`.unconfirmedAndOthers`, `fileOperations.validation.nameNotUsable`)
 
 - `unconfirmed*` says Cmdr doesn't know, so it takes the `Chưa xác nhận được … vẫn có thể đã hoàn tất` frame of
-  `fileOperations.mkdir.timeoutMessage`; ❌ never `vẫn giữ nguyên tên` (that's `chainKept*`, a certainty).
+  `fileExplorer.pane.trashUnconfirmedToast`; ❌ never `vẫn giữ nguyên tên` (that's `chainKept*`, a certainty).
 - The renames (plural) → `các lần đổi tên`, over `các việc đổi tên` (`việc` doesn't count that way).
 - `nameNotUsable` → `Không thể dùng tên … đó`, no final period (it's joined into a longer toast), and no guessed reason
   like `không hợp lệ`.

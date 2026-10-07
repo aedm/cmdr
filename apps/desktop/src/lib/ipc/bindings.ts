@@ -652,27 +652,30 @@ export const commands = {
   storedSpellings: (volumeId: string, paths: string[]) =>
     __TAURI_INVOKE<TimedOut<string[]>>('stored_spellings', { volumeId, paths }),
   /**
-   *  Creates a folder and returns its new path. Thin pass-through to the managed
-   *  create op (`write_operations::create`): expand tilde (root only), wrap in the
-   *  5 s write timeout, and ship the typed `MutationError` the frontend renders
-   *  its words from.
+   *  Creates a folder. Thin pass-through to the managed create op
+   *  (`write_operations::create`): expand tilde (root only), answer within
+   *  `MUTATION_REPLY_DEADLINE`, and ship the typed `MutationError` the frontend
+   *  renders its words from. A create still running at the deadline answers
+   *  `StillRunning` and reports its end on `mutation-settled`
+   *  (`write_operations/mutation_reply.rs`).
    */
   createDirectory: (
     volumeId: string | null,
     parentPath: string,
     name: string,
     initiator: 'user' | 'aiClient' | 'agent' | 'agentEdited' | null,
-  ) => typedError<string, MutationError>(__TAURI_INVOKE('create_directory', { volumeId, parentPath, name, initiator })),
-  /**
-   *  Creates an empty file and returns its new path. Same shape as
-   *  [`create_directory`].
-   */
+  ) =>
+    typedError<MutationReply, MutationError>(
+      __TAURI_INVOKE('create_directory', { volumeId, parentPath, name, initiator }),
+    ),
+  // Creates an empty file. Same shape as [`create_directory`].
   createFile: (
     volumeId: string | null,
     parentPath: string,
     name: string,
     initiator: 'user' | 'aiClient' | 'agent' | 'agentEdited' | null,
-  ) => typedError<string, MutationError>(__TAURI_INVOKE('create_file', { volumeId, parentPath, name, initiator })),
+  ) =>
+    typedError<MutationReply, MutationError>(__TAURI_INVOKE('create_file', { volumeId, parentPath, name, initiator })),
   /**
    *  Stores `password` for the archive at `archive_path` on `parent_volume_id`,
    *  overwriting any previous one (so a fresh attempt replaces a rejected password).
@@ -1299,7 +1302,9 @@ export const commands = {
    *  When `volume_id` is provided and not `"root"`, routes through the Volume trait
    *  (needed for MTP and other non-local volumes). Otherwise uses `std::fs::rename`.
    *  The mutation runs as a managed instant op (busy-marks the volume, appears
-   *  briefly in the queue), still inline and result-returning.
+   *  briefly in the queue). A rename still running at `MUTATION_REPLY_DEADLINE`
+   *  answers `StillRunning` and reports its end on `mutation-settled`
+   *  (`write_operations/mutation_reply.rs`).
    */
   renameFile: (
     from: string,
@@ -1307,7 +1312,8 @@ export const commands = {
     force: boolean,
     volumeId: string | null,
     initiator: 'user' | 'aiClient' | 'agent' | 'agentEdited' | null,
-  ) => typedError<null, MutationError>(__TAURI_INVOKE('rename_file', { from, to, force, volumeId, initiator })),
+  ) =>
+    typedError<MutationReply, MutationError>(__TAURI_INVOKE('rename_file', { from, to, force, volumeId, initiator })),
   // Moves a file or directory to the macOS Trash via NSFileManager.
   moveToTrash: (path: string) => typedError<null, MutationError>(__TAURI_INVOKE('move_to_trash', { path })),
   /**
@@ -4848,6 +4854,7 @@ export const events = {
   mtpPtpcameradRestored: makeEvent<MtpPtpcameradRestored>('mtp-ptpcamerad-restored'),
   mtpPtpcameradSuppressed: makeEvent<MtpPtpcameradSuppressed>('mtp-ptpcamerad-suppressed'),
   mtpStorageRemoved: makeEvent<MtpStorageRemoved>('mtp-storage-removed'),
+  mutationSettled: makeEvent<MutationSettled>('mutation-settled'),
   networkDiscoveryStateChanged: makeEvent<NetworkDiscoveryStateChanged>('network-discovery-state-changed'),
   networkHostContextAction: makeEvent<NetworkHostContextAction>('network-host-context-action'),
   networkHostFound: makeEvent<NetworkHostFound>('network-host-found'),
@@ -11026,6 +11033,45 @@ export type NameFilterResult = {
    */
   sequence: number | null
 }
+
+/**
+ *  The reply of `create_directory`, `create_file`, and `rename_file`. A refusal
+ *  inside the deadline is the command's `Err(MutationError)`, as before.
+ */
+export type MutationReply =
+  // It landed.
+  | { type: 'done' }
+  /**
+   *  The deadline passed with the work still running. A [`MutationSettled`]
+   *  carrying this `pending_id` follows when it ends.
+   */
+  | {
+      type: 'stillRunning'
+      // Names this one mutation on the settle event.
+      pendingId: string
+    }
+
+/**
+ *  `mutation-settled`: how a mutation that answered `StillRunning` ended.
+ *  Broadcast; the waiting caller picks its own by `pending_id`.
+ */
+export type MutationSettled = {
+  // The id the `StillRunning` reply carried.
+  pendingId: string
+  // How it ended.
+  outcome: MutationSettledOutcome
+}
+
+// How a mutation that outlived its deadline ended.
+export type MutationSettledOutcome =
+  // It landed.
+  | { type: 'landed' }
+  // It didn't, for this reason: the same refusal an in-time reply carries.
+  | {
+      type: 'refused'
+      // Why.
+      error: MutationError
+    }
 
 export type NegotiatedSummaryDto = {
   dialect: string

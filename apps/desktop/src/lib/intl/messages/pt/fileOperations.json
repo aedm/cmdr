@@ -156,18 +156,6 @@
   "@fileOperations.mkdir.placeholder": {
     "sourceHash": "7612b56"
   },
-  "fileOperations.mkdir.timeoutMessage": "Não foi possível confirmar que a pasta foi criada. O volume pode estar lento, então a pasta ainda pode ter sido criada.",
-  "@fileOperations.mkdir.timeoutMessage": {
-    "sourceHash": "8bc758a"
-  },
-  "fileOperations.mkdir.timeoutRefresh": "Atualizar listagem",
-  "@fileOperations.mkdir.timeoutRefresh": {
-    "sourceHash": "b0e5436"
-  },
-  "fileOperations.mkdir.timeoutDismiss": "Dispensar",
-  "@fileOperations.mkdir.timeoutDismiss": {
-    "sourceHash": "48845bf"
-  },
   "fileOperations.mkdir.aiSuggestionsAria": "Sugestões da IA",
   "@fileOperations.mkdir.aiSuggestionsAria": {
     "sourceHash": "1a1f5b9"

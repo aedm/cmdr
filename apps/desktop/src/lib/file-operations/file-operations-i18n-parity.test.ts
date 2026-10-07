@@ -57,12 +57,17 @@ describe('new-file and new-folder dialog chrome (en)', () => {
     expect(tString('fileOperations.mkdir.placeholder')).toBe('Example: my-project')
   })
 
-  it('resolves the new-folder timeout warning + AI suggestion chrome', () => {
-    expect(tString('fileOperations.mkdir.timeoutMessage')).toBe(
-      'Couldn’t confirm the folder was created. The volume may be slow, so the folder may still have been created.',
+  it('resolves the slow-create notice + AI suggestion chrome', () => {
+    expect(tString('fileOperations.newEntry.stillCreating', { name: 'photos' })).toBe(
+      'Still creating “photos”. The volume is slow to answer, and closing this won’t stop it.',
     )
-    expect(tString('fileOperations.mkdir.timeoutRefresh')).toBe('Refresh listing')
-    expect(tString('fileOperations.mkdir.timeoutDismiss')).toBe('Dismiss')
+    expect(tString('fileOperations.button.close')).toBe('Close')
+    expect(
+      tString('fileOperations.mkdir.notCreatedToast', {
+        name: 'photos',
+        reason: 'There is already a folder by this name in this folder.',
+      }),
+    ).toBe('Cmdr couldn’t create the folder “photos”. There is already a folder by this name in this folder.')
     expect(tString('fileOperations.mkdir.aiSuggestionsAria')).toBe('AI suggestions')
     expect(tString('fileOperations.mkdir.aiSuggestionsHeader')).toBe('AI suggestions:')
   })

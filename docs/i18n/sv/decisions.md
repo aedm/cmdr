@@ -238,8 +238,8 @@ catalog.
 - "kept its name" → present `behåller sitt namn` (Total Commander's `Behåll namnet`): the state the file is in.
 - "and so did …" → `, liksom …`. ❌ Not `och det gör …` (unreadable without a comma) nor bureaucratic
   `och detsamma gäller`.
-- Unconfirmed follows `fileOperations.mkdir.timeoutMessage`: `så filen kan ändå ha bytt namn`. ❌ Not `gått igenom` or
-  `lyckats` (the house voice avoids that status word). Several renames take the definite plural `namnbytena av`.
+- Unconfirmed follows `fileExplorer.pane.trashUnconfirmedToast`: `så filen kan ändå ha bytt namn`. ❌ Not `gått igenom`
+  or `lyckats` (the house voice avoids that status word). Several renames take the definite plural `namnbytena av`.
 - `Det här mappnamnet / filnamnet kan inte användas` (Finder's `Namnet … kan inte användas`), no final period.
 
 ## Suggested operations (`suggestedOps.*`, `commands.suggestedOpsShow.*`)

@@ -232,7 +232,7 @@ backticks. Term rulings live in `terms.json`, open questions in `review-queue.md
   forces dative plural branches. The plural branches reuse `chainKeptOriginalNameAndOthers` verbatim.
 - `die Umbenennung hat also womöglich trotzdem geklappt` names its subject: a bare `sie` would point at the files. The
   timeout hedges (`womöglich trotzdem`, `Das Volume ist vielleicht langsam`) match
-  `fileOperations.mkdir.timeoutMessage`.
+  `fileExplorer.pane.trashUnconfirmedToast`.
 - `Dieser Dateiname kann nicht verwendet werden` (Finder's catch-all), no closing period: the value is composed into
   `fileExplorer.rename.keptOriginalName`.
 

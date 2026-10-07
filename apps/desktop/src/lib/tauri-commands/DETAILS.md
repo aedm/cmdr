@@ -57,6 +57,11 @@ commands, and notable non-obvious placements.
 - **`write-operations.ts`**: copy/move/delete, conflict resolution, scan preview. (Size/duration formatting moved to
   `$lib/units`.)
 - **`rename.ts`**: `checkRenamePermission`, `checkRenameValidity`, `renameFile`, `moveToTrash`.
+- **`mutation-reply.ts`**: `awaitMutation`, behind `renameFile`, `createDirectory`, and `createFile`. Those commands
+  answer `stillRunning` past their deadline, and this waits for the matching `mutation-settled` event, so the promise
+  resolves or throws with the real end, and `onStillRunning` tells the caller when to say the volume is slow. It listens
+  BEFORE invoking, since the event can overtake the reply. Backend: `write_operations/DETAILS.md` § "A slow instant
+  mutation says it is still running".
 - **`operations.ts`**: the operation manager (queue window): `listOperations`, `cancelOperation(s)`, `pauseOperation` /
   `resumeOperation`, `pauseAll` / `resumeAll`, `dismissFailedOperation` / `dismissAllFailedOperations`, and the
   `onOperationsChanged` membership/status event.

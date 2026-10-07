@@ -35,7 +35,7 @@ import type {
 import type { TimedOut } from './ipc-types'
 import { throwIpcError } from './ipc-types'
 import { throwListingLookupError } from './listing-gone'
-import { throwMutationError } from '$lib/file-operations/mutation-error'
+import { awaitMutation, type MutationWaitOptions } from './mutation-reply'
 import type { ListingDirectorySortMode } from '$lib/settings'
 
 export type {
@@ -575,39 +575,36 @@ export async function storedSpellings(volumeId: string, paths: string[]): Promis
 }
 
 /**
- * Creates a new directory.
+ * Creates a new directory. Resolves once it landed, however slow the volume is;
+ * `wait.onStillRunning` says when it's being slow (`./mutation-reply.ts`).
  * @param parentPath - The parent directory path.
  * @param name - The folder name to create.
  * @param volumeId - Optional volume ID. Defaults to "root" for local filesystem.
- * @returns The full path of the created directory.
  */
 export async function createDirectory(
   parentPath: string,
   name: string,
   volumeId?: string,
   initiator?: Initiator,
-): Promise<string> {
-  const res = await commands.createDirectory(volumeId ?? null, parentPath, name, initiator ?? null)
-  if (res.status === 'error') throwMutationError(res.error)
-  return res.data
+  wait?: MutationWaitOptions,
+): Promise<void> {
+  await awaitMutation(() => commands.createDirectory(volumeId ?? null, parentPath, name, initiator ?? null), wait)
 }
 
 /**
- * Creates a new empty file.
+ * Creates a new empty file. Same waiting as `createDirectory`.
  * @param parentPath - The parent directory path.
  * @param name - The file name to create.
  * @param volumeId - Optional volume ID. Defaults to "root" for local filesystem.
- * @returns The full path of the created file.
  */
 export async function createFile(
   parentPath: string,
   name: string,
   volumeId?: string,
   initiator?: Initiator,
-): Promise<string> {
-  const res = await commands.createFile(volumeId ?? null, parentPath, name, initiator ?? null)
-  if (res.status === 'error') throwMutationError(res.error)
-  return res.data
+  wait?: MutationWaitOptions,
+): Promise<void> {
+  await awaitMutation(() => commands.createFile(volumeId ?? null, parentPath, name, initiator ?? null), wait)
 }
 
 // ============================================================================

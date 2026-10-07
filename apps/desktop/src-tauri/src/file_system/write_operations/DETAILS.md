@@ -82,7 +82,7 @@ The full top-level inventory is here:
   `types`), `event_sinks.rs`, `error_classification.rs`, `transfer_sides.rs` (the two volumes a transfer runs
   between, the mount-table question, and the one boundary that words a stop; tests in `transfer_sides_tests.rs`),
   `target_names.rs` (the new NAME a renamed source takes in a move, § "Renames that run as moves"),
-  `mutation_error.rs` (the typed refusal an instant mutation returns), `validation.rs`, `free_space.rs` (the copy's free-space pre-flight, § "The free-space pre-flight"), `analytics.rs`, `eta.rs`. Journaling: `journal.rs`, `journal_search.rs`. The
+  `mutation_error.rs` (the typed refusal an instant mutation returns), `mutation_reply.rs` (its reply within the deadline, and the late settle, § "A slow instant mutation says it is still running"), `validation.rs`, `free_space.rs` (the copy's free-space pre-flight, § "The free-space pre-flight"), `analytics.rs`, `eta.rs`. Journaling: `journal.rs`, `journal_search.rs`. The
   scratch dir archive edits stage local bytes in: `scratch_dir.rs` (the remote edit itself is `archive_edit/remote.rs`). Entry points: `create/` + `create.rs`, `rename/` +
   `rename.rs`, `paste_clipboard.rs`, `routing.rs` (the one routing every cross-volume transfer takes:
   `start_volume_{copy,move,compress}`, plus `start_rename_by_move`). `source_binding.rs` is the optional set of sources an op may touch. Fixtures:
@@ -447,6 +447,28 @@ the only `Err` it can produce is the deadline or a panicked task; and `paste_cli
 `CreateFile` op under the hood and refuses the way one does (`paste_clipboard.rs`). A volume's own refusal rides through
 `MutationError::Volume` carrying the whole `VolumeError`. Full rules: `docs/guides/error-handling.md`.
 
+## A slow instant mutation says it is still running (`mutation_reply.rs`)
+
+`create_directory`, `create_file`, and `rename_file` answer within `MUTATION_REPLY_DEADLINE` (2 s) with a
+`MutationReply`: `Done`, or `StillRunning { pendingId }`. A refusal inside the deadline stays the command's
+`Err(MutationError)`. Past it, `reply_within` keeps the work's join handle (`deadline::race_detached`) and a follow-up
+task emits `mutation-settled { pendingId, outcome }` when the work ends: `Landed`, or `Refused { error }` with the same
+typed refusal an in-time reply carries (a panicked task is `Unexpected`). The frontend's `awaitMutation`
+(`apps/desktop/src/lib/tauri-commands/mutation-reply.ts`) listens BEFORE invoking, since the event can overtake the reply.
+
+**Why not `TimedOut`.** The deadline never bounded the work, only the reply: on a busy NAS a new folder took 7–12 s,
+the dialog said it timed out, and the folder appeared anyway, sometimes (ERR-AREUV, 2026-10). An answer the user sees
+disproven is worse than "still working".
+
+**Why 2 s.** The deadline gives up on nothing; it only decides when the person hears the volume is slow, so it sits
+just above a healthy share's create or rename (well under a second). ❌ Don't stretch it with `io_budget`: a longer wait
+only keeps the dialog silent longer.
+
+**Why no hard limit behind it.** A session's transport already ends a dead server's work (smb2 declares it dead and
+the request errors), and a kernel mount that blocks for minutes really is still working for those minutes. The
+frontend keeps saying so, and the person can close the dialog; the work was never cancelable mid-syscall anyway.
+`MutationError::TimedOut` stays for the reads and the trash path that still use it.
+
 ## The rename pre-flight, and who it applies to
 
 `check_rename_permission_for_volume` (`rename.rs`) is what the inline editor asks before it opens: parent writable
@@ -488,7 +510,8 @@ one delete per object, which needs a scan, byte progress, pause, cancel, conflic
   billing a young object's remaining days on even a one-file rename. The dialog's scan preview then feeds the cost line
   it shows (`apps/desktop/src-tauri/src/s3_costs/DETAILS.md`); a rename that starts without the dialog costs nothing
   worth a line.
-- **The MCP rename tool** (autoConfirm) calls `rename_file`, so it takes F2's route.
+- **The MCP rename tool** (autoConfirm) calls `rename_file_replying`, so it takes F2's route; a `StillRunning` reply
+  becomes an `OK` saying the rename is still running.
 - **Bulk rename and Ask Cmdr's proposals** go through `start_renames`: every row's `rename_work` is asked (eight at a
   time; free on a volume that renames in one call), and a batch with any copying row runs as ONE move with the new
   names (`rename/bulk/by_move.rs`): the executor's dependency order (a chain moves its last link first), conflicts

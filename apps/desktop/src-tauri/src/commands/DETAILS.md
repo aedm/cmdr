@@ -220,11 +220,13 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   to update the listing cache (both local and volume-aware paths). ❗ `check_rename_validity` and
   `check_rename_permission` stay UNMANAGED: they answer while someone is typing, so they take the snappy read-only path
   instead of `manager::run_instant`, which busy-marks the volume for a mutation that isn't happening yet.
-  Both `check_rename_validity` and `rename_file` size their wait with `deadline::io_budget_for_volume`: on a live
-  session a stalled `stat` or rename once failed the user's rename with `TimedOut` (validity) or reported a rename that
-  landed as failed.
+  `check_rename_validity` sizes its wait with `deadline::io_budget_for_volume`: on a live session a stalled `stat` once
+  failed the user's rename with `TimedOut`. `rename_file` has no timeout answer at all: see the next bullet.
 - **`volume_id` on the write commands.** `create_directory` / `create_file` / `rename_file` only expand tilde (root),
-  resolve the `volume_id`, and apply the 5 s write timeout, shipping the typed `MutationError` unchanged; the logic and the managed instant op live
+  resolve the `volume_id`, and answer within `MUTATION_REPLY_DEADLINE` (2 s) through `write_operations::reply_within`:
+  `Done`, the typed `MutationError`, or `StillRunning { pendingId }` with the real end following on `mutation-settled`
+  (`../file_system/write_operations/mutation_reply.rs`). Each has a `*_replying` twin taking the settle delivery, which the tests and
+  the MCP rename tool call; the logic and the managed instant op live
   in `file_system::write_operations::{create,rename}`. For a non-root `volume_id`, `delete_files` uses the volume-aware
   delete and skips local `validate_sources` (MTP virtual paths fail `symlink_metadata`), and `rename_file` passes the id
   through. The local rename notifies the listing cache via `notify_rename_in_listing`, the volume one via its own
@@ -502,6 +504,11 @@ its own `TimedOut` variant on schedule and the transaction finishes safely behin
 actually stopped, which is the right trade for a device op (the alternative is a bricked device) and harmless for a
 local one (the deadline only ever fires on a hung mount, where dropping the future wouldn't unblock the syscall
 either).
+
+For a WRITE that detached work will still land, a `TimedOut` answer is a lie the user sees disproven seconds later (a
+new folder that "timed out" and then appeared, ERR-AREUV). Those commands use `deadline::race_detached` through
+`write_operations::reply_within` instead, which keeps the join handle and reports the real end
+(`../file_system/write_operations/mutation_reply.rs`).
 
 The `blocking_*` helpers already have this property for free: they wrap `spawn_blocking`, so their timeout races a join
 handle too, and the blocking closure is never interrupted.

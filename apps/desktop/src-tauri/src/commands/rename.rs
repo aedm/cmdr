@@ -3,7 +3,9 @@
 //! Thin pass-throughs: the rename validation + the managed rename mutation live
 //! in `file_system::write_operations::rename`. These commands expand tilde,
 //! resolve the `volume_id`, apply the IPC timeout tiers (2 s validity/permission,
-//! 5 s rename, both stretched on a live session by `deadline::io_budget`), and ship the typed `MutationError` the frontend words itself.
+//! the validity check stretched on a live session by `deadline::io_budget`; the
+//! rename answers within `MUTATION_REPLY_DEADLINE` or says it's still running),
+//! and ship the typed `MutationError` the frontend words itself.
 //! Every command in the family speaks that one vocabulary, `check_rename_validity`
 //! included: its answer is a typed `RenameValidityResult`, so the only `Err` it
 //! can produce is the deadline or a panicked task.
@@ -15,7 +17,8 @@ use super::file_system::expand_tilde;
 use crate::deadline::{io_budget_for_volume, timeout_detached_typed};
 use crate::file_system::write_operations::trash::{trash_dir_for_path, trash_single_journaled};
 use crate::file_system::write_operations::{
-    MutationError, RenameValidityResult, check_rename_permission_for_volume, check_rename_validity_impl, rename_managed,
+    MUTATION_REPLY_DEADLINE, MutationError, MutationReply, MutationSettled, RenameValidityResult, broadcast_settled,
+    check_rename_permission_for_volume, check_rename_validity_impl, rename_managed, reply_within,
 };
 
 // ============================================================================
@@ -152,16 +155,31 @@ async fn check_rename_validity_with(
 /// When `volume_id` is provided and not `"root"`, routes through the Volume trait
 /// (needed for MTP and other non-local volumes). Otherwise uses `std::fs::rename`.
 /// The mutation runs as a managed instant op (busy-marks the volume, appears
-/// briefly in the queue), still inline and result-returning.
+/// briefly in the queue). A rename still running at `MUTATION_REPLY_DEADLINE`
+/// answers `StillRunning` and reports its end on `mutation-settled`
+/// (`write_operations/mutation_reply.rs`).
 #[tauri::command]
 #[specta::specta]
 pub async fn rename_file(
+    app: tauri::AppHandle,
     from: String,
     to: String,
     force: bool,
     volume_id: Option<String>,
     initiator: Option<crate::operation_log::types::Initiator>,
-) -> Result<(), MutationError> {
+) -> Result<MutationReply, MutationError> {
+    rename_file_replying(from, to, force, volume_id, initiator, broadcast_settled(app)).await
+}
+
+/// [`rename_file`] with the settle delivery passed in.
+pub(crate) async fn rename_file_replying(
+    from: String,
+    to: String,
+    force: bool,
+    volume_id: Option<String>,
+    initiator: Option<crate::operation_log::types::Initiator>,
+    on_settled: impl FnOnce(MutationSettled) + Send + 'static,
+) -> Result<MutationReply, MutationError> {
     let volume_id_str = volume_id.unwrap_or_else(|| "root".to_string());
 
     let (from_path, to_path) = if volume_id_str != "root" {
@@ -171,15 +189,11 @@ pub async fn rename_file(
         (PathBuf::from(expand_tilde(&from)), PathBuf::from(expand_tilde(&to)))
     };
 
-    // Detached: the 5 s deadline bounds the FE's wait, not the rename. On MTP the
+    // Detached: the deadline bounds the FE's wait, not the rename. On MTP the
     // rename is a PTP `SetObjectPropValue`, and dropping it mid-transaction
-    // wedges the phone; the op finishes behind the timeout instead. A live
-    // session gets the session budget: its rename lands however long the server
-    // holds it, so a timeout there would report a rename that happened as failed.
-    timeout_detached_typed(
-        io_budget_for_volume(&volume_id_str, Duration::from_secs(5)),
-        || MutationError::TimedOut,
-        |detail| MutationError::Unexpected { detail },
+    // wedges the phone.
+    reply_within(
+        MUTATION_REPLY_DEADLINE,
         rename_managed(
             from_path,
             to_path,
@@ -187,6 +201,7 @@ pub async fn rename_file(
             volume_id_str,
             initiator.unwrap_or(crate::operation_log::types::Initiator::User),
         ),
+        on_settled,
     )
     .await
 }
@@ -386,13 +401,14 @@ mod tests {
         assert!(check.has_conflict, "the slow stat found `taken.txt`: {check:?}");
     }
 
-    /// The rename itself is one more request the server can hold. A 6 s rename on
-    /// a live session lands, so the user has to hear that it did, not that it
-    /// timed out.
+    /// The rename itself is one more request the server can hold. A 6 s rename
+    /// lands, so the user has to hear that it did, never that it timed out: the
+    /// reply says it's still running, and the settle says it landed.
     #[tokio::test(start_paused = true)]
-    async fn a_slow_rename_on_a_live_session_reports_success() {
+    async fn a_slow_rename_replies_still_running_then_settles_landed() {
         use crate::file_system::volume::manager::get_volume_manager;
         use crate::file_system::volume::{ConnectionState, InMemoryVolume, Volume};
+        use crate::file_system::write_operations::MutationSettledOutcome;
         use crate::test_support::SlowVolume;
         use std::path::Path;
         use std::sync::Arc;
@@ -404,16 +420,25 @@ mod tests {
         let volume = Arc::new(SlowVolume::renaming_slowly(inner, Duration::from_secs(6)));
         get_volume_manager().register_if_absent(volume_id, volume.clone());
 
-        let result = rename_file(
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let reply = rename_file_replying(
             "/docs/old.txt".to_string(),
             "/docs/new.txt".to_string(),
             false,
             Some(volume_id.to_string()),
             None,
+            move |settled| {
+                let _ = tx.send(settled);
+            },
         )
         .await;
 
-        assert!(result.is_ok(), "a 6 s rename on a live session landed: {result:?}");
+        let Ok(MutationReply::StillRunning { pending_id }) = reply else {
+            panic!("a 6 s rename is still running at the deadline, not refused: {reply:?}");
+        };
+        let settled = rx.await.expect("the rename settles");
+        assert_eq!(settled.pending_id, pending_id);
+        assert!(matches!(settled.outcome, MutationSettledOutcome::Landed), "{settled:?}");
         assert!(volume.exists(Path::new("/docs/new.txt")).await);
     }
 
@@ -458,7 +483,7 @@ mod tests {
     }
 
     // ========================================================================
-    // Rename file (managed-wrapper transparency: same returns as before)
+    // Rename file (an in-time answer is the reply itself)
     // ========================================================================
 
     #[tokio::test]
@@ -468,15 +493,16 @@ mod tests {
         let old = tmp.join("old.txt");
         let new = tmp.join("new.txt");
         fs::write(&old, "content").unwrap();
-        let result = rename_file(
+        let result = rename_file_replying(
             old.to_string_lossy().to_string(),
             new.to_string_lossy().to_string(),
             false,
             None,
             None,
+            |_| {},
         )
         .await;
-        assert!(result.is_ok());
+        assert_eq!(result.ok(), Some(MutationReply::Done));
         assert!(!old.exists());
         assert!(new.exists());
         assert_eq!(fs::read_to_string(&new).unwrap(), "content");
@@ -490,12 +516,13 @@ mod tests {
         let new = tmp.join("new.txt");
         fs::write(&old, "old").unwrap();
         fs::write(&new, "new").unwrap();
-        let result = rename_file(
+        let result = rename_file_replying(
             old.to_string_lossy().to_string(),
             new.to_string_lossy().to_string(),
             false,
             None,
             None,
+            |_| {},
         )
         .await;
         assert!(result.is_err());
@@ -513,15 +540,16 @@ mod tests {
         let new = tmp.join("new.txt");
         fs::write(&old, "new content").unwrap();
         fs::write(&new, "old content").unwrap();
-        let result = rename_file(
+        let result = rename_file_replying(
             old.to_string_lossy().to_string(),
             new.to_string_lossy().to_string(),
             true,
             None,
             None,
+            |_| {},
         )
         .await;
-        assert!(result.is_ok());
+        assert_eq!(result.ok(), Some(MutationReply::Done));
         assert!(!old.exists());
         assert_eq!(fs::read_to_string(&new).unwrap(), "new content");
     }

@@ -51,10 +51,6 @@
   "@fileOperations.delete.confirmMoveToTrash": {
     "sourceHash": "b9a042e"
   },
-  "fileOperations.mkdir.timeoutMessage": "No se pudo confirmar que se creara la carpeta. El volumen puede ir lento, así que es posible que la carpeta sí se haya creado.",
-  "@fileOperations.mkdir.timeoutMessage": {
-    "sourceHash": "8030f14"
-  },
   "fileOperations.transferDialog.destinationNoPermission": "No tienes permiso para agregar archivos a esta carpeta.",
   "@fileOperations.transferDialog.destinationNoPermission": {
     "sourceHash": "d160d62"

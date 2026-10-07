@@ -68,7 +68,7 @@ use crate::file_system::write_operations::{
     WriteConflictEvent, WriteConflictResolvedEvent, WriteErrorEvent, WriteProgressEvent, WriteSettledEvent,
     WriteSourceItemDoneEvent,
 };
-use crate::file_system::write_operations::{OperationsChanged, VolumesBusyChanged};
+use crate::file_system::write_operations::{MutationSettled, OperationsChanged, VolumesBusyChanged};
 use crate::file_viewer::ViewerPullProgress;
 use crate::file_viewer::open_with_extract::OpenWithCopyRefused;
 use crate::listing_index_sizes::ListingIndexSizesChanged;
@@ -1004,6 +1004,9 @@ pub fn builder() -> Builder<tauri::Wry> {
             ConflictInfo, // scan-conflict
             DryRunResult, // dry-run-complete
             WriteSettledEvent,
+            // An instant mutation (new folder, new file, rename) that outlived its
+            // reply deadline (write_operations/mutation_reply.rs).
+            MutationSettled,
             // The leftover sweep, which belongs to no operation
             // (write_operations/in_flight_sweep.rs).
             MoveLeftoversKeptEvent, // event_name = "move-leftovers-kept"

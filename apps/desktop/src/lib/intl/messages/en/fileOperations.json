@@ -5,6 +5,11 @@
     "screenshot": "new-folder-dialog.png"
   },
 
+  "fileOperations.button.close": "Close",
+  "@fileOperations.button.close": {
+    "description": "Replaces Cancel in the new-folder and new-file dialogs while a slow create is still running: it closes the dialog but does NOT stop the create, which is why it isn't 'Cancel'. Short control label."
+  },
+
   "fileOperations.button.ok": "OK",
   "@fileOperations.button.ok": {
     "description": "Confirm button in the new-file and new-folder dialogs. Short control label; this is the affirmative OK, not a status word.",
@@ -225,6 +230,23 @@
     "screenshotNote": "The delete confirmation dialog, pictured here. Your string is one of its variants: a different item count, an archive or symlink warning, or the progress line it shows while scanning."
   },
 
+  "fileOperations.mkfile.notCreatedToast": "Cmdr couldn’t create the file “{name}”. {reason}",
+  "@fileOperations.mkfile.notCreatedToast": {
+    "description": "Toast shown when a new file on a slow volume turns out NOT to have been created, after the person already closed the new-file dialog while it was still working.",
+    "placeholders": {
+      "name": "the file name the person typed, e.g. notes.txt",
+      "reason": "a full sentence saying why, already translated, e.g. 'There is already a file by this name in this folder.'"
+    }
+  },
+
+  "fileOperations.newEntry.stillCreating": "Still creating “{name}”. The volume is slow to answer, and closing this won’t stop it.",
+  "@fileOperations.newEntry.stillCreating": {
+    "description": "Notice in the new-folder and new-file dialogs once the volume (a slow network share, a phone) has taken more than a couple of seconds to create the entry. It is still working and will most likely finish; the dialog closes by itself when it does. 'Closing this' means closing the dialog: the create carries on in the background.",
+    "placeholders": {
+      "name": "the folder or file name being created, e.g. photos"
+    }
+  },
+
   "fileOperations.mkfile.title": "New file",
   "@fileOperations.mkfile.title": {
     "description": "Title of the dialog that creates a new empty file (Shift+F4).",
@@ -279,19 +301,13 @@
     "screenshot": "new-folder-dialog.png"
   },
 
-  "fileOperations.mkdir.timeoutMessage": "Couldn’t confirm the folder was created. The volume may be slow, so the folder may still have been created.",
-  "@fileOperations.mkdir.timeoutMessage": {
-    "description": "Warning in the new-folder dialog when the create command did not confirm in time (slow volume). Reassures the folder may still exist. Conversational, not alarming."
-  },
-
-  "fileOperations.mkdir.timeoutRefresh": "Refresh listing",
-  "@fileOperations.mkdir.timeoutRefresh": {
-    "description": "Button in the new-folder timeout warning that reloads the current folder's file list to check whether the folder appeared. Control label."
-  },
-
-  "fileOperations.mkdir.timeoutDismiss": "Dismiss",
-  "@fileOperations.mkdir.timeoutDismiss": {
-    "description": "Button in the new-folder timeout warning that closes the warning without refreshing. Control label."
+  "fileOperations.mkdir.notCreatedToast": "Cmdr couldn’t create the folder “{name}”. {reason}",
+  "@fileOperations.mkdir.notCreatedToast": {
+    "description": "Toast shown when a new folder on a slow volume turns out NOT to have been created, after the person already closed the new-folder dialog while it was still working.",
+    "placeholders": {
+      "name": "the folder name the person typed, e.g. photos",
+      "reason": "a full sentence saying why, already translated, e.g. 'There is already a folder by this name in this folder.'"
+    }
   },
 
   "fileOperations.mkdir.aiSuggestionsAria": "AI suggestions",

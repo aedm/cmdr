@@ -2,11 +2,12 @@
 
 use crate::file_system::write_operations::TrashRoutingAnswer;
 use crate::file_system::write_operations::{
-    ConflictId, ConflictResolution, ConflictResolutionOutcome, MutationError, ScanPreviewRefusal,
-    ScanPreviewStartResult, cancel_scan_preview as ops_cancel_scan_preview,
-    create_directory_managed as ops_create_directory_managed, create_file_managed as ops_create_file_managed,
-    get_scan_preview_totals as ops_get_scan_preview_totals, resolve_write_conflict as ops_resolve_write_conflict,
-    start_scan_preview as ops_start_scan_preview, trash_routing_for_selection as ops_trash_routing_for_selection,
+    ConflictId, ConflictResolution, ConflictResolutionOutcome, MUTATION_REPLY_DEADLINE, MutationError, MutationReply,
+    MutationSettled, ScanPreviewRefusal, ScanPreviewStartResult, broadcast_settled,
+    cancel_scan_preview as ops_cancel_scan_preview, create_directory_managed as ops_create_directory_managed,
+    create_file_managed as ops_create_file_managed, get_scan_preview_totals as ops_get_scan_preview_totals,
+    reply_within, resolve_write_conflict as ops_resolve_write_conflict, start_scan_preview as ops_start_scan_preview,
+    trash_routing_for_selection as ops_trash_routing_for_selection,
 };
 use crate::file_system::{
     OperationEventSink, OperationSnapshot, PauseAllOutcome, PauseOutcome, ReadOnlySide, SortColumn, SortOrder,
@@ -129,44 +130,67 @@ fn reject_if_routed_over_a_parent<'a>(
     Ok(())
 }
 
-/// Creates a folder and returns its new path. Thin pass-through to the managed
-/// create op (`write_operations::create`): expand tilde (root only), wrap in the
-/// 5 s write timeout, and ship the typed `MutationError` the frontend renders
-/// its words from.
+/// Creates a folder. Thin pass-through to the managed create op
+/// (`write_operations::create`): expand tilde (root only), answer within
+/// `MUTATION_REPLY_DEADLINE`, and ship the typed `MutationError` the frontend
+/// renders its words from. A create still running at the deadline answers
+/// `StillRunning` and reports its end on `mutation-settled`
+/// (`write_operations/mutation_reply.rs`).
 #[tauri::command]
 #[specta::specta]
 pub async fn create_directory(
+    app: tauri::AppHandle,
     volume_id: Option<String>,
     parent_path: String,
     name: String,
     initiator: Option<Initiator>,
-) -> Result<String, MutationError> {
+) -> Result<MutationReply, MutationError> {
+    create_directory_replying(volume_id, parent_path, name, initiator, broadcast_settled(app)).await
+}
+
+/// [`create_directory`] with the settle delivery passed in.
+async fn create_directory_replying(
+    volume_id: Option<String>,
+    parent_path: String,
+    name: String,
+    initiator: Option<Initiator>,
+    on_settled: impl FnOnce(MutationSettled) + Send + 'static,
+) -> Result<MutationReply, MutationError> {
     let expanded_parent = expand_parent(volume_id.as_deref(), &parent_path);
-    timeout_detached_typed(
-        Duration::from_secs(5),
-        || MutationError::TimedOut,
-        |detail| MutationError::Unexpected { detail },
+    reply_within(
+        MUTATION_REPLY_DEADLINE,
         ops_create_directory_managed(volume_id, expanded_parent, name, initiator.unwrap_or(Initiator::User)),
+        on_settled,
     )
     .await
 }
 
-/// Creates an empty file and returns its new path. Same shape as
-/// [`create_directory`].
+/// Creates an empty file. Same shape as [`create_directory`].
 #[tauri::command]
 #[specta::specta]
 pub async fn create_file(
+    app: tauri::AppHandle,
     volume_id: Option<String>,
     parent_path: String,
     name: String,
     initiator: Option<Initiator>,
-) -> Result<String, MutationError> {
+) -> Result<MutationReply, MutationError> {
+    create_file_replying(volume_id, parent_path, name, initiator, broadcast_settled(app)).await
+}
+
+/// [`create_file`] with the settle delivery passed in.
+async fn create_file_replying(
+    volume_id: Option<String>,
+    parent_path: String,
+    name: String,
+    initiator: Option<Initiator>,
+    on_settled: impl FnOnce(MutationSettled) + Send + 'static,
+) -> Result<MutationReply, MutationError> {
     let expanded_parent = expand_parent(volume_id.as_deref(), &parent_path);
-    timeout_detached_typed(
-        Duration::from_secs(5),
-        || MutationError::TimedOut,
-        |detail| MutationError::Unexpected { detail },
+    reply_within(
+        MUTATION_REPLY_DEADLINE,
         ops_create_file_managed(volume_id, expanded_parent, name, initiator.unwrap_or(Initiator::User)),
+        on_settled,
     )
     .await
 }
@@ -606,6 +630,115 @@ mod tests {
             scan_preview_source_volume("root", Some(&plain)).await,
             Ok(None)
         ));
+    }
+
+    /// A share that holds new folders and files for `delay`, with `/docs/taken`
+    /// already there, registered under `volume_id`.
+    async fn register_slowly_creating_volume(volume_id: &str, delay: Duration) {
+        use crate::file_system::volume::InMemoryVolume;
+        use crate::test_support::SlowVolume;
+        use std::path::Path;
+
+        let inner = InMemoryVolume::new("Slow NAS");
+        inner.create_directory(Path::new("/docs")).await.unwrap();
+        inner.create_directory(Path::new("/docs/taken")).await.unwrap();
+        get_volume_manager().register_if_absent(volume_id, Arc::new(SlowVolume::creating_slowly(inner, delay)));
+    }
+
+    /// An `on_settled` that hands the event to the test, and its receiver.
+    fn settle_channel() -> (
+        impl FnOnce(MutationSettled) + Send + 'static,
+        tokio::sync::oneshot::Receiver<MutationSettled>,
+    ) {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        (
+            move |settled| {
+                let _ = tx.send(settled);
+            },
+            rx,
+        )
+    }
+
+    /// ERR-AREUV: a new folder on a busy share took 7–12 s, the dialog said it
+    /// timed out, and then the folder appeared. Past the deadline the reply is
+    /// "still running" and the settle says it landed.
+    #[tokio::test(start_paused = true)]
+    async fn a_slow_new_folder_replies_still_running_then_settles_landed() {
+        use crate::file_system::write_operations::MutationSettledOutcome;
+
+        let volume_id = "smb-slow-mkdir-test";
+        register_slowly_creating_volume(volume_id, Duration::from_secs(7)).await;
+        let (on_settled, rx) = settle_channel();
+
+        let reply = create_directory_replying(
+            Some(volume_id.to_string()),
+            "/docs".to_string(),
+            "photos".to_string(),
+            None,
+            on_settled,
+        )
+        .await;
+
+        let Ok(MutationReply::StillRunning { pending_id }) = reply else {
+            panic!("a 7 s create is still running at the deadline, not refused: {reply:?}");
+        };
+        let settled = rx.await.expect("the create settles");
+        assert_eq!(settled.pending_id, pending_id);
+        assert!(matches!(settled.outcome, MutationSettledOutcome::Landed), "{settled:?}");
+        let volume = get_volume_manager().get(volume_id).expect("registered");
+        assert!(volume.exists(std::path::Path::new("/docs/photos")).await);
+    }
+
+    /// The other end a slow create can reach: the volume refuses once it answers,
+    /// and the settle carries that refusal typed, as an in-time reply would.
+    #[tokio::test(start_paused = true)]
+    async fn a_slow_new_file_the_volume_refuses_settles_with_the_typed_reason() {
+        use crate::file_system::write_operations::MutationSettledOutcome;
+
+        let volume_id = "smb-slow-mkfile-refused-test";
+        register_slowly_creating_volume(volume_id, Duration::from_secs(7)).await;
+        let (on_settled, rx) = settle_channel();
+
+        let reply = create_file_replying(
+            Some(volume_id.to_string()),
+            "/docs".to_string(),
+            "taken".to_string(),
+            None,
+            on_settled,
+        )
+        .await;
+
+        assert!(matches!(reply, Ok(MutationReply::StillRunning { .. })), "{reply:?}");
+        let settled = rx.await.expect("the create settles");
+        assert!(
+            matches!(
+                &settled.outcome,
+                MutationSettledOutcome::Refused {
+                    error: MutationError::AlreadyExists { name }
+                } if name == "taken"
+            ),
+            "{settled:?}"
+        );
+    }
+
+    /// A healthy create answers inside the deadline, and nothing settles later.
+    #[tokio::test(start_paused = true)]
+    async fn a_quick_new_folder_replies_done() {
+        let volume_id = "smb-quick-mkdir-test";
+        register_slowly_creating_volume(volume_id, Duration::from_millis(200)).await;
+        let (on_settled, rx) = settle_channel();
+
+        let reply = create_directory_replying(
+            Some(volume_id.to_string()),
+            "/docs".to_string(),
+            "quick".to_string(),
+            None,
+            on_settled,
+        )
+        .await;
+
+        assert_eq!(reply.ok(), Some(MutationReply::Done));
+        assert!(rx.await.is_err(), "an in-time reply never settles");
     }
 
     /// A phone unplugged under a search-results pane leaves an id no volume

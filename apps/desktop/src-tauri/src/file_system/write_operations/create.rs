@@ -1,19 +1,19 @@
 //! New-folder / new-file creation and the managed create mutations.
 //!
 //! The command layer (`commands/file_system/write_ops.rs`) is a thin
-//! pass-through: it expands tilde, resolves the `volume_id`, calls
-//! `create_directory_managed` / `create_file_managed` wrapped in its 5 s IPC
-//! timeout, and ships the typed `MutationError` unchanged. All the logic lives
-//! here per "smart backend / thin frontend"; the backend never names the command
-//! layer or `expand_tilde`.
+//! pass-through: it expands tilde, resolves the `volume_id`, runs
+//! `create_directory_managed` / `create_file_managed` detached under its reply
+//! deadline (`mutation_reply.rs`: `Done`, the typed `MutationError`, or
+//! `StillRunning` with a settle event later). All the logic lives here per "smart
+//! backend / thin frontend"; the backend never names the command layer or
+//! `expand_tilde`.
 //!
 //! Create is a managed instant op: the mutation runs inside
 //! `manager::run_instant`, so it registers a `Running` record + marks its volume
-//! busy (eject guard) for its sub-second duration, yet still runs inline and
-//! returns the new path to the caller. It does NOT reserve a lane or queue behind
-//! transfers (see `manager::run_instant`). There's no inner timeout: the
-//! command's outer 5 s timeout drops the whole future on a hang, and the
-//! `InstantTaskGuard` releases the busy set on that drop.
+//! busy (eject guard) for its duration, yet still runs inline and returns the new
+//! path to its caller. It does NOT reserve a lane or queue behind transfers (see
+//! `manager::run_instant`). There's no inner timeout: the work runs to its own
+//! end, and the `InstantTaskGuard` releases the busy set even on a panic.
 //!
 //! The synthetic-listing-diff update (`emit_synthetic_entry_diff` /
 //! `should_emit_synthetic_diff`) lives here, co-located with the create op it
