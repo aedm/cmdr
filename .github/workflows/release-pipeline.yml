@@ -984,6 +984,9 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
               rm -f release-assets/*.sig
           fi
+          # An earlier run's provenance bundle is a statement about the other assets, not one of
+          # them; this run uploads its own below.
+          rm -f release-assets/*.intoto.jsonl
           # The six files people and the updater actually fetch must be here, or this job
           # would attest a partial release and look green.
           for arch in aarch64 x64 universal; do
@@ -1012,9 +1015,26 @@ jobs:
           cp sbom/*.cdx.json release-assets/
 
       - name: Attest build provenance for every release asset
+        id: provenance
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: release-assets/*
+
+      # The same signed provenance, as a file on the release: one Sigstore bundle whose subjects
+      # are every asset above (the DMGs, the pkg, the archives, the SBOMs). Offline tools and
+      # OpenSSF Scorecard's Signed-Releases check look for an `*.intoto.jsonl` asset; the
+      # attestation stored on the repo stays what `gh attestation verify` reads.
+      - name: Upload the provenance bundle to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          OUT="Cmdr_${VERSION}.intoto.jsonl"
+          # One bundle per line, whatever layout the action wrote.
+          jq -c . "$BUNDLE" > "$OUT"
+          [ -s "$OUT" ] || { echo "::error::The provenance bundle at $BUNDLE is empty."; exit 1; }
+          gh release upload "${{ github.ref_name }}" -R "$GITHUB_REPOSITORY" "$OUT" --clobber
 
       # One SBOM attestation per SBOM, bound to the builds it describes. The universal build
       # is both arch slices joined, so both Rust SBOMs describe it, and the pkg (universal, the

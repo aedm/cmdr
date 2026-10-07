@@ -476,7 +476,9 @@ const toc = [
         The entitlements (none) and the code requirement above were read from the 0.50.0 release with
         <code>codesign -d --entitlements -</code> and <code>codesign -d -r-</code>; the requirement matched 0.50.0 in
         <code>/Applications</code> again on 2026-10-07 (<code>codesign -v -R=</code>). Nobody has tested the PPPC
-        profile on a real MDM yet.
+        profile on a real MDM yet. Once a release ships <code>Cmdr_X.Y.Z.intoto.jsonl</code> (the release workflow
+        attaches it from the next release on), add to the "Build provenance" bullet: "The same provenance is attached
+        to each release as a file ending in <code>.intoto.jsonl</code>."
     </DevTodo>
 
     <h2 id="permissions">Sandbox and permissions</h2>

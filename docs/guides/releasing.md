@@ -355,8 +355,8 @@ One GitHub release per tag, carrying these assets for each of the three arches (
   `Cmdr_<version>_x64.rust.cdx.json` (the Rust crate graph per target triple) and `Cmdr_<version>_frontend.cdx.json`
   (the npm packages whose code is in the built frontend). Details in § Provenance and SBOM attestations.
 
-Every asset also carries a signed SLSA build provenance attestation, stored on the repo rather than on the release (same
-section).
+Every asset also carries a signed SLSA build provenance attestation, stored on the repo, and the same provenance is on
+the release as `Cmdr_<version>.intoto.jsonl` (same section).
 
 Two naming details are load-bearing:
 
@@ -390,7 +390,11 @@ Two jobs in `release-pipeline.yml`, beside the build-and-publish chain:
 - **`attest`** (`needs: [publish, sbom]`, holds `id-token: write` and `attestations: write`) downloads every asset back
   from the published release, uploads the SBOMs to it, and runs `actions/attest`: one SLSA provenance attestation
   covering every asset (SBOMs included), then one SBOM attestation per SBOM, bound to the builds it describes (each Rust
-  SBOM to its arch's DMG and tarball plus the universal ones; the frontend SBOM to all six).
+  SBOM to its arch's DMG and tarball plus the universal ones and the pkg; the frontend SBOM to all of them). It also
+  uploads the provenance's Sigstore bundle as `Cmdr_<version>.intoto.jsonl`: one file whose subjects are all the assets,
+  for offline verification and for OpenSSF Scorecard's Signed-Releases check, which scores 10/10 only with an
+  `*.intoto.jsonl` asset. A later run of the job replaces it (in `local` mode the dispatch's bundle, which adds
+  `latest.json` and `checksums.txt`, wins). The repo-stored attestation stays what `gh attestation verify` reads.
 
 Why it's shaped this way:
 
