@@ -835,17 +835,27 @@ local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile
   the date its CREATE response carries (`crates/cmdr-smb/DETAILS.md` § "Dates on copies").
 - **Archive (source only)**: reports each entry's date from the parsed index, on random-access reads and the one-pass
   sequential extract alike (whole seconds; zip's DOS time keeps even seconds).
-- **SFTP, MTP, WebDAV**: not wired yet; each source stream carries a `TODO(mtime)` marker.
+- **MTP**: not wired yet; its source stream carries a `TODO(mtime)` marker.
+- **SFTP**: reports the mtime from the `fstat` its open already sends; writes it with a path `SETSTAT` on the staging
+  temp after the awaited close (so a server buffering until close can't bump it), before the final rename. Whole
+  seconds, atime set alongside. Server-side `copy-data` copies keep it too (`crates/cmdr-sftp/DETAILS.md` § "Dates on
+  copies").
+- **WebDAV**: reports the GET's `Last-Modified`; writes it as an `X-OC-Mtime` header on the PUT, which Nextcloud,
+  ownCloud, and rclone honor. ❗ Plain Apache `mod_dav` can't store a date at all, so a copy onto it keeps the server's
+  own: best effort by design, with the destination half pinned on Nextcloud (`crates/cmdr-webdav/DETAILS.md` §
+  "Dates").
 
 **How it's pinned.** Two layers, so a gap shows where it lives:
 
 - **Per backend**, in its own crate: `cmdr_fs::volume::conformance::assert_write_from_stream_keeps_the_source_date`
   (the destination half, with a `tolerance` for a coarse clock) and `assert_read_stream_reports_the_listed_date` (the
   source half, on a file dated a day or more back, so a stream reporting "now" can't pass). Every mutable backend's
-  `conformance_test.rs` runs both; a read-only backend runs only the second, seeded by its fixture's own means.
+  `conformance_test.rs` runs both; a read-only backend, or a server that stores no date (Apache `mod_dav`), runs only
+  the second, seeded by its fixture's own means.
 - **Through the engine**: `backend_suites/network_dates_test_support.rs`'s
-  `a_copy_onto_the_server_keeps_the_source_date` and `a_copy_off_the_server_keeps_the_source_date`, with cells for
-  ADB, SFTP, and WebDAV, plus `in_memory_dates_test.rs`, which pins the engine's own half (the checkpoint wrapper,
+  `a_copy_onto_the_server_keeps_the_source_date` and `a_copy_off_the_server_keeps_the_source_date`, with cells for ADB
+  and SFTP; WebDAV runs only the copy-off half, through `a_copy_off_the_server_keeps_the_date_it_lists` on a file its
+  fixture dated. Plus `in_memory_dates_test.rs`, which pins the engine's own half (the checkpoint wrapper,
   staging, the final rename) against the double in the unit lane. S3's engine cell is
   `s3_transfer_integration_test.rs::copying_onto_a_bucket_lands_every_byte_and_the_mtime`.
 

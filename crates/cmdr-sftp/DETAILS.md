@@ -192,6 +192,7 @@ tuning.
   `.cmdr-tmp-*` sibling and a partial never wears a real filename. ❌ Which is also why there is no "the create landed
   but the write didn't" classifier like `cmdr-smb/src/volume/streams.rs`'s — that one exists because SMB's compound path
   SKIPS staging.
+- **The upload stamps the source's date** (§ "Dates on copies").
 
 ### The depth, and the curve that set it
 
@@ -279,6 +280,28 @@ the same volume instance; the app asks it BEFORE reaching for a stream
 - **A server without the extension answers `NotSupported`**, which the caller reads as "stream it". ❌ Not a failure,
   and ❌ not a fallback the backend does for itself: the caller owns retry, staging, and progress, and a backend quietly
   streaming would take the file outside all three.
+- **The copy keeps the source's date**, from the `fstat` this path already does for the length (§ "Dates on copies"):
+  `copy-data` moves bytes only.
+
+## Dates on copies
+
+Copies onto and off this backend keep the source's modification date. The cross-backend contract is
+`apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Copies keep the source's date";
+this is how SFTP keeps it.
+
+- **Source**: the read stream reports the mtime from the `fstat` it already sends alongside the first chunk
+  (`streams.rs`'s `RemoteFile::stat`), so the date costs no round trip.
+- **Destination**: `writes.rs::keep_source_date` sends a path `SETSTAT` with `ATTR_ACMODTIME` after the awaited close
+  and before the transfer layer's final rename. ❗ After the close, ❌ not an `FSETSTAT` on the open handle: a server
+  that buffers writes until the close could bump the date past ours, and the close is where every byte is committed.
+  Still on the `.cmdr-tmp-*` name, so the real name never wears a wrong date. One round trip per file.
+- **SFTP v3 times are a `u32` of whole seconds**, and atime rides along (the attribute carries both), so atime gets the
+  same value. A sub-second source date truncates; one before 1970 or past 2106 can't be said at all.
+- **Best effort**: a refused `SETSTAT` or an unsayable date is a `warn!`, and the copy still succeeds.
+- **Pinned by** `conformance_test::a_copy_keeps_the_source_date` (both halves against stock OpenSSH),
+  `copy_test::sftp_integration_a_server_side_copy_keeps_the_source_date`, and the two
+  `sftp_integration_*_keeps_the_source_date` engine cells in
+  `apps/desktop/src-tauri/src/file_system/write_operations/backend_suites/sftp_transfer_integration_test.rs`.
 
 ## Scanning, before a copy runs
 
