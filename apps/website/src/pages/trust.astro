@@ -415,11 +415,7 @@ const toc = [
         SMTP2Go's delivery logs.
     </p>
     <DevTodo>
-        The R2 bucket <code>cmdr-error-reports</code> has no 90-day lifecycle rule (only the default multipart-abort
-        rule), and zips from 2026-04-24 still exist. The privacy policy and <code>docs/security.md</code> promise 90
-        days. Add an expiry rule scoped to the <code>error-reports/</code> prefix (NOT bucket-wide: the daily license
-        backup lives in the same bucket), then change this page's error-report line and drop the gap. Also: confirm
-        Cmdr is on PostHog's free plan (events kept one year; a paid plan keeps them seven).
+        Confirm Cmdr is on PostHog's free plan (events kept one year; a paid plan keeps them seven).
     </DevTodo>
 
     <h2 id="signing">Signing, notarization, and updates</h2>
