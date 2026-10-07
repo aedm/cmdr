@@ -118,6 +118,13 @@ The volume is device-anchored, the same shape MTP has, and every answer below fo
   first and refuses `adb://<serial>/sdcard/../../etc`. Internally the device path is what the wire, the shell, and an
   error from the device carry; ❗ `probe` and `follow` take it directly, since handing one back through
   `get_metadata_impl` would be a bare path that the translation refuses.
+- **Copies keep the source's date** (the contract:
+  `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Copies keep the source's
+  date"). A read stream reports the mtime of the `STAT`/`STA2` its open already does (`SyncStat::modified_at`, `None`
+  before 1970 to match the listing); a push hands the stream's date to `DONE`, which must carry one, so a dateless
+  source lands dated now, as `adb push` does. ❗ `DONE`'s mtime is a u32 on both verb sets (`SND2` only adds flags), so
+  `done_mtime_word` clamps past 2106-02-07 and drops sub-seconds; the staging `mv -f` keeps the date. Both verb sets
+  have a cell (`a_copy_keeps_the_source_date[_over_the_v1_verbs]`).
 - **`rerooted` → `None`.** One volume per device; the pane's path is inside it. A device has no second root to offer.
 - **`lane_key` → the serial.** Two panes on one phone contend on one `adbd`, so they share a lane and the operation
   manager serializes their writes.

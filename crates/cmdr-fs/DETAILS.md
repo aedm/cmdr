@@ -525,7 +525,7 @@ everywhere, which is the point.
 - `assert_not_found_carries_the_path` — the payload the frontend renders as the missing file's name.
 - `assert_write_from_stream_keeps_the_source_date` and `assert_read_stream_reports_the_listed_date` — the two halves of
   "a copy keeps the source's date" (`src/volume/conformance/modification_date.rs`). Every copy suite checksums bytes,
-  and a destination stamping its own date passes all of them. Run by local, S3, and the in-memory double green; ADB,
+  and a destination stamping its own date passes all of them. Run by local, S3, ADB, and the in-memory double green;
   MTP, SFTP, SMB, and WebDAV carry the cells while their wiring lands. The contract:
   `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Copies keep the source's
   date".

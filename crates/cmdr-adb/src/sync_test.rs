@@ -200,3 +200,33 @@ async fn a_full_size_data_chunk_still_reads() {
 
     assert_eq!(chunk.len(), MAX_DATA_CHUNK);
 }
+
+#[test]
+fn a_stat_reports_its_mtime_as_a_date_and_a_pre_epoch_one_as_none() {
+    let stat = |mtime| SyncStat {
+        mode: 0o100644,
+        size: 0,
+        mtime,
+        errno: None,
+    };
+    let at = |secs| UNIX_EPOCH + Duration::from_secs(secs);
+    assert_eq!(stat(1_611_909_015).modified_at(), Some(at(1_611_909_015)));
+    // `STA2`/`DNT2` carry 64 bits: a date past 2106 stays whole.
+    assert_eq!(stat(5_000_000_000).modified_at(), Some(at(5_000_000_000)));
+    // The listing shows no date for these, so the stream mustn't invent one.
+    assert_eq!(stat(-1).modified_at(), None);
+}
+
+#[test]
+fn the_done_word_carries_whole_seconds_clamped_to_u32() {
+    use std::time::{Duration, UNIX_EPOCH};
+    assert_eq!(
+        done_mtime_word(UNIX_EPOCH + Duration::from_millis(1_611_909_015_750)),
+        1_611_909_015
+    );
+    assert_eq!(done_mtime_word(UNIX_EPOCH - Duration::from_secs(10)), 0);
+    assert_eq!(
+        done_mtime_word(UNIX_EPOCH + Duration::from_secs(5_000_000_000)),
+        u32::MAX
+    );
+}

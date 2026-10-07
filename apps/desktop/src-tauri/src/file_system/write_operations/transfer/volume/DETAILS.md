@@ -826,8 +826,9 @@ local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile
 - **S3**: reports and writes the date as `x-amz-meta-mtime` (`crates/cmdr-s3/DETAILS.md`).
 - **`InMemoryVolume`**: keeps the stream's date (whole seconds), so an engine test copying onto it sees what a real
   destination does.
-- **ADB, SFTP, SMB, MTP, WebDAV, archive (source only)**: not wired yet; each source stream carries a `TODO(mtime)`
-  marker. ADB push stamps `now` on `send_finish`.
+- **ADB**: reports the open's `STAT`/`STA2` date; writes it as the push's `DONE` mtime (a u32: whole seconds, clamped
+  at 2106), falling back to now only for a dateless source (`crates/cmdr-adb/DETAILS.md`).
+- **SFTP, SMB, MTP, WebDAV, archive (source only)**: not wired yet; each source stream carries a `TODO(mtime)` marker.
 
 **How it's pinned.** Two layers, so a gap shows where it lives:
 

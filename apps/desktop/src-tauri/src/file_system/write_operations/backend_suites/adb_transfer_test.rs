@@ -269,14 +269,12 @@ async fn awkward_names_survive_a_round_trip_through_a_phone() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore = "mtime: ADB not wired yet"]
 async fn a_copy_onto_a_phone_keeps_the_source_date() {
     let phone = dialed_phone("R58M-Dated-Onto", "dated-onto").await;
     a_copy_onto_the_server_keeps_the_source_date(Arc::clone(&phone.volume), phone.dir.clone(), Duration::ZERO).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore = "mtime: ADB not wired yet"]
 async fn a_copy_off_a_phone_keeps_the_source_date() {
     let phone = dialed_phone("R58M-Dated-Off", "dated-off").await;
     a_copy_off_the_server_keeps_the_source_date(Arc::clone(&phone.volume), phone.dir.clone(), Duration::ZERO).await;

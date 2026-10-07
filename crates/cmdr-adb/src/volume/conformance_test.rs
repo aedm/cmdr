@@ -147,9 +147,21 @@ async fn not_found_carries_the_path() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[ignore = "mtime: ADB not wired yet"]
 async fn a_copy_keeps_the_source_date() {
     let (_server, volume) = seeded().await;
+    let dated = fixture_path("/sdcard/dated.txt");
+    conformance::assert_write_from_stream_keeps_the_source_date(volume.as_ref(), &dated, std::time::Duration::ZERO)
+        .await;
+    conformance::assert_read_stream_reports_the_listed_date(volume.as_ref(), &dated).await;
+}
+
+/// The same promise over the v1 verbs, whose `STAT` carries the mtime as a u32
+/// (older phones, and any device that doesn't advertise `stat_v2`).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_copy_keeps_the_source_date_over_the_v1_verbs() {
+    let server = FakeAdbServer::start(seeded_tree()).await;
+    server.set_features("shell_v2");
+    let (volume, _) = connect_fake(&server, FIXTURE_SERIAL).await;
     let dated = fixture_path("/sdcard/dated.txt");
     conformance::assert_write_from_stream_keeps_the_source_date(volume.as_ref(), &dated, std::time::Duration::ZERO)
         .await;
