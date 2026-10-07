@@ -6153,9 +6153,9 @@ dependencies = [
 
 [[package]]
 name = "mtp-rs"
-version = "0.32.0"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5512a899d3ad31f804bd0f85108ad7256e6f5414030ee3c247c4ba2dffa116b0"
+checksum = "67f9ea20031863049c6e014f6bb5cf38865089d13428c76e794d4c3a2d19fa8e"
 dependencies = [
  "async-trait",
  "bytes",
@@ -9409,9 +9409,9 @@ checksum = "8ed6a63f02c8539c91a8685a86f4099661ba3da017932f6ebbea6de3f0fa7c90"
 
 [[package]]
 name = "smb2"
-version = "0.27.1"
+version = "0.27.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49f75e34e0dac90c8b1ec2bc9cab72623713c5ee8e2e08fcabb566b7fd524fca"
+checksum = "bf9e5ee92bb681d6dbeed831789fe96a9da3b36fba98e921e02a1d1e83eaf5d9"
 dependencies = [
  "aes 0.9.1",
  "aes-gcm 0.11.0",

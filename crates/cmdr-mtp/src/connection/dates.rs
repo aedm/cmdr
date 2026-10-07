@@ -39,6 +39,7 @@ pub(crate) fn mtp_datetime_from_system_time(date: SystemTime) -> Option<mtp_rs::
         hour: u8::try_from(of_day / 3600).ok()?,
         minute: u8::try_from(of_day % 3600 / 60).ok()?,
         second: u8::try_from(of_day % 60).ok()?,
+        offset: None,
     })
 }
 
