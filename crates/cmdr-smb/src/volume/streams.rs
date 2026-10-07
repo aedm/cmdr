@@ -193,6 +193,23 @@ pub(super) async fn last_write_time(
     }
 }
 
+/// The times a copy stamps on what it wrote: the source's `LastWriteTime` and
+/// nothing else, so the server keeps its own creation and access times. `None`
+/// for a source with no date, which leaves the server's.
+fn source_times(modified: Option<std::time::SystemTime>) -> Option<smb2::FileTimes> {
+    modified.map(|t| smb2::FileTimes::new().set_modified(t))
+}
+
+/// Stamps the source's date on a streaming writer's OWN handle, before
+/// `finish()`: the server rewrites the date when a writing handle closes, so a
+/// path stamp while this one is open would lose to that close. Best effort: a
+/// date that won't set leaves the server's, and the copy goes on.
+async fn stamp_writer(writer: &mut smb2::client::stream::FileWriter, times: smb2::FileTimes, smb_path: &str) {
+    if let Err(e) = writer.set_times(times).await {
+        warn!("SmbVolume::write_from_stream: path={smb_path:?} keeps the server's date, not the source's: {e}");
+    }
+}
+
 impl VolumeReadStream for InlineReadStream {
     fn next_chunk(&mut self) -> Pin<Box<dyn Future<Output = Option<Result<Vec<u8>, VolumeError>>> + Send + '_>> {
         Box::pin(async move {
@@ -430,6 +447,7 @@ impl SmbVolume {
             // fast-path and the streaming fallback drive their write on
             // this same clone — no second `clone_session` needed.
             let (tree, mut conn) = self.clone_session().await?;
+            let times = source_times(stream.modified_at());
 
             // Best-effort delete of a partial file on a FRESH cloned session.
             // Once a `FileWriter` is open and bytes have streamed into it, an
@@ -539,11 +557,19 @@ impl SmbVolume {
                                 // data loss.
                                 delete_partial().await;
                             }
-                            break 'write self.handle_smb_result(
-                                "write_from_stream(compound)",
-                                &smb_path,
-                                write_result,
-                            )?;
+                            let written =
+                                self.handle_smb_result("write_from_stream(compound)", &smb_path, write_result)?;
+                            // The frame's CLOSE already stamped the server's own
+                            // date, so this goes by path, after it. Best effort,
+                            // like `stamp_writer`.
+                            if let Some(times) = times
+                                && let Err(e) = tree.set_times(&mut conn, &smb_path, times).await
+                            {
+                                warn!(
+                                    "SmbVolume::write_from_stream: path={smb_path:?} keeps the server's date, not the source's: {e}"
+                                );
+                            }
+                            break 'write written;
                         }
                     }
                     // The source yielded MORE than one frame can carry (it
@@ -573,6 +599,9 @@ impl SmbVolume {
                     }
                     // The source signalled end-of-stream by returning None
                     // above (we exited the drain loop). No further chunks.
+                    if let Some(times) = times {
+                        stamp_writer(&mut writer, times, &smb_path).await;
+                    }
                     // `finish()` consumes the writer, so on failure the
                     // handle is already gone (best-effort delete only).
                     let finish_result = writer.finish().await;
@@ -653,6 +682,9 @@ impl SmbVolume {
                     }
                 }
 
+                if let Some(times) = times {
+                    stamp_writer(&mut writer, times, &smb_path).await;
+                }
                 // `finish()` consumes the writer; on failure the handle is
                 // already gone, so we can only best-effort delete the partial.
                 let finish_result = writer.finish().await;
@@ -676,11 +708,6 @@ impl SmbVolume {
 
                 confirmed
             };
-
-            // TODO(mtime): set `stream.modified_at()` as the file's LastWriteTime
-            // here (SET_INFO `FileBasicInformation`, every other time 0 = leave
-            // it), best effort, before the transfer's rename. Blocked on smb2:
-            // its `Tree` has no call that sends it.
 
             // Patch the listing cache from local knowledge so the destination
             // pane sees the new file without waiting for a CHANGE_NOTIFY

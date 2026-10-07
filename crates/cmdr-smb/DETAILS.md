@@ -568,14 +568,19 @@ source's date".
   say so). A stat that fails leaves the stream dateless, ❌ never fails the read.
 - **The scan pool's prefetch stays dateless**: enrichment never copies those bytes, so a stat per prefetch would only
   double the background load.
-- **Destination half: not written yet.** smb2's `Tree` has no SET_INFO `FileBasicInformation` call (verified on smb2
-  0.27.1, its public `Tree` API, 2026-10-07), so `write_from_stream_impl` carries a `TODO(mtime)`. When it lands: set
-  LastWriteTime (every other time 0 = leave it) after the last byte and before the transfer's rename, best effort. Until
-  then `conformance_test.rs::smb_integration_smb2_sets_no_date_so_a_copy_onto_a_share_carries_its_own` asserts the gap
-  (the copy lists a date other than the source's), so it fails the day the write half works and forces the flip back to
-  `conformance::assert_write_from_stream_keeps_the_source_date`;
-  `smb_integration_a_read_stream_reports_the_listed_date_on_both_read_paths` pins the read half on a file aged inside
-  the fixture container (`touch -d`).
+- **Destination half: `write_from_stream_impl` stamps `LastWriteTime` only** (`smb2::FileTimes::set_modified`; every
+  other time goes as 0, "don't change"), best effort: a refused stamp is a `warn!` and the copy succeeds. Gotcha/Why:
+  the server rewrites a file's date when the handle that WROTE it closes, so the moment matters. The streaming writer
+  stamps its own handle before `finish()` (`stamp_writer`, which `FileWriter::set_times` orders after the pending
+  writes); the one-frame compound write has already closed its handle, so it stamps by path right after, one more
+  compound frame (CREATE+SET_INFO+CLOSE). ❌ Never stamp by path while a writer is still open: its close wins. A
+  one-shot write to the user's real name (unstaged, `write_is_single_shot`) shows the server's date for that one frame.
+- **Pinned by** `conformance_test.rs`: `smb_integration_a_copy_keeps_the_source_date_per_the_shared_contract` (the
+  shared assertions, compound path), `smb_integration_a_streamed_write_keeps_the_source_date` (the writer path), and
+  `smb_integration_a_read_stream_reports_the_listed_date_on_both_read_paths` (the read half on a file aged inside the
+  fixture container with `touch -d`);
+  `wire_shape_integration_test.rs::smb_integration_a_dated_single_shot_write_adds_one_frame_for_its_date` counts the
+  stamp's frame.
 
 ## Copy concurrency and the credit window
 

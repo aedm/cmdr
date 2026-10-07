@@ -525,9 +525,9 @@ everywhere, which is the point.
 - `assert_not_found_carries_the_path` — the payload the frontend renders as the missing file's name.
 - `assert_write_from_stream_keeps_the_source_date` and `assert_read_stream_reports_the_listed_date` — the two halves of
   "a copy keeps the source's date" (`src/volume/conformance/modification_date.rs`). Every copy suite checksums bytes,
-  and a destination stamping its own date passes all of them. Run by local, S3, ADB, MTP (on the virtual device), SFTP,
-  and the in-memory double green, WebDAV's both on Nextcloud (Apache stores no date, so it runs the read half), the read
-  half by archive and SMB too (SMB's write cell asserts the gap until smb2 can set times). The contract:
+  and a destination stamping its own date passes all of them. Run by local, S3, ADB, MTP (on the virtual device), SMB,
+  SFTP, and the in-memory double green, WebDAV's both on Nextcloud (Apache stores no date, so it runs the read half),
+  and the read half by archive. The contract:
   `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Copies keep the source's
   date".
 

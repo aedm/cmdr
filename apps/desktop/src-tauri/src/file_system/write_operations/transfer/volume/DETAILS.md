@@ -831,11 +831,11 @@ local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile
 - **MTP**: reports the `DateModified` from the `ObjectInfo` the read's open already fetched; writes it as the upload's
   `DateModified`, in UTC with a `Z`. Whole seconds. A zoneless device date reads as UTC, an open product call (issue
   #373 item 4; `crates/cmdr-mtp/DETAILS.md` § "Dates on copies").
-- **SMB**: reports the server's `LastWriteTime` on both foreground read paths (streamed and one-frame compound); doesn't
-  write one yet: smb2's `Tree` has no SET_INFO `FileBasicInformation` call, so a cell asserts the gap and
-  `write_from_stream_impl` carries a `TODO(mtime)`. The read date costs ONE extra compound frame (a `stat` sent
-  alongside the read, no added latency), the one exception to "no extra round trip", because smb2 doesn't hand out
-  the date its CREATE response carries (`crates/cmdr-smb/DETAILS.md` § "Dates on copies").
+- **SMB**: reports the server's `LastWriteTime` on both foreground read paths (streamed and one-frame compound); writes
+  `LastWriteTime` alone through SET_INFO, on the streaming writer's own handle before it closes, or by path right after
+  a one-frame compound write (one more frame). The read date costs ONE extra compound frame (a `stat` sent alongside
+  the read, no added latency), the one exception to "no extra round trip", because smb2 doesn't hand out the date its
+  CREATE response carries (`crates/cmdr-smb/DETAILS.md` § "Dates on copies").
 - **Archive (source only)**: reports each entry's date from the parsed index, on random-access reads and the one-pass
   sequential extract alike (whole seconds; zip's DOS time keeps even seconds).
 - **SFTP**: reports the mtime from the `fstat` its open already sends; writes it with a path `SETSTAT` on the staging
@@ -856,7 +856,7 @@ local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile
   the second, seeded by its fixture's own means.
 - **Through the engine**: `backend_suites/network_dates_test_support.rs`'s
   `a_copy_onto_the_server_keeps_the_source_date` and `a_copy_off_the_server_keeps_the_source_date`, with cells for ADB,
-  MTP (`mtp_dates_test.rs`, on the virtual device), and SFTP; WebDAV runs only the copy-off half, through `a_copy_off_the_server_keeps_the_date_it_lists` on a file its
+  MTP (`mtp_dates_test.rs`, on the virtual device), SMB (`smb_transfer_semantics_test.rs`), and SFTP; WebDAV runs only the copy-off half, through `a_copy_off_the_server_keeps_the_date_it_lists` on a file its
   fixture dated. Plus `in_memory_dates_test.rs`, which pins the engine's own half (the checkpoint wrapper,
   staging, the final rename) against the double in the unit lane. S3's engine cell is
   `s3_transfer_integration_test.rs::copying_onto_a_bucket_lands_every_byte_and_the_mtime`.

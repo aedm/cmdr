@@ -349,6 +349,50 @@ async fn smb_integration_a_single_shot_write_leaves_as_one_compound_frame() {
     ensure_clean(&vol, &dir).await;
 }
 
+/// A dated source costs a one-shot write ONE more compound frame: the write's
+/// CLOSE stamps the server's own date, so the source's goes on by path after it
+/// (CREATE+SET_INFO+CLOSE). Still nothing loose, and the stamp lands.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_dated_single_shot_write_adds_one_frame_for_its_date() {
+    let vol = make_docker_volume().await;
+    let dir = test_dir_name();
+    ensure_clean(&vol, &dir).await;
+    vol.create_directory(Path::new(&dir)).await.unwrap();
+
+    let data = vec![0xABu8; 4096];
+    let size = data.len() as u64;
+    let date_secs = cmdr_fs::volume::conformance::SOURCE_DATE_SECS;
+    let date = std::time::UNIX_EPOCH + Duration::from_secs(date_secs);
+    let smb_path = format!("{}/one-shot-dated.bin", dir);
+    let (requests_before, compounds_before) = request_counts(&vol).await;
+    vol.write_from_stream(
+        Path::new(&smb_path),
+        WriteMode::CreateOrReplace,
+        StreamLength::Known(size),
+        Box::new(InlineReadStream::new(data, Some(date))),
+        &|_| std::ops::ControlFlow::Continue(()),
+    )
+    .await
+    .unwrap();
+    let (requests_after, compounds_after) = request_counts(&vol).await;
+
+    // The write's four ops, the date's three, the post-write stat's four.
+    assert_eq!(
+        (compounds_after - compounds_before, requests_after - requests_before),
+        (3, 11),
+        "a dated one-shot write must add exactly one compound frame for its date, with no loose round trips"
+    );
+    let listed = vol.get_metadata(Path::new(&smb_path)).await.unwrap().modified_at;
+    assert_eq!(
+        listed,
+        Some(date_secs),
+        "the one-shot write must keep the source's date"
+    );
+
+    ensure_clean(&vol, &dir).await;
+}
+
 /// The other direction against a real server: a file bigger than the uplink
 /// moves in about 250 ms gets NO promise, so the transfer layer stages it and it
 /// streams. The promise reads smb2's `quick_write_limit`, which on a connection
