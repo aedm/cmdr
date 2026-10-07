@@ -673,10 +673,13 @@ Keychain — and ask what it finds on a developer's laptop.
 `launchctl disable com.apple.ptpcamerad` (a real macOS daemon) and toast about it because the run's OWN virtual device
 made the device list non-empty. The gate there keys off the DEVICE, not the run
 (`mtp/watcher.rs::needs_ptpcamerad_suppression`): a virtual device is filesystem-backed and claims no USB interface, so
-it never earns a host workaround, while a real phone plugged in during a run still gets one. Prefer that shape when the
-subsystem can tell its own fixtures apart from the real thing — it also covers a `CMDR_VIRTUAL_MTP=1` dev session, which
-an `CMDR_E2E_MODE` check would miss. **Known remaining instance:** that same enumeration still auto-connects a real USB
-device it finds alongside the virtual one.
+it never earns a host workaround. Prefer that shape when the subsystem can tell its own fixtures apart from the real
+thing — it also covers a `CMDR_VIRTUAL_MTP=1` dev session, which an `CMDR_E2E_MODE` check would miss.
+
+**The third instance:** a phone plugged into the Mac during a run got auto-connected, and its `ptpcamerad` dialog failed
+four unrelated specs. `test_mode::may_discover_real_devices` now keeps real devices out of an automated run at
+discovery: MTP enumeration keeps only the virtual device (`mtp/watcher.rs::claimable_device_ids`), and the ADB tracker
+never follows the real `adb` server.
 
 **The unit-test variant: a bare test binary asking macOS about its own bundle.** A test executable has no `.app` around
 it, so CoreFoundation resolves its main bundle by listing the directory it sits in, which is `target/debug/deps`

@@ -29,7 +29,10 @@ then `start_adb_tracker` starts the `host:track-devices` subscription (a second 
 no-op). The tracker talks only to the local server socket, never to USB. With no `adb` binary the tracker STOPS
 itself and says so at `debug`: there is nothing to reconnect to, and retrying would warn every 15 s for the whole
 session on the many machines that carry no Android tooling. A machine without the platform tools therefore sees
-nothing and pays nothing after startup.
+nothing and pays nothing after startup. ❗ An automated run (`test_mode::may_discover_real_devices` false) never
+follows the real server: `start_adb_tracker` (so `recheck_adb_install` too) is a no-op and `set_adb_settings` only
+records the path, so a phone on the developer's desk can't land in the switcher mid-spec. `adb.spec.ts` publishes
+synthetic rows instead.
 
 **Settings** (`fileOperations.adbEnabled`, default on; `fileOperations.adbBinaryPath`, empty for the platform
 search): both are live-applied, and they travel TOGETHER through one `set_adb_settings` command, because the tracker

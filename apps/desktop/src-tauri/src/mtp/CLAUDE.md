@@ -38,6 +38,8 @@ rules (`resources/99-cmdr-mtp.rules`). The frontend (`src/lib/mtp/CLAUDE.md`) is
 - **macOS ptpcamerad suppression** runs before connecting and is restored when the last device leaves, on exit, or on
   MTP being disabled; a failed one falls back to the `ExclusiveAccess` dialog. ❌ `needs_ptpcamerad_suppression` keeps it
   off an all-VIRTUAL device set: an E2E run once took `ptpcamerad` down on the developer's machine.
+- **An automated run sees only its virtual device**: `claimable_device_ids` drops real hardware from every enumeration
+  the watcher reads, or a plugged-in phone's ptpcamerad dialog fails random specs.
 - **Error events the frontend depends on**: `mtp-exclusive-access-error` (ptpcamerad still holds the device, carrying
   the blocking process name from `ioreg`, `None` on Linux) and `mtp-permission-error` (Linux udev rules missing →
   `MtpPermissionDialog`).
