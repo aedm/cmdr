@@ -359,9 +359,9 @@ slow-timeout = { period = "40s", terminate-after = 1 }
 # watcher that actually delivers; the three `moves::` tests prove the index is live
 # at a renamed drive's new mount point by a file landing through the watcher. All
 # four are SELF-HEALING (`until_the_watcher_delivers` redoes the change on a fresh
-# name, defeating the arming window and a dropped event), so no retries. 60 s puts
-# the cap over the worst in-test budgets (20 s first index + 20 s restart listing +
-# 15 s delivery) so their panics name the stage that starved.
+# name, defeating the arming window and a dropped event), so no retries. 70 s puts
+# the cap over the worst in-test budgets (20 s first index + 30 s restart catch-up
+# + 15 s delivery, for the rename test) so their panics name the stage that starved.
 filter = '''
     test(indexing::lifecycle::cover::cold_drive_tests::branches::a_change_inside_a_walked_branch)
   + test(a_drive_renamed_while_it_indexes_keeps_indexing_at_its_new_mount_point)
@@ -369,7 +369,7 @@ filter = '''
   + test(a_rename_while_a_scan_starts_restarts_the_drive_at_the_handback)
 '''
 test-group = 'real-notify'
-slow-timeout = { period = "60s", terminate-after = 1 }
+slow-timeout = { period = "70s", terminate-after = 1 }
 
 [[profile.default.overrides]]
 # Tests that ARM a real OS watch (or real drive/disk I/O behind one) without

@@ -82,10 +82,12 @@ fn a_drive_renamed_while_it_indexes_keeps_indexing_at_its_new_mount_point() {
     let followed = drive.index.follow_volume_move(drive.volume_id);
     assert!(holds(&drive, PROOF), "following the move deletes nothing it held");
 
-    // 20 s: the restart at the new root stands a real stream up first, and each
-    // `fseventsd` round trip took seconds on a loaded host (2026-10-07).
+    // 30 s, and no redo possible: the gap file has to predate the move. A completed
+    // drive's restart catches up through the JOURNAL when it can, so this rides a
+    // real `fseventsd` replay, which took over 20 s about one run in 20 on a loaded
+    // host (2026-10-07).
     cmdr_fs::testing::wait_until(
-        std::time::Duration::from_secs(20),
+        std::time::Duration::from_secs(30),
         "the listing at the new mount point to find what arrived in the gap",
         || holds(&drive, "scope/in-the-gap.txt"),
     );
