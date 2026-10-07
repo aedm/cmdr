@@ -184,7 +184,7 @@ async fn a_copy_that_fails_partway_dates_no_folder() {
             let listed = listed_date(&dest_inner, folder).await;
             assert!(
                 listed != Some(FOLDER_DATE) && listed != Some(INNER_FOLDER_DATE),
-                "{folder} holds only part of its source, so it must not carry a source date; it lists {listed:?}"
+                "{folder}: only part of its source landed, so it must not carry a source date; it lists {listed:?}"
             );
         }
     }

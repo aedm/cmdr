@@ -278,7 +278,11 @@ async fn sequential_extract_keeps_the_folders_dates() {
 
     for folder in ["/out", "/out/sub"] {
         let listed = dest.get_metadata(Path::new(folder)).await.unwrap().modified_at;
-        assert_eq!(listed, Some(1_700_000_000), "{folder} keeps the tar header's date");
+        assert_eq!(
+            listed,
+            Some(1_700_000_000),
+            "{folder}: the tar header's date must survive"
+        );
     }
 }
 

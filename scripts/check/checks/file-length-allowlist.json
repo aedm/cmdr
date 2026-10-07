@@ -8,6 +8,10 @@
     "scripts/check/checks/registry.go": "append-only check registry (one CheckDefinition entry per check); line count tracks the number of checks, not splittable logic"
   },
   "files": {
+    "apps/desktop/src-tauri/src/file_system/volume/backends/local_posix.rs": {
+      "lines": 802,
+      "reason": "TODO: the `impl Volume for LocalPosixVolume` block plus the query and mutation bodies it can't spread across files. `scan` and `streams` already moved to `local_posix/`; the mutation bodies (create, delete, rename, `set_modified`) should follow into `local_posix/mutation.rs` as `pub(super)` inherent methods with one-line delegators here, the shape `cmdr-sftp` and `cmdr-smb` use."
+    },
     "apps/desktop/src-tauri/src/ai/client.rs": {
       "lines": 800,
       "reason": "TODO: two seams sit beside the request path and only share imports with it. Move the policy-guarded HTTP client (`policy_guarded_http_client`, `policy_guarded_redirects`, `follow_allowed_hop`, `remote_destination`, `remote_endpoint`, `parse_endpoint`) into `client_policy.rs`, and the provider-error mapping (`AiError` with its `Display`, `ai_error_for_status`, `provider_error_detail`, `map_genai_error`) into `client_errors.rs`, about 140 lines out together. What stays is `AiBackend`, the three `chat_completion*` entry points, the model-specific option tweaks, and the response logging, which is what callers mean by the AI client."
@@ -198,7 +202,7 @@
     },
     "crates/cmdr-fs/src/volume/mod.rs": {
       "lines": 1849,
-      "reason": "Over half its 1,849 lines are doc comments, because this is the `Volume` trait definition, the vocabulary every storage backend in Cmdr speaks, plus the two small stream traits its methods hand back (`VolumeReadStream`, `SequentialExtract`). Rust needs a trait in one block, and the prose is the deliverable: contracts like `delete` refusing to recurse and `rename(force: false)` refusing an existing destination are stated here and enforced by the shared assertions in `conformance.rs`. Everything that could leave already has, as the module declarations at the foot of the file show: `types`, `ids`, `capabilities`, `in_memory`, `mkdir_all`, `patching`, `scan_walk`, `host/`, and a dozen more."
+      "reason": "Over half its lines are doc comments, because this is the `Volume` trait definition, the vocabulary every storage backend in Cmdr speaks. Rust needs a trait in one block, and the prose is the deliverable: contracts like `delete` refusing to recurse and `rename(force: false)` refusing an existing destination are stated here and enforced by the shared assertions in `conformance.rs`. Everything that could leave already has, as the module declarations at the foot of the file show: `read_stream` (the two stream traits its methods hand back), `types`, `ids`, `capabilities`, `in_memory`, `mkdir_all`, `patching`, `scan_walk`, `host/`, and a dozen more."
     },
     "crates/cmdr-index/src/indexing/aggregator/mod.rs": {
       "lines": 810,
