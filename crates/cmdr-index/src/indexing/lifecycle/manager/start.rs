@@ -85,7 +85,7 @@ impl IndexManager {
         // forward task into dropping events (Fix 2). Memory is bounded by the
         // ingestion hard cap in `run_replay_event_loop`, not by the channel.
         let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel();
-        let current_id = watcher::current_event_id();
+        let current_id = watcher::current_event_id(&self.volume_root);
 
         let watcher_overflow: Option<Arc<AtomicBool>>;
         match DriveWatcher::start(&self.volume_root, since_event_id, event_tx) {
@@ -404,7 +404,7 @@ impl IndexManager {
             .and_then(|status| status.last_event_id)
             .and_then(|id| id.parse::<u64>().ok())
             .unwrap_or(0);
-        let current = watcher::current_event_id();
+        let current = watcher::current_event_id(&self.volume_root);
         if stored == 0 || (current > 0 && current > stored + JOURNAL_GAP_THRESHOLD) {
             return 0;
         }
@@ -596,8 +596,6 @@ impl IndexManager {
         // task into dropping events (Fix 2); memory is capped by the ingestion hard
         // cap in the live loop, not the channel.
         let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel();
-        let scan_start_event_id = watcher::current_event_id();
-
         // In E2E mode, scope the watcher to the fixture directory instead of `/`.
         // On Linux, inotify's RecursiveMode::Recursive adds a watch per subdirectory,
         // so watching `/` blocks for minutes on a container with thousands of dirs.
@@ -605,6 +603,7 @@ impl IndexManager {
             .ok()
             .map(PathBuf::from)
             .unwrap_or_else(|| self.volume_root.clone());
+        let scan_start_event_id = watcher::current_event_id(&watcher_root);
 
         // watcher_overflow is None if the watcher failed to start (non-fatal).
         let watcher_overflow: Option<Arc<AtomicBool>>;

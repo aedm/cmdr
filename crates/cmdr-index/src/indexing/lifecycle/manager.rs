@@ -460,7 +460,7 @@ impl IndexManager {
             stored_event_id,
         );
         let current_id = if journal_replayable {
-            watcher::current_event_id()
+            watcher::current_event_id(&self.volume_root)
         } else {
             0
         };

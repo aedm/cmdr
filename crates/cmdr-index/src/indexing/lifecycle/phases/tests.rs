@@ -275,6 +275,11 @@ struct Drive {
     /// again. Held because a presence gate asks the host, never the filesystem.
     volumes: std::sync::Arc<crate::indexing::host::volumes::FakeVolumeProvider>,
     volume_id: &'static str,
+    /// No real FSEvents for this tree: nothing here waits on a delivery, and each
+    /// real call queues on the one `fseventsd` every process shares, which is what
+    /// timed these tests out at full parallelism (`watch/watcher.rs` § `fake_journal`).
+    #[cfg(target_os = "macos")]
+    _journal: crate::indexing::watch::watcher::fake_journal::Guard,
     _serialized: std::sync::MutexGuard<'static, ()>,
 }
 
@@ -372,6 +377,8 @@ impl Drive {
             .tempdir_in(tree_parent())
             .expect("temp tree");
         build(tree.path());
+        #[cfg(target_os = "macos")]
+        let journal = crate::indexing::watch::watcher::fake_journal::fake_for(tree.path());
 
         let volumes = crate::indexing::host::volumes::FakeVolumeProvider::shared();
         volumes.register(
@@ -402,6 +409,8 @@ impl Drive {
             events,
             volumes,
             volume_id,
+            #[cfg(target_os = "macos")]
+            _journal: journal,
             _serialized: serialized,
         }
     }
