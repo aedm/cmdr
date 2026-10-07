@@ -79,6 +79,39 @@ fn an_inline_pac_script_runs_too() {
     );
 }
 
+/// What CFNetwork makes of a PAC that answers `answer` for every URL.
+fn pac_answer(answer: &str) -> Option<Vec<Entry>> {
+    let script = format!(r#"function FindProxyForURL(url, host) {{ return "{answer}"; }}"#);
+    MacPac::new(TIMEOUT).evaluate(&PacSource::Script(script), &url("https://example.com"))
+}
+
+fn socks_test(port: u16) -> Entry {
+    Entry::Socks {
+        host: "socks.test".into(),
+        port,
+        credentials: None,
+    }
+}
+
+#[test]
+fn a_socks_answer_is_a_socks_entry() {
+    assert_eq!(
+        pac_answer("SOCKS socks.test:1080; DIRECT"),
+        Some(vec![socks_test(1080), Entry::Direct])
+    );
+    assert_eq!(pac_answer("socks socks.test:1081"), Some(vec![socks_test(1081)]));
+}
+
+#[test]
+fn cfnetwork_drops_the_versioned_socks_keywords() {
+    // CFNetwork's PAC parser knows `SOCKS` alone; `SOCKS5` and `SOCKS4` (Chrome and Firefox
+    // extensions) vanish from the list, so they're as invisible to Cmdr as to Safari (verified on
+    // macOS 27.0, 2026-10-08). A regression anchor: if this starts failing, macOS learned them.
+    assert_eq!(pac_answer("SOCKS5 socks.test:1080; DIRECT"), Some(vec![Entry::Direct]));
+    assert_eq!(pac_answer("SOCKS4 socks.test:1080; DIRECT"), Some(vec![Entry::Direct]));
+    assert_eq!(pac_answer("SOCKS5 socks.test:1080"), Some(vec![]));
+}
+
 #[test]
 fn an_answer_is_cached_per_host() {
     let (pac, hits) = pac_server(Some(SCRIPT));

@@ -29,6 +29,8 @@ The one door every Cmdr HTTP client is built through: `client_builder()` is `req
   with its own run loop; a failure or timeout goes direct, as macOS does, and is cached 30 s, an answer 5 min.
 - ❗ **The PAC `Execute…` functions are declared in `pac.rs`, not taken from `objc2-cf-network`**: its callback type
   says the proxy list is non-null, and CFNetwork passes null on failure.
-- **SOCKS and FTP proxies are skipped** (reqwest here speaks HTTP proxies only); the next entry decides.
+- ❗ **A SOCKS proxy from macOS (the manual setting or a PAC) becomes `socks5h://`**: the proxy resolves names, as
+  macOS's own stack does. An env var's `socks5://` (local DNS) vs `socks5h://` is kept as typed. FTP entries are
+  skipped. CFNetwork drops a PAC's `SOCKS5` / `SOCKS4` answers; only `SOCKS` reaches Cmdr.
 
 Decision order, the CFNetwork answer's shape, PAC mechanics, and measurements: `DETAILS.md`.

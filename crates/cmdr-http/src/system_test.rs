@@ -8,6 +8,7 @@ use objc2_cf_network::{
     kCFNetworkProxiesExceptionsList, kCFNetworkProxiesExcludeSimpleHostnames, kCFNetworkProxiesHTTPEnable,
     kCFNetworkProxiesHTTPPort, kCFNetworkProxiesHTTPProxy, kCFNetworkProxiesHTTPSEnable, kCFNetworkProxiesHTTPSPort,
     kCFNetworkProxiesHTTPSProxy, kCFNetworkProxiesProxyAutoConfigEnable, kCFNetworkProxiesProxyAutoConfigURLString,
+    kCFNetworkProxiesSOCKSEnable, kCFNetworkProxiesSOCKSPort, kCFNetworkProxiesSOCKSProxy,
 };
 use objc2_core_foundation::{CFArray, CFDictionary, CFNumber, CFRetained, CFString};
 use reqwest::Url;
@@ -60,6 +61,33 @@ fn static_proxy_settings() -> CFRetained<CFDictionary> {
     ])
 }
 
+/// A Mac with only "SOCKS proxy" on, at `socks.test:1080`, plus `extra` settings.
+fn socks_settings(extra: &[(&CFString, &objc2_core_foundation::CFType)]) -> CFRetained<CFDictionary> {
+    let on = CFNumber::new_i32(1);
+    let port = CFNumber::new_i32(1080);
+    let host = CFString::from_str("socks.test");
+    // SAFETY: CFNetwork's key constants are immutable, process-lifetime CFStrings.
+    let keys = unsafe {
+        [
+            kCFNetworkProxiesSOCKSEnable,
+            kCFNetworkProxiesSOCKSProxy,
+            kCFNetworkProxiesSOCKSPort,
+        ]
+    };
+    let mut pairs: Vec<(&CFString, &objc2_core_foundation::CFType)> =
+        vec![(keys[0], &on), (keys[1], &host), (keys[2], &port)];
+    pairs.extend_from_slice(extra);
+    settings(&pairs)
+}
+
+fn socks_entry() -> Entry {
+    Entry::Socks {
+        host: "socks.test".into(),
+        port: 1080,
+        credentials: None,
+    }
+}
+
 /// A Mac set to "Automatic proxy configuration" with `pac_url`.
 fn pac_settings(pac_url: &str) -> CFRetained<CFDictionary> {
     let on = CFNumber::new_i32(1);
@@ -106,6 +134,47 @@ fn the_bypass_list_sends_its_hosts_direct() {
 #[test]
 fn exclude_simple_hostnames_sends_dotless_hosts_direct() {
     assert_eq!(route(&static_proxy_settings(), "http://intranet"), Route::Direct);
+}
+
+#[test]
+fn a_manual_socks_proxy_carries_both_schemes() {
+    let settings = socks_settings(&[]);
+    assert_eq!(
+        entries_for(&settings, &parse("https://example.com")),
+        vec![socks_entry()]
+    );
+    for url in ["https://example.com", "http://example.com"] {
+        assert_eq!(
+            route(&settings, url),
+            Route::Proxy("socks5h://socks.test:1080".into()),
+            "{url}"
+        );
+    }
+}
+
+#[test]
+fn an_http_proxy_for_the_scheme_comes_before_the_socks_proxy() {
+    let on = CFNumber::new_i32(1);
+    let port = CFNumber::new_i32(3128);
+    let host = CFString::from_str("proxy.test");
+    // SAFETY: CFNetwork's key constants are immutable, process-lifetime CFStrings.
+    let keys = unsafe {
+        [
+            kCFNetworkProxiesHTTPSEnable,
+            kCFNetworkProxiesHTTPSProxy,
+            kCFNetworkProxiesHTTPSPort,
+        ]
+    };
+    let settings = socks_settings(&[(keys[0], &on), (keys[1], &host), (keys[2], &port)]);
+    assert_eq!(
+        route(&settings, "https://example.com"),
+        Route::Proxy("http://proxy.test:3128".into())
+    );
+    // No HTTP proxy for plain `http`, so the SOCKS proxy carries it.
+    assert_eq!(
+        route(&settings, "http://example.com"),
+        Route::Proxy("socks5h://socks.test:1080".into())
+    );
 }
 
 #[test]

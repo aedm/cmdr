@@ -24,7 +24,8 @@ use reqwest::Url;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Route {
     Direct,
-    /// A proxy URL reqwest can tunnel or forward through: `http://host:port`, with
+    /// A proxy URL reqwest can tunnel or forward through: `http://host:port` or
+    /// `socks5h://host:port` (or an environment variable's own `socks4` / `socks5` / ... URL), with
     /// `user:password@` when the source carried credentials.
     Proxy(String),
 }

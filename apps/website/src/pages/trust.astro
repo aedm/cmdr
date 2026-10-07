@@ -134,11 +134,16 @@ const toc = [
         }
     </ul>
     <p>
-        Cmdr follows macOS's proxy settings: a proxy set by hand, the list of hosts that bypass it, and automatic
-        configuration with a PAC file, which macOS itself runs. If the PAC file can't be loaded, Cmdr connects
-        directly, as macOS does. The <code>HTTPS_PROXY</code>,
-        <code>HTTP_PROXY</code>, and <code>NO_PROXY</code> environment variables work too and take precedence.
-        Addresses on the Mac itself always go direct, so on-device AI keeps working behind a proxy.
+        Cmdr follows macOS's proxy settings: an HTTP, HTTPS, or SOCKS proxy set by hand, the list of hosts that bypass
+        it, and automatic configuration with a PAC file, which macOS itself runs. If the PAC file can't be loaded, Cmdr
+        connects directly, as macOS does. The <code>HTTPS_PROXY</code>, <code>HTTP_PROXY</code>,
+        <code>ALL_PROXY</code>, and <code>NO_PROXY</code> environment variables work too and take precedence, including
+        a SOCKS address like <code>socks5h://proxy.example:1080</code>. Addresses on the Mac itself always go direct, so
+        on-device AI keeps working behind a proxy.
+    </p>
+    <p>
+        Through a SOCKS proxy from macOS's settings, the proxy looks up host names, as macOS itself does, so the names
+        Cmdr connects to don't reach the local network's DNS.
     </p>
     <p>
         Cmdr checks server certificates with macOS's own certificate trust, so a company's TLS-inspection certificate
@@ -146,15 +151,17 @@ const toc = [
     </p>
     <p>
         Tested on macOS 27 behind a TLS-inspecting proxy, with its certificate trusted and not trusted, and with a proxy
-        set by hand, a bypass list, a PAC file, and a PAC file that can't be reached.
+        set by hand, a bypass list, a PAC file, and a PAC file that can't be reached. SOCKS was tested set by hand,
+        through a PAC file, and through <code>ALL_PROXY</code>, also with a user name and password.
     </p>
     <p>
-        <strong>What doesn't work yet</strong>: SOCKS proxies, and proxies that need a sign-in, unless the user name and
-        password are in the <code>HTTPS_PROXY</code> address.
+        <strong>What doesn't work yet</strong>: proxies that need a sign-in, unless the user name and password are in
+        the proxy's address (<code>HTTPS_PROXY</code> or <code>ALL_PROXY</code>). A PAC file must name a SOCKS proxy as
+        <code>SOCKS</code>: macOS's own PAC reader skips <code>SOCKS5</code> and <code>SOCKS4</code>.
     </p>
     <DevTodo>
-        Release timing: PAC files, the bypass list, and "the Mac itself always goes direct" ship in the release after
-        0.50.0 (<code>cmdr-http</code>). Until then this section is ahead of the app: 0.50.0 follows only a proxy set by
+        Release timing: PAC files, the bypass list, SOCKS proxies, and "the Mac itself always goes direct" ship in the
+        release after 0.50.0 (<code>cmdr-http</code>). Until then this section is ahead of the app: 0.50.0 follows only a proxy set by
         hand and the environment variables, and it sends local addresses through the proxy. Automatic proxy discovery
         (WPAD) also works through the PAC path, but wasn't tested end to end, so it isn't claimed above. Evidence:
         <code>docs/notes/proxy-and-tls-inspection-2026-10.md</code>.

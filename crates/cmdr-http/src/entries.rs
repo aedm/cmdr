@@ -22,11 +22,18 @@ pub(crate) enum Entry {
         port: u16,
         credentials: Option<(String, String)>,
     },
+    /// A SOCKS proxy: the manual setting, or a PAC's `SOCKS` / `SOCKS4` / `SOCKS5` answer, which
+    /// CFNetwork reports alike, with no version.
+    Socks {
+        host: String,
+        port: u16,
+        credentials: Option<(String, String)>,
+    },
     /// A PAC file to evaluate for this URL.
     AutoConfigUrl(String),
     /// A PAC script given inline (`ProxyAutoConfigJavaScript`).
     AutoConfigScript(String),
-    /// A proxy type Cmdr can't speak (SOCKS, FTP), named for the log.
+    /// A proxy type Cmdr can't speak (FTP), named for the log.
     Unsupported(String),
 }
 
@@ -75,28 +82,49 @@ fn usable(entry: &Entry) -> Option<Route> {
             host,
             port,
             credentials,
-        } => Some(Route::Proxy(proxy_url(host, *port, credentials.as_ref()))),
+        } => Some(Route::Proxy(proxy_url("http", host, *port, credentials.as_ref()))),
+        // ❗ `socks5h`: the proxy resolves the name. A network that forces traffic through a
+        // SOCKS proxy often can't resolve outside names locally, and a local lookup would tell
+        // the network's DNS every host Cmdr talks to. CFNetwork's SOCKS entry names no version;
+        // macOS's own stack speaks SOCKS5 to it and sends the name too (`DETAILS.md` § "SOCKS").
+        Entry::Socks {
+            host,
+            port,
+            credentials,
+        } => Some(Route::Proxy(proxy_url("socks5h", host, *port, credentials.as_ref()))),
         Entry::AutoConfigUrl(_) | Entry::AutoConfigScript(_) => None,
         Entry::Unsupported(kind) => {
-            log::debug!(target: "cmdr_http", "skipping a {kind} proxy: Cmdr speaks HTTP proxies only");
+            log::debug!(target: "cmdr_http", "skipping a {kind} proxy: Cmdr speaks HTTP and SOCKS proxies only");
             None
         }
     }
 }
 
-fn proxy_url(host: &str, port: u16, credentials: Option<&(String, String)>) -> String {
+fn proxy_url(scheme: &str, host: &str, port: u16, credentials: Option<&(String, String)>) -> String {
     let host = if host.contains(':') && !host.starts_with('[') {
         format!("[{host}]")
     } else {
         host.to_string()
     };
     match credentials {
-        Some((user, password)) => {
-            let encode = |part: &str| url::form_urlencoded::byte_serialize(part.as_bytes()).collect::<String>();
-            format!("http://{}:{}@{host}:{port}", encode(user), encode(password))
-        }
-        None => format!("http://{host}:{port}"),
+        Some((user, password)) => format!(
+            "{scheme}://{}:{}@{host}:{port}",
+            percent_encode(user),
+            percent_encode(password)
+        ),
+        None => format!("{scheme}://{host}:{port}"),
     }
+}
+
+/// Every byte but RFC 3986's unreserved ones as `%XX`, safe in a URL's userinfo. ❗ Not
+/// `form_urlencoded`: its `+` for a space comes back from hyper-util's percent-decoding as a `+`.
+fn percent_encode(part: &str) -> String {
+    part.bytes()
+        .map(|byte| match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => char::from(byte).to_string(),
+            _ => format!("%{byte:02X}"),
+        })
+        .collect()
 }
 
 /// Reading CFNetwork's CF objects into [`Entry`]s.
@@ -106,7 +134,7 @@ pub(crate) mod cf {
         kCFProxyAutoConfigurationJavaScriptKey, kCFProxyAutoConfigurationURLKey, kCFProxyHostNameKey,
         kCFProxyPasswordKey, kCFProxyPortNumberKey, kCFProxyTypeAutoConfigurationJavaScript,
         kCFProxyTypeAutoConfigurationURL, kCFProxyTypeHTTP, kCFProxyTypeHTTPS, kCFProxyTypeKey, kCFProxyTypeNone,
-        kCFProxyUsernameKey,
+        kCFProxyTypeSOCKS, kCFProxyUsernameKey,
     };
     use objc2_core_foundation::{CFArray, CFDictionary, CFNumber, CFRetained, CFString, CFType, CFURL};
 
@@ -136,6 +164,7 @@ pub(crate) mod cf {
         none: &'static CFString,
         http: &'static CFString,
         https: &'static CFString,
+        socks: &'static CFString,
         auto_config_url: &'static CFString,
         auto_config_script: &'static CFString,
     }
@@ -155,6 +184,7 @@ pub(crate) mod cf {
                 none: kCFProxyTypeNone,
                 http: kCFProxyTypeHTTP,
                 https: kCFProxyTypeHTTPS,
+                socks: kCFProxyTypeSOCKS,
                 auto_config_url: kCFProxyTypeAutoConfigurationURL,
                 auto_config_script: kCFProxyTypeAutoConfigurationJavaScript,
             }
@@ -173,21 +203,27 @@ pub(crate) mod cf {
         let is = |constant: &CFString| kind == constant.to_string();
         if is(names.none) {
             Entry::Direct
-        } else if is(names.http) || is(names.https) {
+        } else if is(names.http) || is(names.https) || is(names.socks) {
+            let socks = is(names.socks);
             let port = entry
                 .get(names.port)
                 .and_then(|value| value.downcast::<CFNumber>().ok())
                 .and_then(|value| value.as_i64())
                 .and_then(|value| u16::try_from(value).ok())
-                .unwrap_or(80);
+                .unwrap_or(if socks { 1080 } else { 80 });
             let credentials = string(names.user).zip(string(names.password));
-            match string(names.host) {
-                Some(host) => Entry::Http {
+            match (string(names.host), socks) {
+                (Some(host), false) => Entry::Http {
                     host,
                     port,
                     credentials,
                 },
-                None => Entry::Unsupported(String::from("host-less HTTP")),
+                (Some(host), true) => Entry::Socks {
+                    host,
+                    port,
+                    credentials,
+                },
+                (None, _) => Entry::Unsupported(format!("host-less {kind}")),
             }
         } else if is(names.auto_config_url) {
             let pac = entry

@@ -122,8 +122,11 @@ All three landed on 2026-10-06, after 0.50.0:
 
 How it all works: `crates/cmdr-http/DETAILS.md`.
 
-Still open: **proxy authentication** beyond credentials in a proxy URL (Basic from the keychain, NTLM, Kerberos), and
-SOCKS proxies (skipped; the next entry in macOS's list decides). Out of scope until someone asks.
+4. **SOCKS** (2026-10-08, after 0.50.0): from env vars, the macOS "SOCKS proxy" setting, and a PAC's `SOCKS` answer. §
+   "SOCKS" below has the evidence.
+
+Still open: **proxy authentication** beyond credentials in a proxy URL (Basic from the keychain, NTLM, Kerberos). Out of
+scope until someone asks.
 
 ## After the fixes
 
@@ -146,3 +149,27 @@ resolve), then restored the settings through a `trap`.
 After the runs the Wi-Fi service was back to no manual proxy, no PAC, no discovery, and the default bypass list
 (`scutil --proxy`, `networksetup -get…`). One leftover: `networksetup` can't clear a stored auto-proxy URL, so a
 disabled `http://127.0.0.1:18445/proxy.pac` stays in the Wi-Fi settings, inactive.
+
+## SOCKS
+
+A ~130-line Go SOCKS5 server (scratchpad only, `127.0.0.1:21080`, optional RFC 1929 sign-in) that logged each `CONNECT`
+as a name or an IP and relayed it, plus a PAC file on `127.0.0.1:21081`. A probe built on `cmdr-http`
+(`client_builder()` plus a timeout) requested `https://getcmdr.com/latest.json`, `http://example.com/`, and the PAC URL
+on loopback. macOS 27.0, 2026-10-08. Every Wi-Fi change was undone by a shell `trap`.
+
+- **`ALL_PROXY=socks5h://…`**: both requests → 200, the server logged `CONNECT NAME getcmdr.com:443` and
+  `NAME example.com:80`. Loopback went direct.
+- **`ALL_PROXY=socks5://…`**: → 200, logged as IPv4 addresses: the name was resolved on the Mac, as the scheme says.
+- **`socks5h://ada:p%40ss%20word@…`, server requiring sign-in**: → 200, signed in as `ada`. A wrong password fails with
+  `SOCKS error: credentials not accepted`.
+- **macOS SOCKS setting** (`networksetup -setsocksfirewallproxy Wi-Fi 127.0.0.1 21080`): → 200, both as names. A
+  `URLSession` request from a Swift script reached the same server as `NAME example.com:80`, so `socks5h` matches what
+  macOS's own stack does. Loopback went direct.
+- **PAC** answering `SOCKS 127.0.0.1:21080`: `CFNetworkAgent` fetched the PAC, then both requests reached the server as
+  names (200). Loopback went direct.
+- **PAC keywords** (unit test against CFNetwork, `pac_test.rs`): `SOCKS` in any case is kept; `SOCKS5`, `SOCKS4`, and
+  `HTTPS` are dropped from the parsed list, so a PAC written for Chrome with `SOCKS5` is ignored by Cmdr as by Safari.
+
+Not verified: SOCKS credentials stored with the macOS setting (needs a keychain item), and a SOCKS4-only server from the
+macOS setting (Cmdr speaks SOCKS5 there). Afterwards Wi-Fi was back to SOCKS off with no server, PAC off with its
+previous stored URL, and no server process left (`networksetup -get…`, `scutil --proxy`, `pgrep`).

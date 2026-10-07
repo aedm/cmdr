@@ -22,7 +22,9 @@ request, once per request (to decide on proxy auth). `route::decide` answers:
    its subdomains), IPs, CIDR blocks; a `:port` suffix is ignored.
 4. **`HTTPS_PROXY` / `HTTP_PROXY`** for the URL's scheme, else `ALL_PROXY` → that proxy. Uppercase wins over lowercase.
    A value without a scheme gets `http://`. Credentials in the URL are kept; reqwest's matcher turns them into a
-   `Proxy-Authorization` header.
+   `Proxy-Authorization` header, or for a SOCKS URL into the SOCKS5 username/password sign-in (RFC 1929). A `socks4` /
+   `socks4a` / `socks5` / `socks5h` value is passed through as typed, so `socks5://` resolves names on this Mac and
+   `socks5h://` at the proxy (curl's convention, and what someone writing the variable expects).
 5. **macOS** (`system::mac::route`) → CFNetwork's verdict. Elsewhere there's no system layer and this step is direct.
 
 The environment is snapshotted on the first `client_builder()` call (`OnceLock`): a running process's environment
@@ -37,9 +39,38 @@ doesn't change.
 - `kCFProxyTypeNone` → direct.
 - `kCFProxyTypeHTTP` / `kCFProxyTypeHTTPS` → `http://host:port` (the HTTPS type is an HTTP proxy that tunnels with
   `CONNECT`, so the proxy URL's scheme stays `http`). Username and password are embedded when CFNetwork supplies both.
+- `kCFProxyTypeSOCKS` → `socks5h://host:port` (port 1080 when missing), credentials embedded the same way. See § "SOCKS"
+  for the version and DNS choice.
 - `kCFProxyTypeAutoConfigurationURL` / `…JavaScript` → the PAC's own list for this URL, walked the same way (a PAC
   answer never names another PAC). A PAC that can't run moves on to the next entry.
-- SOCKS, FTP, or an entry missing its host → skipped, logged at debug; the next entry decides.
+- FTP, or an entry missing its host → skipped, logged at debug; the next entry decides.
+
+Credentials are percent-encoded byte by byte, never `form_urlencoded`: hyper-util percent-decodes a proxy URL's
+userinfo, so a `+` standing for a space would reach the proxy as a literal `+` (`entries_test.rs`).
+
+## SOCKS
+
+reqwest's `socks` feature (no extra crate: the SOCKS client is hyper-util's, already in the graph) lets the closure
+answer with a `socks…://` URL. Sources:
+
+- **Env var**: any of the four SOCKS schemes, as typed (above).
+- **macOS "SOCKS proxy" setting**: CFNetwork lists it after an HTTP(S) proxy for the same scheme, so with both set,
+  `https` goes to the HTTPS proxy and plain `http` (with no HTTP proxy) to SOCKS (`system_test.rs`).
+- **PAC**: CFNetwork's PAC parser knows `SOCKS host:port` (any case) and drops `SOCKS5` and `SOCKS4` from the list
+  entirely, as it does `HTTPS` (verified on macOS 27.0, `pac_test.rs::cfnetwork_drops_the_versioned_socks_keywords`,
+  2026-10-08). Cmdr only sees the parsed list, so it ignores those words exactly as Safari does.
+
+**Decision: SOCKS5 with remote DNS (`socks5h`) for anything macOS hands over.** CFNetwork's SOCKS entry names no
+version, and macOS's own stack speaks SOCKS5 to it. Remote resolution because a network that forces traffic through
+SOCKS often can't resolve outside names locally, and a local lookup would show the network's DNS every host Cmdr talks
+to. It's also what macOS does: with the SOCKS setting on, both Cmdr and a `URLSession` request reached the test proxy as
+a name, not an IP (macOS 27.0, a logging SOCKS5 server, 2026-10-08). A SOCKS4-only server won't work from the macOS
+setting; env `socks4://` does.
+
+**Credentials**: an env URL's `user:password@` signs in (verified end to end, wrong credentials fail with
+`SOCKS error: credentials not accepted`). From the macOS setting, they're used when CFNetwork's entry carries both
+username and password; not verified, since that needs a keychain item.
+
 - An exhausted list → direct.
 
 When a PAC file is configured, the list is `[AutoConfigurationURL, None]`: CFNetwork appends its own DIRECT fallback
@@ -87,6 +118,7 @@ the PAC fails, which would be undefined behavior in a `NonNull` parameter.
   test builds (`mac::settings`), so it never reads or changes this Mac's own settings.
 - `pac_test.rs`: real PAC evaluation against a PAC file served from loopback, an inline script, the cache, an
   unreachable PAC host, one that never answers, and a broken script.
-- `lib_test.rs`: the built client end to end, with a fake proxy and origin on loopback.
+- `lib_test.rs`: the built client end to end, with a fake proxy and origin on loopback, and a fake SOCKS5 server that
+  records the sign-in and whether it got a name or an IP.
 - Against the real system settings: `docs/notes/proxy-and-tls-inspection-2026-10.md` § "After the fixes" (a probe on
   this crate, the Wi-Fi proxy set to a manual proxy, a bypass list, and a PAC file in turn).

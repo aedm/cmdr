@@ -48,6 +48,20 @@ fn credentials_in_the_variable_are_kept() {
 }
 
 #[test]
+fn a_socks_variable_keeps_its_scheme_and_so_its_dns_choice() {
+    // `socks5` resolves names on this Mac, `socks5h` at the proxy: curl's convention, kept as typed.
+    let env = env(&[
+        ("ALL_PROXY", "socks5h://ada:secret@socks.corp:1080"),
+        ("HTTP_PROXY", "socks5://socks.corp"),
+    ]);
+    assert_eq!(
+        route(&env, "https://example.com"),
+        proxy("socks5h://ada:secret@socks.corp:1080")
+    );
+    assert_eq!(route(&env, "http://example.com"), proxy("socks5://socks.corp"));
+}
+
+#[test]
 fn no_proxy_matches_domains_and_their_subdomains() {
     let env = env(&[
         ("HTTPS_PROXY", "http://p:1"),

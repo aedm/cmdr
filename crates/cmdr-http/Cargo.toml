@@ -15,7 +15,9 @@ workspace = true
 # The client this crate configures. A subset of the app's features, so no second
 # reqwest configuration enters the graph; `rustls` is what makes it a TLS client
 # that checks certificates with the macOS trust store (`rustls-platform-verifier`).
-reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
+# `socks` lets the routing hand reqwest a `socks5h://` proxy; it adds no crate (the
+# SOCKS client is hyper-util's, already in the graph).
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "socks"] }
 # `Url::host()` hands back a `url::Host`, which the loopback and NO_PROXY checks match on.
 url = "2"
 log = "0.4"

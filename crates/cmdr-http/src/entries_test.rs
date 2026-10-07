@@ -10,6 +10,14 @@ fn http(host: &str, port: u16) -> Entry {
     }
 }
 
+fn socks(host: &str, port: u16) -> Entry {
+    Entry::Socks {
+        host: host.to_string(),
+        port,
+        credentials: None,
+    }
+}
+
 fn url() -> Url {
     Url::parse("https://example.com").expect("a valid test URL")
 }
@@ -51,14 +59,22 @@ fn the_first_usable_entry_wins() {
 
 #[test]
 fn an_entry_cmdr_cant_speak_is_skipped() {
-    let entries = [Entry::Unsupported("kCFProxyTypeSOCKS".into()), http("proxy.test", 8080)];
+    let entries = [Entry::Unsupported("kCFProxyTypeFTP".into()), http("proxy.test", 8080)];
     assert_eq!(walk(&entries), Route::Proxy("http://proxy.test:8080".into()));
 }
 
 #[test]
 fn an_empty_or_exhausted_list_means_direct() {
     assert_eq!(walk(&[]), Route::Direct);
-    assert_eq!(walk(&[Entry::Unsupported("kCFProxyTypeSOCKS".into())]), Route::Direct);
+    assert_eq!(walk(&[Entry::Unsupported("kCFProxyTypeFTP".into())]), Route::Direct);
+}
+
+#[test]
+fn a_socks_entry_routes_through_socks5_with_the_proxy_resolving_names() {
+    assert_eq!(
+        walk(&[socks("socks.test", 1080), Entry::Direct]),
+        Route::Proxy("socks5h://socks.test:1080".into())
+    );
 }
 
 #[test]
@@ -68,16 +84,26 @@ fn credentials_and_ipv6_hosts_make_a_valid_proxy_url() {
         port: 3128,
         credentials: Some(("ada".into(), "p@ss word".into())),
     };
+    // `%20`, not `+`: hyper-util percent-decodes userinfo, and `+` would reach the proxy as a `+`.
     assert_eq!(
         walk(&[entry]),
-        Route::Proxy("http://ada:p%40ss+word@[fd00::1]:3128".into())
+        Route::Proxy("http://ada:p%40ss%20word@[fd00::1]:3128".into())
+    );
+    let entry = Entry::Socks {
+        host: "socks.test".into(),
+        port: 1080,
+        credentials: Some(("ada".into(), "p:ss/word".into())),
+    };
+    assert_eq!(
+        walk(&[entry]),
+        Route::Proxy("socks5h://ada:p%3Ass%2Fword@socks.test:1080".into())
     );
 }
 
 #[test]
 fn a_pac_entry_stands_for_the_pacs_answer() {
     let pac = FakePac::answering(Some(vec![
-        Entry::Unsupported("kCFProxyTypeSOCKS".into()),
+        Entry::Unsupported("kCFProxyTypeFTP".into()),
         http("pac.proxy", 8080),
     ]));
     let entries = [Entry::AutoConfigUrl("http://wpad/wpad.dat".into()), Entry::Direct];
