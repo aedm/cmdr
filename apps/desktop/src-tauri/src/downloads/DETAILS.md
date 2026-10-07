@@ -30,7 +30,11 @@ path it's about to write, and those differ whenever the root is reached through 
 folder, or macOS's `/var` → `/private/var` under `$TMPDIR`). Matching only one spelling means no registration ever
 matches an event and Cmdr toasts its own writes. A prefix swap settles it without a `realpath` per registration, which
 matters because a large copy registers every file it writes; a symlink DEEPER than the root is not covered, and paying
-a syscall per write to cover it isn't worth it. The end-to-end safety net is
+a syscall per write to cover it isn't worth it. It's also a hang, not only a cost: registration runs inline on the
+write op's async worker, under the `RUNTIME` mutex, for EVERY target (the root filter comes after), so a `realpath`
+under `/Volumes/<share>` goes to the kernel SMB mount even for a direct-SMB volume. It's the likeliest filler of the
+untimed 7–12 s gaps before direct-SMB New Folders on a busy NAS (ERR-AREUV, 0.50.0; inferred from the log, not
+reproduced). `downloads::watcher_test::note_pending_write_never_resolves_the_path` guards it. The end-to-end safety net is
 `downloads::runtime::tests::note_pending_write_for_cmdr_suppresses_watcher_event_end_to_end`. Call sites live across
 `file_system/write_operations/` (copy, move, delete walker, trash, volume strategy); renames register BOTH halves. See
 `file_system/write_operations/DETAILS.md` for the write-side contract.
