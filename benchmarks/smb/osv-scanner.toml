@@ -1,0 +1,6 @@
+# OSV-Scanner config for `benchmarks/smb/Cargo.lock` (see the root `osv-scanner.toml`). A local
+# benchmark harness pinned in lockstep with `smb` 0.11; it never ships. `rsa` stays listed because
+# the app ships it too.
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0190"
+reason = "anyhow (unsound Error::downcast_mut): only in this benchmark harness, which never calls downcast_mut and never ships. The app's own anyhow is past the fix."

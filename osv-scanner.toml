@@ -1,0 +1,51 @@
+# OSV-Scanner (and OpenSSF Scorecard's Vulnerabilities check, which runs it) reads this file for the
+# lockfiles beside it: `Cargo.lock` and `pnpm-lock.yaml`. It doesn't apply to subdirectories, which
+# carry their own. Each entry is an advisory that can't reach the shipped macOS app, with the reason.
+# ❌ Never ignore one that can: fix it, or leave it visible. That's why `rsa` (RUSTSEC-2023-0071,
+# accepted with its reasoning in `deny.toml`), `ttf-parser`, and the `unic-*` crates stay listed.
+# Reasons verified with `cargo tree -i <crate> --target aarch64-apple-darwin` and `pnpm why -r`,
+# 2026-10-08.
+
+# --- Rust ---
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0429"
+reason = "glib 0.18 (unsound VariantStrIter): Tauri's GTK stack, built only for Linux, where we run E2E tests. Not in the macOS graph."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0370"
+reason = "proc-macro-error is unmaintained: a build-time proc macro under Tauri's Linux GTK stack. Not in the macOS graph."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0194"
+reason = "quick-xml 0.39 (quadratic duplicate-attribute check) reaches us only through wayland-scanner, a Linux build-time proc macro parsing Wayland's own protocol XML. Our runtime XML parsing uses quick-xml 0.41, which has the fix."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0195"
+reason = "quick-xml 0.39 (NsReader allocation): same Linux build-time-only path as RUSTSEC-2026-0194; our runtime copy is 0.41, which has the fix."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0052"
+reason = "async-std is discontinued: a dev-dependency of the vendored cmdr-fsevent-stream fork, used by its tests only. Same entry in deny.toml."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0436"
+reason = "paste is unmaintained: a proc macro, so it runs at compile time and leaves nothing in the binary."
+
+# --- npm (all dev/build-time; nothing here ships in the app or on the website) ---
+
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+reason = "braces 3.0.3, via micromatch in lint and test tooling (devDependencies of desktop and the dashboard). It expands only our own glob patterns. No fixed version exists."
+
+[[IgnoredVulns]]
+id = "GHSA-hp3w-g68c-fv3c"
+reason = "sprintf-js 1.0.3, via js-yaml 3 under Lighthouse CI (@lhci/cli, a website devDependency), formatting its own messages. No fixed version exists."
+
+[[IgnoredVulns]]
+id = "GHSA-7pqw-9j4j-h8q3"
+reason = "extract-zip 2.0.1, via @puppeteer/browsers under Lighthouse CI (website devDependency), unpacking Chrome downloads from Google's own CDN. No fixed version exists."
+
+[[IgnoredVulns]]
+id = "GHSA-jmr9-qjv8-65gv"
+reason = "extract-zip 2.0.1: same Lighthouse CI-only path as GHSA-7pqw-9j4j-h8q3. No fixed version exists."

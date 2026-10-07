@@ -1,0 +1,5 @@
+# OSV-Scanner config for `fuzz/Cargo.lock` (see the root `osv-scanner.toml`). The fuzz harness
+# never ships; `ttf-parser` stays listed because the app ships it too.
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0436"
+reason = "paste is unmaintained: a proc macro, so it runs at compile time and leaves nothing in the binary."
