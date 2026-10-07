@@ -118,6 +118,9 @@ For TS, Svelte, and IPC contract tests. Run all: `pnpm check svelte-tests`. Run 
 tier-3 a11y tests in `*.a11y.test.ts` (often one per directory covering several components, since the lane's cost is per
 FILE: `docs/testing.md` § "What a test actually costs").
 
+On a shared, busy host, `CMDR_TEST_WORKERS=4 pnpm check svelte-tests` caps desktop Vitest concurrency without changing
+the suite or its deadlines. Unset, Vitest uses its normal worker count. Supply a positive integer.
+
 ### `installIpcMock()`: IPC contract test harness
 
 In `apps/desktop/src/lib/ipc/test-helpers.ts`. Thin wrapper around Tauri's `@tauri-apps/api/mocks::mockIPC`. Returns a
