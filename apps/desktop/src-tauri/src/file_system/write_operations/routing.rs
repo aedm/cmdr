@@ -22,7 +22,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use super::archive_edit::{compress_start, route_archive_copy_into};
+use super::archive_edit::{compress_start, route_archive_copy_into_with_provenance};
 use super::event_sinks::OperationEventSink;
 use super::source_binding::ExpectedSources;
 use super::transfer::volume::{PathRole, copy_between_volumes, move_between_volumes, unregistered_volume_error};
@@ -238,7 +238,7 @@ pub(crate) async fn start_volume_copy(
         if expected_sources.is_some() {
             return Err(route_cannot_hold_a_binding("copy into a zip"));
         }
-        return route_archive_copy_into(
+        return route_archive_copy_into_with_provenance(
             events,
             source_volume,
             source_paths,
@@ -249,6 +249,8 @@ pub(crate) async fn start_volume_copy(
             false,
             config.compression_level,
             config.preview_id.clone(),
+            super::journal::ArchiveProvenance::edit(initiator),
+            config.destination_name.clone(),
         )
         .await;
     }
@@ -340,7 +342,7 @@ pub(crate) async fn start_volume_move(
         if expected_sources.is_some() {
             return Err(route_cannot_hold_a_binding("move into a zip"));
         }
-        return route_archive_copy_into(
+        return route_archive_copy_into_with_provenance(
             events,
             source_volume,
             source_paths,
@@ -351,6 +353,8 @@ pub(crate) async fn start_volume_move(
             true,
             config.compression_level,
             config.preview_id.clone(),
+            super::journal::ArchiveProvenance::edit(initiator),
+            config.destination_name.clone(),
         )
         .await;
     }

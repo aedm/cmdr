@@ -23,6 +23,8 @@ Backend: `apps/desktop/src-tauri/src/file_system/write_operations/CLAUDE.md`.
   goes stale, which is how a just-queued transfer once got cancelled.
 - **One transfer entry seam**: F5/F6, drag-and-drop, and paste all prepare through `pane/transfer-entry.ts`. The paste
   path's scheme-path refusal stays SEPARATE and BEFORE the shared guard.
+- **Single Copy/Move includes its leaf**; relative paths use the source folder and volume. Keep `destinationName`
+  through the birth context. DETAILS § "Single-item destinations".
 - **Batch IPC for selection lookups** (`get_paths_at_indices` / `get_files_at_indices`), ❌ never a per-index loop: 50k
   files costs 5-10 s vs ~1 ms.
 - **Speed, ETA, and bars are backend-owned and SHARED with the queue window** (`../TransferProgressReadout.svelte`): ❌
@@ -46,5 +48,4 @@ Backend: `apps/desktop/src-tauri/src/file_system/write_operations/CLAUDE.md`.
 - **ONE map from an MCP `onConflict` name to a policy** (`conflict-policy.ts`), shared with `dialog confirm`. ❌ Never a
   second copy: an unmapped name silently becomes `skip`, turning "ask about each file" into "skip every file".
 
-The file map, rollback's limits, the password interception, the E2E markers, the phase catalog, flows, and decisions:
-`DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or advising.
+Read `DETAILS.md` before non-trivial work: file map, rollback, passwords, E2E markers, phases, flows, and decisions.

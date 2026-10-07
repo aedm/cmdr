@@ -132,6 +132,12 @@ pub async fn copy_between_volumes(
     initiator: crate::operation_log::types::Initiator,
     expected_sources: Option<ExpectedSources>,
 ) -> Result<WriteOperationStartResult, WriteOperationError> {
+    super::super::super::validation::validate_transfer_destination_name(
+        &source_paths,
+        &dest_path,
+        config.destination_name.as_deref(),
+    )?;
+
     // Validate that volumes support the required operations
     if !source_volume.supports_export() {
         return Err(WriteOperationError::IoError {
@@ -165,6 +171,7 @@ pub async fn copy_between_volumes(
             max_conflicts_to_show: config.max_conflicts_to_show,
             preview_id: config.preview_id,
             pre_known_conflicts: config.pre_known_conflicts,
+            destination_name: config.destination_name,
             ..Default::default()
         };
 
@@ -642,6 +649,12 @@ pub(crate) async fn copy_volumes_with_progress(
     dest_path: &Path,
     config: &VolumeCopyConfig,
 ) -> Result<(), WriteFailure> {
+    super::super::super::validation::validate_transfer_destination_name(
+        source_paths,
+        dest_path,
+        config.destination_name.as_deref(),
+    )
+    .map_err(WriteFailure::synthetic)?;
     log::debug!(
         "copy_volumes_with_progress: starting operation_id={}, {} sources",
         operation_id,
@@ -891,7 +904,14 @@ pub(crate) async fn copy_volumes_with_progress(
     pre_skip_paths.retain(|source| {
         source
             .file_name()
-            .map(|name| !is_the_same_item(&source_volume, source, &dest_volume, &dest_path.join(name)))
+            .map(|name| {
+                let target_name = config
+                    .destination_name
+                    .as_deref()
+                    .map(Path::new)
+                    .unwrap_or_else(|| Path::new(name));
+                !is_the_same_item(&source_volume, source, &dest_volume, &dest_path.join(target_name))
+            })
             .unwrap_or(true)
     });
 

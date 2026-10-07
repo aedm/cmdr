@@ -400,6 +400,8 @@ export interface VolumeCopyConfig {
    * loop re-discovers them. Ignored for other resolution modes.
    */
   preKnownConflicts?: string[]
+  /** Explicit leaf name for a single local copy. */
+  destinationName?: string
   /**
    * Deflate compression level (1..=9) for zip writes the operation performs
    * (Compress, and copy/move INTO an archive). `null`/omitted uses the zip
@@ -412,6 +414,7 @@ export interface VolumeCopyConfig {
 /** Input for source item in conflict scanning. */
 export interface SourceItemInput {
   name: string
+  isDirectory?: boolean
   size: number
   modified: number | null
 }

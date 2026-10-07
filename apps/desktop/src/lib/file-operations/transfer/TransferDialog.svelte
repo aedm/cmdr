@@ -5,7 +5,7 @@
     import { getVolumeSpace, DEFAULT_VOLUME_ID, type SpaceInfo } from '$lib/tauri-commands'
     import type { SortColumn, SortOrder, ConflictResolution, TransferOperationType } from '$lib/file-explorer/types'
     import type { TransferConfirmPayload } from '$lib/file-explorer/pane/dialog-props'
-    import { validateDirectoryPath } from '$lib/utils/filename-validation'
+    import { validateDirectoryPath, validateNotEmpty } from '$lib/utils/filename-validation'
     import { createTransferDestExistsCheck } from './transfer-dest-exists.svelte'
     import { conflictPolicyFromMcpName } from './conflict-policy'
     import CompressLevelControl from './CompressLevelControl.svelte'
@@ -21,6 +21,7 @@
         confirmLabelKey,
         generateTitle,
         initialEditedPath,
+        editedPathAfterOperationChange,
         shouldShowHardlinkNote,
     } from './transfer-dialog-utils'
     import { getPathValidationError, formatSpaceInfo } from './transfer-dialog-logic'
@@ -37,6 +38,7 @@
     import { useShortenMiddle } from '$lib/utils/shorten-middle-action'
     import Trans from '$lib/intl/Trans.svelte'
     import { t, tString } from '$lib/intl/messages.svelte'
+    import { resolveTransferTarget } from './transfer-target'
     import { dependOn } from '$lib/utils/reactivity'
 
     const log = getAppLogger('transferDialog')
@@ -130,15 +132,7 @@
     let editedPath = $state(
         initialEditedPath(initialOperationType, destinationPath, initialVolumePath, sourcePaths, sourceFolderPath),
     )
-    log.debug(
-        'Initial path resolution: destinationPath={destinationPath}, currentVolumeId={currentVolumeId}, initialVolumePath={initialVolumePath}, editedPath={editedPath}',
-        {
-            destinationPath,
-            currentVolumeId,
-            initialVolumePath,
-            editedPath,
-        },
-    )
+    log.debug('Initial target: path={editedPath}, volume={currentVolumeId}', { editedPath, currentVolumeId })
     let selectedVolumeId = $state(currentVolumeId)
     let pathInputRef: HTMLInputElement | undefined = $state()
 
@@ -170,8 +164,13 @@
 
     const volumeItems = $derived<SelectItem[]>(actualVolumes.map((v) => ({ value: v.id, label: v.name })))
 
-    // Get selected volume info
-    const selectedVolume = $derived(actualVolumes.find((v) => v.id === selectedVolumeId))
+    const singleTransfer = $derived(activeOperationType !== 'compress' && sourcePaths.length === 1)
+    const namedTarget = $derived(singleTransfer ? resolveTransferTarget({
+        enteredPath: editedPath, sourceFolderPath, sourcePath: sourcePaths[0], sourceVolumeId, selectedVolumeId, volumes, homePath: userHomePath,
+    }) : null)
+    const targetVolumeId = $derived(namedTarget?.volumeId ?? selectedVolumeId)
+    const selectedVolume = $derived(actualVolumes.find((v) => v.id === targetVolumeId))
+    const targetPath = $derived(namedTarget?.path ?? editedPath)
 
     /** A same-volume move: the source and destination are the SAME NON-DEFAULT
      *  volume (one smb2 share / one MTP device) and the active operation is Move.
@@ -189,8 +188,20 @@
      *  same guard in `TransferProgressDialog`'s `isSameVolumeMove`. Derived from
      *  what the dialog already knows (no extra prop). */
     const isSameVolumeMove = $derived(
-        activeOperationType === 'move' && sourceVolumeId !== DEFAULT_VOLUME_ID && sourceVolumeId === selectedVolumeId,
+        activeOperationType === 'move' && sourceVolumeId !== DEFAULT_VOLUME_ID && sourceVolumeId === targetVolumeId,
     )
+
+    function changeOperation(next: string) {
+        const nextOperationType = next as TransferOperationType
+        const volumeId = targetVolumeId
+        const nextPath = editedPathAfterOperationChange({
+            operationType: activeOperationType, nextOperationType, editedPath, targetParent: namedTarget?.parent,
+            volumePath: volumes.find((v) => v.id === volumeId)?.path ?? '/', sourcePaths, sourceFolderPath,
+        })
+        selectedVolumeId = volumeId
+        activeOperationType = nextOperationType
+        editedPath = nextPath
+    }
 
     // Deep scan-preview orchestration (Size bar + file/dir tallies). The factory
     // owns the scan listeners, the start/cancel lifecycle, and the Copy/Move
@@ -212,9 +223,11 @@
     // deep scan and stays decoupled from it, so a same-volume move can cancel the
     // deep preview while still surfacing merges + the file-policy radios.
     const conflicts = createTransferConflictCheck({
-        getSelectedVolumeId: () => selectedVolumeId,
+        getDestinationName: () => namedTarget?.name,
+        getSourceIsDirectory: () => folderCount === 1 && fileCount === 0,
+        getSelectedVolumeId: () => targetVolumeId,
         getSourcePaths: () => sourcePaths,
-        getEditedPath: () => editedPath,
+        getEditedPath: () => targetPath,
         getSourceVolumeId: () => sourceVolumeId,
         getDestroyed: () => destroyed,
         log,
@@ -233,6 +246,14 @@
     const mergeFolderCount = $derived(conflicts.mergeFolderCount)
     const hasTypeMismatchConflict = $derived(conflicts.hasTypeMismatchConflict)
     const isCheckingConflicts = $derived(conflicts.isCheckingConflicts)
+
+    let showConflictSpinner = $state(false)
+    $effect(() => {
+        showConflictSpinner = false
+        if (!isCheckingConflicts) return
+        const timer = setTimeout(() => { showConflictSpinner = true; }, 100)
+        return () => { clearTimeout(timer); }
+    })
 
     // File-conflict policy options for `RadioGroup`. The label pluralizes on the
     // live conflict count ("Skip" vs "Skip all"), so the items rebuild reactively.
@@ -295,9 +316,10 @@
     )
 
     const pathError = $derived.by(() => {
-        const structural = validateDirectoryPath(editedPath)
+        if (singleTransfer && !namedTarget) return validateNotEmpty('').message
+        const structural = validateDirectoryPath(namedTarget ? `${namedTarget.parent}/${namedTarget.name}` : editedPath)
         if (structural.severity === 'error') return structural.message
-        return getPathValidationError(sourcePaths, editedPath, activeOperationType)
+        return getPathValidationError(sourcePaths, namedTarget?.fullPath ?? targetPath, activeOperationType, !!namedTarget)
     })
 
     // Destination-existence check (debounced, async) behind the yellow "will be
@@ -305,8 +327,8 @@
     // `$effect` lands in the effect-tracking context, matching the scan/conflict
     // factories above.
     const destExists = createTransferDestExistsCheck({
-        getEditedPath: () => editedPath,
-        getSelectedVolumeId: () => selectedVolumeId,
+        getEditedPath: () => targetPath,
+        getSelectedVolumeId: () => targetVolumeId,
         getDestroyed: () => destroyed,
         log,
     })
@@ -346,30 +368,15 @@
 
     // Load volume space when volume changes
     async function loadVolumeSpace() {
-        const volume = selectedVolume
+        const volume = actualVolumes.find((v) => v.id === targetVolumeId)
         if (volume) {
             volumeSpace = (await getVolumeSpace(volume.path)).data
         }
     }
 
-    // Reset to volume root when volume changes: the current path is meaningless on a different volume
-    function handleVolumeChange() {
-        editedPath = '/'
-        void loadVolumeSpace()
-    }
-
-    let isInitialVolumeEffect = true
     $effect(() => {
-        // Watch for volume changes - read the reactive value to track it
-        dependOn(selectedVolumeId)
-        if (isInitialVolumeEffect) {
-            // Skip the first run: editedPath is already initialized with the correct volume-relative path.
-            // Only load volume space on init.
-            isInitialVolumeEffect = false
-            void loadVolumeSpace()
-        } else {
-            handleVolumeChange()
-        }
+        dependOn(targetVolumeId)
+        void loadVolumeSpace()
     })
 
     /**
@@ -383,6 +390,20 @@
      * (not `undefined`) and dispatches with `conflictNames` populated.
      */
     let conflictCheckPromise: Promise<void> | null = $state(null)
+
+    let checkedTarget = ''
+    $effect(() => {
+        const key = JSON.stringify([targetVolumeId, targetPath, namedTarget?.name, activeOperationType])
+        if (!isOpen || key === checkedTarget) return
+        checkedTarget = key
+        conflicts.reset()
+        conflictCheckPromise = null
+        if (activeOperationType === 'compress' || pathError) return
+        const timer = setTimeout(() => {
+            conflictCheckPromise ??= conflicts.check()
+        }, 300)
+        return () => { clearTimeout(timer); }
+    })
 
     onMount(async () => {
         // Opening straight into Compress shouldn't animate: the slide is feedback
@@ -414,7 +435,7 @@
         pathInputRef?.focus()
         pathInputRef?.select()
 
-        // Volume space is loaded by the $effect watching selectedVolumeId
+        // Volume space is loaded by the $effect watching targetVolumeId
 
         // Start the deep scan preview immediately — UNLESS this is a same-volume
         // move, where the backend does a server-side rename (zero bytes) and the
@@ -429,7 +450,7 @@
         // auto-confirm branch so the fast path's `handleConfirm` await guard sees a
         // real promise. Compress makes ONE new file, so multi-file dest conflicts
         // are meaningless — it skips the check and uses the dest-exists affordance.
-        conflictCheckPromise = activeOperationType === 'compress' ? null : conflicts.check()
+        if (activeOperationType !== 'compress' && !pathError) conflictCheckPromise ??= conflicts.check()
 
         // Auto-confirm if MCP requested it (after a tick so the dialog is fully initialized)
         if (autoConfirm) {
@@ -497,10 +518,11 @@
         // check only gates `skip`.
         if (isSameVolumeMove) {
             scan.cancelPreview()
-            if (needsConflictNames()) await conflictCheckPromise
+            if (needsConflictNames()) await (conflictCheckPromise ??= conflicts.check())
             onConfirm({
-                destination: editedPath,
-                volumeId: selectedVolumeId,
+                destination: targetPath,
+                destinationName: namedTarget?.name,
+                volumeId: targetVolumeId,
                 previewId: null,
                 conflictResolution: conflictPolicy,
                 operationType: activeOperationType,
@@ -522,10 +544,11 @@
         // can take minutes on a big remote dir, and only `skip` consumes its
         // names.
         await scan.scanStarted
-        if (needsConflictNames()) await conflictCheckPromise
+        if (needsConflictNames()) await (conflictCheckPromise ??= conflicts.check())
         onConfirm({
-            destination: editedPath,
-            volumeId: selectedVolumeId,
+            destination: targetPath,
+            destinationName: namedTarget?.name,
+            volumeId: targetVolumeId,
             previewId: scan.previewId,
             conflictResolution: conflictPolicy,
             operationType: activeOperationType,
@@ -579,7 +602,7 @@
             semantics="toggles"
             value={activeOperationType}
             options={operationOptions}
-            onChange={(next: string) => (activeOperationType = next as TransferOperationType)}
+            onChange={changeOperation}
             ariaLabel={tString('fileOperations.transferDialog.operationAria')}
             fullWidth
         />
@@ -598,10 +621,12 @@
                     <div class="volume-select">
                         <Select
                             items={volumeItems}
-                            value={selectedVolumeId}
+                            value={targetVolumeId}
                             ariaLabel={tString('fileOperations.transferDialog.destVolumeAria')}
                             onChange={(id: string) => {
                                 selectedVolumeId = id
+                                const root = volumes.find((v) => v.id === id)?.path ?? '/'
+                                editedPath = initialEditedPath(activeOperationType, root, root, sourcePaths, sourceFolderPath)
                             }}
                         />
                     </div>
@@ -654,6 +679,11 @@
             <div class="scan-stat">
                 <span class="scan-value">{formatNumber(filesFound)}</span>
                 <span class="scan-label">{t('fileOperations.transferDialog.scanFile', { count: filesFound })}</span>
+                <span class="conflict-check-status">
+                    {#if isCheckingConflicts && showConflictSpinner}
+                        <Spinner size="sm" label={tString('fileOperations.transferDialog.checkingConflicts')} />
+                    {/if}
+                </span>
             </div>
             <span class="scan-divider">/</span>
             <div class="scan-stat">
@@ -714,13 +744,7 @@
         {/if}
 
         <!-- Conflicts section -->
-        {#if isCheckingConflicts}
-            <div class="conflicts-checking">
-                <Spinner size="sm" />
-                <span class="conflicts-checking-text">{tString('fileOperations.transferDialog.checkingConflicts')}</span
-                >
-            </div>
-        {:else if conflicts.conflictCheckUnknown}
+        {#if conflicts.conflictCheckUnknown}
             <!-- The check couldn't run. Rendering nothing here would show exactly
                  what a clean destination shows, and the user is about to make a
                  decision about their own files on the strength of it. -->
@@ -958,17 +982,13 @@
         color: var(--color-warning-text);
     }
 
-    /* Conflicts checking */
-    .conflicts-checking {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        gap: var(--spacing-sm);
-        font-size: var(--font-size-sm);
-    }
-
-    .conflicts-checking-text {
-        color: var(--color-text-tertiary);
+    /* Reserve the indicator's width even when a check finishes before the delay. */
+    .conflict-check-status {
+        display: inline-flex;
+        align-self: center;
+        width: 12px;
+        height: 12px;
+        flex: 0 0 auto;
     }
 
     /* Keeps the pending spinner on the label's baseline row inside the confirm

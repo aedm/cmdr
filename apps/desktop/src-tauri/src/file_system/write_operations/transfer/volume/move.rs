@@ -58,6 +58,11 @@ pub async fn move_between_volumes(
     initiator: crate::operation_log::types::Initiator,
     expected_sources: Option<ExpectedSources>,
 ) -> Result<WriteOperationStartResult, WriteOperationError> {
+    super::super::super::validation::validate_transfer_destination_name(
+        &source_paths,
+        &dest_path,
+        config.destination_name.as_deref(),
+    )?;
     // Same volume: use native rename/move (instant for MTP)
     if Arc::ptr_eq(&source_volume, &dest_volume) {
         return move_within_same_volume(
@@ -93,6 +98,7 @@ pub async fn move_between_volumes(
             max_conflicts_to_show: config.max_conflicts_to_show,
             preview_id: config.preview_id,
             pre_known_conflicts: config.pre_known_conflicts,
+            destination_name: config.destination_name,
             ..Default::default()
         };
 

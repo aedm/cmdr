@@ -419,6 +419,7 @@ export function createDialogState(deps: DialogStateDeps) {
 
     handleTransferConfirm({
       destination,
+      destinationName,
       volumeId,
       previewId,
       conflictResolution,
@@ -436,6 +437,7 @@ export function createDialogState(deps: DialogStateDeps) {
         sourceFolderPath: transferDialogProps.sourceFolderPath,
         sourcePaneSide: transferDialogProps.direction === 'right' ? 'left' : 'right',
         destinationPath: destination,
+        destinationName,
         direction: transferDialogProps.direction,
         sortColumn: transferDialogProps.sortColumn,
         sortOrder: transferDialogProps.sortOrder,
@@ -448,7 +450,7 @@ export function createDialogState(deps: DialogStateDeps) {
         folderCount: transferDialogProps.folderCount,
         mcpRequestId: transferDialogProps.mcpRequestId,
         initiator: transferDialogProps.initiator,
-        duplicateFollowUp: transferDialogProps.duplicateFollowUp,
+        duplicateFollowUp: destinationName ? 'nothing' : transferDialogProps.duplicateFollowUp,
       })
 
       showTransferDialog = false

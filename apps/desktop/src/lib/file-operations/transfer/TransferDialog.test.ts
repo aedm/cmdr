@@ -19,10 +19,6 @@ import type { TransferConfirmPayload } from '$lib/file-explorer/pane/dialog-prop
 const startScanPreviewMock = vi.mocked(commands.startScanPreview)
 const cancelScanPreviewMock = vi.mocked(commands.cancelScanPreview)
 
-/* ------------------------------------------------------------------------- */
-/* Mock harness                                                              */
-/* ------------------------------------------------------------------------- */
-
 // Captured scan-preview-complete callback, so a test can decide WHEN the
 // (slow) byte scan finishes relative to the conflict check.
 let scanCompleteCb: ((e: ScanCompleteEvent) => void) | null = null
@@ -140,10 +136,6 @@ vi.mock('$lib/stores/volume-store.svelte', () => ({
   ],
 }))
 
-/* ------------------------------------------------------------------------- */
-/* Helpers                                                                    */
-/* ------------------------------------------------------------------------- */
-
 function makeConflict(overrides: Partial<VolumeConflictInfo>): VolumeConflictInfo {
   return {
     sourcePath: 'item',
@@ -178,6 +170,7 @@ interface MountOpts {
   currentVolumeId?: string
   sourceFolderPath?: string
   destinationPath?: string
+  sourcePaths?: string[]
 }
 
 type ConfirmFn = (payload: TransferConfirmPayload) => void
@@ -189,7 +182,7 @@ function mountDialog(opts: MountOpts = {}): HTMLDivElement {
     target,
     props: {
       operationType: opts.operationType ?? 'copy',
-      sourcePaths: ['/Users/test/photos', '/Users/test/notes.txt'],
+      sourcePaths: opts.sourcePaths ?? ['/Users/test/photos', '/Users/test/notes.txt'],
       destinationPath: opts.destinationPath ?? '/Users/test/dest',
       currentVolumeId: opts.currentVolumeId ?? 'root',
       fileCount: 1,
@@ -272,9 +265,33 @@ function clickToggle(target: HTMLElement, label: 'Copy' | 'Move'): void {
   btn.click()
 }
 
-/* ------------------------------------------------------------------------- */
-/* Decoupling: conflict info appears while the byte scan is still running    */
-/* ------------------------------------------------------------------------- */
+it('shows a conflict spinner beside the file count only after 100 ms, without a checking row', async () => {
+  vi.useFakeTimers()
+  try {
+    const pending = deferred<VolumeConflictInfo[]>()
+    scanVolumeForConflictsMock.mockReturnValueOnce(pending.promise)
+    const target = mountDialog()
+    await vi.advanceTimersByTimeAsync(0)
+    const slot = target.querySelector('.conflict-check-status')
+    expect(slot).not.toBeNull()
+    expect(target.querySelector('.conflicts-checking')).toBeNull()
+    expect(slot?.querySelector('.spinner')).toBeNull()
+    await vi.advanceTimersByTimeAsync(99)
+    expect(slot?.querySelector('.spinner')).toBeNull()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(slot?.querySelector('[role="status"]')).not.toBeNull()
+    pending.resolve([])
+    await vi.advanceTimersByTimeAsync(0)
+    expect(slot?.querySelector('.spinner')).toBeNull()
+    const input = pathInput(target)
+    input.value = '/Users/test/other'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await vi.advanceTimersByTimeAsync(400)
+    expect(slot?.querySelector('.spinner')).toBeNull()
+  } finally {
+    vi.useRealTimers()
+  }
+})
 
 describe('TransferDialog upfront conflict check decoupling', () => {
   it('renders conflict info while the scan preview is still running', async () => {
@@ -1033,4 +1050,146 @@ describe('TransferDialog confirm without waiting for the conflict check', () => 
 
     expect(onConfirm).toHaveBeenCalledTimes(1)
   })
+})
+
+describe('copy to a filename', () => {
+  it.each(['copy', 'move'] as const)(
+    'confirms a relative %s target beside the source on another volume',
+    async (operationType) => {
+      const onConfirm = vi.fn<ConfirmFn>()
+      const target = mountDialog({
+        operationType,
+        sourcePaths: ['/Users/test/notes.txt'],
+        currentVolumeId: 'ext',
+        onConfirm,
+      })
+      await flushMicrotasks()
+      const input = target.querySelector<HTMLInputElement>('input[type="text"]')
+      if (!input) throw new Error('path input not rendered')
+      input.value = 'notes backup.txt'
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await tick()
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await flushMicrotasks()
+      expect(onConfirm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          destination: '/Users/test',
+          destinationName: 'notes backup.txt',
+          volumeId: 'root',
+          operationType,
+        }),
+      )
+      expect(target.querySelector('#transfer-path-error')).toBeNull()
+    },
+  )
+})
+
+describe('complete single-copy target', () => {
+  it.each(['copy', 'move'] as const)('shows the original name in the %s target', async (operationType) => {
+    const target = mountDialog({ operationType, sourcePaths: ['/Users/test/notes.txt'] })
+    await flushMicrotasks()
+    expect(pathInput(target).value).toBe('/Users/test/dest/notes.txt')
+  })
+
+  it.each(['copy', 'move'] as const)('accepts full and relative %s filenames', async (operationType) => {
+    for (const [entered, destination, destinationName, volumeId] of [
+      ['/tmp/new.txt', '/tmp', 'new.txt', 'root'],
+      ['copies/new.txt', '/Users/test/copies', 'new.txt', 'root'],
+      ['../new.txt', '/Users', 'new.txt', 'root'],
+      ['/Volumes/External/copies/new.txt', '/copies', 'new.txt', 'ext'],
+      ['~/new.txt', '/Users/test', 'new.txt', 'root'],
+    ]) {
+      const onConfirm = vi.fn<ConfirmFn>()
+      const target = mountDialog({ operationType, sourcePaths: ['/Users/test/notes.txt'], onConfirm })
+      await flushMicrotasks()
+      const input = pathInput(target)
+      input.value = entered
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await tick()
+      confirmButton(target).click()
+      await flushMicrotasks()
+      expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ destination, destinationName, volumeId }))
+    }
+  })
+
+  it('requires the final name instead of accepting a trailing slash', async () => {
+    const onConfirm = vi.fn<ConfirmFn>()
+    const target = mountDialog({ sourcePaths: ['/Users/test/notes.txt'], onConfirm })
+    await flushMicrotasks()
+    const input = pathInput(target)
+    input.value = '/tmp/'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await tick()
+    confirmButton(target).click()
+    await flushMicrotasks()
+    expect(onConfirm).not.toHaveBeenCalled()
+    expect(target.querySelector('#transfer-path-error')).not.toBeNull()
+  })
+})
+
+describe('named copies on a phone', () => {
+  it.each([
+    ['/DCIM/new.jpg', '/DCIM'],
+    ['backups/new.jpg', '/DCIM/backups'],
+  ])('resolves %s in the phone namespace', async (entered, destination) => {
+    const onConfirm = vi.fn<ConfirmFn>()
+    const target = mountDialog({
+      sourcePaths: ['/mtp-20-5/65538/DCIM/original.jpg'],
+      sourceFolderPath: '/mtp-20-5/65538/DCIM',
+      sourceVolumeId: 'mtp-336592896:65538',
+      currentVolumeId: 'mtp-336592896:65538',
+      destinationPath: '/mtp-20-5/65538/DCIM',
+      onConfirm,
+    })
+    await flushMicrotasks()
+    const input = pathInput(target)
+    input.value = entered
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await tick()
+    confirmButton(target).click()
+    await flushMicrotasks()
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        destination,
+        destinationName: 'new.jpg',
+        volumeId: 'mtp-336592896:65538',
+      }),
+    )
+  })
+})
+
+it('resolves a relative copy beside the selected source when it is outside the pane folder', async () => {
+  const onConfirm = vi.fn<ConfirmFn>()
+  const target = mountDialog({ sourcePaths: ['/Users/other/original.txt'], sourceFolderPath: '/Users/test', onConfirm })
+  await flushMicrotasks()
+  const input = pathInput(target)
+  input.value = 'backup.txt'
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  await tick()
+  confirmButton(target).click()
+  await flushMicrotasks()
+  expect(onConfirm).toHaveBeenCalledWith(
+    expect.objectContaining({ destination: '/Users/other', destinationName: 'backup.txt' }),
+  )
+})
+
+it.each(['copy', 'move'] as const)('warns and disables %s for the identical source target', async (operationType) => {
+  const onConfirm = vi.fn<ConfirmFn>()
+  const target = mountDialog({ operationType, sourcePaths: ['/Users/test/notes.txt'], onConfirm })
+  await flushMicrotasks()
+  const input = pathInput(target)
+  for (const entered of ['/Users/test/notes.txt', 'notes.txt', './copies/../notes.txt']) {
+    input.value = entered
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await tick()
+    expect(target.querySelector('#transfer-path-error')?.textContent).toBe('“notes.txt” is already in this location')
+    expect(confirmButton(target).disabled).toBe(true)
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await flushMicrotasks()
+    expect(onConfirm).not.toHaveBeenCalled()
+  }
+  input.value = 'backup.txt'
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  await tick()
+  expect(confirmButton(target).disabled).toBe(false)
 })

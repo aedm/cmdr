@@ -58,6 +58,7 @@
         sourceFolderPath: string
         /** Destination path (not applicable for delete/trash) */
         destinationPath?: string
+        destinationName?: string
         /** Transfer direction (not applicable for delete/trash, and unknown for
          *  an adopted operation: the snapshot names paths, not panes). */
         direction?: 'left' | 'right'
@@ -105,6 +106,7 @@
         sourcePaths = [],
         sourceFolderPath,
         destinationPath,
+        destinationName,
         direction,
         sortColumn = 'name',
         sortOrder = 'ascending',
@@ -186,6 +188,7 @@
         operationType,
         sourcePaths,
         destinationPath,
+        destinationName,
         sortColumn,
         sortOrder,
         previewId,
