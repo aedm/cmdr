@@ -352,21 +352,30 @@ test-group = 'real-notify'
 slow-timeout = { period = "40s", terminate-after = 1 }
 
 [[profile.default.overrides]]
-# `a_change_inside_a_walked_branch_reaches_the_index_and_one_beside_it_does_not`
-# starts a real `DriveWatcher` and waits 30 s for the change to reach the index —
-# the one cold-drive test that proves `ensure_branch_watch` starts something that
-# actually works. Same unreachable-deadline shape as the watch-root test above:
-# 40 s puts the cap over its own wait. Precedes the general cold-drive override
-# below so it wins (first matching override per setting).
-filter = 'test(indexing::lifecycle::cover::cold_drive_tests::branches::a_change_inside_a_walked_branch)'
+# The cold-drive tests that block on a REAL FSEvents delivery, so they run on the
+# real journal (`ColdDrive::watched_for_real`); every other cold-drive test is on
+# the fake one (`watch/watcher/fake_journal.rs`) and needs no override.
+# `a_change_inside_a_walked_branch_...` proves `ensure_branch_watch` starts a
+# watcher that actually delivers; the three `moves::` tests prove the index is live
+# at a renamed drive's new mount point by a file landing through the watcher. All
+# four are SELF-HEALING (`until_the_watcher_delivers` redoes the change on a fresh
+# name, defeating the arming window and a dropped event), so no retries. 60 s puts
+# the cap over the worst in-test budgets (20 s first index + 20 s restart listing +
+# 15 s delivery) so their panics name the stage that starved.
+filter = '''
+    test(indexing::lifecycle::cover::cold_drive_tests::branches::a_change_inside_a_walked_branch)
+  + test(a_drive_renamed_while_it_indexes_keeps_indexing_at_its_new_mount_point)
+  + test(a_rename_inside_a_drain_window_moves_the_start_that_window_carries)
+  + test(a_rename_while_a_scan_starts_restarts_the_drive_at_the_handback)
+'''
 test-group = 'real-notify'
-slow-timeout = { period = "40s", terminate-after = 1 }
+slow-timeout = { period = "60s", terminate-after = 1 }
 
 [[profile.default.overrides]]
 # Tests that ARM a real OS watch (or real drive/disk I/O behind one) without
 # blocking on a specific delivery: the reaper dropping a watcher with its listing,
 # an LRU eviction releasing one, the coverage answer flipping with the watcher
-# lifecycle, a cold-drive walk standing a branch watch up. There's no event to
+# lifecycle. There's no event to
 # wait for, so they need neither retries nor the group — ❌ don't add them to
 # `real-notify`, which is for delivery-blocking tests and would serialize a pile of
 # fast ones for nothing. What they DO need is headroom over the global 8 s cap,
@@ -383,7 +392,6 @@ filter = '''
   + test(file_system::volume::backends::local_posix_test::test_listing_watch_coverage_flips_with_watcher_lifecycle)
   + test(downloads::commands::tests::go_to_latest_)
   + test(downloads::runtime::tests::note_pending_write_for_cmdr_)
-  + test(indexing::lifecycle::cover::cold_drive_tests::)
 '''
 slow-timeout = { period = "20s", terminate-after = 1 }
 
@@ -396,12 +404,21 @@ slow-timeout = { period = "20s", terminate-after = 1 }
 # settle waits' worst case so the assertion (which names the reports it got) decides, and the
 # group keeps its live streams from multiplying the other watcher tests' starvation.
 #
-# ❗ It is the only cell anywhere that arms a real git watcher, and it has to stay that way:
+# ❗ It is one of only TWO cells that arm a real git watcher, and it has to stay that way:
 # every other subscription cell takes `GitPortal::with_scripted_watcher` and runs in ~0.05 s.
 # The second burst lives inside THIS cell for that reason; it proves the watch survives git's
 # rename over `HEAD`, which is what broke on Linux and what no scripted backend can stand in
 # for. `crates/cmdr-git/DETAILS.md` § "The watcher splits into bookkeeping and a backend".
-filter = 'test(a_burst_reports_its_end_state_and_the_watch_survives_for_the_next_one)'
+#
+# The other is `cmdr-git`'s `a_deleted_repository_stops_reporting_...`: what deleting a
+# repository does to its OWN watch is the operating system's to answer, so a scripted
+# backend could only assert the fake. It waits for quiet rather than a delivery, but arming
+# the stream is itself a slow `fseventsd` round trip under load (it starved past 8 s on
+# 2026-10-07), and the group keeps its stream from adding to the others' starvation.
+filter = '''
+    test(a_burst_reports_its_end_state_and_the_watch_survives_for_the_next_one)
+  + test(a_deleted_repository_stops_reporting_and_still_gives_its_hold_back)
+'''
 test-group = 'real-notify'
 slow-timeout = { period = "20s", terminate-after = 1 }
 

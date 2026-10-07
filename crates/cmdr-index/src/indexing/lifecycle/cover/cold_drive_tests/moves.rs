@@ -4,12 +4,23 @@
 
 use std::path::PathBuf;
 
-use super::toggles::{an_indexed_drive, turn_on};
+use super::toggles::{an_indexed_drive, indexed, turn_on};
 use super::*;
 use crate::indexing::lifecycle::state;
 
 /// The file every drive here starts with (`toggles::an_indexed_drive`).
 const PROOF: &str = "scope/found.txt";
+
+/// An indexed drive on the REAL FSEvents journal, for the tests that prove the
+/// index is live at the new mount point by a change the OS has to deliver.
+///
+/// ⚠️ Real from the start, ❌ not only at the new root: a fake journal's synthetic
+/// event ids would be stored as the drive's `last_event_id` and then handed to the
+/// real stream the move restarts, which watches from a point in time that never
+/// existed and delivers nothing.
+fn indexed_for_real(volume_id: &'static str) -> ColdDrive {
+    indexed(ColdDrive::watched_for_real(volume_id))
+}
 
 /// Moves a drive's tree back where its `TempDir` will look for it, on any exit.
 struct PutBack {
@@ -64,24 +75,21 @@ fn holds(drive: &ColdDrive, relative: &str) -> bool {
 /// the watcher, and nothing the index held before the rename goes missing.
 #[test]
 fn a_drive_renamed_while_it_indexes_keeps_indexing_at_its_new_mount_point() {
-    let drive = an_indexed_drive("cover-move-renamed-drive-test");
+    let drive = indexed_for_real("cover-move-renamed-drive-test");
     let (new_root, _put_back) = rename_the_drive(&drive);
     std::fs::write(new_root.join("scope/in-the-gap.txt"), "y").expect("write while nothing listens");
 
     let followed = drive.index.follow_volume_move(drive.volume_id);
     assert!(holds(&drive, PROOF), "following the move deletes nothing it held");
 
+    // 20 s: the restart at the new root stands a real stream up first, and each
+    // `fseventsd` round trip took seconds on a loaded host (2026-10-07).
     cmdr_fs::testing::wait_until(
-        std::time::Duration::from_secs(10),
+        std::time::Duration::from_secs(20),
         "the listing at the new mount point to find what arrived in the gap",
         || holds(&drive, "scope/in-the-gap.txt"),
     );
-    std::fs::write(new_root.join("scope/arrived.txt"), "z").expect("write at the new mount point");
-    cmdr_fs::testing::wait_until(
-        std::time::Duration::from_secs(5),
-        "a file created at the new mount point to land through the watcher",
-        || holds(&drive, "scope/arrived.txt"),
-    );
+    assert_live_at(&drive, &new_root, "arrived");
 
     assert!(followed, "the index says it followed the drive");
     assert!(
@@ -93,13 +101,10 @@ fn a_drive_renamed_while_it_indexes_keeps_indexing_at_its_new_mount_point() {
 
 /// Wait for a file created at `root` to land through the watcher: the proof the
 /// index is live there, rather than an `Ok` from the call that put it there.
-fn assert_live_at(drive: &ColdDrive, root: &Path, name: &str) {
-    std::fs::write(root.join("scope").join(name), "w").expect("write at the mount point");
-    cmdr_fs::testing::wait_until(
-        std::time::Duration::from_secs(10),
-        "a file created at the new mount point to land in the index",
-        || holds(drive, &format!("scope/{name}")),
-    );
+fn assert_live_at(drive: &ColdDrive, root: &Path, stem: &str) {
+    until_the_watcher_delivers(&root.join("scope"), stem, std::time::Duration::from_secs(15), |name| {
+        holds(drive, &format!("scope/{name}"))
+    });
 }
 
 /// A drive the user turned off before its rename stays off: a move restarts an
@@ -121,7 +126,7 @@ fn a_drive_turned_off_before_its_rename_stays_off() {
 /// the drive comes back at its new root, where the old one no longer exists.
 #[test]
 fn a_rename_inside_a_drain_window_moves_the_start_that_window_carries() {
-    let drive = an_indexed_drive("cover-move-inside-the-drain-test");
+    let drive = indexed_for_real("cover-move-inside-the-drain-test");
     let mut new_root = None;
     let mut put_back = None;
 
@@ -139,7 +144,7 @@ fn a_rename_inside_a_drain_window_moves_the_start_that_window_carries() {
 
     let new_root = new_root.expect("the drive was renamed");
     assert!(state::is_active(drive.volume_id), "the toggle's start ran");
-    assert_live_at(&drive, &new_root, "after-the-drain.txt");
+    assert_live_at(&drive, &new_root, "after-the-drain");
     drop(put_back);
 }
 
@@ -148,7 +153,7 @@ fn a_rename_inside_a_drain_window_moves_the_start_that_window_carries() {
 /// root, so the handback drains it and the restart brings it up at the new one.
 #[test]
 fn a_rename_while_a_scan_starts_restarts_the_drive_at_the_handback() {
-    let drive = an_indexed_drive("cover-move-while-detached-test");
+    let drive = indexed_for_real("cover-move-while-detached-test");
     let mut new_root = None;
     let mut put_back = None;
 
@@ -163,7 +168,7 @@ fn a_rename_while_a_scan_starts_restarts_the_drive_at_the_handback() {
     });
 
     let new_root = new_root.expect("the drive was renamed");
-    assert_live_at(&drive, &new_root, "after-the-handback.txt");
+    assert_live_at(&drive, &new_root, "after-the-handback");
     assert!(state::is_active(drive.volume_id), "and the drive is indexing");
     drop(put_back);
 }

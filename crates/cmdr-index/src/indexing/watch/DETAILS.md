@@ -22,6 +22,11 @@ post-replay verification COST-BOUNDING (the two teeth) in `../reconcile/DETAILS.
     `sample` + timing logs, 2026-10-07, issue #374), which timed the phase-machine tests out at full parallelism. Treat
     both as blocking I/O. A test that never waits on a delivery puts its root on the cfg(test)
     `watcher/fake_journal.rs`; one that asserts on delivery keeps the real stream and the `real-notify` nextest group.
+    On the fake by default: the phases `Drive`, the cover `ColdDrive`, and `event_stream_tests.rs`. Real, and
+    self-healing (redo the change on a fresh name until it lands, since a just-armed stream DROPS a change outright):
+    `ColdDrive::watched_for_real`, used only by the four cold-drive tests that prove a delivery. ⚠️ Don't mix the two
+    across one drive's life: a fake id stored as `last_event_id` and handed to a real restart watches from a moment that
+    never existed and delivers nothing (`cold_drive_tests/moves.rs`).
 - **branches.rs (+branches/tests.rs)** — `WatchScope`, `BranchWatch`, and the admission rule a live loop reads events by
   (below).
 - **event_loop.rs** — holds only what more than one loop uses: `merge_fs_events` (deduplication with flag priority),
