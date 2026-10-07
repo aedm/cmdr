@@ -11,7 +11,7 @@ use mtp_rs::{DateTime, UtcOffset};
 /// The offset a zoneless device date is read at. UTC means a phone in Stockholm
 /// lists a photo one or two hours off its local clock, but listing, copying off,
 /// and copying back all agree. Whether to read it at the Mac's own zone instead
-/// is an open product decision: https://github.com/vdavid/cmdr/issues/373 item 4.
+/// is an open product decision: <https://github.com/vdavid/cmdr/issues/373> item 4.
 const ZONELESS_DATES_READ_AT: UtcOffset = UtcOffset::UTC;
 
 /// A device `DateTime` as Unix seconds. `None` before 1970, which the
