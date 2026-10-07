@@ -1617,6 +1617,7 @@ dependencies = [
  "cmdr-fs",
  "cmdr-mtp",
  "futures-util",
+ "jiff",
  "log",
  "mtp-rs",
  "serde",

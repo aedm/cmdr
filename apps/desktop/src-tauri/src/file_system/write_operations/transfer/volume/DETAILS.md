@@ -829,8 +829,8 @@ local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile
 - **ADB**: reports the open's `STAT`/`STA2` date; writes it as the push's `DONE` mtime (a u32: whole seconds, clamped
   at 2106), falling back to now only for a dateless source (`crates/cmdr-adb/DETAILS.md`).
 - **MTP**: reports the `DateModified` from the `ObjectInfo` the read's open already fetched; writes it as the upload's
-  `DateModified`, in UTC with a `Z`. Whole seconds. A zoneless device date reads as UTC, an open product call (issue
-  #373 item 4; `crates/cmdr-mtp/DETAILS.md` § "Dates on copies").
+  `DateModified`, in UTC with a `Z`. Whole seconds. A zoneless device date reads as the Mac's local time at that
+  date (`crates/cmdr-mtp/DETAILS.md` § "Dates on copies").
 - **SMB**: reports the server's `LastWriteTime` on both foreground read paths (streamed and one-frame compound); writes
   `LastWriteTime` alone through SET_INFO, on the streaming writer's own handle before it closes, or by path right after
   a one-frame compound write (one more frame). The read date rides on the read's own CREATE response

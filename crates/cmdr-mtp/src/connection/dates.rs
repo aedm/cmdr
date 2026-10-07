@@ -1,24 +1,55 @@
 //! MTP dates ↔ Unix seconds, both ways, over mtp-rs's `DateTime` calendar math.
 //!
 //! An upload sends UTC with a `Z` (Android reads it as UTC). A read honors a
-//! date's own offset, and a zoneless one (what Android sends: the phone's local
-//! wall clock) reads at [`ZONELESS_DATES_READ_AT`].
+//! date's own offset, and reads a zoneless one (what Android sends: the phone's
+//! local wall clock) as the Mac's local time, through
+//! [`convert_mtp_datetime_in`].
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use jiff::tz::TimeZone;
 use mtp_rs::{DateTime, UtcOffset};
 
-/// The offset a zoneless device date is read at. UTC means a phone in Stockholm
-/// lists a photo one or two hours off its local clock, but listing, copying off,
-/// and copying back all agree. Whether to read it at the Mac's own zone instead
-/// is an open product decision: <https://github.com/vdavid/cmdr/issues/373> item 4.
-const ZONELESS_DATES_READ_AT: UtcOffset = UtcOffset::UTC;
-
-/// A device `DateTime` as Unix seconds. `None` before 1970, which the
-/// `FileEntry` vocabulary can't hold, and for fields that don't form a real
-/// date (mtp-rs already drops most of those at parse time).
+/// A device `DateTime` as Unix seconds, reading a zoneless one in the Mac's own
+/// zone. `None` before 1970, which the `FileEntry` vocabulary can't hold, and
+/// for fields that don't form a real date (mtp-rs already drops most of those
+/// at parse time).
 pub(super) fn convert_mtp_datetime(dt: DateTime) -> Option<u64> {
-    u64::try_from(dt.to_unix_seconds_with_fallback(ZONELESS_DATES_READ_AT)?).ok()
+    // `system()` is jiff's cached copy of the Mac's zone, so a listing pays no
+    // file read per entry, and a zone change reaches it within seconds.
+    convert_mtp_datetime_in(dt, &TimeZone::system())
+}
+
+/// [`convert_mtp_datetime`] with the zone a zoneless date reads in passed in, so
+/// a test needn't depend on the machine's.
+///
+/// A phone writes its own wall clock, and the phone and the Mac almost always
+/// share a zone, so the Mac's zone is the best guess at what the phone meant.
+/// The offset is the one THAT date had there, ❌ never today's: a summer photo
+/// listed in winter keeps its summer offset. A wall-clock time the clocks
+/// passed twice (the fall-back hour) reads as the earlier instant, and one they
+/// skipped (spring forward) shifts forward by the gap, the way a person's clock
+/// app would have shown it (jiff's "compatible" disambiguation). A date that
+/// names its own offset keeps it.
+fn convert_mtp_datetime_in(dt: DateTime, zone: &TimeZone) -> Option<u64> {
+    let secs = if dt.offset.is_some() {
+        dt.to_unix_seconds()?
+    } else {
+        // jiff validates the fields the way mtp-rs does (real month lengths,
+        // leap years), so impossible ones answer `None` here too.
+        let wall_clock = jiff::civil::DateTime::new(
+            i16::try_from(dt.year).ok()?,
+            i8::try_from(dt.month).ok()?,
+            i8::try_from(dt.day).ok()?,
+            i8::try_from(dt.hour).ok()?,
+            i8::try_from(dt.minute).ok()?,
+            i8::try_from(dt.second).ok()?,
+            0,
+        )
+        .ok()?;
+        zone.to_ambiguous_timestamp(wall_clock).compatible().ok()?.as_second()
+    };
+    u64::try_from(secs).ok()
 }
 
 /// A device `DateTime` as the instant a read stream reports.

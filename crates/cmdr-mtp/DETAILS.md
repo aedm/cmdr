@@ -131,11 +131,17 @@ Both halves keep the date. (The contract:
   (verified by the mtp-rs maintainer in AOSP, mtp-rs 0.33.0, 2026-10-07).
 - **Read**: `MtpReadStream::modified_at` reports `WindowedDownload::modified()`, from the `ObjectInfo` the open already
   fetched for the size, so it costs no round trip.
-- **Zones**: a date's own offset wins. A zoneless one (what Android sends: the phone's local wall clock) reads as UTC,
-  set in ONE place, `ZONELESS_DATES_READ_AT` in `src/connection/dates.rs`. Whether to read it at the Mac's zone instead
-  is open (issue #373 item 4). The calendar math is mtp-rs's
-  (`DateTime::{from_unix_seconds, to_unix_seconds_with_fallback}`), which also rejects fields that don't form a real
-  date.
+- **Zones**: a date's own offset wins. A zoneless one (what Android sends: the phone's local wall clock) reads as the
+  Mac's local time, in ONE place, `convert_mtp_datetime_in` in `src/connection/dates.rs`. **Decision/Why**: phone and
+  Mac almost always share a zone, so this lists a photo at the time the phone showed; UTC put every date one or two
+  hours off. The offset is the one THAT date had in the Mac's zone (jiff's `TimeZone::system()`, DST rules included), ❌
+  never today's. A fall-back hour reads as the earlier instant and a spring-forward gap shifts forward (jiff's
+  `compatible`). The cost: a phone set to another zone than the Mac lists off by the difference, and listing, copying
+  off, and copying back still agree, since an upload sends UTC. Pinned by `connection/dates_test.rs` with the zone
+  passed in (Stockholm summer, winter, fold, and gap), so it holds on any machine.
+- **The virtual device reports dates WITH their offset** (`dates_include_offset: true` in `virtual_device.rs`), unlike
+  Android: it can only write a fixed offset, so a zoneless fixture would list dates shifted by the machine's
+  DST-dependent one.
 - **Pinned by** `a_copy_keeps_the_source_date_per_the_shared_contract` on the virtual device, which stamps a received
   `DateModified` onto the backing file and reports each file's mtime back.
 

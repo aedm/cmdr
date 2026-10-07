@@ -227,6 +227,13 @@ fn register_virtual_mtp_device_at(root: &Path, watch_backing_dirs: bool) -> u64 
         // 32-bit GetPartialObject fallback instead (cameras like the Lumix TZ61).
         event_poll_interval: Duration::from_millis(100),
         watch_backing_dirs,
+        // Dates carry their offset (`Z`), unlike a real Android phone's. A
+        // zoneless one reads in the Mac's own zone (`connection/dates.rs`), and
+        // the device can only write a FIXED offset, so a zoneless fixture would
+        // list every date shifted by the machine's DST-dependent offset. What a
+        // zoneless date reads as is pinned by `connection/dates_test.rs`, with
+        // the zone passed in.
+        dates_include_offset: true,
         ..Default::default()
     };
 
