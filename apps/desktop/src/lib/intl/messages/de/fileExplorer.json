@@ -1700,5 +1700,9 @@
   "fileExplorer.dragOut.partial": "{summary} {count, plural, =1 {„{name}“ ließ sich nicht kopieren.} one {{countText} Objekt ließ sich nicht kopieren.} other {{countText} Objekte ließen sich nicht kopieren.}}",
   "@fileExplorer.dragOut.partial": {
     "sourceHash": "9215226"
+  },
+  "fileExplorer.folderSizes.unreadable": "{count, plural, one {# Ordner ließ sich nicht vollständig lesen, deshalb ist seine Größe vielleicht unvollständig.} other {# Ordner ließen sich nicht vollständig lesen, deshalb sind ihre Größen vielleicht unvollständig.}}",
+  "@fileExplorer.folderSizes.unreadable": {
+    "sourceHash": "ad31a56"
   }
 }

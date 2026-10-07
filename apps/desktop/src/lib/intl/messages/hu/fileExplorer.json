@@ -1695,5 +1695,9 @@
   "fileExplorer.dragOut.partial": "{summary} {count, plural, =1 {Nem sikerült átmásolni: „{name}”.} one {Nem sikerült átmásolni {countText} elemet.} other {Nem sikerült átmásolni {countText} elemet.}}",
   "@fileExplorer.dragOut.partial": {
     "sourceHash": "9215226"
+  },
+  "fileExplorer.folderSizes.unreadable": "{count, plural, one {Nem sikerült teljesen beolvasni # mappát, ezért lehet, hogy a mérete hiányos.} other {Nem sikerült teljesen beolvasni # mappát, ezért lehet, hogy a méretük hiányos.}}",
+  "@fileExplorer.folderSizes.unreadable": {
+    "sourceHash": "ad31a56"
   }
 }

@@ -1697,5 +1697,9 @@
   "fileExplorer.dragOut.partial": "{summary} {count, plural, =1 {Det gick inte att kopiera ”{name}”.} one {Det gick inte att kopiera {countText} objekt.} other {Det gick inte att kopiera {countText} objekt.}}",
   "@fileExplorer.dragOut.partial": {
     "sourceHash": "9215226"
+  },
+  "fileExplorer.folderSizes.unreadable": "{count, plural, one {Det gick inte att läsa # mapp helt, så storleken kan vara ofullständig.} other {Det gick inte att läsa # mappar helt, så storlekarna kan vara ofullständiga.}}",
+  "@fileExplorer.folderSizes.unreadable": {
+    "sourceHash": "ad31a56"
   }
 }

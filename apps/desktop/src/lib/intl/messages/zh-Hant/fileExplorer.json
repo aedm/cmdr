@@ -1692,5 +1692,9 @@
   "fileExplorer.dragOut.partial": "{summary}{count, plural, =1 {無法複製「{name}」。} other {無法複製 {countText} 個項目。}}",
   "@fileExplorer.dragOut.partial": {
     "sourceHash": "9215226"
+  },
+  "fileExplorer.folderSizes.unreadable": "{count, plural, other {有 # 個資料夾無法完整讀取，所以資料夾大小可能不完整。}}",
+  "@fileExplorer.folderSizes.unreadable": {
+    "sourceHash": "ad31a56"
   }
 }

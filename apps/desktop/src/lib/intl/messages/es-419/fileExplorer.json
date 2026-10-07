@@ -346,5 +346,9 @@
   "fileExplorer.network.browser.hostRemoved": "Cmdr olvidó {hostName}",
   "@fileExplorer.network.browser.hostRemoved": {
     "sourceHash": "b6ed0e4"
+  },
+  "fileExplorer.folderSizes.unreadable": "{count, plural, one {No se pudo leer por completo # carpeta, así que puede que su tamaño esté incompleto.} many {No se pudieron leer por completo # carpetas, así que puede que sus tamaños estén incompletos.} other {No se pudieron leer por completo # carpetas, así que puede que sus tamaños estén incompletos.}}",
+  "@fileExplorer.folderSizes.unreadable": {
+    "sourceHash": "82dc6a5"
   }
 }

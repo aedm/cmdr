@@ -1692,5 +1692,9 @@
   "fileExplorer.dragOut.partial": "{summary}{count, plural, =1 {无法拷贝“{name}”。} other {无法拷贝 {countText} 个项目。}}",
   "@fileExplorer.dragOut.partial": {
     "sourceHash": "9215226"
+  },
+  "fileExplorer.folderSizes.unreadable": "{count, plural, other {有 # 个文件夹无法完整读取，所以文件夹大小可能不完整。}}",
+  "@fileExplorer.folderSizes.unreadable": {
+    "sourceHash": "ad31a56"
   }
 }

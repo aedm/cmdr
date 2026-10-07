@@ -11,8 +11,9 @@ when its size, counts, or hourglass actually move.
 - `touched.rs`: the pure rule for what one batch touched in one listing (nothing, some rows, or all of them).
 - `refresh.rs`: `RowSizes`, the pure "does this reading change what the row shows" comparison.
 - `schedule.rs`: one listing's timing: batches wait out the 2 s cooldown, hourglass rechecks run on the dot.
-- `count.rs`: sizes ON DEMAND (⌥⇧⏎, Space on a folder) for folders the index can't answer, through the copy scan,
-  published as the same event. `DETAILS.md` § "Calculating sizes on demand".
+- `count/`: sizes ON DEMAND (⌥⇧⏎, Space on a folder) for folders the index can't answer: a queue per listing, a local
+  walk with running totals (the copy scan elsewhere), published as the same event. `DETAILS.md` § "Calculating sizes
+  on demand".
 
 ## Must-knows
 

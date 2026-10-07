@@ -1695,5 +1695,9 @@
   "fileExplorer.dragOut.partial": "{summary} {count, plural, =1 {Không thể sao chép “{name}”.} other {Không thể sao chép {countText} mục.}}",
   "@fileExplorer.dragOut.partial": {
     "sourceHash": "9215226"
+  },
+  "fileExplorer.folderSizes.unreadable": "{count, plural, other {Có # thư mục không đọc được hết, nên kích cỡ có thể không đầy đủ.}}",
+  "@fileExplorer.folderSizes.unreadable": {
+    "sourceHash": "ad31a56"
   }
 }
