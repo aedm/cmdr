@@ -1972,6 +1972,7 @@
     "fileExplorer.git.showRepoChip": true,
     "fileExplorer.git.showStatusColumn": false,
     "fileExplorer.git.showVirtualGitPortal": true,
+    "fileExplorer.quickFilterIntroSeen": false,
     "fileExplorer.suppressQuickLookHint": false,
     "fileExplorer.tabs.closedTabHistorySize": 10,
     "fileExplorer.typeToJump.resetDelay": 1000,

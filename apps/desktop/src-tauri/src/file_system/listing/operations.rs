@@ -538,9 +538,7 @@ pub(crate) fn replace_listing_entries(
     read_at: u64,
     changes: Vec<DiffChange>,
 ) -> Vec<DiffChange> {
-    let Ok(mut cache) = LISTING_CACHE.write() else {
-        return Vec::new();
-    };
+    let mut cache = LISTING_CACHE.write_ignore_poison();
     let Some(listing) = cache.get_mut(listing_id) else {
         return Vec::new();
     };
