@@ -198,10 +198,13 @@ the CodeQL, digest-pin, and OSV-config changes of 2026-10-08 should lift it to ~
 - **Structurally capped**: License (BSL isn't OSI, 9), CII-Best-Practices (needs an OSI license), Contributors.
 - **Vulnerabilities is 10 minus a raw OSV count** over every lockfile, not cargo-deny's macOS-scoped view. Per-lockfile
   `osv-scanner.toml` files (root, `convert-clip-model/`, `fuzz/`, `benchmarks/smb/`, `scripts/release-finish/`) ignore
-  what can't reach the shipped app, each with its reason: the frozen CLIP-conversion pins, Linux-only GTK/Wayland
-  crates, build- and test-only crates, and dev-only npm tooling with no fix. ❌ Never ignore one that ships: `rsa`
-  (accepted in `deny.toml`), `ttf-parser`, and five unmaintained `unic-*` crates stay counted, 7 in all (3/10). Preview
-  with `osv-scanner scan source -r .` (Scorecard runs osv-scanner's v2 library with the same per-directory configs).
+  what can't put the shipped app at risk, each with its reason: the frozen CLIP-conversion pins, Linux-only GTK/Wayland
+  crates, build- and test-only crates, dev-only npm tooling with no fix, "unmaintained" notices with no known
+  vulnerability (`ttf-parser`, five `unic-*` crates, each naming the upgrade that drops it), and `rsa`, whose Marvin
+  timing attack needs a decryption oracle our client-side SSH signing isn't (`deny.toml` holds the analysis). ❌ Never
+  ignore a vulnerability that applies to the shipped app. That leaves 0 (10/10, verified with osv-scanner v2.6.0,
+  2026-10-08). Preview with `osv-scanner scan source -r .` (Scorecard runs osv-scanner's v2 library with the same
+  per-directory configs).
 - **Pinned-Dependencies' container half**: every pulled image is digest-pinned, and Renovate's `docker images` group
   keeps the digests fresh (`renovate.json`). The one gap is `FROM ${BASE_IMAGE}` in the E2E `Dockerfile`, our own
   locally built base, which nothing can pin.

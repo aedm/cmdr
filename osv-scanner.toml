@@ -1,12 +1,43 @@
 # OSV-Scanner (and OpenSSF Scorecard's Vulnerabilities check, which runs it) reads this file for the
 # lockfiles beside it: `Cargo.lock` and `pnpm-lock.yaml`. It doesn't apply to subdirectories, which
-# carry their own. Each entry is an advisory that can't reach the shipped macOS app, with the reason.
-# ❌ Never ignore one that can: fix it, or leave it visible. That's why `rsa` (RUSTSEC-2023-0071,
-# accepted with its reasoning in `deny.toml`), `ttf-parser`, and the `unic-*` crates stay listed.
-# Reasons verified with `cargo tree -i <crate> --target aarch64-apple-darwin` and `pnpm why -r`,
-# 2026-10-08.
+# carry their own. Each entry says why the advisory doesn't put the shipped macOS app at risk: it
+# can't reach the app, it's an "unmaintained" notice with no known vulnerability, or (only `rsa`)
+# its attack needs a shape the app doesn't have, argued in full in `deny.toml`.
+# ❌ Never ignore a vulnerability that applies to the shipped app: fix it, or leave it visible.
+# Reasons verified with `cargo tree -i <crate> -e normal --target aarch64-apple-darwin` and
+# `pnpm why -r`, 2026-10-08.
 
-# --- Rust ---
+# --- Rust: in the shipped app, but no exploitable vulnerability ---
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2023-0071"
+reason = "rsa (Marvin attack: private-key timing side channel, no patched version exists). Reaches the app only through russh in cmdr-sftp, our SSH client, which signs one auth challenge per connect with the user's own RSA key file; it never decrypts, and an attacker can't drive private-key operations at will. Full analysis, and when to re-check, in deny.toml."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0192"
+reason = "ttf-parser is unmaintained (notice only, no known vulnerability): pulled in by lopdf 0.42 under pdf-extract (the AI agent's PDF text reader), whose latest release still pins lopdf ^0.42. lopdf 0.45 swapped it for skrifa, so this goes away when pdf-extract moves up."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0075"
+reason = "unic-char-range is unmaintained (notice only, no known vulnerability): pulled in by tauri-utils 2.9 via urlpattern 0.3, for Tauri's capability URL matching. tauri-utils 2.10 (Tauri 2.12) moves to urlpattern 0.6, which drops the whole unic-* family; remove these five entries on that bump."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0080"
+reason = "unic-common is unmaintained (notice only, no known vulnerability): same tauri-utils 2.9 -> urlpattern 0.3 path as RUSTSEC-2025-0075, gone with Tauri 2.12."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0081"
+reason = "unic-char-property is unmaintained (notice only, no known vulnerability): same tauri-utils 2.9 -> urlpattern 0.3 path as RUSTSEC-2025-0075, gone with Tauri 2.12."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0098"
+reason = "unic-ucd-version is unmaintained (notice only, no known vulnerability): same tauri-utils 2.9 -> urlpattern 0.3 path as RUSTSEC-2025-0075, gone with Tauri 2.12."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0100"
+reason = "unic-ucd-ident is unmaintained (notice only, no known vulnerability): same tauri-utils 2.9 -> urlpattern 0.3 path as RUSTSEC-2025-0075, gone with Tauri 2.12."
+
+# --- Rust: can't reach the shipped app ---
 
 [[IgnoredVulns]]
 id = "RUSTSEC-2024-0429"
