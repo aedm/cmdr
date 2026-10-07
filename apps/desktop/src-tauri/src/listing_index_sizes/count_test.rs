@@ -309,6 +309,7 @@ async fn a_long_walk_shows_the_hourglass_on_its_folder_and_on_the_ones_waiting_t
                 .any(|f| f.path == path && f.stats.as_ref().is_some_and(|s| s.recursive_size_pending))
         })
     };
+    // allowed-test-sleep: the subject is that nothing shows BEFORE the delay; the clock is paused, so this is instant.
     tokio::time::sleep(HOURGLASS_DELAY / 2).await;
     assert!(
         events.lock().expect("test lock").is_empty(),
