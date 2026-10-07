@@ -9,6 +9,7 @@ use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use super::to_volume_error;
 use crate::{ArchiveByteSource, ArchiveEntryReader, SubtreeExtractReader};
@@ -27,6 +28,16 @@ pub(super) struct ArchiveVolumeReadStream {
     pub(super) skip_remaining: u64,
     /// Decompressed bytes handed to the consumer (this segment), for progress.
     pub(super) delivered: u64,
+    /// The entry's date as the archive's index recorded it.
+    pub(super) modified_at: Option<SystemTime>,
+}
+
+/// An archive's recorded Unix-seconds date as a `SystemTime`. A pre-1970 date is
+/// dropped, the same as the listing does (`node_to_entry`), so the stream and
+/// the listing never disagree.
+pub(super) fn recorded_date(unix_secs: Option<i64>) -> Option<SystemTime> {
+    let secs = u64::try_from(unix_secs?).ok()?;
+    Some(UNIX_EPOCH + Duration::from_secs(secs))
 }
 
 impl VolumeReadStream for ArchiveVolumeReadStream {
@@ -63,9 +74,8 @@ impl VolumeReadStream for ArchiveVolumeReadStream {
         self.delivered
     }
 
-    fn modified_at(&self) -> Option<std::time::SystemTime> {
-        // TODO(mtime): report the entry's date from the archive's own index.
-        None
+    fn modified_at(&self) -> Option<SystemTime> {
+        self.modified_at
     }
 }
 
@@ -87,6 +97,8 @@ pub(super) struct ArchiveSequentialExtract {
     /// Uncompressed size of the member the last `next_file` returned, so
     /// `current_stream` can report `total_size()` without touching the reader.
     current_size: u64,
+    /// That member's date, for the same reason.
+    current_modified_at: Option<SystemTime>,
 }
 
 impl ArchiveSequentialExtract {
@@ -95,6 +107,7 @@ impl ArchiveSequentialExtract {
             reader: Arc::new(tokio::sync::Mutex::new(reader)),
             archive_path,
             current_size: 0,
+            current_modified_at: None,
         }
     }
 }
@@ -106,6 +119,7 @@ impl SequentialExtract for ArchiveSequentialExtract {
             match reader.next_member().await.map_err(to_volume_error)? {
                 Some(member) => {
                     self.current_size = member.size;
+                    self.current_modified_at = recorded_date(member.modified);
                     Ok(Some(ExtractedFile {
                         source_path: self.archive_path.join(&member.inner_path),
                         size: member.size,
@@ -121,6 +135,7 @@ impl SequentialExtract for ArchiveSequentialExtract {
             reader: Arc::clone(&self.reader),
             total: self.current_size,
             delivered: 0,
+            modified_at: self.current_modified_at,
         })
     }
 }
@@ -132,6 +147,7 @@ struct MemberStream {
     reader: Arc<tokio::sync::Mutex<SubtreeExtractReader>>,
     total: u64,
     delivered: u64,
+    modified_at: Option<SystemTime>,
 }
 
 impl VolumeReadStream for MemberStream {
@@ -157,9 +173,8 @@ impl VolumeReadStream for MemberStream {
         self.delivered
     }
 
-    fn modified_at(&self) -> Option<std::time::SystemTime> {
-        // TODO(mtime): report the entry's date from the archive's own index.
-        None
+    fn modified_at(&self) -> Option<SystemTime> {
+        self.modified_at
     }
 }
 

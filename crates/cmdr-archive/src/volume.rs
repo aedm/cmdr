@@ -369,6 +369,7 @@ impl ArchiveVolume {
                 reader,
                 skip_remaining: offset,
                 delivered: 0,
+                modified_at: streams::recorded_date(index.get(&inner).and_then(|node| node.modified)),
             }) as Box<dyn VolumeReadStream>)
         })
     }
