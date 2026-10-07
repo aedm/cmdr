@@ -52,6 +52,12 @@ subscribes and routes through `goToLatestDownload`. The first-trigger warn toast
 The plugin uses Carbon's `RegisterEventHotKey` on macOS, so no Accessibility / Input Monitoring TCC grant is needed; the
 user sees no extra prompt.
 
+**Decision: an automated run never registers the hotkey** (`runtime::should_register_shortcut`, gated on
+`test_mode::may_register_global_hotkeys`). **Why:** the hotkey is system-wide, so an E2E app holding it caught the
+developer's own `⌃⌥⌘J` mid-suite, jumped a pane to Downloads, and raised the first-trigger warn toast, which the leak
+guard charged to `mcp-archive-password.spec.ts`. The setting is untouched; only the OS registration is skipped, so the
+row reads "not registered" in a test run.
+
 **Gotcha: ⌘ maps to `Super`, not `Meta`, in the accelerator string.** `binding_to_accelerator` (and its FE mirror
 `global-shortcut-binding.ts`) translate `⌘` to `Super`. The `global-hotkey` crate's parser accepts `COMMAND` / `CMD` /
 `SUPER` for the Cmd key but rejects `META` (it falls through to the key-code parser and errors with `UnsupportedKey`); a

@@ -298,6 +298,18 @@ pub fn may_discover_real_devices() -> bool {
     !is_e2e_mode()
 }
 
+/// Whether the app may claim a system-wide hotkey (the go-to-latest-download
+/// `⌃⌥⌘J`).
+///
+/// False in an automated run: the OS delivers a global hotkey to whichever process
+/// registered it, so a developer pressing `⌃⌥⌘J` for their own Cmdr mid-suite fired
+/// the run's copy instead, which jumped a pane to Downloads and raised the
+/// first-trigger warn toast over an unrelated spec. Same rule as
+/// [`may_discover_real_devices`]: a test run doesn't take input from the machine.
+pub fn may_register_global_hotkeys() -> bool {
+    !is_e2e_mode()
+}
+
 /// Pure core of [`guard_e2e_requires_data_dir`]: true when E2E mode is on but no usable
 /// `CMDR_DATA_DIR` is set. Empty is treated as unset, matching `config::data_dir_from_env`.
 fn e2e_data_dir_missing(is_e2e: bool, data_dir: Option<&str>) -> bool {
@@ -483,6 +495,13 @@ mod tests {
     #[test]
     fn real_devices_are_discovered_outside_e2e_only() {
         assert_eq!(may_discover_real_devices(), !is_e2e_mode());
+    }
+
+    /// A test run never claims the machine's `⌃⌥⌘J`, or the developer's key press
+    /// lands in the run.
+    #[test]
+    fn global_hotkeys_are_registered_outside_e2e_only() {
+        assert_eq!(may_register_global_hotkeys(), !is_e2e_mode());
     }
 
     /// The data-dir guard fires only when E2E mode is on AND no usable `CMDR_DATA_DIR`

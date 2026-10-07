@@ -681,6 +681,10 @@ four unrelated specs. `test_mode::may_discover_real_devices` now keeps real devi
 discovery: MTP enumeration keeps only the virtual device (`mtp/watcher.rs::claimable_device_ids`), and the ADB tracker
 never follows the real `adb` server.
 
+**The fourth instance, input rather than discovery:** the E2E app registered the system-wide `⌃⌥⌘J` hotkey, so the
+developer's own press reached the run and its warn toast failed an unrelated spec.
+`test_mode::may_register_global_hotkeys` keeps an automated run from claiming any system-wide hotkey.
+
 **The unit-test variant: a bare test binary asking macOS about its own bundle.** A test executable has no `.app` around
 it, so CoreFoundation resolves its main bundle by listing the directory it sits in, which is `target/debug/deps`
 (117,078 entries). An `NSUserDefaults` read (the `'system'` language, reached by every name sort) and `trashItemAtURL`
