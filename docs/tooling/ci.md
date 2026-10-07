@@ -16,6 +16,7 @@ How the GitHub workflows fit together, and the invariants that keep them honest.
 | `release-pipeline.yml`  | Called by `release.yml`                 | Builds, signs, and publishes the desktop app on macOS runners. `docs/guides/releasing.md`            |
 | `scorecard.yml`         | Push to main, weekly, rule edits        | OpenSSF Scorecard: publishes the score (README badge) and SARIF to code scanning. § below            |
 | `codeql.yml`            | Push to main, weekly, manual            | CodeQL (Actions, JS/TS, Rust); a high or critical finding fails it and blocks releases. § below      |
+| `gradle-wrapper.yml`    | Push to main, weekly, manual            | Checks the IntelliJ plugin's `gradle-wrapper.jar` against Gradle's published checksums. § Scorecard  |
 
 `slow-checks.yml` also runs the fuzz smoke job (120 s per target, findings uploaded as `fuzz-artifacts`;
 `fuzz/CLAUDE.md`). `ci.yml`'s `Full run (run_all)` job runs only on a `run_all` dispatch: both release gates match it by
@@ -189,6 +190,10 @@ the CodeQL, digest-pin, and OSV-config changes of 2026-10-08 should lift it to ~
   `pull_request_target`).
 - **SAST** reads check runs on merged PRs; with none, it scores on whether a CodeQL workflow exists, so `codeql.yml`
   takes it to 10.
+- **Binary-Artifacts**: the one binary is `tools/intellij-plugin/gradle/wrapper/gradle-wrapper.jar`. Scorecard stops
+  counting it only when a `gradle/actions/wrapper-validation` workflow has a successful run on `main`'s latest commit,
+  so `gradle-wrapper.yml` runs on every push with no path filter (10 s). A push's Scorecard run could in theory finish
+  first and still see 9; the next run corrects it.
 - **Structurally low for a solo, no-PR project**: Branch-Protection, Code-Review, and CI-Tests (n/a).
 - **Structurally capped**: License (BSL isn't OSI, 9), CII-Best-Practices (needs an OSI license), Contributors.
 - **Vulnerabilities is 10 minus a raw OSV count** over every lockfile, not cargo-deny's macOS-scoped view. Per-lockfile
