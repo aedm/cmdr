@@ -372,6 +372,23 @@ test-group = 'real-notify'
 slow-timeout = { period = "70s", terminate-after = 1 }
 
 [[profile.default.overrides]]
+# Tests that move a REAL file to the macOS Trash (`trashItemAtURL`). Not an `fseventsd` case:
+# no watcher is involved. The call serializes on a shared OS path, so each takes ~0.2 s alone
+# but ~1.2 s when the 29 trash-adjacent tests run together (3.1 s for all of them serially,
+# 2026-10-08), and under a saturated full suite they timed out together at 8 s on four days
+# (2026-08-13, 08-23, 09-07, 09-09; check-runner `test-log.csv`). There's nothing in-process to
+# fake without dropping what they prove, the OS's own trash move, so they get headroom, not a group.
+filter = '''
+    test(test_move_to_trash_sync_)
+  + test(trash_dir_for_path_matches_where_the_item_actually_landed)
+  + test(failed_trash_item_records_no_search_leaves_but_a_sibling_keeps_its_own)
+  + test(over_cap_trash_is_top_level_only_capped_but_still_rollbackable)
+  + test(trashed_dir_records_search_leaves_and_stays_full)
+  + test(commands::rename::tests::test_move_to_trash_success)
+'''
+slow-timeout = { period = "20s", terminate-after = 1 }
+
+[[profile.default.overrides]]
 # Tests that ARM a real OS watch (or real drive/disk I/O behind one) without
 # blocking on a specific delivery: the reaper dropping a watcher with its listing,
 # an LRU eviction releasing one, the coverage answer flipping with the watcher
