@@ -512,6 +512,18 @@ identical-looking twin beside the user's entry.
 - **It costs a listing only when it can matter**: never for an ASCII name, never on a volume whose lookups match any
   form (`Volume::matches_names_in_any_unicode_form`, APFS), otherwise one listing of the folder after the exact lookup
   missed.
+- **A pane's listing stands in for that read where a person is waiting on a name**: new folder, new file, rename (and
+  its live validity check), and bulk rename build `ListedFolders::with_pane_listings(volume, volume_id)`, which asks
+  the fresh-listing oracle (`listing::caching::try_get_authoritative_listing`, `EveryWriter` coverage only) before
+  listing. **Why:** the folder being named into is almost always the one the pane shows, and on a busy NAS re-reading a
+  3,340-entry share folder per new name cost a second or more (ERR-AREUV, v0.50.0). **Why it's safe:** the oracle's
+  debounce can lag another client by ~200 ms, which risks only a missed twin: a second, look-alike entry, never an
+  overwrite, since the volume holds the two spellings as two names, and an exact clash stays the backend's to refuse
+  as before. A `ThisMachineOnly` watch (an OS-mounted share)
+  doesn't qualify: the twin this check exists for is usually another client's spelling. The transfers, compress, and
+  the dialogs' existence probe still list (`ListedFolders::new`, `look_alike_in`): a transfer asks mid-write, while its
+  own landings may not have reached the cache yet. Both paths log at DEBUG under target `look_alike`, the read with its
+  duration. Cells: `look_alike_tests.rs`.
 - **New names take the volume's spelling** (`Volume::spell_new_name`; SMB, SFTP, and WebDAV compose). `place_new_entry` is the instant
   ops' door: a new folder or file is refused as `AlreadyExists` beside a look-alike; a rename's target is refused the
   same way unless the user confirmed replacing it, which then replaces the look-alike under ITS spelling (one entry). A

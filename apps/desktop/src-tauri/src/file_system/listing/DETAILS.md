@@ -552,7 +552,8 @@ Used by the watcher's incremental path and synthetic mkdir to patch listings wit
   same directory).
 - `find_listings_for_path_on_volume(volume_id, path)`: same, also filtered by volume ID. Prevents false matches when two
   volumes serve overlapping paths.
-- `try_get_authoritative_listing(volume_id, path)`: the fresh-listing oracle for write-op pre-flight scans. Returns
+- `try_get_authoritative_listing(volume_id, path)`: the fresh-listing oracle for write-op pre-flight scans and the
+  look-alike check before a new name (`write_operations/look_alike.rs`). Returns
   `Some(entries)` when a cached listing exists for `(volume_id, path)` and `listing_watch_coverage(path) == WatchCoverage::EveryWriter`
   (delegated to the backend via the `Volume` trait), else `None`. When multiple listings exist for the same pair (two
   panes), picks the most-recently-updated one deterministically: highest `sequence` (an `AtomicU64`), ties broken by

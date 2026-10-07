@@ -262,7 +262,7 @@ async fn check_sibling_conflict_via_volume(
     let entry = match volume.get_metadata(new_path).await {
         Ok(e) => e,
         Err(crate::file_system::VolumeError::NotFound(_)) => {
-            match place_new_entry(volume.as_ref(), new_path, Some(old_path)).await {
+            match place_new_entry(volume.as_ref(), volume_id, new_path, Some(old_path)).await {
                 Ok(NewEntry::Taken(look_alike)) => *look_alike,
                 // Respelled onto a name the folder holds exactly, which the rename
                 // itself refuses (or, confirmed, replaces).

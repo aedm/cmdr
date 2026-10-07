@@ -344,7 +344,7 @@ pub(crate) async fn create_directory_core(
 
     // Try to use Volume abstraction
     if let Some(volume) = get_volume_manager().get(&volume_id) {
-        let new_path = new_entry_path(volume.as_ref(), &expanded_path, name).await?;
+        let new_path = new_entry_path(volume.as_ref(), &volume_id, &expanded_path, name).await?;
 
         // Register the new directory path with the downloads watcher's
         // ignore set; no-ops for paths outside ~/Downloads.
@@ -370,9 +370,15 @@ pub(crate) async fn create_directory_core(
 /// Where the new folder or file `name` goes in `parent`: spelled the way the
 /// volume wants new names, and refused as taken when the folder already holds
 /// the name under another Unicode spelling, which a byte-exact share would
-/// otherwise create a twin beside (`look_alike.rs`).
-async fn new_entry_path(volume: &dyn Volume, parent: &str, name: &str) -> Result<PathBuf, MutationError> {
-    match place_new_entry(volume, &PathBuf::from(parent).join(name), None).await {
+/// otherwise create a twin beside (`look_alike.rs`). A pane showing `parent`
+/// answers that from its listing, so the person isn't waiting on a re-read.
+async fn new_entry_path(
+    volume: &dyn Volume,
+    volume_id: &str,
+    parent: &str,
+    name: &str,
+) -> Result<PathBuf, MutationError> {
+    match place_new_entry(volume, volume_id, &PathBuf::from(parent).join(name), None).await {
         Ok(NewEntry::Free(path)) => Ok(path),
         Ok(NewEntry::Taken(_) | NewEntry::Ambiguous) => Err(MutationError::AlreadyExists { name: name.to_string() }),
         Err(error) => Err(MutationError::Volume { error }),
@@ -420,7 +426,7 @@ pub(crate) async fn create_file_core(
 
     // Try to use Volume abstraction
     if let Some(volume) = get_volume_manager().get(&volume_id) {
-        let new_path = new_entry_path(volume.as_ref(), &expanded_path, name).await?;
+        let new_path = new_entry_path(volume.as_ref(), &volume_id, &expanded_path, name).await?;
 
         // Register the new file path with the downloads watcher's ignore
         // set; no-ops for paths outside ~/Downloads.
