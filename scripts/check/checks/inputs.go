@@ -172,6 +172,7 @@ var rustEmbeddedInputs = []string{
 	"CHANGELOG.md",
 	"apps/desktop/src/lib/commands/command-ids.ts",
 	"apps/desktop/src/lib/units/drive-figure-cases.json",
+	"apps/desktop/src-tauri/tauri.conf.json",
 	"apps/website/public/mdm/**",
 	"apps/website/src/lib/trust.ts",
 }
