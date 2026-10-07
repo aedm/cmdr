@@ -277,7 +277,7 @@ struct Drive {
     volume_id: &'static str,
     /// No real FSEvents for this tree: nothing here waits on a delivery, and each
     /// real call queues on the one `fseventsd` every process shares, which is what
-    /// timed these tests out at full parallelism (`watch/watcher.rs` § `fake_journal`).
+    /// timed these tests out at full parallelism (`watch/watcher/fake_journal.rs`).
     #[cfg(target_os = "macos")]
     _journal: crate::indexing::watch::watcher::fake_journal::Guard,
     _serialized: std::sync::MutexGuard<'static, ()>,

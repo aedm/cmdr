@@ -20,8 +20,8 @@ post-replay verification COST-BOUNDING (the two teeth) in `../reconcile/DETAILS.
   - **Gotcha/Why**: every stream start AND every `current_event_id` is a round trip to `fseventsd`, one daemon for the
     whole machine. With other processes' disk churn pegging it at 100% CPU, each took 0.7–3.7 s (verified on macOS 27,
     `sample` + timing logs, 2026-10-07, issue #374), which timed the phase-machine tests out at full parallelism. Treat
-    both as blocking I/O. A test that never waits on a delivery puts its root on `fake_journal` (cfg(test), in
-    `watcher.rs`); one that asserts on delivery keeps the real stream and the `real-notify` nextest group.
+    both as blocking I/O. A test that never waits on a delivery puts its root on the cfg(test)
+    `watcher/fake_journal.rs`; one that asserts on delivery keeps the real stream and the `real-notify` nextest group.
 - **branches.rs (+branches/tests.rs)** — `WatchScope`, `BranchWatch`, and the admission rule a live loop reads events by
   (below).
 - **event_loop.rs** — holds only what more than one loop uses: `merge_fs_events` (deduplication with flag priority),
