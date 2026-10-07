@@ -227,7 +227,8 @@ pnpm check [flags]
   itself. `stacklease.go` keeps the core (`Acquire`, `decideAction`, `Reconcile`, `Release`, `PrintStatus`, service
   resolution); `log.go` the two log sinks and the `OnReconcileStart`/`OnTeardown` hooks; `confighash.go` the config-hash
   stamp and compare; `leases.go` the per-holder lease files and the dead-PID sweep; `keymaterial.go` the
-  host-key-material heal/wait pair; `lock.go` the flock, `compose.go` the real `Composer`
+  host-key-material heal/wait pair; `soloreset.go` the resets a lease runs when it starts alone; `lock.go` the flock,
+  `compose.go` the real `Composer`
 - **`stack-lease/`**: Thin `package main` CLI onto `stacklease` (`acquire`/`release`/`reconcile`/`status`, each taking
   the stack name first) that the bash scripts shell out to
 - **`linux-cache/`**: `package main` CLI (`seed` / `promote`) that `scripts/worktree-hooks/` shells out to, handing the
@@ -925,6 +926,13 @@ adopt-or-reconcile policy, the dead-PID sweep, and the down-at-zero teardown are
   So `Acquire` and `Reconcile` stat each leaf's private key before handing the stack over, restart exactly the services
   whose leaf is empty (re-running an entrypoint is the only thing that can put the two halves back in agreement), and
   wait for the pair to reappear. It reports rather than returning to a caller whose key-auth cells would all fail.
+- **A killed client can leave state in a container that outlives it**, and `soloResets` (`stacklease/soloreset.go`)
+  clears it: a script per service that `Acquire` execs when, after the dead-PID sweep, no other lease remains. ❌ Never
+  under another holder, since the reset may cut what a live suite relies on. Best-effort: a failed reset warns and the
+  run goes on. SMB's one entry restarts the guest's Samba `notifyd` when it holds leaked change-notify watches (Samba
+  4.23.8 never drops a watch whose smbd child was killed, and each one turns every later write on `public` into three
+  failed sends); smbd respawns `notifyd` without closing port 445. A forgotten `manual` lease means the reset never
+  fires, the benign direction. Measurements: the `soloreset.go` comment.
 - **A stack with FIRST-PARTY images declares `buildContextsRel`**, which folds every context's contents into the config
   hash and puts `--build` on `up`. ❗ Both, or an edited entrypoint never reaches a running container: `up -d` neither
   rebuilds nor recreates a healthy one. SFTP declares one context, WebDAV two (its httpd image and its Nextcloud one),

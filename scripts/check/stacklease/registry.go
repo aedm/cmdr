@@ -79,6 +79,9 @@ var SMB = &Stack{
 	// `smb-consumer-flaky` cycles up/down by design and ships no HEALTHCHECK;
 	// every other service bakes `HEALTHCHECK nc -z localhost 445`.
 	servicesWithoutHealthcheck: map[string]bool{"smb-consumer-flaky": true},
+	// The guest's `public` share is the one every `cmdr-smb` suite writes to and
+	// watches, so it's where killed clients' leaked watches pile up.
+	soloResets: map[string]string{"smb-consumer-guest": smbNotifydReset},
 }
 
 // SFTP is the SFTP fixture stack: first-party, so one compose file sitting

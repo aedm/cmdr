@@ -270,11 +270,14 @@ slow-timeout = { period = "30s", terminate-after = 1 }
 # not this cell.
 #
 # Why it degrades over a stack's life: a test process killed mid-run (a nextest
-# timeout, a cancelled lane) leaks its watches in `notifyd` for good. Its dead-peer
-# cleanup, `notifyd_send_delete`, addresses the delete to the dead process instead of
-# itself, so it fails `NT_STATUS_OBJECT_NAME_NOT_FOUND` on every write (Samba 4.23.8;
-# 4.17 sent it to itself via `messaging_send_iov_from`). A clean run leaks nothing.
-# Under load, timeouts kill tests, which leak, which slows delivery further. Measured
+# timeout, a cancelled lane) leaks its watches in `notifyd` until something restarts
+# it. Its dead-peer cleanup, `notifyd_send_delete`, addresses the delete to the dead
+# process instead of itself, so it fails `NT_STATUS_OBJECT_NAME_NOT_FOUND` on every
+# write (Samba 4.23.8; 4.17 sent it to itself via `messaging_send_iov_from`). A clean
+# run leaks nothing. A lease that starts with no other holder restarts `notifyd`
+# (`scripts/check/stacklease/soloreset.go`), so leaks no longer pile up ACROSS runs,
+# but within a busy stretch of shared lanes nobody is ever alone: under load, timeouts
+# kill tests, which leak, which slows delivery further. Measured
 # 2026-10-06, four concurrent `cmdr-smb` suites on a probe container: 10–14.5 s at
 # `cpus: 0.5` with ~110 leaked watches; 3.5–5.3 s at 1.0, then 11–13.7 s on the next
 # round once that round's timeouts had leaked theirs. So 20 s stays.
