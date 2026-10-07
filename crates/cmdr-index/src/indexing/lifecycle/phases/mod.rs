@@ -75,6 +75,8 @@ pub(crate) use visits::VisitLog;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+pub(crate) mod walk_gate;
 
 use grouping::Grouping;
 use queue::{Phase, PhaseQueue};
@@ -582,6 +584,8 @@ impl Machine {
         // This walk's own stop signal, under the machine's: stopping it hands its
         // ground on without ending the run.
         let walk_cancel = self.work.cancel.child_token();
+        #[cfg(test)]
+        let arrival = walk_gate::arrive(&self.volume_id);
         let context = match cover::context_for_walk(&self.volume_id, &walk_cancel, cover::WalkFor::TheIndex) {
             Ok(context) => context.leaving_the_flush_to_the_caller(),
             Err(e) => {
@@ -589,6 +593,8 @@ impl Machine {
                 return GroupOutcome::default();
             }
         };
+        #[cfg(test)]
+        drop(arrival);
         self.walking.store(true, Ordering::Relaxed);
         self.note_walked_roots(roots.to_vec());
         // The ground is the walker's from here to `finish`, and the host is told
