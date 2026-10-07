@@ -8,6 +8,9 @@
 //! `mod_dav` can settle none of them: it honours `Range` natively and omits the
 //! quota properties entirely.
 //!
+//! It also holds the one cell that can see a copy onto WebDAV keep its date:
+//! `mod_dav` stores none (`DETAILS.md` § "Dates").
+//!
 //! ❗ **This module is selected by its PATH.** `desktop-rust-webdav-nextcloud`
 //! runs `test(volume::nextcloud_test::)` and the shared fixture lane subtracts
 //! the same atom, so renaming or moving this module silently takes these cells
@@ -363,4 +366,27 @@ async fn an_account_with_no_quota_reports_what_it_holds_and_no_ceiling() {
         None,
         "'available' with no total is the value this shape exists to make unrepresentable"
     );
+}
+
+/// Both halves of the date contract on the server that can store one.
+///
+/// ❗ THE destination-half cell for WebDAV. Apache `mod_dav` stores no date
+/// (`conformance_test.rs` keeps that on record), so only here does a PUT that
+/// stops carrying `X-OC-Mtime` fail a test. The write is `CreateNew`, so it also
+/// proves the staging `MOVE` keeps what the `PUT` set.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the Nextcloud WebDAV fixture: apps/desktop/test/webdav-servers/start.sh nextcloud (webdav-fixture-nextcloud)"]
+async fn nextcloud_a_copy_keeps_the_source_date() {
+    let (volume, dir) = nextcloud_with_scratch().await;
+    let dated = dir.join("dated.txt");
+
+    cmdr_fs::volume::conformance::assert_write_from_stream_keeps_the_source_date(
+        &volume,
+        &dated,
+        std::time::Duration::ZERO,
+    )
+    .await;
+    cmdr_fs::volume::conformance::assert_read_stream_reports_the_listed_date(&volume, &dated).await;
+
+    clean(&volume, &dir).await;
 }

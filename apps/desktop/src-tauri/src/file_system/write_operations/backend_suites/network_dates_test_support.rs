@@ -83,7 +83,31 @@ pub(super) async fn a_copy_off_the_server_keeps_the_source_date(
 ) {
     let on_server = dir.join("dated.txt");
     assert_write_from_stream_keeps_the_source_date(remote.as_ref(), &on_server, tolerance).await;
+    a_copy_off_the_server_keeps_the_date_it_lists(Arc::clone(&remote), on_server).await;
+    clean_deep(remote.as_ref(), &dir).await;
+}
+
+/// A file already on the server, listed with a date at least a day old, keeps
+/// that date when copied off it.
+///
+/// For a server that can't store a date (Apache `mod_dav`), whose fixture dates
+/// a file by its own means; [`a_copy_off_the_server_keeps_the_source_date`]
+/// seeds one through the server for everything else. Leaves `on_server` alone.
+pub(super) async fn a_copy_off_the_server_keeps_the_date_it_lists(remote: Arc<dyn Volume>, on_server: PathBuf) {
     let source_date = listed_date(remote.as_ref(), &on_server, "the seed").await;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("the clock is past 1970")
+        .as_secs();
+    assert!(
+        source_date + 24 * 60 * 60 <= now,
+        "fixture precondition: {} must list a date at least a day old, so a copy stamping \"now\" can't pass; it lists {source_date}",
+        on_server.display()
+    );
+    let name = on_server
+        .file_name()
+        .expect("the seed is a file, so it has a name")
+        .to_owned();
 
     let local_dir = TestDir::new("network_dated_off_server");
     let local: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Local", &*local_dir));
@@ -98,12 +122,10 @@ pub(super) async fn a_copy_off_the_server_keeps_the_source_date(
 
     // Local disk keeps nanoseconds, so only the server's own rounding of the
     // date it reports can put the two a second apart.
-    let landed = listed_date(local.as_ref(), Path::new("dated.txt"), "after the copy").await;
+    let landed = listed_date(local.as_ref(), Path::new(&name), "after the copy").await;
     let off_by = landed.abs_diff(source_date);
     assert!(
         off_by <= 1,
         "the copy on local disk must keep the date the server lists ({source_date}); it lists {landed}, {off_by} s off"
     );
-
-    clean_deep(remote.as_ref(), &dir).await;
 }

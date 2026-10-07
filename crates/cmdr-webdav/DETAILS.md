@@ -247,6 +247,29 @@ here as one server's answer, evidence-anchored, rather than as the protocol's.
 
 What the pane does with each shape: `cmdr-fs`'s `SpaceInfo`, and `apps/desktop/src/lib/file-explorer/DETAILS.md`.
 
+## Dates
+
+Copies off this backend always keep the source's modification date; copies onto it keep it only where the SERVER can
+store one. The cross-backend contract is
+`apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Copies keep the source's date".
+
+- **Source**: the read stream reports the GET's `Last-Modified`, the same date a PROPFIND lists as `getlastmodified`
+  (whole seconds), so it costs no round trip. Both Apache and Nextcloud send it on 200 and 206 alike.
+- **Destination, best effort**: the PUT carries `X-OC-Mtime: <Unix seconds>` when the source has a date. ownCloud's
+  extension, honored by Nextcloud (it answers `X-OC-MTime: accepted`), ownCloud, and rclone. WebDAV itself has no way to
+  set a date: `getlastmodified` is a protected live property that no PROPPATCH may change. A server without the
+  extension ignores the header and keeps its own date; that's a `debug!`, never a failure. The staging `MOVE` keeps what
+  the PUT set (verified on `nextcloud:34.0.2-apache` by `nextcloud_a_copy_keeps_the_source_date`, 2026-10-07).
+- ❗ **Apache `mod_dav` stores no date at all** (verified on httpd 2.4, by `conformance_test.rs`, 2026-10-07), so its
+  cells split the contract: the source half runs on `seed.sh`'s `dated.txt` (the fixture's own `touch -d`, the only way
+  to age a file there), and `apache_stores_no_date_so_a_copy_onto_it_carries_its_own` asserts the limit so it stays a
+  fact. The destination half is pinned where it can hold, `nextcloud_test.rs`, so a PUT that stops sending the header
+  fails a cell. That's a per-fixture expectation, ❌ not a capability flag: nothing in the app branches on whether a
+  server keeps dates, and a flag would only move the same fact from a test into the trait.
+- **Through the engine**, only the copy-off cell exists
+  (`webdav_integration_a_copy_off_a_server_keeps_the_source_date`): the shared lane's servers are all Apache, and the
+  Nextcloud lane runs this crate's cells only.
+
 ## The reconnect model
 
 `state.rs` keeps `Connected | Disconnected | NeedsCredentials` in an atomic; `emit_if_changed` reports transitions only,

@@ -156,18 +156,65 @@ async fn delete_leaves_a_non_empty_directory_intact() {
     clean(&volume, &dir).await;
 }
 
-/// ❗ Plain Apache `mod_dav` ignores `X-OC-Mtime` and offers no other way to
-/// set a date, so whether this cell can go green here at all is the WebDAV
-/// wiring's call: a server that can't store dates keeps the read half only,
-/// seeded by the fixture's own means.
+/// The source half of the date contract, on the file `seed.sh` dated to 2021.
+///
+/// ❗ Only the source half runs here. Apache `mod_dav` can't STORE a date (it
+/// ignores `X-OC-Mtime`, and `getlastmodified` is a protected property no
+/// PROPPATCH may set), so the destination half is pinned on the server that
+/// can: `nextcloud_test.rs`'s `nextcloud_a_copy_keeps_the_source_date`. The cell
+/// below keeps this server's limit on record.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
-async fn a_copy_keeps_the_source_date() {
-    let (volume, dir) = stock_server_with_scratch().await;
-    let dated = dir.join("dated.txt");
+async fn a_read_stream_reports_the_listed_date() {
+    if not_for_your_own_server("the seeded `dated.txt`") {
+        return;
+    }
+    let volume = connect_fixture("APACHE", 13480).await;
 
-    conformance::assert_write_from_stream_keeps_the_source_date(&volume, &dated, std::time::Duration::ZERO).await;
-    conformance::assert_read_stream_reports_the_listed_date(&volume, &dated).await;
+    conformance::assert_read_stream_reports_the_listed_date(&volume, &volume.root().join(FIXTURE_DATED_FILE)).await;
+}
+
+/// Apache stores no date, so a copy onto it carries the server's own: the
+/// documented limit of a plain `mod_dav` destination, ❗ asserted so it stays a
+/// fact rather than an assumption.
+///
+/// If this ever fails, Apache (or the backend) learned to keep a date: switch
+/// this server to `conformance::assert_write_from_stream_keeps_the_source_date`
+/// and update `crates/cmdr-webdav/DETAILS.md` § "Dates".
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
+async fn apache_stores_no_date_so_a_copy_onto_it_carries_its_own() {
+    if not_for_your_own_server("the seeded `dated.txt` on plain Apache `mod_dav`") {
+        return;
+    }
+    let (volume, dir) = stock_server_with_scratch().await;
+    let seeded = volume.root().join(FIXTURE_DATED_FILE);
+    let copy = dir.join("copy.txt");
+
+    let stream = volume.open_read_stream(&seeded).await.expect(FIXTURE);
+    assert!(
+        stream.modified_at().is_some(),
+        "the seed's stream must carry its 2021 date, or this cell proves nothing about the destination"
+    );
+    let length = stream.total_size();
+    volume
+        .write_from_stream(&copy, cmdr_fs::volume::WriteMode::CreateNew, length, stream, &|_| {
+            std::ops::ControlFlow::Continue(())
+        })
+        .await
+        .expect("a date the server ignores must never fail the copy");
+
+    let listed = volume
+        .get_metadata(&copy)
+        .await
+        .expect(FIXTURE)
+        .modified_at
+        .expect("Apache lists `getlastmodified` on every file");
+    assert_ne!(
+        listed,
+        conformance::SOURCE_DATE_SECS,
+        "Apache kept the source's date: the limit this cell records is gone, so pin the destination half here instead"
+    );
 
     clean(&volume, &dir).await;
 }

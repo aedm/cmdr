@@ -11,12 +11,13 @@
 use std::path::Path;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use bytes::Bytes;
 use cmdr_fs::volume::{VolumeError, VolumeReadStream};
 use futures_util::Stream;
 use futures_util::StreamExt;
-use reqwest::header::{CONTENT_RANGE, RANGE};
+use reqwest::header::{CONTENT_RANGE, LAST_MODIFIED, RANGE};
 use reqwest::{Method, Response, StatusCode};
 
 use super::WebdavVolume;
@@ -37,6 +38,9 @@ pub(super) struct WebdavReadStream {
     path: String,
     /// The client's silence watch: every chunk is the server being there.
     liveness: Arc<Liveness>,
+    /// The GET's `Last-Modified`: the same date a PROPFIND lists as
+    /// `getlastmodified`, in whole seconds, at no extra round trip.
+    modified_at: Option<SystemTime>,
 }
 
 impl VolumeReadStream for WebdavReadStream {
@@ -81,10 +85,15 @@ impl VolumeReadStream for WebdavReadStream {
         self.read
     }
 
-    fn modified_at(&self) -> Option<std::time::SystemTime> {
-        // TODO(mtime): report the date the open already learns (PROPFIND getlastmodified, or the GET's `Last-Modified`).
-        None
+    fn modified_at(&self) -> Option<SystemTime> {
+        self.modified_at
     }
+}
+
+/// The date a response's `Last-Modified` carries. `None` when the server sent
+/// none, or one that isn't an RFC 9110 HTTP-date.
+fn last_modified(response: &Response) -> Option<SystemTime> {
+    httpdate::parse_http_date(response.headers().get(LAST_MODIFIED)?.to_str().ok()?).ok()
 }
 
 /// The file's full length from a 206's `Content-Range: bytes a-b/total`.
@@ -122,6 +131,7 @@ impl WebdavVolume {
             _ => (response.content_length().unwrap_or(0), offset),
         };
         Ok(WebdavReadStream {
+            modified_at: last_modified(&response),
             body: Box::pin(response.bytes_stream()),
             total,
             read: 0,
@@ -173,6 +183,8 @@ impl WebdavVolume {
             path: remote,
             body: Box::pin(response.bytes_stream()),
             liveness: Arc::clone(client.liveness()),
+            // A window collected here, never a stream a destination writes from.
+            modified_at: None,
         };
         let mut out = Vec::with_capacity(len);
         while out.len() < len {
