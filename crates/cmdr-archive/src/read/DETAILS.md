@@ -291,10 +291,11 @@ each wanted FILE member in ARCHIVE order, emits a header frame then its data chu
 consumer (`SubtreeExtractReader`) pulls members with `next_member()` and drains each with `next_chunk()`. Details that
 make it correct and bounded:
 
-- **Files only, never directories.** The wanted set is computed from the parsed tree (files under `inner_root`, with
-  their tree sizes so they match `scan_for_copy` totals). Directories — synthetic ones with no archive entry, and empty
-  explicit ones — carry no bytes, so the copy engine creates the destination folders from the tree and reserves the one
-  decode pass for byte-carrying entries (see the copy planner in
+- **Files only, never directories.** The wanted set is computed from the parsed tree (files under `inner_root`, each as
+  the `SubtreeMember` the producer sends: its tree size, so it matches `scan_for_copy` totals, and its tree date, so an
+  extracted file keeps it). Directories — synthetic ones with no archive entry, and empty explicit ones — carry no
+  bytes, so the copy engine creates the destination folders from the tree and reserves the one decode pass for
+  byte-carrying entries (see the copy planner in
   `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "One-pass sequential extract").
 - **Early stop.** `stream_subtree` removes each delivered path from `wanted` and returns the moment it empties, so a
   subtree near the front of a large archive doesn't decode the tail. A not-wanted entry is still skipped through the one

@@ -555,6 +555,26 @@ notifications carry decide which cached listing they patch. So `SmbVolumeInner::
 `RwLock<PathBuf>`, shared with the watcher task and re-read once per event batch) is updated by a reroot; a watcher
 pinned to the old root would keep feeding paths that no longer name anything.
 
+## Dates on copies
+
+The contract: `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Copies keep the
+source's date".
+
+- **Source half: both foreground read paths report the server's `LastWriteTime`** (the streamed download and the hinted
+  one-frame compound read). The date comes from `streams::last_write_time`, a `stat` (one compound frame: CREATE + two
+  QUERY_INFOs + CLOSE) sent alongside the read on a sibling clone of its `Connection`, so it adds a frame but no round
+  trip of latency. Decision/Why: smb2's `FileDownload` and `read_file_compound_sized` don't hand out the date their own
+  CREATE response carries; once smb2 exposes it, drop the stat (the wire-shape cells count it as `DATE_STAT`, so they'll
+  say so). A stat that fails leaves the stream dateless, ❌ never fails the read.
+- **The scan pool's prefetch stays dateless**: enrichment never copies those bytes, so a stat per prefetch would only
+  double the background load.
+- **Destination half: not written yet.** smb2's `Tree` has no SET_INFO `FileBasicInformation` call (verified on smb2
+  0.27.1, its public `Tree` API, 2026-10-07), so `write_from_stream_impl` carries a `TODO(mtime)`. When it lands: set
+  LastWriteTime (every other time 0 = leave it) after the last byte and before the transfer's rename, best effort.
+  `conformance_test.rs::smb_integration_a_copy_keeps_the_source_date_per_the_shared_contract` stays red until then;
+  `smb_integration_a_read_stream_reports_the_listed_date_on_both_read_paths` pins the read half on a file aged inside
+  the fixture container (`touch -d`).
+
 ## Copy concurrency and the credit window
 
 Every SMB2 request spends credits from a budget the server grants (smb2 steers toward a ~512-credit window), and the

@@ -828,9 +828,14 @@ local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile
   destination does.
 - **ADB**: reports the open's `STAT`/`STA2` date; writes it as the push's `DONE` mtime (a u32: whole seconds, clamped
   at 2106), falling back to now only for a dateless source (`crates/cmdr-adb/DETAILS.md`).
-- **MTP**: writes it as the upload's `DateModified`; doesn't report one on reads yet, and no cell pins either half
-  (the virtual device has no dates; `crates/cmdr-mtp/DETAILS.md` § "Dates on copies").
-- **SFTP, SMB, WebDAV, archive (source only)**: not wired yet; each source stream carries a `TODO(mtime)` marker.
+- **SMB**: reports the server's `LastWriteTime` on both foreground read paths (streamed and one-frame compound); doesn't
+  write one yet: smb2's `Tree` has no SET_INFO `FileBasicInformation` call, so the write cell is red and
+  `write_from_stream_impl` carries a `TODO(mtime)`. The read date costs ONE extra compound frame (a `stat` sent
+  alongside the read, no added latency), the one exception to "no extra round trip", because smb2 doesn't hand out
+  the date its CREATE response carries (`crates/cmdr-smb/DETAILS.md` § "Dates on copies").
+- **Archive (source only)**: reports each entry's date from the parsed index, on random-access reads and the one-pass
+  sequential extract alike (whole seconds; zip's DOS time keeps even seconds).
+- **SFTP, MTP, WebDAV**: not wired yet; each source stream carries a `TODO(mtime)` marker.
 
 **How it's pinned.** Two layers, so a gap shows where it lives:
 

@@ -53,10 +53,14 @@ specific to retrofitting an existing backend:
 
 ## The `ArchiveVolume` layer (`src/volume.rs`)
 
-`src/volume.rs` is the one file in this backend that touches the `Volume` trait. It maps the archive-native core
-(`ArchiveIndex` / `ArchiveNode` / `ArchiveEntryReader` / `ArchiveError`) onto `FileEntry` / `VolumeReadStream` /
-`VolumeError`, and holds an `Arc<dyn Volume>` **parent** (the volume physically storing the `.zip`), the archive path,
-the display name, and an `Arc<ArchiveIndexCache>`.
+`src/volume.rs` is the one file in this backend that touches the `Volume` trait, with its stream adapters in the private
+child `src/volume_streams.rs` (`ArchiveVolumeReadStream`, the sequential extract's `MemberStream`, and
+`VolumeByteSource`, none of which touches `ArchiveVolume`'s fields). Every read stream reports its entry's date from the
+parsed index, so an extract keeps it (contract:
+`apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Copies keep the source's date").
+It maps the archive-native core (`ArchiveIndex` / `ArchiveNode` / `ArchiveEntryReader` / `ArchiveError`) onto
+`FileEntry` / `VolumeReadStream` / `VolumeError`, and holds an `Arc<dyn Volume>` **parent** (the volume physically
+storing the `.zip`), the archive path, the display name, and an `Arc<ArchiveIndexCache>`.
 
 **The parent seam.** Two answers a read-only archive can't give itself come from the parent:
 
@@ -169,9 +173,9 @@ locally": a direct-SMB volume keeps its `/Volumes/...` mount point, so the `.zip
 mount — but reading it that way defeats the direct connection and can block on a hung mount. Keying on the capability
 forces the read through the parent volume.
 
-**The bridge (`VolumeByteSource`, `src/volume.rs`).** The core's `ArchiveByteSource::read_at` is blocking (the parse and
-every decompress run on `spawn_blocking`), but `Volume::read_range` is async. `VolumeByteSource` captures the tokio
-runtime handle at construction (on the async executor, in `open_remote_source`) and `block_on`s the parent's
+**The bridge (`VolumeByteSource`, `src/volume_streams.rs`).** The core's `ArchiveByteSource::read_at` is blocking (the
+parse and every decompress run on `spawn_blocking`), but `Volume::read_range` is async. `VolumeByteSource` captures the
+tokio runtime handle at construction (on the async executor, in `open_remote_source`) and `block_on`s the parent's
 `read_range` inside the blocking read. Sound because `read_at` only ever runs on a `spawn_blocking` thread (never a
 runtime worker), so `block_on` doesn't reenter the executor — the same bridge the viewer's archive extractor uses. It
 clamps requests to the known size so rc-zip's read-ahead past EOF doesn't ask the backend for absent bytes.
