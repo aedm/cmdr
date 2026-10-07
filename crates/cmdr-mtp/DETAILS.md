@@ -78,11 +78,17 @@ every other backend does, and each deviation is load-bearing.
 **A copy scan groups by parent.** `scan_for_copy_batch_with_boundary` is overridden because MTP has no single-file stat:
 `get_metadata(path)` lists the parent and searches by name. A naive scan calling it per path would re-list
 `/DCIM/Camera` (15k entries, ~17 s over USB) for every selected photo. The override groups the input paths by parent,
-calls `list_directory(parent, on_progress)` once per unique parent, and indexes the entries by name for O(1) lookups.
-**The fresh-listing oracle layers on top**: before listing a parent it asks `ListingHost::authoritative_listing`, and a
-hit replaces the listing call entirely, so no USB I/O is paid for that parent. A miss falls through to the
+calls `list_directory(parent, None)` once per unique parent, and indexes the entries by name for O(1) lookups. **The
+fresh-listing oracle layers on top**: before listing a parent it asks `ListingHost::authoritative_listing`, and a hit
+replaces the listing call entirely, so no USB I/O is paid for that parent. A miss falls through to the
 one-listing-per-parent path, so a cold cache is no slower. The decision is per parent, and one batch can mix
 watcher-fresh and cold ones.
+
+**Scan progress counts selected sources only.** Parent listings resolve names, not progress: their unselected siblings
+never enter the totals. Selected files report through `ScanBoundary::file`; selected directories reuse the connection
+walk with the same boundary, reporting each descendant incrementally. Counts are cumulative across sources and include
+each selected directory itself, empty or non-empty. The boundary checks cancellation between entries and listings;
+in-flight USB calls always finish before cancellation returns.
 
 **❗ `get_metadata` is expensive, always.** It lists the entire parent directory and searches by name, because MTP has
 no stat. `notify_mutation` pays it after each self-mutation (create, delete, rename), which is fine because those are
