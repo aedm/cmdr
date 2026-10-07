@@ -25,6 +25,9 @@ can't reach them. Where each value comes from: the vault note `projects/Cmdr/wor
 - **Still repo-level only**: `APPLE_CERTIFICATE` and `APPLE_CERTIFICATE_PASSWORD`. Their only copy outside GitHub is in
   Bitwarden, which agents can't reach. Set them from there:
   `gh secret set APPLE_CERTIFICATE --env release -R vdavid/cmdr` (it prompts for the value), same for the password.
+- **Not set yet**: `APPLE_INSTALLER_CERTIFICATE` and `APPLE_INSTALLER_CERTIFICATE_PASSWORD`, the Developer ID Installer
+  certificate that signs the `.pkg`. Environment-only from the start (no repo-level copy). Until they exist the `pkg`
+  job skips (§ The installer package).
 - **Repo-level copies still exist** for all eight. A job in an environment sees both, and the environment value wins on
   a name clash, so nothing breaks while the move is partial.
 
@@ -337,15 +340,17 @@ One GitHub release per tag, carrying these assets for each of the three arches (
   the laptop (§ Who signs the update archives).
 - `latest.json`, whose copy in `apps/website/public/latest.json` (committed by the publish job) is what
   `getcmdr.com/latest.json` serves.
-- `checksums.txt`: one `shasum -a 256` line per DMG, the only way a person who downloaded from the website (or from an
-  aggregator listing) can check what they got. The Homebrew cask carries its own `sha256` and the updater verifies a
-  minisign signature, so this covers the one install route that had nothing. The publish job builds it by downloading
-  the DMGs back FROM the release, ❌ never from the runner's `target/`, so it describes what users actually receive, and
-  it fails the job unless all three lines are there. First published with v0.46.0 (uploaded by hand after the fact;
-  every release from v0.47.0 on gets it from the workflow). The website links it as `SHA-256 checksums` in the download
-  card through `getcmdr.com/download/latest/checksums`, an api-server redirect beside the per-arch DMG ones that
-  resolves `latest` the same way; ❌ it writes no `downloads` row, since a checksum fetch is not an app download and
-  would inflate the per-version counts.
+- `checksums.txt`: one `shasum -a 256` line per DMG (plus the pkg when there is one), the only way a person who
+  downloaded from the website (or from an aggregator listing) can check what they got. The Homebrew cask carries its own
+  `sha256` and the updater verifies a minisign signature, so this covers the one install route that had nothing. The
+  publish job builds it by downloading the DMGs back FROM the release, ❌ never from the runner's `target/`, so it
+  describes what users actually receive, and it fails the job unless all three lines are there. First published with
+  v0.46.0 (uploaded by hand after the fact; every release from v0.47.0 on gets it from the workflow). The website links
+  it as `SHA-256 checksums` in the download card through `getcmdr.com/download/latest/checksums`, an api-server redirect
+  beside the per-arch DMG ones that resolves `latest` the same way; ❌ it writes no `downloads` row, since a checksum
+  fetch is not an app download and would inflate the per-version counts.
+- `Cmdr_<version>_universal.pkg`: the signed, notarized installer package for MDM deployment, once the installer
+  certificate is set up (§ The installer package). Universal only: an MDM pushes one package to every Mac.
 - Three CycloneDX SBOMs, uploaded by the `attest` job: `Cmdr_<version>_aarch64.rust.cdx.json` and
   `Cmdr_<version>_x64.rust.cdx.json` (the Rust crate graph per target triple) and `Cmdr_<version>_frontend.cdx.json`
   (the npm packages whose code is in the built frontend). Details in § Provenance and SBOM attestations.
@@ -421,6 +426,75 @@ instruction on `/trust` is the shorter `gh attestation verify <file> --repo vdav
 **Once the first check passes on a real release**, move the public claim to Level 3: the SLSA mentions on `/trust`
 (`apps/website/src/pages/trust.astro`, linking `slsa.dev/spec/v1.0/levels#build-l2`) and `/trust/development`
 (`apps/website/src/pages/trust/development.astro`), then this paragraph and the bullet above.
+
+## The installer package
+
+MDMs deploy software as flat, signed, notarized `.pkg` installers, so each release can carry
+`Cmdr_<version>_universal.pkg` beside the DMGs. The `pkg` job in `release-pipeline.yml` builds it; the packaging itself
+lives in `scripts/build-pkg.sh`, which also runs locally. Admin-facing side (deploying it, the Full Disk Access
+profile): `/trust#mdm-deploy`.
+
+**How it's built.** The job downloads the universal DMG from the release, as uploaded, takes `Cmdr.app` out of it, and
+checks it's stapled and Gatekeeper-accepted. So the pkg wraps exactly the app people download. `build-pkg.sh` then:
+
+- runs `pkgbuild` with a component plist: **not relocatable** (otherwise Installer "upgrades" whatever copy with the
+  same bundle id it finds, in Downloads or a dev build, instead of installing to `/Applications`), **not
+  version-checked** (an admin can roll back by pushing an older pkg), upgrade in place, strict bundle id;
+- installs to `/Applications`, owned `root:wheel` (`--ownership recommended`), with **no scripts**;
+- wraps it with `productbuild` in a distribution that allows the system domain only, the app's own architectures, and
+  macOS 10.15 and up; signs it with `Developer ID Installer: Rymdskottkarra AB (83H6YAQMNP)` (the application identity
+  in `tauri.conf.json` with the kind swapped, so the team has one source);
+- notarizes it (`notarytool`, the same API key as the DMGs), staples it, and checks it: `pkgutil --check-signature`,
+  `spctl --assess --type install`, and the expanded package (install location, `relocatable="false"`, every Bom entry
+  `0/0`, the binary in the payload).
+
+Apple's guidance (Xcode docs, "Packaging Mac software for distribution", read 2026-10-07): sign with a Developer ID
+Installer identity, notarize the outermost container, staple it. The app inside is already notarized from the DMG build,
+which does no harm.
+
+**Skips until the certificate exists.** Without `APPLE_INSTALLER_CERTIFICATE` in the `release` environment, the job logs
+a notice and ends green, and the release ships without a pkg. `publish` and `attest` wait for the job (so
+`checksums.txt` and the provenance cover the pkg) but don't need it to succeed: in `ci` mode a red `pkg` job never holds
+up the release. In `local` mode it does, since `release-finish.sh` waits for a fully green tag-push run: re-run the
+failed job, or, if the pkg can't be fixed now, delete `APPLE_INSTALLER_CERTIFICATE` from the environment and re-run it,
+which makes it skip.
+
+**Signed in CI in both modes.** `RELEASE_UPDATE_SIGNING=local` keeps the updater key off GitHub because whoever holds it
+can ship an update to every installed Cmdr, for good. The installer certificate can't: a pkg reaches a Mac only when an
+admin or a user runs it, and the certificate is revocable like the application one that already signs in CI. Moving it
+to the laptop would add a second signing round trip to every release for no reduction in reach.
+
+**The updater on a pkg install.** The app lands in `/Applications` owned by root, so the in-app updater can't write it
+and asks for an administrator password (`apps/desktop/src-tauri/src/updater/DETAILS.md`, the `osascript` escalation).
+Decided 2026-10-07: keep `root:wheel` and no postinstall script. That's the norm for `/Applications` and what a security
+review expects, and a `chown` to the console user would let any process running as that user rewrite an app that may
+hold Full Disk Access. Managed Macs whose users aren't admins should set `DisableUpdates` (`/trust#mdm`) and push each
+new pkg from the MDM; the trust page says so.
+
+**Testing the packaging locally**: `./scripts/build-pkg.sh` packages `/Applications/Cmdr.app` unsigned into a temp dir
+(or `--app <path> --out <dir>`). It never installs: `installer` needs root, and a test install would replace the real
+`/Applications/Cmdr.app`. So it reads the package instead (above). Expect `write: Permission denied` lines from
+`pkgbuild` and a warning about `._` entries when an agent runs it: the agent's process stamps `com.apple.provenance` on
+every file it copies, which nothing can strip (verified on macOS 27.0, 2026-10-07, building from 0.50.0).
+
+**Not verified yet**: a signed, notarized build (no certificate), and an install through a real MDM. Both are open on
+`vdavid/cmdr#118`.
+
+### Setting up the installer certificate
+
+1. In Keychain Access, select the "Developer ID Installer: Rymdskottkarra AB (83H6YAQMNP)" certificate with its private
+   key (My Certificates), then File › Export Items… as `developer-id-installer.p12` with a new password. Same steps as
+   the application certificate: `docs/guides/apple-signing-and-notarization.md` § 1.5.
+2. Add both to the `release` environment, with the values never on screen or in shell history:
+   `base64 -i developer-id-installer.p12 | gh secret set APPLE_INSTALLER_CERTIFICATE --env release -R vdavid/cmdr`, then
+   `gh secret set APPLE_INSTALLER_CERTIFICATE_PASSWORD --env release -R vdavid/cmdr` (it prompts).
+3. Back up the `.p12` and its password where the other signing keys live (vault note
+   `projects/Cmdr/workflow/Cmdr signing keys.md`), then delete the file.
+4. Optional local proof before a release:
+   `./scripts/build-pkg.sh --sign "Developer ID Installer: Rymdskottkarra AB (83H6YAQMNP)"` signs from the login
+   keychain and runs `pkgutil --check-signature`.
+5. The next release attaches the pkg. Then update `/trust` (the `DevTodo` under "Deploying Cmdr") and this section's
+   "Not verified yet".
 
 ## How updates work
 

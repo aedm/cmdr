@@ -244,7 +244,9 @@ Prepare a release based on docs/guides/releasing.md.
 13. **After the release run succeeds (in `local` mode: after `release-finish.sh` reports the finishing run green),
     verify the public surface**:
     - `gh release view vX.Y.Z --json assets,tagName,publishedAt`: confirm the expected DMGs are attached
-      (`Cmdr_X.Y.Z_aarch64.dmg`, `_x64.dmg`, `_universal.dmg`) and sizes look reasonable.
+      (`Cmdr_X.Y.Z_aarch64.dmg`, `_x64.dmg`, `_universal.dmg`) and sizes look reasonable. Once the installer certificate
+      is set up, `Cmdr_X.Y.Z_universal.pkg` too; until then the `pkg` job skips with a notice
+      (`docs/guides/releasing.md` § The installer package).
     - Wait ~30 seconds for the website auto-deploy (the release workflow commits an updated `latest.json` and fires a
       webhook), then `curl -s https://getcmdr.com/latest.json | jq -r .version` and confirm it matches `X.Y.Z`.
     - Confirm the updater payload behind that manifest actually resolves, for each of the three platform keys:

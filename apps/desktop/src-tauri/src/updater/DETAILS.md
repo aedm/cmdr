@@ -22,7 +22,8 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 - **Privilege escalation via `osascript` with `rsync -a --delete`.** When installed in `/Applications` (root-owned),
   direct writes fail; `osascript`'s `do shell script … with administrator privileges` shows the native auth dialog.
   `rsync` expresses the full sync (copy + delete stale) in one shell command. Only triggers when direct writes are
-  denied, so users running from `~/Applications` or a dev build won't see the dialog.
+  denied, so users running from `~/Applications` or a dev build won't see the dialog. A `.pkg` install is always
+  `root:wheel`, so it always takes this path; why that's accepted: `docs/guides/releasing.md` § The installer package.
 - **Atomic rename instead of in-place `fs::copy`.** (Inode / code-signing-cache rationale is in `CLAUDE.md`.)
 - **Per-instance staging dir: `<tmp>/cmdr-update-staging-{CMDR_INSTANCE_ID}`**, `…-default` for production with no env
   var set, so a main-clone and a worktree `Cmdr` never share one path.

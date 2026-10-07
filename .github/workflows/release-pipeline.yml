@@ -486,6 +486,133 @@ jobs:
           # other keychain-backed tools keep working after a release.
           security list-keychains -d user -s "$HOME/Library/Keychains/login.keychain-db"
 
+  # The installer package for MDM deployment (`Cmdr_<version>_universal.pkg`), built from the app
+  # inside the universal DMG AS UPLOADED, so it carries exactly the signed, notarized, stapled app
+  # people download. Signed with the Developer ID Installer identity, notarized, and stapled by
+  # `scripts/build-pkg.sh`, then uploaded beside the DMG (into the draft in `local` mode).
+  #
+  # ❗ Skips with a notice, green, while `APPLE_INSTALLER_CERTIFICATE` isn't set, so releases ship
+  # without a pkg until the certificate exists. ❗ Nothing requires it to succeed: `publish` and
+  # `attest` wait for it (so `checksums.txt` and the provenance cover the pkg) but run whatever it
+  # ends as, and a red pkg job is fixed with "Re-run failed jobs". Signed in CI in `local` mode too:
+  # an installer certificate is revocable and can't ship an update to anyone, unlike the updater key.
+  # `docs/guides/releasing.md` § The installer package.
+  pkg:
+    name: Build the installer package
+    needs: [guard, build]
+    if: >-
+      !cancelled() && github.event_name == 'push' && needs.build.result == 'success'
+    runs-on: macos-26
+    timeout-minutes: 45
+    # It signs and notarizes, so it reads the `release` environment's Apple secrets, like `build`.
+    environment: release
+    permissions:
+      contents: write # upload the pkg to the release
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Check for the installer certificate
+        id: cert
+        env:
+          APPLE_INSTALLER_CERTIFICATE: ${{ secrets.APPLE_INSTALLER_CERTIFICATE }}
+        run: |
+          if [ -z "$APPLE_INSTALLER_CERTIFICATE" ]; then
+            echo "::notice::APPLE_INSTALLER_CERTIFICATE isn't set in the release environment, so this release ships without a .pkg. Setup: docs/guides/releasing.md § The installer package."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up the installer signing keychain
+        if: steps.cert.outputs.present == 'true'
+        env:
+          APPLE_INSTALLER_CERTIFICATE: ${{ secrets.APPLE_INSTALLER_CERTIFICATE }}
+          APPLE_INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_PASSWORD }}
+        run: |
+          # Same hermetic-keychain shape as `build`'s llama-server keychain, for the same reasons:
+          # targeted explicitly (`productbuild --keychain`) AND in the search list.
+          KEYCHAIN_PATH="$RUNNER_TEMP/installer-sign.keychain-db"
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 24)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          echo -n "$APPLE_INSTALLER_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/installer-cert.p12"
+          security import "$RUNNER_TEMP/installer-cert.p12" -k "$KEYCHAIN_PATH" \
+            -P "$APPLE_INSTALLER_CERTIFICATE_PASSWORD" -T /usr/bin/productbuild -T /usr/bin/productsign
+          rm "$RUNNER_TEMP/installer-cert.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" \
+            "$KEYCHAIN_PATH" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN_PATH" \
+            "$HOME/Library/Keychains/login.keychain-db"
+          echo "INSTALLER_SIGN_KEYCHAIN=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+
+          # The identity is the application one with the certificate kind swapped, so the team
+          # has one source: `tauri.conf.json`. It must be in the keychain, or the p12 is for
+          # another team or isn't an installer certificate.
+          APP_IDENTITY=$(jq -r .bundle.macOS.signingIdentity apps/desktop/src-tauri/tauri.conf.json)
+          IDENTITY="Developer ID Installer: ${APP_IDENTITY#Developer ID Application: }"
+          security find-identity -v "$KEYCHAIN_PATH" | grep -qF "\"$IDENTITY\"" || {
+            echo "::error::The certificate in APPLE_INSTALLER_CERTIFICATE isn't \"$IDENTITY\"."
+            security find-identity -v "$KEYCHAIN_PATH"
+            exit 1
+          }
+          echo "INSTALLER_SIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+
+      - name: Set up notarization credentials
+        if: steps.cert.outputs.present == 'true'
+        env:
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          mkdir -p ~/private_keys
+          echo -n "$APPLE_API_KEY_BASE64" | base64 --decode \
+            > ~/private_keys/"AuthKey_${APPLE_API_KEY}.p8"
+
+      - name: Take the app from the universal DMG as uploaded
+        if: steps.cert.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p "Cmdr_${VERSION}_universal.dmg" -D "$RUNNER_TEMP/dmg"
+          hdiutil attach -readonly -nobrowse -mountpoint "$RUNNER_TEMP/dmg-mount" \
+            "$RUNNER_TEMP/dmg/Cmdr_${VERSION}_universal.dmg" > /dev/null
+          ditto "$RUNNER_TEMP/dmg-mount/Cmdr.app" "$RUNNER_TEMP/app/Cmdr.app"
+          hdiutil detach "$RUNNER_TEMP/dmg-mount" > /dev/null
+          # The DMG's app is the notarized one; a pkg around anything else would be a different app.
+          xcrun stapler validate "$RUNNER_TEMP/app/Cmdr.app"
+          spctl --assess --type execute --verbose=2 "$RUNNER_TEMP/app/Cmdr.app"
+
+      - name: Build, sign, notarize, and staple the pkg
+        if: steps.cert.outputs.present == 'true'
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          APPLE_API_KEY_PATH="$HOME/private_keys/AuthKey_${APPLE_API_KEY}.p8" ./scripts/build-pkg.sh --app "$RUNNER_TEMP/app/Cmdr.app" --out "$RUNNER_TEMP/pkg" \
+            --sign "$INSTALLER_SIGN_IDENTITY" --keychain "$INSTALLER_SIGN_KEYCHAIN" --notarize
+
+      - name: Upload the pkg to the release
+        if: steps.cert.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" "$RUNNER_TEMP/pkg/Cmdr_${VERSION}_universal.pkg" --clobber
+
+      - name: Delete the installer signing keychain
+        if: always()
+        run: |
+          if [ -n "${INSTALLER_SIGN_KEYCHAIN:-}" ] && [ -f "$INSTALLER_SIGN_KEYCHAIN" ]; then
+            security delete-keychain "$INSTALLER_SIGN_KEYCHAIN"
+          fi
+          security list-keychains -d user -s "$HOME/Library/Keychains/login.keychain-db"
+
   # CycloneDX SBOMs for what ships inside the app: the Rust crate graph (one per arch, since
   # the two target triples resolve slightly different crates) and the frontend's npm packages.
   # The `attest` job attaches them to the release and signs them.
@@ -594,7 +721,9 @@ jobs:
   # manifest has one builder whoever signed.
   publish:
     name: Publish release
-    needs: [guard, build]
+    # `pkg` only for ordering: its pkg (if any) is on the release before the checksums are taken.
+    # The `if` below ignores how it ended.
+    needs: [guard, build, pkg]
     if: >-
       !cancelled() && needs.guard.result == 'success' && (
         github.event_name == 'workflow_dispatch' ||
@@ -737,7 +866,7 @@ jobs:
       # that have historically served hijacked downloads (MacUpdate, 2018).
       # ❗ Hash the assets AS PUBLISHED, by downloading them back from the release, ❌ never a
       # local copy: the point is to describe what a user will actually receive.
-      - name: Publish SHA-256 checksums for the DMGs
+      - name: Publish SHA-256 checksums for the DMGs and the pkg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -748,10 +877,19 @@ jobs:
               gh release download "$TAG" -R "$GITHUB_REPOSITORY" \
                   -p "Cmdr_${VERSION}_${arch}.dmg" -D /tmp/checksums
           done
-          ( cd /tmp/checksums && shasum -a 256 ./*.dmg | sed 's| \./| |' > checksums.txt )
-          # Three lines, one per arch: a missing DMG would silently ship a short file.
+          # The pkg only when the release has one (the `pkg` job skips without its certificate).
+          EXPECTED=3
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json assets \
+              --jq '.assets[].name' | grep -qx "Cmdr_${VERSION}_universal.pkg"; then
+              gh release download "$TAG" -R "$GITHUB_REPOSITORY" \
+                  -p "Cmdr_${VERSION}_universal.pkg" -D /tmp/checksums
+              EXPECTED=4
+          fi
+          ( cd /tmp/checksums && shasum -a 256 ./* | sed 's| \./| |' > /tmp/checksums.txt )
+          mv /tmp/checksums.txt /tmp/checksums/checksums.txt
+          # One line per DMG plus the pkg: a missing file would silently ship a short list.
           LINES=$(wc -l < /tmp/checksums/checksums.txt)
-          [ "$LINES" -eq 3 ] || { echo "expected 3 checksum lines, got $LINES"; cat /tmp/checksums/checksums.txt; exit 1; }
+          [ "$LINES" -eq "$EXPECTED" ] || { echo "expected $EXPECTED checksum lines, got $LINES"; cat /tmp/checksums/checksums.txt; exit 1; }
           cat /tmp/checksums/checksums.txt
           gh release upload "$TAG" /tmp/checksums/checksums.txt --clobber
 
@@ -812,7 +950,9 @@ jobs:
   # it skips the `.sig` files, which come from the laptop, not from this workflow.
   attest:
     name: Attest provenance and publish SBOMs
-    needs: [guard, build, publish, sbom]
+    # `pkg` for ordering only, like `publish`: in `local` mode the tag push's run attests the
+    # pkg along with the rest of the draft.
+    needs: [guard, build, pkg, publish, sbom]
     if: >-
       !cancelled() && (needs.publish.result == 'success' || (
         github.event_name == 'push' && needs.guard.outputs.update-signing == 'local' &&
@@ -877,7 +1017,9 @@ jobs:
           subject-path: release-assets/*
 
       # One SBOM attestation per SBOM, bound to the builds it describes. The universal build
-      # is both arch slices joined, so both Rust SBOMs describe it.
+      # is both arch slices joined, so both Rust SBOMs describe it, and the pkg (universal, the
+      # only one) wraps that same app. A release without a pkg is fine: the action fails only
+      # when no pattern matches anything.
       - name: Attest the Apple Silicon Rust SBOM
         if: ${{ needs.sbom.result == 'success' }}
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
@@ -888,6 +1030,7 @@ jobs:
             release-assets/Cmdr_${{ env.VERSION }}_aarch64.app.tar.gz
             release-assets/Cmdr_${{ env.VERSION }}_universal.dmg
             release-assets/Cmdr_${{ env.VERSION }}_universal.app.tar.gz
+            release-assets/Cmdr_${{ env.VERSION }}_*.pkg
 
       - name: Attest the Intel Rust SBOM
         if: ${{ needs.sbom.result == 'success' }}
@@ -899,6 +1042,7 @@ jobs:
             release-assets/Cmdr_${{ env.VERSION }}_x64.app.tar.gz
             release-assets/Cmdr_${{ env.VERSION }}_universal.dmg
             release-assets/Cmdr_${{ env.VERSION }}_universal.app.tar.gz
+            release-assets/Cmdr_${{ env.VERSION }}_*.pkg
 
       - name: Attest the frontend SBOM
         if: ${{ needs.sbom.result == 'success' }}
@@ -908,6 +1052,7 @@ jobs:
           subject-path: |
             release-assets/Cmdr_${{ env.VERSION }}_*.dmg
             release-assets/Cmdr_${{ env.VERSION }}_*.app.tar.gz
+            release-assets/Cmdr_${{ env.VERSION }}_*.pkg
 
   bump-tap:
     name: Bump Homebrew tap
