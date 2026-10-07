@@ -828,7 +828,9 @@ local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile
   destination does.
 - **ADB**: reports the open's `STAT`/`STA2` date; writes it as the push's `DONE` mtime (a u32: whole seconds, clamped
   at 2106), falling back to now only for a dateless source (`crates/cmdr-adb/DETAILS.md`).
-- **SFTP, SMB, MTP, WebDAV, archive (source only)**: not wired yet; each source stream carries a `TODO(mtime)` marker.
+- **MTP**: writes it as the upload's `DateModified`; doesn't report one on reads yet, and no cell pins either half
+  (the virtual device has no dates; `crates/cmdr-mtp/DETAILS.md` § "Dates on copies").
+- **SFTP, SMB, WebDAV, archive (source only)**: not wired yet; each source stream carries a `TODO(mtime)` marker.
 
 **How it's pinned.** Two layers, so a gap shows where it lives:
 

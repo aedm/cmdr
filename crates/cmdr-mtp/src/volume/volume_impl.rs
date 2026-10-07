@@ -6,7 +6,7 @@ use super::MtpVolume;
 use super::cancel::MtpCancelBridge;
 use super::mapping::map_mtp_error;
 use super::streams::{MtpReadStream, mtp_read_window, volume_read_stream_to_chunk_stream};
-use crate::connection::{MtpConnectionError, MtpDeleteScope};
+use crate::connection::{MtpConnectionError, MtpDeleteScope, UploadedFile};
 use cmdr_fs::entry::FileEntry;
 use cmdr_fs::volume::{
     BatchScanResult, CopyScanResult, LaneKey, MutationEvent, ScanConflict, SourceItemInfo, SpaceInfo, StreamLength,
@@ -717,6 +717,7 @@ impl Volume for MtpVolume {
                 })?
                 .to_string();
 
+            let modified = stream.modified_at();
             let chunk_stream = volume_read_stream_to_chunk_stream(stream, size, &report_progress);
             let chunk_stream = Box::pin(chunk_stream);
 
@@ -726,8 +727,11 @@ impl Volume for MtpVolume {
                     &self.device_id,
                     self.storage_id,
                     &dest_folder,
-                    &filename,
-                    size,
+                    UploadedFile {
+                        name: &filename,
+                        size,
+                        modified,
+                    },
                     chunk_stream,
                 )
                 .await

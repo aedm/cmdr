@@ -120,6 +120,18 @@ user ends up with a duplicate. ❌ Don't reach for a lock or a retry loop here. 
 own apps and MTP's other clients mutate the same storage — so a lock this side would buy nothing and read like a
 guarantee.
 
+## Dates on copies
+
+An upload sends the source's date; a read reports none yet. (The contract:
+`apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Copies keep the source's date".)
+`write_from_stream` passes `stream.modified_at()` to `upload_from_stream`, which sets it as the `SendObjectInfo`
+`DateModified` (`NewObjectInfo::with_modified`); Android's MTP server applies that to the file after the data phase. The
+read side is open: `download_windowed` reads the ObjectInfo for its size and drops the date, so reporting it costs a
+second `GetObjectInfo` per file until mtp-rs exposes it. Neither half is pinned by a cell: mtp-rs 0.32's virtual device
+sends an empty `DateModified` and ignores the one it receives (`a_copy_keeps_the_source_date_per_the_shared_contract`
+stays ignored for that). PTP dates carry no zone; `src/connection/dates.rs` reads and writes the fields as UTC, exact
+both ways.
+
 ## Two features, two different axes
 
 - **`testing`** means "this is a test build". It publishes `volume::testing` (the `list_directory` call counter and the

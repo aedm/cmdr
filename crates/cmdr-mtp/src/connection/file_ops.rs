@@ -2,6 +2,8 @@
 
 use log::debug;
 use mtp_rs::{ByteRange, MtpDevice, NewObjectInfo, ObjectHandle, StorageId, WindowedDownload};
+
+use super::dates::mtp_datetime_from_system_time;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -26,6 +28,18 @@ use super::{MtpConnectionManager, acquire_device_lock, normalize_mtp_path};
 pub(crate) struct MtpReadSession {
     device_arc: Arc<Mutex<MtpDevice>>,
     windowed: WindowedDownload,
+}
+
+/// What an upload creates: the `SendObjectInfo` half, ahead of the bytes.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct UploadedFile<'a> {
+    /// Name for the new file.
+    pub(crate) name: &'a str,
+    /// Total size in bytes; the data stream must deliver exactly this many.
+    pub(crate) size: u64,
+    /// The source's modification date, sent as `DateModified` so the copy
+    /// keeps it. `None` sends none and the device stamps its own.
+    pub(crate) modified: Option<std::time::SystemTime>,
 }
 
 impl MtpReadSession {
@@ -221,23 +235,26 @@ impl MtpConnectionManager {
     /// * `device_id` - The connected device ID
     /// * `storage_id` - The storage ID within the device
     /// * `dest_folder` - Destination folder path on device (like "DCIM")
-    /// * `filename` - Name for the new file
-    /// * `size` - Total size in bytes
+    /// * `file` - The new file's name, size, and date ([`UploadedFile`])
     /// * `data_stream` - Chunk stream that mtp-rs consumes lazily as the USB
     ///   transfer drains it. Don't pre-collect the source into a `Vec`; the
     ///   point of the stream is to keep the working set bounded for huge files.
-    pub async fn upload_from_stream<S>(
+    pub(crate) async fn upload_from_stream<S>(
         &self,
         device_id: &str,
         storage_id: u32,
         dest_folder: &str,
-        filename: &str,
-        size: u64,
+        file: UploadedFile<'_>,
         data_stream: S,
     ) -> Result<u64, MtpConnectionError>
     where
         S: futures_util::Stream<Item = Result<bytes::Bytes, std::io::Error>> + Unpin + Send,
     {
+        let UploadedFile {
+            name: filename,
+            size,
+            modified,
+        } = file;
         // Foreground priority for the whole upload: mtp-rs drains `data_stream`
         // within this call, so the guard covers the entire transfer (and the
         // nested `refresh_dir_handle` re-list, which takes its own guard).
@@ -265,8 +282,12 @@ impl MtpConnectionManager {
             .await
             .map_err(|e| self.map_device_error(e, device_id))?;
 
-        // Create object info for the upload
-        let object_info = NewObjectInfo::file(filename, size);
+        // `SendObjectInfo` precedes the bytes, so the date has to be known now:
+        // a stream answers it from its open.
+        let mut object_info = NewObjectInfo::file(filename, size);
+        if let Some(date) = modified.and_then(mtp_datetime_from_system_time) {
+            object_info = object_info.with_modified(date);
+        }
 
         let parent_opt = if parent_handle == ObjectHandle::ROOT {
             None
