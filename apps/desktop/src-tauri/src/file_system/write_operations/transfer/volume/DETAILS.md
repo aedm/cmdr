@@ -831,7 +831,7 @@ local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile
 - **MTP**: writes it as the upload's `DateModified`; doesn't report one on reads yet, and no cell pins either half
   (the virtual device has no dates; `crates/cmdr-mtp/DETAILS.md` § "Dates on copies").
 - **SMB**: reports the server's `LastWriteTime` on both foreground read paths (streamed and one-frame compound); doesn't
-  write one yet: smb2's `Tree` has no SET_INFO `FileBasicInformation` call, so the write cell is red and
+  write one yet: smb2's `Tree` has no SET_INFO `FileBasicInformation` call, so a cell asserts the gap and
   `write_from_stream_impl` carries a `TODO(mtime)`. The read date costs ONE extra compound frame (a `stat` sent
   alongside the read, no added latency), the one exception to "no extra round trip", because smb2 doesn't hand out
   the date its CREATE response carries (`crates/cmdr-smb/DETAILS.md` § "Dates on copies").

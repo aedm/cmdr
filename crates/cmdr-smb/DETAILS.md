@@ -570,8 +570,10 @@ source's date".
   double the background load.
 - **Destination half: not written yet.** smb2's `Tree` has no SET_INFO `FileBasicInformation` call (verified on smb2
   0.27.1, its public `Tree` API, 2026-10-07), so `write_from_stream_impl` carries a `TODO(mtime)`. When it lands: set
-  LastWriteTime (every other time 0 = leave it) after the last byte and before the transfer's rename, best effort.
-  `conformance_test.rs::smb_integration_a_copy_keeps_the_source_date_per_the_shared_contract` stays red until then;
+  LastWriteTime (every other time 0 = leave it) after the last byte and before the transfer's rename, best effort. Until
+  then `conformance_test.rs::smb_integration_smb2_sets_no_date_so_a_copy_onto_a_share_carries_its_own` asserts the gap
+  (the copy lists a date other than the source's), so it fails the day the write half works and forces the flip back to
+  `conformance::assert_write_from_stream_keeps_the_source_date`;
   `smb_integration_a_read_stream_reports_the_listed_date_on_both_read_paths` pins the read half on a file aged inside
   the fixture container (`touch -d`).
 

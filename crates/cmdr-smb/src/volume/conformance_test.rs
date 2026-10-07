@@ -218,28 +218,60 @@ async fn smb_integration_export_honors_the_shared_handshake_contract() {
     ensure_clean(&smb_vol, &base).await;
 }
 
-/// The shared date assertions, against a real SMB server: a write sets the
-/// source's `LastWriteTime`, and a read reports the server's.
+/// smb2 can't set a file's times yet, so a copy onto a share carries the
+/// server's own date: the known gap, ❗ asserted so it stays a fact rather than
+/// an assumption. smb2's `Tree` has no SET_INFO `FileBasicInformation` call
+/// (verified on smb2 0.27.1), and `write_from_stream_impl` carries the
+/// `TODO(mtime)` for it.
 ///
-/// ❗ Red until smb2 can set a file's times: its `Tree` has no SET_INFO
-/// `FileBasicInformation` call, so `write_from_stream` can't keep the date yet.
-/// The read half is green on its own in the cell below.
+/// If this ever fails, the write half got wired: replace this cell with
+/// `conformance::assert_write_from_stream_keeps_the_source_date` (then
+/// `assert_read_stream_reports_the_listed_date` on the same file), and update
+/// `crates/cmdr-smb/DETAILS.md` § "Dates on copies".
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
-async fn smb_integration_a_copy_keeps_the_source_date_per_the_shared_contract() {
+async fn smb_integration_smb2_sets_no_date_so_a_copy_onto_a_share_carries_its_own() {
     let smb_vol = Arc::new(make_docker_volume().await);
     let base = test_dir_name();
     ensure_clean(&smb_vol, &base).await;
 
     smb_vol.create_directory(Path::new(&base)).await.unwrap();
-    let dated = format!("{base}/dated.txt");
-    cmdr_fs::volume::conformance::assert_write_from_stream_keeps_the_source_date(
-        smb_vol.as_ref(),
-        Path::new(&dated),
-        Duration::ZERO,
-    )
-    .await;
-    cmdr_fs::volume::conformance::assert_read_stream_reports_the_listed_date(smb_vol.as_ref(), Path::new(&dated)).await;
+    let aged = format!("{base}/aged.txt");
+    smb_vol
+        .create_file(Path::new(&aged), b"bytes from a file last changed in 2021\n")
+        .await
+        .unwrap();
+    age_in_the_container(&aged, cmdr_fs::volume::conformance::SOURCE_DATE_SECS);
+
+    let stream = smb_vol.open_read_stream(Path::new(&aged)).await.unwrap();
+    assert!(
+        stream.modified_at().is_some(),
+        "the aged source's stream must carry its 2021 date, or this cell proves nothing about the destination"
+    );
+    let length = stream.total_size();
+    let copy = format!("{base}/copy.txt");
+    smb_vol
+        .write_from_stream(
+            Path::new(&copy),
+            cmdr_fs::volume::WriteMode::CreateNew,
+            length,
+            stream,
+            &|_| std::ops::ControlFlow::Continue(()),
+        )
+        .await
+        .expect("a date the backend can't set must never fail the copy");
+
+    let listed = smb_vol
+        .get_metadata(Path::new(&copy))
+        .await
+        .unwrap()
+        .modified_at
+        .expect("SMB lists `LastWriteTime` on every file");
+    assert_ne!(
+        listed,
+        cmdr_fs::volume::conformance::SOURCE_DATE_SECS,
+        "the copy kept the source's date: SMB's write half works now, so pin it with the shared contract here instead"
+    );
 
     ensure_clean(&smb_vol, &base).await;
 }
@@ -248,7 +280,7 @@ async fn smb_integration_a_copy_keeps_the_source_date_per_the_shared_contract() 
 /// the streamed download and the hinted one-frame compound read.
 ///
 /// The file is aged inside the container (`touch -d`), apart from the write
-/// half above, so a copy OFF a share keeps its date even while a copy onto one
+/// cell above, so a copy OFF a share keeps its date even while a copy onto one
 /// can't set it.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]

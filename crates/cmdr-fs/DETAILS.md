@@ -527,9 +527,9 @@ everywhere, which is the point.
   "a copy keeps the source's date" (`src/volume/conformance/modification_date.rs`). Every copy suite checksums bytes,
   and a destination stamping its own date passes all of them. Run by local, S3, ADB, SFTP, and the in-memory double
   green, WebDAV's both on Nextcloud (Apache stores no date, so it runs the read half), the read half by archive and SMB
-  too (SMB's write half is red until smb2 can set times); MTP carries the cells while its wiring lands. The contract:
-  `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Copies keep the source's
-  date".
+  too (SMB's write cell asserts the gap until smb2 can set times); MTP carries the cells while its wiring lands. The
+  contract: `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Copies keep the
+  source's date".
 
 `InMemoryVolume`, `LocalPosixVolume`, `AdbVolume`, and the Docker-gated `SmbVolume`, `SftpVolume`, and `WebdavVolume`
 run every one (InMemory's writability cell sits in `capabilities_test.rs`, next to the predicate it speaks for).
