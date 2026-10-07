@@ -55,8 +55,11 @@ So: one implementation per quantity, and a lint that keeps it that way.
 - **Fixed copy that names an amount follows the constant behind it.** Decimal limits are written in decimal (the
   viewer's 100 MB clipboard cap is `100_000_000`, the log cap and disk-space threshold settings multiply by 1,000,000),
   so their "MB" is honest. Binary presets (the operation-log size options) are labelled in code by
-  `formatRoundSize(n, 'binary')` ("100 MiB", "3 GiB") rather than as catalog literals. The default display base is
-  binary (`appearance.fileSizeFormat`).
+  `formatRoundSize(n, 'binary')` ("100 MiB", "3 GiB") rather than as catalog literals.
+- **Decision: the default display base is SI** (`appearance.fileSizeFormat` = `si`; binary stays an option). **Why:** a
+  Mac user checks a size against Finder and Get Info, and a drive against the capacity on its box, all decimal, so
+  `1.02 kB` agrees with what they see elsewhere. Both bases are labelled honestly (SI `kB`, IEC `KiB`), so neither is
+  "wrong"; the default only picks which one a new user meets. The Rust poller mirrors it (`FileSizeFormat::default`).
 - **The size tier travels with the text** (`TieredSize`, from `formatTieredSize` / `formatByteSizeTiered`). Coloring
   once recovered the tier by parsing the unit word off the end of the string, which broke the moment a translator wrote
   `Mo`.

@@ -113,8 +113,8 @@ test.describe('File viewer', () => {
 
   test('shows file size in status bar', async () => {
     const statusText = await viewer.textContent('.status-bar')
-    // file-a.txt is 1024 bytes = 1 KiB
-    expect(statusText).toContain('1.00 KiB')
+    // file-a.txt is 1024 bytes = 1.02 kB (SI, the default)
+    expect(statusText).toContain('1.02 kB')
   })
 
   test('shows backend mode badge', async () => {

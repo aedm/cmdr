@@ -385,7 +385,7 @@ describe('createPanePointer', () => {
 
     it("sends the one row's own size when the click landed outside the selection", async () => {
       await createPanePointer(deps).handleContextMenu(entryOf({ size: 2_100_000 }))
-      expect(targetArg()).toEqual({ countText: undefined, sizeText: '2.00 MiB' })
+      expect(targetArg()).toEqual({ countText: undefined, sizeText: '2.10 MB' })
     })
 
     it('sends the selection total when the click landed inside the selection', async () => {
@@ -394,7 +394,7 @@ describe('createPanePointer', () => {
       ipc.getPathsAtIndices.mockResolvedValue(['/dir/a.txt', '/dir/b.txt'])
       await createPanePointer(deps).handleContextMenu(entryOf({ size: 2_100_000 }))
       // The total, never the clicked row's own size: the menu acts on all of them.
-      expect(targetArg()).toEqual({ countText: '2 items', sizeText: '3.20 MiB' })
+      expect(targetArg()).toEqual({ countText: '2 items', sizeText: '3.36 MB' })
     })
 
     it('sends no size for a folder, whose size is its subtree and may still be settling', async () => {

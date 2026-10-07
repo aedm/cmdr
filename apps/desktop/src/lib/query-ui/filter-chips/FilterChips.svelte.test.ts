@@ -154,7 +154,7 @@ describe('SearchFilterChips: configured state', () => {
     const { target, cleanup } = mountChips(baseProps({ sizeFilter: 'gte', sizeValue: '100', sizeUnit: 'MB' }))
     await tick()
     const sizeChip = findChip(target, 'Size')
-    expect(sizeChip?.textContent).toContain('100 MiB')
+    expect(sizeChip?.textContent).toContain('100 MB')
     expect(sizeChip?.querySelector('.chip-clear')).not.toBeNull()
     cleanup()
   })

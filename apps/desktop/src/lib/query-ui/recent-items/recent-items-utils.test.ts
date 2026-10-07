@@ -68,15 +68,15 @@ describe('filterSummary', () => {
   })
 
   it('shows "size >" when only sizeMin is set', () => {
-    const entry = makeEntry({ filters: { sizeMin: 1024 * 1024 } })
-    expect(filterSummary(entry)).toContain('size > 1.00 MiB')
+    const entry = makeEntry({ filters: { sizeMin: 1000 * 1000 } })
+    expect(filterSummary(entry)).toContain('size > 1.00 MB')
   })
 
   it('shows a range when both size bounds are set', () => {
     const entry = makeEntry({
-      filters: { sizeMin: 1024, sizeMax: 1024 * 1024 },
+      filters: { sizeMin: 1000, sizeMax: 1000 * 1000 },
     })
-    expect(filterSummary(entry)).toContain('size 1.00 KiB–1.00 MiB')
+    expect(filterSummary(entry)).toContain('size 1.00 kB–1.00 MB')
   })
 
   it('includes scope, case-sensitive, and system-dirs notes when set', () => {
@@ -99,12 +99,12 @@ describe('chipTooltip', () => {
     const entry = makeEntry({
       mode: 'ai',
       timestamp: NOW - 60 * 60 * 1000,
-      filters: { sizeMin: 1024 * 1024 },
+      filters: { sizeMin: 1000 * 1000 },
       resultCount: 42,
     })
     const out = chipTooltip(entry, NOW)
     expect(out).toContain('AI · 1h ago')
-    expect(out).toContain('size > 1.00 MiB')
+    expect(out).toContain('size > 1.00 MB')
     expect(out).toContain('42 results last time')
   })
 

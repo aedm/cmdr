@@ -435,7 +435,7 @@ pub struct RestrictedWindowSettings {
     pub file_viewer_suppress_binary_warning: Option<bool>,
     pub appearance_text_size: Option<f64>,
     pub appearance_app_color: Option<String>,
-    /// `"binary"` (1024-based, `KB`) or `"si"` (1000-based, `kB`). The Transfers
+    /// `"binary"` (1024-based, `KiB`) or `"si"` (1000-based, `kB`, the default). The Transfers
     /// window is restricted but renders `<Size>`, so it needs this or it shows a
     /// different number than the copy dialog for the same byte count.
     pub appearance_file_size_format: Option<String>,

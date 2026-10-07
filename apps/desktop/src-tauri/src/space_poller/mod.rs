@@ -57,8 +57,9 @@ static LAST_SPACE: OnceLock<Mutex<HashMap<String, SpaceInfo>>> = OnceLock::new()
 static LAST_EMITTED: OnceLock<Mutex<HashMap<String, SpaceInfo>>> = OnceLock::new();
 
 /// `appearance.fileSizeFormat` is SI. The readout's digits roll over at different byte counts per
-/// base, so the emit gate has to know which one the frontend draws in.
-static SIZE_FORMAT_SI: AtomicBool = AtomicBool::new(false);
+/// base, so the emit gate has to know which one the frontend draws in. Starts at the setting's
+/// default (SI) for the stretch before `apply_saved_settings` runs.
+static SIZE_FORMAT_SI: AtomicBool = AtomicBool::new(true);
 
 /// Rate limit for the per-emission debug line (the events themselves are never
 /// throttled; only the logging is). Per volume, so a churning boot disk can't
@@ -623,6 +624,11 @@ fn emit(volume_id: &str, space: &SpaceInfo) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_emit_gate_rounds_in_si_until_settings_load() {
+        assert_eq!(size_format(), FileSizeFormat::Si);
+    }
 
     #[test]
     fn fires_once_when_crossing_below_threshold() {

@@ -54,15 +54,15 @@ describe('getUserFriendlyMessage', () => {
     it('returns user-friendly message for insufficient_space error', () => {
       const error: WriteOperationError = {
         type: 'insufficient_space',
-        required: 1073741824,
-        available: 536870912,
+        required: 1_000_000_000,
+        available: 500_000_000,
         volumeName: 'Test Volume',
       }
       const result = getUserFriendlyMessage(error)
 
       expect(result.title).toBe('The destination may not have enough space')
-      expect(result.message).toContain('1.00 GiB')
-      expect(result.message).toContain('512.00 MiB')
+      expect(result.message).toContain('1.00 GB')
+      expect(result.message).toContain('500.00 MB')
     })
 
     it('returns user-friendly message for destination_inside_source error', () => {
@@ -601,14 +601,14 @@ describe('getTechnicalDetails', () => {
   it('includes space info for insufficient_space error', () => {
     const error: WriteOperationError = {
       type: 'insufficient_space',
-      required: 1073741824,
-      available: 536870912,
+      required: 1_000_000_000,
+      available: 500_000_000,
       volumeName: 'Test Volume',
     }
     const result = getTechnicalDetails(error)
 
-    expect(result).toContain('Required: 1.00 GiB')
-    expect(result).toContain('Available: 512.00 MiB')
+    expect(result).toContain('Required: 1.00 GB')
+    expect(result).toContain('Available: 500.00 MB')
     expect(result).toContain('Volume: Test Volume')
   })
 

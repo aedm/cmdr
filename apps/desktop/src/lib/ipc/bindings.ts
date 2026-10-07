@@ -7651,9 +7651,9 @@ export type FileIndexStatus = {
 
 // The `appearance.fileSizeFormat` setting: which base the size units step by.
 export type FileSizeFormat =
-  // Base 1024 (`KB`, `MB`, `GB`), the setting's default.
+  // Base 1024 (`KiB`, `MiB`, `GiB`).
   | 'binary'
-  // Base 1000 (`kB`, `MB`, `GB`).
+  // Base 1000 (`kB`, `MB`, `GB`), the setting's default.
   | 'si'
 
 /**
@@ -12305,7 +12305,7 @@ export type RestrictedWindowSettings = {
   appearanceTextSize: number | null
   appearanceAppColor: string | null
   /**
-   *  `"binary"` (1024-based, `KB`) or `"si"` (1000-based, `kB`). The Transfers
+   *  `"binary"` (1024-based, `KiB`) or `"si"` (1000-based, `kB`, the default). The Transfers
    *  window is restricted but renders `<Size>`, so it needs this or it shows a
    *  different number than the copy dialog for the same byte count.
    */

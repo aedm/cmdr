@@ -376,7 +376,7 @@ export const appearanceSettings: SettingDefinitionSource[] = [
     descriptionKey: 'settings.appearance.fileSizeFormat.description',
     keywords: ['size', 'bytes', 'binary', 'decimal', 'kb', 'mb', 'kib', 'mib'],
     type: 'enum',
-    default: 'binary',
+    default: 'si',
     component: 'toggle-group',
     constraints: {
       options: [

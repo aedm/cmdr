@@ -1934,7 +1934,7 @@
     "appearance.appColor": "system",
     "appearance.dateColors": "none",
     "appearance.dateTimeFormat": "iso",
-    "appearance.fileSizeFormat": "binary",
+    "appearance.fileSizeFormat": "si",
     "appearance.language": "system",
     "appearance.showFunctionKeyBar": true,
     "appearance.sizeColors": "none",
