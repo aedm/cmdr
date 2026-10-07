@@ -380,8 +380,8 @@ export const appearanceSettings: SettingDefinitionSource[] = [
     component: 'toggle-group',
     constraints: {
       options: [
-        { value: 'binary', labelKey: 'settings.appearance.fileSizeFormat.opt.binary' },
         { value: 'si', labelKey: 'settings.appearance.fileSizeFormat.opt.si' },
+        { value: 'binary', labelKey: 'settings.appearance.fileSizeFormat.opt.binary' },
       ],
     },
   },
