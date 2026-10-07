@@ -15,6 +15,7 @@ How the GitHub workflows fit together, and the invariants that keep them honest.
 | `release.yml`           | `v*` tags                               | Only calls `release-pipeline.yml` (so attestations name the reusable workflow as signer).            |
 | `release-pipeline.yml`  | Called by `release.yml`                 | Builds, signs, and publishes the desktop app on macOS runners. `docs/guides/releasing.md`            |
 | `scorecard.yml`         | Push to main, weekly, rule edits        | OpenSSF Scorecard: publishes the score (README badge) and SARIF to code scanning. § below            |
+| `codeql.yml`            | Push to main, weekly, manual            | CodeQL (Actions, JS/TS, Rust); a high or critical finding fails it and blocks releases. § below      |
 
 `slow-checks.yml` also runs the fuzz smoke job (120 s per target, findings uploaded as `fuzz-artifacts`;
 `fuzz/CLAUDE.md`). `ci.yml`'s `Full run (run_all)` job runs only on a `run_all` dispatch: both release gates match it by
@@ -180,18 +181,48 @@ with the `scorecard` release binary:
 `GITHUB_AUTH_TOKEN=$(gh auth token) scorecard --repo=github.com/vdavid/cmdr --show-details` (the `gcr.io` image needs a
 billed GCP project).
 
-Where the score stands (scorecard v5.5.0 against the pushed `main`, 2026-10-06, 5.5 before the permissions fix):
+Where the score stands (scorecard v5.5.0 against the pushed `main`, 2026-10-07: 7.1 with Vulnerabilities erroring out;
+the CodeQL, digest-pin, and OSV-config changes of 2026-10-08 should lift it to ~7.5 once pushed):
 
 - **Held by `workflows-hardening`**: Pinned-Dependencies' GitHub Actions half, Token-Permissions (every workflow has a
   read-only top-level `permissions:`, jobs ask for write themselves), and part of Dangerous-Workflow (no
   `pull_request_target`).
-- **Structurally low for a solo, no-PR project**: Branch-Protection, Code-Review, CI-Tests (n/a), and SAST, which reads
-  check runs on merged PRs and, with none, scores only on whether a CodeQL workflow exists.
+- **SAST** reads check runs on merged PRs; with none, it scores on whether a CodeQL workflow exists, so `codeql.yml`
+  takes it to 10.
+- **Structurally low for a solo, no-PR project**: Branch-Protection, Code-Review, and CI-Tests (n/a).
 - **Structurally capped**: License (BSL isn't OSI, 9), CII-Best-Practices (needs an OSI license), Contributors.
-- **Vulnerabilities is a raw OSV count**, not cargo-deny's macOS-scoped view: it counts the Linux-only GTK crates, the
-  test-only `async-std`, the accepted `rsa` advisory (`deny.toml`), and every PyPI advisory against the
-  provenance-record pins in `apps/desktop/scripts/convert-clip-model/requirements.txt`, which nothing installs.
-- **Pinned-Dependencies' other half**: the test-fixture and infra Dockerfiles pin images by tag, not digest.
+- **Vulnerabilities is 10 minus a raw OSV count** over every lockfile, not cargo-deny's macOS-scoped view. Per-lockfile
+  `osv-scanner.toml` files (root, `convert-clip-model/`, `fuzz/`, `benchmarks/smb/`, `scripts/release-finish/`) ignore
+  what can't reach the shipped app, each with its reason: the frozen CLIP-conversion pins, Linux-only GTK/Wayland
+  crates, build- and test-only crates, and dev-only npm tooling with no fix. ❌ Never ignore one that ships: `rsa`
+  (accepted in `deny.toml`), `ttf-parser`, and five unmaintained `unic-*` crates stay counted, 7 in all (3/10). Preview
+  with `osv-scanner scan source -r .` (Scorecard runs osv-scanner's v2 library with the same per-directory configs).
+- **Pinned-Dependencies' container half**: every pulled image is digest-pinned, and Renovate's `docker images` group
+  keeps the digests fresh (`renovate.json`). The one gap is `FROM ${BASE_IMAGE}` in the E2E `Dockerfile`, our own
+  locally built base, which nothing can pin.
+
+## CodeQL
+
+`codeql.yml` runs CodeQL (`build-mode: none`, the default `code-scanning` suite) on GitHub Actions workflows, JS/TS, and
+Rust. Rust takes ~6x the other two together, so a push runs it only when Rust sources changed; the weekly run and a
+dispatch always run all three. The Rust extractor analyzes the shipped target (`aarch64-apple-darwin`) with `cfg(test)`
+off, through `CODEQL_EXTRACTOR_RUST_OPTION_*` env vars.
+
+- **What it scans**: `.github/codeql/codeql-config.yml`. Test code, fixtures, the E2E harness, and generated files stay
+  out (their hard-coded passwords and `http://` URLs are the point of a test), and `rust/cleartext-logging` is excluded:
+  it judges by identifier name and flagged 38 log lines, none logging a secret.
+- **Blocking**: `.github/codeql/filter-sarif.sh` drops the findings `accepted-findings.json` lists (rule + file, each
+  with a reason), uploads the rest, and fails the run on anything at security-severity 7.0+ or level `error`. A false
+  positive in shipped code goes in that list; ❌ don't dismiss it in GitHub's UI, which the run can't see.
+- **Release gate**: `scripts/release-codeql-gate.sh` needs a green CodeQL run on the released commit AND no open high or
+  critical CodeQL alert on `main` (which catches a Rust finding from an older run). `release-ci-gate.sh` calls it with
+  `--wait`; `release-pipeline.yml`'s `ci-gate` job calls it again, behind the same `RELEASE_SKIP_CI_GATE_TAG` bypass.
+- **Run it locally** (the action's own bundle, `codeql-bundle-v<cli>` from `github/codeql-action` releases, with the CLI
+  version in that action tag's `src/defaults.json`):
+  `codeql database create db --language=rust --build-mode=none --codescanning-config=.github/codeql/codeql-config.yml`
+  (with the two Rust env vars set), then `codeql database analyze db --format=sarif-latest --output=rust.sarif`, then
+  `filter-sarif.sh rust.sarif out.sarif`. Timing on an M-series Mac (CLI 2.27.1, 2026-10-08): Rust 8.5 min, JS/TS 1.3
+  min, Actions 10 s.
 
 ## Branch protection
 

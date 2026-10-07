@@ -187,6 +187,9 @@ tagged. Beyond the version/CHANGELOG checks and `oxfmt --ci`, four are worth kno
     parent when the tagged commit is the `chore(release): vX.Y.Z` commit `release.sh` makes after the local gate. It
     doesn't wait: the local gate already did. If it fails because the run was still going, wait for it, then "Re-run
     failed jobs".
+  - **CodeQL gates the release too**, in both places: a green `codeql.yml` run on the commit, and no open high or
+    critical CodeQL alert on `main` (`scripts/release-codeql-gate.sh`, `docs/tooling/ci.md` § CodeQL). The bypass below
+    skips it as well.
   - **Emergency bypass** for a hotfix while CI is red for reasons outside the repo: `RELEASE_SKIP_CI_GATE=1` locally,
     AND the repository variable `RELEASE_SKIP_CI_GATE_TAG` set to the exact tag (like `v0.51.1`) before pushing it. Same
     shape as `RELEASE_REPUBLISH_TAG`: it unblocks only the tag written in it. Clear it once the run finishes.

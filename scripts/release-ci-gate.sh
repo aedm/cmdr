@@ -1,5 +1,6 @@
 #!/bin/bash
-# Release gate: the commit being released must have a FULLY green CI run.
+# Release gate: the commit being released must have a FULLY green CI run, and CodeQL must be green
+# on it with no open high or critical alert (`release-codeql-gate.sh`, run last).
 #
 # "Fully" means a `workflow_dispatch` run with `run_all`, never a push run: CI on a push to main
 # skips every job whose paths didn't change, so a docs-only HEAD reads green while the commit
@@ -95,3 +96,7 @@ if [[ "$CONCLUSION" != "success" ]]; then
   exit 1
 fi
 echo "✅ Full CI run on ${SHA:0:9} is green: $URL"
+
+# CodeQL runs as its own workflow, so it has its own gate: a green run on this commit and no open
+# high or critical alert.
+"$(dirname "$0")/release-codeql-gate.sh" --wait "$SHA"

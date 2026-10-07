@@ -128,7 +128,8 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      actions: read # list CI runs
+      actions: read # list CI and CodeQL runs
+      security-events: read # list open CodeQL alerts
 
     steps:
       - name: Checkout code
@@ -177,6 +178,26 @@ jobs:
           echo "scripts/release.sh runs scripts/release-ci-gate.sh before tagging, which starts and waits for that run. If that run is still going, wait for it, then re-run the failed jobs."
           echo "Emergency bypass: set the repository variable RELEASE_SKIP_CI_GATE_TAG to exactly '$TAG', re-run, then clear it. Procedure: docs/guides/releasing.md § Release gates that abort before tagging."
           exit 1
+
+      # CodeQL is its own workflow: a green run on the commit, and no open high or critical alert
+      # (the Rust half can come from an older run). Same bypass as the step above.
+      - name: Require green CodeQL
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          SKIP: ${{ vars.RELEASE_SKIP_CI_GATE_TAG }}
+        run: |
+          set -euo pipefail
+          if [ "$SKIP" = "$TAG" ]; then
+            echo "::warning::RELEASE_SKIP_CI_GATE_TAG names $TAG, so this release ships WITHOUT the CodeQL gate."
+            exit 0
+          fi
+          CANDIDATES=$(git rev-parse HEAD)
+          if [ "$(git log -1 --format=%s HEAD)" = "chore(release): ${TAG}" ]; then
+            CANDIDATES="$CANDIDATES $(git rev-parse HEAD^)"
+          fi
+          # shellcheck disable=SC2086 # one argument per commit
+          ./scripts/release-codeql-gate.sh $CANDIDATES
 
   # `local` mode only: the draft release the three build jobs upload into. Created once, up front,
   # because three parallel `tauri-action` runs each looking for a draft by tag (drafts can't be

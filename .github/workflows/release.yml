@@ -27,6 +27,7 @@ jobs:
     permissions:
       contents: write # create the release, upload assets, push `latest.json` to main
       actions: read # `ci-gate` lists CI runs
+      security-events: read # `ci-gate` lists open CodeQL alerts
       id-token: write # `attest` requests the Sigstore signing certificate
       attestations: write # `attest` stores the attestations
     # The repo-level secrets (`DEPLOY_WEBHOOK_SECRET`, `HOMEBREW_TAP_TOKEN`, and the signing secrets
