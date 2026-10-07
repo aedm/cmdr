@@ -23,6 +23,7 @@ import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
 import { formatNumber } from '$lib/file-explorer/selection/selection-info-utils'
 import { getAppLogger } from '$lib/logging/logger'
+import { pluralize } from '$lib/utils/pluralize'
 import type { FilePaneAPI } from './types'
 
 const log = getAppLogger('fileExplorer')
@@ -68,8 +69,8 @@ export async function compareDirectories(deps: CompareDirectoriesDeps, mode: Com
     }
     await new Promise((resolve) => setTimeout(resolve, COMPARE_RETRY_DELAY_MS))
   }
-  log.info('compare directories gave up: the folders kept changing over {attempts} attempts', {
-    attempts: COMPARE_ATTEMPTS,
+  log.info('compare directories gave up: the folders kept changing over {attempts}', {
+    attempts: `${String(COMPARE_ATTEMPTS)} ${pluralize(COMPARE_ATTEMPTS, 'attempt')}`,
   })
   addToast(tString('fileExplorer.compareDirectories.keptChanging'), { level: 'warn' })
 }
