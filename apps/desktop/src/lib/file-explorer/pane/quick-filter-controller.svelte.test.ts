@@ -19,10 +19,12 @@ vi.mock('$lib/logging/logger', () => ({
 }))
 
 import { createQuickFilterController, type QuickFilterControllerDeps } from './quick-filter-controller.svelte'
+import { createListingUpdateQueue } from './listing-update-queue'
 
 function setup(over: Partial<QuickFilterControllerDeps> = {}) {
   const apply = vi.fn()
   const deps: QuickFilterControllerDeps = {
+    runListingUpdate: createListingUpdateQueue(),
     getListingId: () => 'listing-1',
     getLoading: () => false,
     getHasBackendListing: () => true,
@@ -131,6 +133,84 @@ describe('createQuickFilterController', () => {
     expect(ctl.pattern).toBe('ts')
     expect(apply).not.toHaveBeenCalled()
   })
+
+  it.each(['etst', 'zetst'])('preserves valid characters in a rejected batch %s', async (suffix) => {
+    const { ctl } = setup()
+    ctl.append('o')
+    await settle()
+    const answers: Array<() => void> = []
+    ipc.setListingNameFilter.mockImplementation(
+      (_id: string, next: string) =>
+        new Promise((resolve) =>
+          answers.push(() => {
+            resolve({
+              accepted: ['one.txt', 'onet.txt', 'onets.txt'].some((name) => name.includes(next)),
+              totalCount: 1,
+              newCursorIndex: 0,
+              newSelectedIndices: [],
+              sequence: 1,
+            })
+          }),
+        ),
+    )
+    ctl.append('n')
+    for (const char of suffix) ctl.append(char)
+    for (let i = 0; i < 10 && answers.length > 0; i++) {
+      answers.shift()?.()
+      await settle()
+    }
+    expect(ctl.pattern).toBe('onets')
+    expect(ipc.setListingNameFilter.mock.calls[2][1]).toBe('on' + suffix)
+  })
+
+  it.each(['clear', 'backspace', 'reset', 'navigate', 'append'] as const)(
+    'respects a newer %s during rejected-batch replay',
+    async (action) => {
+      let listingId = 'listing-1'
+      const { ctl, apply } = setup({ getListingId: () => listingId })
+      ctl.append('o')
+      await settle()
+      const answers: Array<() => void> = []
+      ipc.setListingNameFilter.mockImplementation(
+        (_id: string, next: string | null) =>
+          new Promise((resolve) =>
+            answers.push(() => {
+              resolve({
+                accepted: next === null || 'onets.txt'.includes(next),
+                totalCount: 1,
+                newCursorIndex: 0,
+                newSelectedIndices: [],
+                sequence: 1,
+              })
+            }),
+          ),
+      )
+      ctl.append('n')
+      for (const char of 'etst') ctl.append(char)
+      answers.shift()?.() // accept "on"
+      await settle()
+      answers.shift()?.() // refuse the batch, begin replaying "one"
+      await settle()
+      expect(ipc.setListingNameFilter.mock.calls.at(-1)?.[1]).toBe('one')
+      apply.mockClear()
+      if (action === 'append') ctl.append('.')
+      else if (action === 'navigate') {
+        listingId = 'listing-2'
+        ctl.reset()
+        ctl.append('t')
+      } else ctl[action]()
+      answers.shift()?.() // the stale replay answer
+      await settle()
+      if (action === 'reset' || action === 'navigate') expect(apply).not.toHaveBeenCalled()
+      for (let i = 0; i < 10 && answers.length > 0; i++) {
+        answers.shift()?.()
+        await settle()
+      }
+      const expected = { clear: '', backspace: 'onets', reset: '', navigate: 't', append: 'onets.' }
+      expect(ctl.pattern).toBe(expected[action])
+      if (action === 'navigate') expect(ipc.setListingNameFilter.mock.calls.at(-1)?.[0]).toBe('listing-2')
+    },
+  )
 
   it('never refuses a shrinking pattern', async () => {
     const { ctl } = setup()

@@ -252,12 +252,17 @@ through, so you navigate the filtered list. The filtering is the backend's
 rows, selection, diffs) is the filtered row space.
 
 - **One call in flight, latest pattern wins**: keystrokes that land mid-call only move `pattern`, and the loop sends
-  whatever stands when the call returns, so fast typing never loses a character. A growing pattern nothing matches is
-  refused and snaps back, but only while the pattern still extends the refused one: an Esc or Backspace typed meanwhile
-  stands.
+  whatever stands when the call returns. Successful bursts stay batched; refused growth is replayed one character at a
+  time so only unmatched characters disappear, not the valid prefix. Esc, Backspace, and reset cancel replay; appended
+  characters follow it. A navigation invalidates old responses even if its listing ID is reused.
 - **The answer starts a diff sequence** (`QuickFilterApplied.sequence`); `FilePane` takes it as `lastSequence`, so a
   late diff numbered before the switch, which speaks the old rows, is skipped (the backend half: § The quick filter and
   in-flight diffs, in the listing `DETAILS.md`).
+- **Filter requests and watcher reconciliation share `listing-update-queue.ts`**, one queue per pane. A filter owns the
+  row indices from its selection snapshot through applying its response. Diffs arriving meanwhile wait, then check their
+  sequence against the applied filter barrier; a diff already running finishes before the filter starts. Async diff
+  reads recheck listing identity, and a throttled count carries its listing and sequence so it cannot restore an earlier
+  row space. `listing-filter-sync.svelte.test.ts` pins both delivery orders with deferred responses.
 - **The pattern belongs to its listing and its mode**: a new listing starts unfiltered (`reset()`, no IPC), and leaving
   Filter mode clears it, since in Jump mode nothing could.
 - **Seen from outside**: the "Filter: …" badge (`TypeToJumpIndicator kind="filter"`) carries a × that clears by mouse

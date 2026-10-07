@@ -168,13 +168,39 @@ fn a_cursor_on_a_row_the_filter_leaves_out_has_nowhere_to_go() {
 }
 
 #[test]
-fn a_filter_change_drops_what_was_queued_in_the_old_row_space() {
+fn a_filter_change_discards_old_rows_at_the_real_flush_boundary() {
     let listing = pane("name-filter-drop");
     notify_added(listing.id(), entry("echo.txt"));
     assert_eq!(pending_changes_for_test(listing.id()).len(), 1);
 
     set_listing_name_filter(listing.id(), Some("pdf"), false, None, &[], false).expect("listing is cached");
 
+    assert!(super::diff_emitter::prepare_flush(listing.id()).is_none());
+}
+
+#[test]
+fn a_new_epoch_enqueue_between_filter_unlock_and_return_survives_flush() {
+    let listing = pane("name-filter-new-epoch-pending-race");
+    notify_added(listing.id(), entry("echo.txt"));
+
+    let result =
+        super::name_filter::set_listing_name_filter_inner(listing.id(), Some("pdf"), false, None, &[], false, || {
+            // This callback runs after the real cache write lock is released,
+            // exactly where a watcher can enqueue before the setter returns.
+            notify_added(listing.id(), entry("bravo.pdf"));
+            assert_eq!(pending_changes_for_test(listing.id()).len(), 2);
+        })
+        .expect("listing is cached");
+
+    let diff = super::diff_emitter::prepare_flush(listing.id())
+        .expect("the new-epoch watcher change must survive the filter setter");
+    assert_eq!(diff.sequence, result.sequence.unwrap() + 1);
+    assert_eq!(diff.changes.len(), 1, "old-epoch rows are discarded at flush");
+    let change = &diff.changes[0];
+    assert_eq!(change.change_type, DiffChangeType::Add);
+    assert_eq!(change.entry.name, "bravo.pdf");
+    assert_eq!(change.index, 1);
+    assert_eq!(change.filter_epoch, Some(1));
     assert!(pending_changes_for_test(listing.id()).is_empty());
 }
 

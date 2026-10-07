@@ -128,8 +128,8 @@ pub struct NameFilterResult {
 /// the same lock, is what makes the refusal exact; the frontend can't know the
 /// count before asking.
 ///
-/// Like a hidden-files toggle, a change drops what's queued for the listing: it
-/// was numbered in the old row space, and the pane re-reads its rows after this.
+/// Pending changes stay queued: the flush rejects old filter epochs under the
+/// cache read lock without discarding watcher changes from the new row space.
 pub fn set_listing_name_filter(
     listing_id: &str,
     pattern: Option<&str>,
@@ -138,7 +138,28 @@ pub fn set_listing_name_filter(
     selected_indices: &[usize],
     refuse_empty: bool,
 ) -> Result<NameFilterResult, ListingLookupError> {
-    let (changed, result) = {
+    set_listing_name_filter_inner(
+        listing_id,
+        pattern,
+        include_hidden,
+        cursor_filename,
+        selected_indices,
+        refuse_empty,
+        #[cfg(test)]
+        || {},
+    )
+}
+
+pub(super) fn set_listing_name_filter_inner(
+    listing_id: &str,
+    pattern: Option<&str>,
+    include_hidden: bool,
+    cursor_filename: Option<&str>,
+    selected_indices: &[usize],
+    refuse_empty: bool,
+    #[cfg(test)] after_unlock: impl FnOnce(),
+) -> Result<NameFilterResult, ListingLookupError> {
+    let result = {
         let mut cache = LISTING_CACHE.write_ignore_poison();
         let listing = cache
             .get_mut(listing_id)
@@ -174,7 +195,7 @@ pub fn set_listing_name_filter(
             .enumerate()
             .map(|(row, entry)| (entry.name.as_str(), row))
             .collect();
-        let result = NameFilterResult {
+        NameFilterResult {
             accepted: !refused,
             total_count: rows.len(),
             new_cursor_index: cursor_filename.and_then(|name| names_to_rows.get(name).copied()),
@@ -183,11 +204,9 @@ pub fn set_listing_name_filter(
                 .filter_map(|name| names_to_rows.get(name.as_str()).copied())
                 .collect(),
             sequence,
-        };
-        (changed, result)
+        }
     };
-    if changed {
-        crate::file_system::listing::diff_emitter::drop_pending(listing_id);
-    }
+    #[cfg(test)]
+    after_unlock();
     Ok(result)
 }

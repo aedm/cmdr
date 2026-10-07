@@ -21,6 +21,7 @@
     import { createTypeToJumpController } from './type-to-jump-controller.svelte'
     import TypeToJumpIndicator from './TypeToJumpIndicator.svelte'
     import { createQuickFilterController } from './quick-filter-controller.svelte'
+    import { createListingUpdateQueue } from './listing-update-queue'
     import { maybeShowQuickFilterIntro } from './quick-filter-intro'
     import type { ViewMode } from '$lib/app-status-store'
     import type { CommandId } from '$lib/commands'
@@ -285,13 +286,7 @@
         getOperationActive: () => operationSelectedNames !== null || renameFlow.pendingCursorName !== null,
         getIncludeHidden: () => includeHidden, onReconfigure: () => { renameFlow.pendingCursorName = null } })
 
-    // Type-to-jump: per-pane buffer + indicator + the IPC fuzzy-match runner and
-    // the MCP mirror of the last matched name, all in a `*.svelte.ts` controller.
-    // The reset delay is read live from Settings on each keystroke (reactive
-    // getter), so moving the slider takes effect on the next keystroke. FilePane
-    // reads `jump.buffer` / `.indicatorVisible` / `.indicatorStale` /
-    // `.lastMatchedName` and keeps one-line handleJumpKeystroke / isJumpActive /
-    // clearJumpState delegates.
+    // Read the reset delay live so moving the Settings slider affects the next keystroke.
     const jump = createTypeToJumpController({
         getResetMs: () => getTypeToJumpResetDelay(),
         getListingId: () => listingId,
@@ -306,7 +301,9 @@
     // Quick filter (the `filter` typing mode): the pattern + one-at-a-time IPC
     // runner, in `quick-filter-controller.svelte.ts`. The backend owns the
     // filtering; this applies its answer (count, cursor, selection) here.
+    const runListingUpdate = createListingUpdateQueue()
     const quickFilter = createQuickFilterController({
+        runListingUpdate,
         getListingId: () => listingId,
         getLoading: () => loading,
         getHasBackendListing: () => caps.hasBackendListing,

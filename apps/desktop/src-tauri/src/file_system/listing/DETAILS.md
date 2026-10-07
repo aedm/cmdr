@@ -277,16 +277,22 @@ wrong rows. Three pieces close that:
   batch through `caching::sequence_changes`, which under ONE read lock drops every change from an older epoch and
   takes the next sequence for the rest. Dropping is right: those rows were patched before the switch, so the switch's
   full refetch already shows them.
+  The setter leaves the pending buffer intact: clearing it after releasing the cache lock can erase a watcher
+  update from the new epoch. `diff_emitter::prepare_flush` drains the buffer before taking the cache read lock,
+  so pending and cache locks are not held together. Mixed-epoch batches keep only current changes.
 - **A batch re-read that crossed a switch is diffed again** (`operations::replace_listing_entries`): it diffed before
   writing, so under the write lock it compares the epoch it read at, and on a mismatch recomputes the diff against the
   filter as it stands. Dropping it instead would lose the update: its write lands AFTER the switch's refetch.
 - **The switch answers the sequence its rows start at**, and the pane takes it as its last applied one, so a diff
   numbered before the switch that arrives late is skipped (the refetch holds it).
 
-Residual: a diff read in the NEW row space and delivered before the pane has applied the switch's answer lands on the
-old rows; the answer's refetch then repaints, but the cursor and selection it set don't include that diff's shift.
+The frontend serializes filter requests and diff reconciliation so new-row diffs wait for the switch's answer;
+see `apps/desktop/src/lib/file-explorer/pane/DETAILS.md` § Quick filter.
 Pinned by `name_filter_test.rs` (`a_change_read_in_the_old_row_space_is_never_sent_after_the_filter_changed`, and the
-re-read and sequence tests beside it).
+re-read and sequence tests beside it). `a_new_epoch_enqueue_between_filter_unlock_and_return_survives_flush`
+injects a real watcher mutation after the setter unlocks, then uses the production pending-buffer/sequence boundary
+to assert that only the new-epoch change survives, numbered after the switch. The fixture holds the flush timer;
+no sleeps or scheduler timing are needed.
 
 ## Diffs speak the pane's rows
 

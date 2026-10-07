@@ -17,19 +17,17 @@
  * Each IPC call swaps the listing's row space, so two in flight could land in
  * either order and leave the pane drawing one pattern's rows under another's
  * indicator. So calls run one at a time, and each sends the pattern as it stands
- * when it STARTS: a burst of keystrokes costs at most one extra round trip, and
- * the last call always carries the last pattern.
+ * when it STARTS: a successful burst costs at most one extra round trip.
  *
  * ## Typing stops at the last match
  *
  * A pattern that GROWS is sent with `refuseEmpty`: when it would match nothing,
  * the backend keeps the old filter and says so (`accepted: false`), and the
- * pattern here snaps back to it. So the list narrows down to its last match and
- * a keystroke past that is dropped (Total Commander's rule). A shrinking pattern
- * (Backspace) is never refused: it can't match less than the longer one did.
- * The snap-back drops only what extends the refused pattern (a longer pattern
- * can't match more, since every match is "contains"): when the user cleared or
- * backspaced while the refusal was in flight, their newer pattern stands.
+ * controller replays refused growth one character at a time, dropping only
+ * characters that match nothing (Total Commander's rule). Successful bursts
+ * stay batched. A shrinking pattern (Backspace) is never refused: it can't match
+ * less than the longer one did. Clear, Backspace, and reset cancel replay so
+ * their newer pattern stands; newly appended characters follow the replay.
  *
  * ## The new row space starts at a diff sequence
  *
@@ -45,6 +43,7 @@
 
 import { setListingNameFilter } from '$lib/tauri-commands'
 import { getAppLogger } from '$lib/logging/logger'
+import type { ListingUpdateQueue } from './listing-update-queue'
 
 const log = getAppLogger('fileExplorer')
 
@@ -58,6 +57,7 @@ export interface QuickFilterApplied {
 }
 
 export interface QuickFilterControllerDeps {
+  runListingUpdate: ListingUpdateQueue
   getListingId: () => string
   getLoading: () => boolean
   /** Whether the pane's volume kind has a real backend listing to filter. */
@@ -95,49 +95,73 @@ export function createQuickFilterController(deps: QuickFilterControllerDeps): Qu
   /** The pattern the backend's listing holds, per our last answered call. */
   let applied = ''
   let inFlight = false
+  // Destructive edits invalidate a replay; appending can keep its untested suffix.
+  let edit = 0
+  let generation = 0
 
   function canFilter(): boolean {
     return deps.getListingId() !== '' && !deps.getLoading() && deps.getHasBackendListing()
   }
 
-  async function sendOnce(listingId: string, sent: string): Promise<void> {
-    const hasParent = deps.getHasParent()
-    const result = await setListingNameFilter(
-      listingId,
-      sent === '' ? null : sent,
-      deps.getIncludeHidden(),
-      deps.getCursorFilename(),
-      toBackend(deps.getSelectedIndices(), hasParent),
-      sent.length > applied.length,
-    )
-    // The pane moved on while we waited: this answer describes rows it no longer shows.
-    if (deps.getListingId() !== listingId) return
-    if (!result.accepted) {
-      // Nothing matches: drop the keystroke(s), keep the rows as they are. Unless the
-      // user moved off the refused pattern meanwhile (Esc, Backspace): that one stands.
+  async function sendOnce(listingId: string, sent: string): Promise<boolean | undefined> {
+    const startedGeneration = generation
+    return deps.runListingUpdate(async () => {
+      if (deps.getListingId() !== listingId || generation !== startedGeneration) return
+      const hasParent = deps.getHasParent()
+      const result = await setListingNameFilter(
+        listingId,
+        sent === '' ? null : sent,
+        deps.getIncludeHidden(),
+        deps.getCursorFilename(),
+        toBackend(deps.getSelectedIndices(), hasParent),
+        sent.length > applied.length,
+      )
+      // The pane moved on while we waited: this answer describes rows it no longer shows.
+      if (deps.getListingId() !== listingId || generation !== startedGeneration) return
+      if (!result.accepted) return false
+      applied = sent
+      const offset = hasParent ? 1 : 0
+      const firstRow = result.totalCount > 0 ? offset : 0
+      deps.apply({
+        totalCount: result.totalCount,
+        cursorIndex: result.newCursorIndex === null ? firstRow : result.newCursorIndex + offset,
+        selectedIndices: result.newSelectedIndices.map((i) => i + offset),
+        sequence: result.sequence,
+      })
+      return true
+    })
+  }
+
+  async function sendPattern(listingId: string): Promise<void> {
+    const sent = pattern
+    const base = applied
+    const startedEdit = edit
+    const accepted = await sendOnce(listingId, sent)
+    if (accepted !== false || edit !== startedEdit) return
+    if (!sent.startsWith(base)) {
       if (pattern.startsWith(sent)) pattern = applied
       return
     }
-    applied = sent
-    const offset = hasParent ? 1 : 0
-    const firstRow = result.totalCount > 0 ? offset : 0
-    deps.apply({
-      totalCount: result.totalCount,
-      cursorIndex: result.newCursorIndex === null ? firstRow : result.newCursorIndex + offset,
-      selectedIndices: result.newSelectedIndices.map((i) => i + offset),
-      sequence: result.sequence,
-    })
+    const suffix = Array.from(sent.slice(base.length))
+    for (const char of suffix) {
+      const candidate = applied + char
+      // A single-character refusal already tells us everything; don't retry it.
+      const matches = suffix.length === 1 ? false : await sendOnce(listingId, candidate)
+      if (matches === undefined || edit !== startedEdit) return
+      if (!matches) pattern = applied + pattern.slice(candidate.length)
+    }
   }
 
   async function sync(): Promise<void> {
     if (inFlight) return
     inFlight = true
+    const startedGeneration = generation
     try {
       // Re-check after each call: keystrokes that landed meanwhile only moved `pattern`.
       while (pattern !== applied) {
         const listingId = deps.getListingId()
         if (listingId === '') return
-        await sendOnce(listingId, pattern)
+        await sendPattern(listingId)
         if (deps.getListingId() !== listingId) return
       }
     } catch (e) {
@@ -146,6 +170,8 @@ export function createQuickFilterController(deps: QuickFilterControllerDeps): Qu
       log.warn("quick filter couldn't apply: {reason}", { reason: (e as { type?: string }).type ?? String(e) })
     } finally {
       inFlight = false
+      // New-listing typing may have queued behind a departed listing's call.
+      if (generation !== startedGeneration && pattern !== applied) void sync()
     }
   }
 
@@ -165,13 +191,17 @@ export function createQuickFilterController(deps: QuickFilterControllerDeps): Qu
     },
     backspace: () => {
       if (pattern === '') return
+      edit++
       setPattern(Array.from(pattern).slice(0, -1).join(''))
     },
     clear: () => {
       if (pattern === '') return
+      edit++
       setPattern('')
     },
     reset: () => {
+      edit++
+      generation++
       pattern = ''
       applied = ''
     },
