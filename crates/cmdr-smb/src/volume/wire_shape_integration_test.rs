@@ -28,6 +28,17 @@ use super::test_support::*;
 use super::*;
 use cmdr_fs::volume::{StreamLength, WriteMode};
 
+/// What the date's stat adds to every foreground read: ONE compound frame of
+/// four ops (CREATE + QUERY_INFO basic + QUERY_INFO standard + CLOSE), sent
+/// alongside the read so it costs no latency. `streams::last_write_time` says
+/// why the read needs it (smb2 doesn't hand out the CREATE response's date).
+const DATE_STAT: (u64, u64) = (1, 4);
+
+/// Adds [`DATE_STAT`] to a read's own `(compounds, requests)` shape.
+const fn with_date_stat(read: (u64, u64)) -> (u64, u64) {
+    (read.0 + DATE_STAT.0, read.1 + DATE_STAT.1)
+}
+
 /// `(requests_sent, compound_requests_sent)` on the volume's main connection.
 async fn request_counts(vol: &SmbVolume) -> (u64, u64) {
     let d = vol.diagnostics().await.expect("a connected volume has diagnostics");
@@ -78,11 +89,13 @@ async fn smb_integration_a_hinted_read_leaves_as_one_compound_frame() {
     // the mistake this comment exists to head off.
     // Asserting the PAIR is what gives the cell its teeth: a 3-RTT streaming
     // open reads as `(0, 3)`, and a loose round trip alongside the compound as
-    // `(1, 4)`. Same shape as the write cell below.
+    // `(1, 4)`. Same shape as the write cell below. The date's stat rides on
+    // top as its own frame (`DATE_STAT`), so a streaming open plus it reads
+    // `(1, 7)` and still can't pass for this.
     assert_eq!(
         (compounds_after - compounds_before, requests_after - requests_before),
-        (1, 3),
-        "a hinted small read must leave as ONE compound frame carrying CREATE+READ+CLOSE; a 3-RTT streaming open is what this prevents"
+        with_date_stat((1, 3)),
+        "a hinted small read must leave as ONE compound frame carrying CREATE+READ+CLOSE (plus the date's stat); a 3-RTT streaming open is what this prevents"
     );
 
     ensure_clean(&vol, &dir).await;
@@ -96,7 +109,7 @@ async fn smb_integration_a_hinted_read_leaves_as_one_compound_frame() {
 /// connection until the whole body arrived (cmdr-reports#15: 23 s for 8 MiB on
 /// a 375 KB/s link).
 ///
-/// The streaming side reads `(0, 4)`: CREATE, two READs, CLOSE as loose
+/// The streaming side reads `(0, 4)` before the date's stat: CREATE, two READs, CLOSE as loose
 /// requests, and the body reaches the consumer in more than one chunk, which is
 /// what lets the copy's progress and liveness watchdog see it move.
 #[tokio::test]
@@ -115,8 +128,18 @@ async fn smb_integration_the_compound_read_stops_at_one_download_chunk() {
         "a fresh connection has measured nothing, so its limit is one chunk"
     );
     for (size, expected_frames, expected_chunks, what) in [
-        (chunk, (1, 3), 1, "a file of exactly one chunk takes the compound path"),
-        (chunk + 1, (0, 4), 2, "a file one byte over a chunk streams"),
+        (
+            chunk,
+            with_date_stat((1, 3)),
+            1,
+            "a file of exactly one chunk takes the compound path",
+        ),
+        (
+            chunk + 1,
+            with_date_stat((0, 4)),
+            2,
+            "a file one byte over a chunk streams",
+        ),
     ] {
         let data: Vec<u8> = (0..=255u8).cycle().take(size).collect();
         let path = format!("{}/boundary-{size}.bin", dir);
@@ -193,8 +216,8 @@ async fn smb_integration_a_measured_fast_link_compounds_a_multi_chunk_file() {
     assert_eq!(got, data, "the compound path must serve the file byte for byte");
     assert_eq!(
         (compounds_after - compounds_before, requests_after - requests_before),
-        (1, 3),
-        "a 2 MiB file under a measured fast link's limit must leave as ONE compound frame"
+        with_date_stat((1, 3)),
+        "a 2 MiB file under a measured fast link's limit must leave as ONE compound frame (plus the date's stat)"
     );
 
     ensure_clean(&vol, &dir).await;
@@ -286,7 +309,7 @@ async fn smb_integration_a_single_shot_write_leaves_as_one_compound_frame() {
             Path::new(&smb_path),
             WriteMode::CreateOrReplace,
             StreamLength::Known(size),
-            Box::new(InlineReadStream::new(data.clone())),
+            Box::new(InlineReadStream::new(data.clone(), None)),
             &|_| std::ops::ControlFlow::Continue(()),
         )
         .await
@@ -398,7 +421,7 @@ async fn smb_integration_a_staged_write_over_the_quick_write_limit_streams() {
             Path::new(&temp),
             WriteMode::CreateOrReplace,
             StreamLength::Known(size),
-            Box::new(InlineReadStream::new(data.clone())),
+            Box::new(InlineReadStream::new(data.clone(), None)),
             &|_| std::ops::ControlFlow::Continue(()),
         )
         .await
@@ -440,7 +463,7 @@ async fn smb_integration_a_warm_uplink_lifts_the_promise_and_the_promised_write_
         Path::new(&temp),
         WriteMode::CreateOrReplace,
         StreamLength::Known(warm.len() as u64),
-        Box::new(InlineReadStream::new(warm)),
+        Box::new(InlineReadStream::new(warm, None)),
         &|_| std::ops::ControlFlow::Continue(()),
     )
     .await
@@ -460,7 +483,7 @@ async fn smb_integration_a_warm_uplink_lifts_the_promise_and_the_promised_write_
             Path::new(&path),
             WriteMode::CreateOrReplace,
             StreamLength::Known(size),
-            Box::new(InlineReadStream::new(data.clone())),
+            Box::new(InlineReadStream::new(data.clone(), None)),
             &|_| std::ops::ControlFlow::Continue(()),
         )
         .await
@@ -637,7 +660,7 @@ async fn smb_integration_a_write_the_credit_window_cant_fund_is_staged_and_strea
             Path::new(&temp),
             WriteMode::CreateOrReplace,
             StreamLength::Known(size),
-            Box::new(InlineReadStream::new(data.clone())),
+            Box::new(InlineReadStream::new(data.clone(), None)),
             &|_| std::ops::ControlFlow::Continue(()),
         )
         .await
@@ -677,7 +700,7 @@ async fn smb_integration_a_refused_frame_to_a_final_name_writes_nothing_there() 
                 Path::new(&final_name),
                 mode,
                 StreamLength::Known(data.len() as u64),
-                Box::new(InlineReadStream::new(data)),
+                Box::new(InlineReadStream::new(data, None)),
                 &|_| std::ops::ControlFlow::Continue(()),
             )
             .await;
@@ -731,7 +754,7 @@ async fn smb_integration_a_refused_frame_to_a_taken_final_name_leaves_the_file_t
                 Path::new(&final_name),
                 mode,
                 StreamLength::Known(data.len() as u64),
-                Box::new(InlineReadStream::new(data)),
+                Box::new(InlineReadStream::new(data, None)),
                 &|_| std::ops::ControlFlow::Continue(()),
             )
             .await;

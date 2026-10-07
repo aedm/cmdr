@@ -542,7 +542,10 @@ impl SmbVolume {
                     // serves the file as it is now.
                     match tree.read_file_compound_sized(&mut conn, &smb_path, size).await {
                         Ok(data) if data.len() as u64 == size => {
-                            return Ok(Box::new(InlineReadStream::new(data)) as Box<dyn VolumeReadStream>);
+                            // No date: enrichment reads the bytes and never copies
+                            // them, so a stat per prefetch would double the
+                            // background load for an answer nobody asks.
+                            return Ok(Box::new(InlineReadStream::new(data, None)) as Box<dyn VolumeReadStream>);
                         }
                         // Short of the hint: the file SHRANK since the scan.
                         Ok(_) => break, // ⇒ streaming serves today's bytes

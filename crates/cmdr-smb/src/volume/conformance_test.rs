@@ -220,6 +220,10 @@ async fn smb_integration_export_honors_the_shared_handshake_contract() {
 
 /// The shared date assertions, against a real SMB server: a write sets the
 /// source's `LastWriteTime`, and a read reports the server's.
+///
+/// ❗ Red until smb2 can set a file's times: its `Tree` has no SET_INFO
+/// `FileBasicInformation` call, so `write_from_stream` can't keep the date yet.
+/// The read half is green on its own in the cell below.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
 async fn smb_integration_a_copy_keeps_the_source_date_per_the_shared_contract() {
@@ -238,6 +242,85 @@ async fn smb_integration_a_copy_keeps_the_source_date_per_the_shared_contract() 
     cmdr_fs::volume::conformance::assert_read_stream_reports_the_listed_date(smb_vol.as_ref(), Path::new(&dated)).await;
 
     ensure_clean(&smb_vol, &base).await;
+}
+
+/// The read half of the shared date contract on its own, on both read paths:
+/// the streamed download and the hinted one-frame compound read.
+///
+/// The file is aged inside the container (`touch -d`), apart from the write
+/// half above, so a copy OFF a share keeps its date even while a copy onto one
+/// can't set it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_a_read_stream_reports_the_listed_date_on_both_read_paths() {
+    let smb_vol = Arc::new(make_docker_volume().await);
+    let base = test_dir_name();
+    ensure_clean(&smb_vol, &base).await;
+
+    smb_vol.create_directory(Path::new(&base)).await.unwrap();
+    let aged = format!("{base}/aged.txt");
+    smb_vol
+        .create_file(Path::new(&aged), b"bytes from a file last changed in 2021\n")
+        .await
+        .unwrap();
+    age_in_the_container(&aged, cmdr_fs::volume::conformance::SOURCE_DATE_SECS);
+
+    cmdr_fs::volume::conformance::assert_read_stream_reports_the_listed_date(smb_vol.as_ref(), Path::new(&aged)).await;
+
+    let size = smb_vol.get_metadata(Path::new(&aged)).await.unwrap().size;
+    let hinted = smb_vol
+        .open_read_stream_with_hint(Path::new(&aged), size)
+        .await
+        .unwrap();
+    let reported = hinted
+        .modified_at()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs());
+    assert_eq!(
+        reported,
+        Some(cmdr_fs::volume::conformance::SOURCE_DATE_SECS),
+        "the one-frame compound read of {aged} must report the date the share lists"
+    );
+
+    ensure_clean(&smb_vol, &base).await;
+}
+
+/// Sets `share_relative`'s modification date to `unix_secs` from inside the
+/// guest fixture container, the one way to age a file on a share that doesn't
+/// depend on this backend setting dates.
+fn age_in_the_container(share_relative: &str, unix_secs: u64) {
+    let port = docker_guest_params().port;
+    let container = docker(&["ps", "--filter", &format!("publish={port}"), "--format", "{{.Names}}"]);
+    let container = container.lines().next().unwrap_or_default();
+    assert!(
+        !container.is_empty(),
+        "no container publishes the guest SMB port {port}"
+    );
+    docker(&[
+        "exec",
+        container,
+        "touch",
+        "-d",
+        &format!("@{unix_secs}"),
+        &format!("/shares/public/{share_relative}"),
+    ]);
+}
+
+/// One `docker` invocation, or a panic naming what could not be run.
+fn docker(args: &[&str]) -> String {
+    let out = std::process::Command::new("docker")
+        .args(args)
+        .output()
+        .unwrap_or_else(|e| {
+            panic!("this cell ages a file inside the fixture container and needs the `docker` CLI: {e}")
+        });
+    assert!(
+        out.status.success(),
+        "`docker {}` did not run: {}",
+        args.join(" "),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
 /// The shared `NotFound`-payload assertion, against a real SMB server: what the

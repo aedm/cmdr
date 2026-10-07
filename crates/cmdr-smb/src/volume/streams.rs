@@ -156,15 +156,39 @@ pub(super) struct InlineReadStream {
     data: Option<Vec<u8>>,
     total_size: u64,
     bytes_read: u64,
+    modified_at: Option<std::time::SystemTime>,
 }
 
 impl InlineReadStream {
-    pub(super) fn new(data: Vec<u8>) -> Self {
+    pub(super) fn new(data: Vec<u8>, modified_at: Option<std::time::SystemTime>) -> Self {
         let total_size = data.len() as u64;
         Self {
             data: Some(data),
             total_size,
             bytes_read: 0,
+            modified_at,
+        }
+    }
+}
+
+/// When `smb_path` was last written, per the server, or `None` when the stat
+/// doesn't answer: the read goes on without a date, since the bytes are what
+/// matter and a copy then keeps the destination's own date.
+///
+/// One extra compound frame per read, because smb2's `FileDownload` and
+/// `read_file_compound_sized` don't hand out the `LastWriteTime` their CREATE
+/// response carries. Callers run it alongside the read on a sibling clone of the
+/// read's `Connection`, so it adds no round trip of latency.
+pub(super) async fn last_write_time(
+    tree: &smb2::client::Tree,
+    conn: &mut smb2::client::Connection,
+    smb_path: &str,
+) -> Option<std::time::SystemTime> {
+    match tree.stat(conn, smb_path).await {
+        Ok(info) => info.modified.to_system_time(),
+        Err(e) => {
+            debug!("SmbVolume: no date for path={smb_path:?}, the read goes on without one: {e}");
+            None
         }
     }
 }
@@ -187,8 +211,7 @@ impl VolumeReadStream for InlineReadStream {
     }
 
     fn modified_at(&self) -> Option<std::time::SystemTime> {
-        // TODO(mtime): report the date the compound fast path's CREATE response already carries.
-        None
+        self.modified_at
     }
 }
 
@@ -208,6 +231,9 @@ impl SmbVolume {
     /// no path has to buffer whole files in memory.
     pub(super) async fn open_smb_download_stream(&self, smb_path: &str) -> Result<ChannelReadStream, VolumeError> {
         let (tree, conn) = self.clone_session().await?;
+        // The date's stat runs on a sibling clone while the producer opens the
+        // download, so it costs no round trip of latency (`last_write_time`).
+        let (stat_tree, mut stat_conn) = (Arc::clone(&tree), conn.clone());
 
         let (size_tx, size_rx) = tokio::sync::oneshot::channel::<Result<u64, VolumeError>>();
         let (chunk_tx, chunk_rx) =
@@ -313,7 +339,8 @@ impl SmbVolume {
             // `Arc<Tree>` unwind when every concurrent task finishes.
         });
 
-        let total_size = match size_rx.await {
+        let (size_result, modified_at) = tokio::join!(size_rx, last_write_time(&stat_tree, &mut stat_conn, smb_path));
+        let total_size = match size_result {
             Ok(Ok(size)) => size,
             Ok(Err(e)) => return Err(e),
             Err(_) => {
@@ -324,12 +351,7 @@ impl SmbVolume {
             }
         };
 
-        // TODO(mtime): chain `.with_modified_at(..)` with the date the open already learned.
-        Ok(ChannelReadStream::new(
-            chunk_rx,
-            cancel_tx,
-            StreamLength::Known(total_size),
-        ))
+        Ok(ChannelReadStream::new(chunk_rx, cancel_tx, StreamLength::Known(total_size)).with_modified_at(modified_at))
     }
 
     /// The negotiated `max_write_size` for the live session, or `None` when
@@ -654,6 +676,11 @@ impl SmbVolume {
 
                 confirmed
             };
+
+            // TODO(mtime): set `stream.modified_at()` as the file's LastWriteTime
+            // here (SET_INFO `FileBasicInformation`, every other time 0 = leave
+            // it), best effort, before the transfer's rename. Blocked on smb2:
+            // its `Tree` has no call that sends it.
 
             // Patch the listing cache from local knowledge so the destination
             // pane sees the new file without waiting for a CHANGE_NOTIFY
