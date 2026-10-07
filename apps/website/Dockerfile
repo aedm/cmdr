@@ -1,5 +1,5 @@
 # Build stage
-FROM node:24-alpine AS builder
+FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS builder
 
 WORKDIR /app
 
@@ -27,7 +27,7 @@ WORKDIR /app/apps/website
 RUN pnpm run build
 
 # Production stage - serve with nginx
-FROM nginx:alpine AS production
+FROM nginx:alpine@sha256:df221db836e1754089190208cee7eeda94f233197056426eda74a43ab1abeac2 AS production
 
 # Copy built static files
 COPY --from=builder /app/apps/website/dist /usr/share/nginx/html

@@ -493,7 +493,9 @@ every index gets rebuilt, which is another reason to prefer it over `pg_upgrade`
 
 ### Updates
 
-Update the `LISTMONK_VERSION` ARG in the `Dockerfile`, then:
+Update the `LISTMONK_VERSION` ARG in the `Dockerfile`, and the `@sha256:` digest on its `FROM listmonk/listmonk` line to
+match (`docker buildx imagetools inspect listmonk/listmonk:v<version>` prints it; Renovate can't, since the tag is an
+ARG). Then:
 
 ```bash
 docker compose up -d --build
