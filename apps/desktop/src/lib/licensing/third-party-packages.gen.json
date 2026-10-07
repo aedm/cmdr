@@ -2219,7 +2219,7 @@
     },
     {
       "name": "mtp-rs",
-      "version": "0.32.0",
+      "version": "0.33.0",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/vdavid/mtp-rs"
     },
@@ -3365,7 +3365,7 @@
     },
     {
       "name": "smb2",
-      "version": "0.27.1",
+      "version": "0.27.2",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/vdavid/smb2"
     },
