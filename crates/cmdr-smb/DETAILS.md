@@ -561,13 +561,10 @@ The contract: `apps/desktop/src-tauri/src/file_system/write_operations/transfer/
 source's date".
 
 - **Source half: both foreground read paths report the server's `LastWriteTime`** (the streamed download and the hinted
-  one-frame compound read). The date comes from `streams::last_write_time`, a `stat` (one compound frame: CREATE + two
-  QUERY_INFOs + CLOSE) sent alongside the read on a sibling clone of its `Connection`, so it adds a frame but no round
-  trip of latency. Decision/Why: smb2's `FileDownload` and `read_file_compound_sized` don't hand out the date their own
-  CREATE response carries; once smb2 exposes it, drop the stat (the wire-shape cells count it as `DATE_STAT`, so they'll
-  say so). A stat that fails leaves the stream dateless, ❌ never fails the read.
-- **The scan pool's prefetch stays dateless**: enrichment never copies those bytes, so a stat per prefetch would only
-  double the background load.
+  one-frame compound read), from the read's own CREATE response: `FileDownload::info()` on the streamed path,
+  `read_file_compound_sized_with_info` on the compound one. No extra frame; the wire-shape cells pin a hinted read at
+  `(1, 3)`, so a stat creeping back in shows there as `(2, 7)`.
+- **The scan pool's prefetch stays dateless**: enrichment never copies those bytes.
 - **Destination half: `write_from_stream_impl` stamps `LastWriteTime` only** (`smb2::FileTimes::set_modified`; every
   other time goes as 0, "don't change"), best effort: a refused stamp is a `warn!` and the copy succeeds. Gotcha/Why:
   the server rewrites a file's date when the handle that WROTE it closes, so the moment matters. The streaming writer

@@ -10,7 +10,7 @@
 //! answers, whose whole content is the reasoning in their doc comments.
 
 use super::state::ConnectionState;
-use super::streams::{InlineReadStream, fits_one_compound_read, last_write_time};
+use super::streams::{InlineReadStream, fits_one_compound_read};
 use super::{SmbVolume, foreground_yield};
 use cmdr_fs::entry::FileEntry;
 
@@ -442,17 +442,14 @@ impl Volume for SmbVolume {
             if let Some(size) = size_hint {
                 let (tree, mut conn) = self.clone_session().await?;
                 if fits_one_compound_read(conn.quick_read_limit(), size) {
-                    // The date's stat rides alongside the read on a sibling clone
-                    // (`streams::last_write_time` says why it's a second frame).
-                    let mut stat_conn = conn.clone();
                     debug!(
                         "SmbVolume::open_read_stream_with_hint: share={:?}, path={:?}, size={}; using compound fast-path",
                         self.inner.share_name, smb_path, size
                     );
-                    let (read_result, modified_at) = tokio::join!(
-                        tree.read_file_compound_sized(&mut conn, &smb_path, size),
-                        last_write_time(&tree, &mut stat_conn, &smb_path),
-                    );
+                    // The date rides on the frame's own CREATE response.
+                    let read_result = tree
+                        .read_file_compound_sized_with_info(&mut conn, &smb_path, size)
+                        .await;
                     match read_result {
                         Err(e) if matches!(e.kind(), smb2::ErrorKind::TooLarge) => {
                             debug!(
@@ -474,9 +471,10 @@ impl Volume for SmbVolume {
                             );
                         }
                         read_result => {
-                            let data =
+                            let (data, info) =
                                 self.handle_smb_result("open_read_stream_with_hint(compound)", &smb_path, read_result)?;
                             if data.len() as u64 == size {
+                                let modified_at = info.modified.to_system_time();
                                 return Ok(
                                     Box::new(InlineReadStream::new(data, modified_at)) as Box<dyn VolumeReadStream>
                                 );

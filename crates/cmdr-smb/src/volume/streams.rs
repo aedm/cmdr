@@ -171,26 +171,11 @@ impl InlineReadStream {
     }
 }
 
-/// When `smb_path` was last written, per the server, or `None` when the stat
-/// doesn't answer: the read goes on without a date, since the bytes are what
-/// matter and a copy then keeps the destination's own date.
-///
-/// One extra compound frame per read, because smb2's `FileDownload` and
-/// `read_file_compound_sized` don't hand out the `LastWriteTime` their CREATE
-/// response carries. Callers run it alongside the read on a sibling clone of the
-/// read's `Connection`, so it adds no round trip of latency.
-pub(super) async fn last_write_time(
-    tree: &smb2::client::Tree,
-    conn: &mut smb2::client::Connection,
-    smb_path: &str,
-) -> Option<std::time::SystemTime> {
-    match tree.stat(conn, smb_path).await {
-        Ok(info) => info.modified.to_system_time(),
-        Err(e) => {
-            debug!("SmbVolume: no date for path={smb_path:?}, the read goes on without one: {e}");
-            None
-        }
-    }
+/// What a streaming download's producer learned from opening the file.
+struct OpenedDownload {
+    total_size: u64,
+    /// The server's `LastWriteTime`, from the same CREATE response.
+    modified_at: Option<std::time::SystemTime>,
 }
 
 /// The times a copy stamps on what it wrote: the source's `LastWriteTime` and
@@ -248,11 +233,10 @@ impl SmbVolume {
     /// no path has to buffer whole files in memory.
     pub(super) async fn open_smb_download_stream(&self, smb_path: &str) -> Result<ChannelReadStream, VolumeError> {
         let (tree, conn) = self.clone_session().await?;
-        // The date's stat runs on a sibling clone while the producer opens the
-        // download, so it costs no round trip of latency (`last_write_time`).
-        let (stat_tree, mut stat_conn) = (Arc::clone(&tree), conn.clone());
 
-        let (size_tx, size_rx) = tokio::sync::oneshot::channel::<Result<u64, VolumeError>>();
+        // The open reports the size and the date together: both ride on the
+        // download's own CREATE response, so the date costs no round trip.
+        let (opened_tx, opened_rx) = tokio::sync::oneshot::channel::<Result<OpenedDownload, VolumeError>>();
         let (chunk_tx, chunk_rx) =
             tokio::sync::mpsc::channel::<Result<Vec<u8>, VolumeError>>(SMB_STREAM_CHANNEL_CAPACITY);
         let (cancel_tx, mut cancel_rx) = tokio::sync::oneshot::channel::<()>();
@@ -283,13 +267,17 @@ impl SmbVolume {
                         "SmbVolume::download(share={:?}, path={:?}): {}",
                         share_name, smb_path_owned, e
                     );
-                    let _ = size_tx.send(Err(map_smb_error(e, &display_path)));
+                    let _ = opened_tx.send(Err(map_smb_error(e, &display_path)));
                     return;
                 }
             };
 
             let total_size = download.size();
-            if size_tx.send(Ok(total_size)).is_err() {
+            let opened = OpenedDownload {
+                total_size,
+                modified_at: download.info().and_then(|info| info.modified.to_system_time()),
+            };
+            if opened_tx.send(Ok(opened)).is_err() {
                 // Caller dropped the stream before receiving size. Drop download
                 // cleanly (Drop logs a may-leak debug line; the handle is released
                 // when the SMB session closes).
@@ -356,9 +344,8 @@ impl SmbVolume {
             // `Arc<Tree>` unwind when every concurrent task finishes.
         });
 
-        let (size_result, modified_at) = tokio::join!(size_rx, last_write_time(&stat_tree, &mut stat_conn, smb_path));
-        let total_size = match size_result {
-            Ok(Ok(size)) => size,
+        let opened = match opened_rx.await {
+            Ok(Ok(opened)) => opened,
             Ok(Err(e)) => return Err(e),
             Err(_) => {
                 return Err(VolumeError::IoError {
@@ -368,7 +355,10 @@ impl SmbVolume {
             }
         };
 
-        Ok(ChannelReadStream::new(chunk_rx, cancel_tx, StreamLength::Known(total_size)).with_modified_at(modified_at))
+        Ok(
+            ChannelReadStream::new(chunk_rx, cancel_tx, StreamLength::Known(opened.total_size))
+                .with_modified_at(opened.modified_at),
+        )
     }
 
     /// The negotiated `max_write_size` for the live session, or `None` when

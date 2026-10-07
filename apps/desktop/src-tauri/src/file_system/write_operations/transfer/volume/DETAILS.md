@@ -833,9 +833,8 @@ local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile
   #373 item 4; `crates/cmdr-mtp/DETAILS.md` § "Dates on copies").
 - **SMB**: reports the server's `LastWriteTime` on both foreground read paths (streamed and one-frame compound); writes
   `LastWriteTime` alone through SET_INFO, on the streaming writer's own handle before it closes, or by path right after
-  a one-frame compound write (one more frame). The read date costs ONE extra compound frame (a `stat` sent alongside
-  the read, no added latency), the one exception to "no extra round trip", because smb2 doesn't hand out the date its
-  CREATE response carries (`crates/cmdr-smb/DETAILS.md` § "Dates on copies").
+  a one-frame compound write (one more frame). The read date rides on the read's own CREATE response
+  (`crates/cmdr-smb/DETAILS.md` § "Dates on copies").
 - **Archive (source only)**: reports each entry's date from the parsed index, on random-access reads and the one-pass
   sequential extract alike (whole seconds; zip's DOS time keeps even seconds).
 - **SFTP**: reports the mtime from the `fstat` its open already sends; writes it with a path `SETSTAT` on the staging
