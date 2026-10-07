@@ -15,6 +15,17 @@ is `docs/specs/mdm-managed-preferences-plan.md`.
 - Example values: the telemetry keys and background checks on, the rest at their permissive value (`false`,
   `MaxUpdateVersion` `"1"`, a short host list), so an admin who uploads the file unchanged gets "telemetry off" and
   nothing surprising.
+- `apps/website/public/mdm/cmdr-full-disk-access.mobileconfig`: a PPPC profile (`com.apple.TCC.configuration-profile-policy`)
+  granting Full Disk Access plus the five narrower file services the app's `Info.plist` asks for. It's not a managed
+  preference and Cmdr never reads it; it lives here because it's the other MDM file admins download. **Guard**
+  (`pppc_profile_test.rs`): every grant names `config::BUNDLE_ID` and a code requirement built from `tauri.conf.json`
+  (bundle id plus the Team ID in `signingIdentity`), `codeRequirement` in `trust.ts` equals it too, entries use
+  `Allowed` (`Authorization` needs macOS 11; the floor is 10.15), and neither profile reuses the other's identifiers or
+  UUIDs. Which TCC services it carries and why: the comment at the top of the file and `/trust#mdm-deploy`. Not yet
+  tested on an MDM-enrolled Mac (only the requirement, against the shipped 0.50.0 with `codesign -v -R=`, 2026-10-07);
+  that's the open "test it" item on #118. PPPC payloads are deprecated from macOS 27 but still apply, and the
+  declarative replacement (`com.apple.configuration.app.settings` → `Privacy`) has no Full Disk Access key yet
+  (verified against Apple's device-management docs, 2026-10-07).
 
 ## The preference domain
 

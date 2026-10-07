@@ -7,6 +7,7 @@ import LegalLayout from '../layouts/LegalLayout.astro'
 import DevTodo from '../components/DevTodo.astro'
 import {
     allowlistHosts,
+    codeRequirement,
     dataLocations,
     managedPreferenceKeys,
     networkConnections,
@@ -184,6 +185,11 @@ const toc = [
             keys on their own, for Jamf Pro's "Application &amp; Custom Settings", a Kandji custom profile, or an
             Intune preference file.
         </li>
+        <li>
+            <a href="/mdm/cmdr-full-disk-access.mobileconfig" download>Full Disk Access profile</a>
+            (<code>.mobileconfig</code>): grants Cmdr Full Disk Access, so users don't have to grant it themselves
+            (<a href="#mdm-deploy">deploying Cmdr</a>).
+        </li>
     </ul>
 
     <h3 id="mdm-keys">Keys</h3>
@@ -263,6 +269,52 @@ const toc = [
         replaced, and the "IT can" sentences elsewhere on this page are only true from then, so publish them with
         that release. Then David runs plan M9 (the sample profile on a real Mac) before the
         <a href="https://github.com/vdavid/cmdr/issues/118">#118</a> boxes get ticked.
+    </DevTodo>
+
+    <h3 id="mdm-deploy">Deploying Cmdr</h3>
+    <ul>
+        <li>
+            <strong>Installing</strong>: today Cmdr ships as a disk image (DMG) and a Homebrew cask. An installer package
+            (<code>.pkg</code>), signed and notarized, is ready in the release pipeline and waits on its signing
+            certificate. It installs Cmdr to <code>/Applications</code>, owned by the system, and runs no scripts.
+        </li>
+        <li>
+            <strong>Updates on a managed Mac</strong>: when Cmdr sits in an <code>/Applications</code> folder the user
+            can't write to, as after a package install, its updater asks for an administrator password. Where users
+            aren't administrators, set <code>DisableUpdates</code> and push each new version from your MDM instead.
+        </li>
+        <li>
+            <strong>Full Disk Access</strong>: upload the
+            <a href="/mdm/cmdr-full-disk-access.mobileconfig" download>Full Disk Access profile</a> as a custom
+            configuration profile (Jamf Pro, Kandji, Microsoft Intune, and Mosyle all take one). If your MDM has a
+            privacy (PPPC) editor instead, add Cmdr with identifier <code>com.veszelovszki.cmdr</code>, identifier type
+            Bundle ID, the <a href="#signing">code requirement</a> below, and "Full Disk Access"
+            (<code>SystemPolicyAllFiles</code>) set to Allow.
+        </li>
+        <li>
+            <strong>Only an MDM can grant it.</strong> macOS applies a privacy profile only when it comes from an MDM
+            the Mac is enrolled in with the user's approval or through Apple Business Manager. Opening the file on a
+            Mac doesn't install it.
+        </li>
+        <li>
+            <strong>What else the profile covers</strong>: the Desktop, Documents, and Downloads folders, and network
+            and removable volumes. Full Disk Access already includes them; they're listed separately so you can drop
+            Full Disk Access and grant only those. It leaves out local network access, which isn't a privacy profile
+            setting (macOS 27 can suggest it through the declarative app settings configuration), and Photos and
+            Music, which Cmdr only uses for icons and thumbnails.
+        </li>
+        <li>
+            <strong>On macOS 27</strong>, Apple marks privacy profiles as deprecated, and they still apply. Full Disk
+            Access has no replacement setting yet.
+        </li>
+    </ul>
+    <DevTodo>
+        The pkg: once David adds the Developer ID Installer certificate (<code>docs/guides/releasing.md</code> § The
+        installer package) and a release ships <code>Cmdr_X.Y.Z_universal.pkg</code>, change the "Installing" bullet
+        to say releases include it, link it, and drop the matching "Not in place yet" line. The PPPC profile: test it
+        on a real MDM-enrolled Mac (the profile installs, System Settings shows Cmdr under Full Disk Access as managed,
+        and onboarding's step 1 shows the "already granted" variant), then drop that gap line and tick the box in
+        <a href="https://github.com/vdavid/cmdr/issues/118">#118</a>.
     </DevTodo>
 
     <h2 id="eu">Does data leave the EU?</h2>
@@ -386,15 +438,14 @@ const toc = [
         </li>
         <li>
             <strong>Code requirement</strong> for a PPPC profile (to grant Full Disk Access through MDM):
-            <code
-                >identifier "com.veszelovszki.cmdr" and anchor apple generic and certificate
-                1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /*
-                exists */ and certificate leaf[subject.OU] = "83H6YAQMNP"</code
-            >. It stays the same across updates, so a Full Disk Access grant survives them.
+            <code>{codeRequirement}</code>. It stays the same across updates, so a Full Disk Access grant survives them.
+            The <a href="/mdm/cmdr-full-disk-access.mobileconfig" download>Full Disk Access profile</a> uses it.
         </li>
         <li>
             <strong>Downloads</strong>: a disk image (DMG) from GitHub Releases, or the Homebrew cask. Each release
-            publishes SHA-256 checksums. There's no <code>.pkg</code> installer yet.
+            publishes SHA-256 checksums. There's no <code>.pkg</code> installer yet (<a href="#mdm-deploy"
+                >deploying Cmdr</a
+            >).
         </li>
         <li>
             <strong>Build provenance</strong>: every file in a release carries a signed
@@ -427,8 +478,9 @@ const toc = [
     </ul>
     <DevTodo>
         The entitlements (none) and the code requirement above were read from the 0.50.0 release with
-        <code>codesign -d --entitlements -</code> and <code>codesign -d -r-</code>. Nobody has tested a PPPC profile
-        with it yet.
+        <code>codesign -d --entitlements -</code> and <code>codesign -d -r-</code>; the requirement matched 0.50.0 in
+        <code>/Applications</code> again on 2026-10-07 (<code>codesign -v -R=</code>). Nobody has tested the PPPC
+        profile on a real MDM yet.
     </DevTodo>
 
     <h2 id="permissions">Sandbox and permissions</h2>
@@ -440,7 +492,7 @@ const toc = [
     <p>
         <strong>Full Disk Access</strong>: during first-time setup, Cmdr asks the user to grant it in System Settings,
         so macOS doesn't ask separately for every protected folder. The user can say no; Cmdr then works with the
-        usual macOS prompts.
+        usual macOS prompts. IT can grant it ahead of time through MDM (<a href="#mdm-deploy">deploying Cmdr</a>).
     </p>
     <p>Other macOS permissions Cmdr may ask for, and why:</p>
     <ul>

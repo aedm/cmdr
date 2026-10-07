@@ -15,7 +15,7 @@ fn expected_keys() -> BTreeSet<String> {
     ALL_KEYS.iter().map(ToString::to_string).collect()
 }
 
-fn read_dictionary(text: &str, what: &str) -> plist::Dictionary {
+pub(super) fn read_dictionary(text: &str, what: &str) -> plist::Dictionary {
     plist::Value::from_reader_xml(text.as_bytes())
         .unwrap_or_else(|e| panic!("{what} isn't a valid plist: {e}"))
         .into_dictionary()

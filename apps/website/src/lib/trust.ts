@@ -17,6 +17,15 @@
 /** The release and date the page's claims were checked against. */
 export const verifiedAgainst = { version: '0.50.0', date: '2026-10-05' }
 
+/**
+ * The app's designated requirement, exactly as `codesign -d -r-` prints it for a release build.
+ * `/trust` shows it, and `public/mdm/cmdr-full-disk-access.mobileconfig` grants Full Disk Access to
+ * it. A Rust test (`managed_policy/pppc_profile_test.rs`) checks both against the bundle id and the
+ * Team ID in `tauri.conf.json`, so a signing change can't silently break the profile.
+ */
+export const codeRequirement =
+  'identifier "com.veszelovszki.cmdr" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = "83H6YAQMNP"'
+
 export interface NetworkConnection {
   id: string
   name: string
@@ -316,7 +325,8 @@ export const notInPlaceYet: string[] = [
   '<strong>Usage stats and crash reports are on by default.</strong> Each user can turn them off, and IT can turn them off for everyone (<a href="#mdm">central management</a>).',
   "<strong>No update channels and no staged rollout.</strong> IT can turn updates off or hold Cmdr at a version, but can't install an older release through the updater.",
   '<strong>No managed preference turns off the remaining traffic</strong>: license checks, S3 prices, and the image-search model download (<a href="#mdm-not-covered">why each one stays</a>).',
-  '<strong>No <code>.pkg</code> installer and no published PPPC profile</strong> for granting Full Disk Access through MDM. The code-signing requirement on this page is what such a profile needs.',
+  '<strong>No <code>.pkg</code> installer yet.</strong> The release pipeline is ready to build a signed one and waits on its signing certificate (<a href="#mdm-deploy">deploying Cmdr</a>).',
+  "<strong>The Full Disk Access profile hasn't been tested on a real MDM yet.</strong> Its code requirement is checked against the released app.",
   "<strong>Data leaves the EU</strong> (see above), and Cloudflare storage isn't locked to the EU jurisdiction.",
   '<strong>No data processing agreement (DPA)</strong> ready to sign.',
   "<strong>The 90-day deletion of error-report zips isn't active yet.</strong>",

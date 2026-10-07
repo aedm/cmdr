@@ -15,6 +15,8 @@ mod locked;
 #[cfg(any(debug_assertions, feature = "playwright-e2e", test))]
 mod override_watch;
 #[cfg(test)]
+mod pppc_profile_test;
+#[cfg(test)]
 mod public_docs_test;
 mod refusal;
 mod source;
