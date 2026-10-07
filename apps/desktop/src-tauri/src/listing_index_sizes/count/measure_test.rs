@@ -9,7 +9,7 @@ use super::jobs::{self, Joined};
 use super::measure::{Live, MeasureError, walk_local};
 use crate::test_support::TestDir;
 
-fn job(tag: &str) -> Arc<jobs::Job> {
+fn fresh_job(tag: &str) -> Arc<jobs::Job> {
     match jobs::enqueue(tag, Vec::new(), Instant::now()) {
         Joined::Owner(job) => job,
         Joined::Waiter { .. } => panic!("a fresh tag owns its job"),
@@ -24,7 +24,7 @@ fn the_walk_counts_files_folders_and_bytes() {
     std::fs::write(dir.join("a/b/two.txt"), vec![0u8; 50]).expect("write");
     let live = Live::default();
 
-    let measured = walk_local(&dir.join("a"), &job("measure-count"), &live).expect("readable");
+    let measured = walk_local(&dir.join("a"), &fresh_job("measure-count"), &live).expect("readable");
 
     assert_eq!(
         (measured.progress.files, measured.progress.dirs, measured.progress.bytes),
@@ -48,7 +48,7 @@ fn an_unreadable_subfolder_is_skipped_and_the_rest_still_counted() {
     let locked = dir.join("a/locked");
     std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).expect("chmod");
 
-    let measured = walk_local(&dir.join("a"), &job("measure-skip"), &Live::default());
+    let measured = walk_local(&dir.join("a"), &fresh_job("measure-skip"), &Live::default());
 
     std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).expect("chmod back");
     let measured = measured.expect("the folder itself is readable");
@@ -60,7 +60,7 @@ fn an_unreadable_subfolder_is_skipped_and_the_rest_still_counted() {
 #[test]
 fn a_folder_that_isnt_there_is_unreadable_and_a_stop_stops() {
     let dir = TestDir::new("measure-missing");
-    let stopped = job("measure-missing");
+    let stopped = fresh_job("measure-missing");
 
     let missing = walk_local(&dir.join("nope"), &stopped, &Live::default());
     assert!(matches!(missing, Err(MeasureError::Unreadable(_))));
