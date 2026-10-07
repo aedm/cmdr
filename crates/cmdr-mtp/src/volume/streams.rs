@@ -101,9 +101,6 @@ impl VolumeReadStream for MtpReadStream {
     // `TransactionScope` (see the connection layer's `read_next_window`).
 
     fn modified_at(&self) -> Option<std::time::SystemTime> {
-        // TODO(mtime): report DateModified. mtp-rs 0.32's `download_windowed`
-        // reads the ObjectInfo for its size and drops the date; reaching it
-        // here costs a second `GetObjectInfo` per file unless mtp-rs exposes it.
-        None
+        self.session.modified_at()
     }
 }

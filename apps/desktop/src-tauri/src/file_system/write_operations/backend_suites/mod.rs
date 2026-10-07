@@ -51,6 +51,9 @@ mod adb_index_test;
 // than with the backend. The MTP twin of `smb_archive_integration_test`.
 #[cfg(all(any(target_os = "macos", target_os = "linux"), feature = "virtual-mtp"))]
 mod mtp_archive_test;
+// "A copy keeps the source's date" onto and off a virtual MTP device.
+#[cfg(all(any(target_os = "macos", target_os = "linux"), feature = "virtual-mtp"))]
+mod mtp_dates_test;
 
 // SFTP: gated on the Docker fixture and named for the `sftp_integration_` lane.
 #[cfg(any(target_os = "macos", target_os = "linux"))]

@@ -143,7 +143,6 @@ async fn export_honors_the_shared_handshake_contract() {
 /// The shared date assertions, over a real `MtpVolume`: an upload carries the
 /// source's date in its ObjectInfo, and a read reports the device's.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[ignore = "mtime: mtp-rs 0.32's virtual device sends an empty DateModified and ignores SendObjectInfo's, and WindowedDownload drops the date it reads"]
 async fn a_copy_keeps_the_source_date_per_the_shared_contract() {
     let _guard = device_lock().await;
     let (device, volume) = connect_primed_volume(Some("/Documents")).await;

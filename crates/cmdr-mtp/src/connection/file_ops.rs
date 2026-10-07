@@ -3,7 +3,7 @@
 use log::debug;
 use mtp_rs::{ByteRange, MtpDevice, NewObjectInfo, ObjectHandle, StorageId, WindowedDownload};
 
-use super::dates::mtp_datetime_from_system_time;
+use super::dates::{mtp_datetime_from_system_time, system_time_from_mtp_datetime};
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -52,6 +52,12 @@ impl MtpReadSession {
     /// Bytes delivered so far (the offset of the next window).
     pub(crate) fn bytes_read(&self) -> u64 {
         self.windowed.offset()
+    }
+
+    /// The file's `DateModified`, from the `ObjectInfo` the open already
+    /// fetched, so it costs no round trip. `None` when the device sent none.
+    pub(crate) fn modified_at(&self) -> Option<std::time::SystemTime> {
+        self.windowed.modified().and_then(system_time_from_mtp_datetime)
     }
 }
 

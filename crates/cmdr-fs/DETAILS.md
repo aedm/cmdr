@@ -525,11 +525,11 @@ everywhere, which is the point.
 - `assert_not_found_carries_the_path` — the payload the frontend renders as the missing file's name.
 - `assert_write_from_stream_keeps_the_source_date` and `assert_read_stream_reports_the_listed_date` — the two halves of
   "a copy keeps the source's date" (`src/volume/conformance/modification_date.rs`). Every copy suite checksums bytes,
-  and a destination stamping its own date passes all of them. Run by local, S3, ADB, SFTP, and the in-memory double
-  green, WebDAV's both on Nextcloud (Apache stores no date, so it runs the read half), the read half by archive and SMB
-  too (SMB's write cell asserts the gap until smb2 can set times); MTP carries the cells while its wiring lands. The
-  contract: `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Copies keep the
-  source's date".
+  and a destination stamping its own date passes all of them. Run by local, S3, ADB, MTP (on the virtual device), SFTP,
+  and the in-memory double green, WebDAV's both on Nextcloud (Apache stores no date, so it runs the read half), the read
+  half by archive and SMB too (SMB's write cell asserts the gap until smb2 can set times). The contract:
+  `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Copies keep the source's
+  date".
 
 `InMemoryVolume`, `LocalPosixVolume`, `AdbVolume`, and the Docker-gated `SmbVolume`, `SftpVolume`, and `WebdavVolume`
 run every one (InMemory's writability cell sits in `capabilities_test.rs`, next to the predicate it speaks for).
@@ -550,8 +550,8 @@ opening or truncating the destination and before polling the source. Unknown wri
 
 `VolumeReadStream::modified_at` carries the source file's own date beside its bytes, from whatever the opening already
 read (a local `stat`, an S3 GET's headers), so a destination that stores dates as data (S3's `x-amz-meta-mtime`) keeps
-it without a second request. Default `None`, which means "store no date", ❌ never a made-up one; a wrapper stream
-(`CheckpointStream`) forwards its inner stream's answer.
+it without a second request. A required method, so no backend skips it by omission; `None` means "store no date", ❌
+never a made-up one; a wrapper stream (`CheckpointStream`) forwards its inner stream's answer.
 
 `Volume::publishes_writes_whole` is the third write promise beside single-shot and atomic replacement: the protocol
 publishes every write whole (an object store's PUT). Only the transfer engine's staging decision reads it; the contract

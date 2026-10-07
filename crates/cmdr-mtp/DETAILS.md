@@ -122,15 +122,22 @@ guarantee.
 
 ## Dates on copies
 
-An upload sends the source's date; a read reports none yet. (The contract:
+Both halves keep the date. (The contract:
 `apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "Copies keep the source's date".)
-`write_from_stream` passes `stream.modified_at()` to `upload_from_stream`, which sets it as the `SendObjectInfo`
-`DateModified` (`NewObjectInfo::with_modified`); Android's MTP server applies that to the file after the data phase. The
-read side is open: `download_windowed` reads the ObjectInfo for its size and drops the date, so reporting it costs a
-second `GetObjectInfo` per file until mtp-rs exposes it. Neither half is pinned by a cell: mtp-rs 0.32's virtual device
-sends an empty `DateModified` and ignores the one it receives (`a_copy_keeps_the_source_date_per_the_shared_contract`
-stays ignored for that). PTP dates carry no zone; `src/connection/dates.rs` reads and writes the fields as UTC, exact
-both ways.
+
+- **Upload**: `write_from_stream` passes `stream.modified_at()` to `upload_from_stream`, which sets it as the
+  `SendObjectInfo` `DateModified` (`NewObjectInfo::with_modified`), in UTC with a `Z` suffix. Android's MTP server
+  applies it to the file after the data phase (`MtpServer::doSendObject`'s `futimens`) and reads the `Z` as UTC
+  (verified by the mtp-rs maintainer in AOSP, mtp-rs 0.33.0, 2026-10-07).
+- **Read**: `MtpReadStream::modified_at` reports `WindowedDownload::modified()`, from the `ObjectInfo` the open already
+  fetched for the size, so it costs no round trip.
+- **Zones**: a date's own offset wins. A zoneless one (what Android sends: the phone's local wall clock) reads as UTC,
+  set in ONE place, `ZONELESS_DATES_READ_AT` in `src/connection/dates.rs`. Whether to read it at the Mac's zone instead
+  is open (issue #373 item 4). The calendar math is mtp-rs's
+  (`DateTime::{from_unix_seconds, to_unix_seconds_with_fallback}`), which also rejects fields that don't form a real
+  date.
+- **Pinned by** `a_copy_keeps_the_source_date_per_the_shared_contract` on the virtual device, which stamps a received
+  `DateModified` onto the backing file and reports each file's mtime back.
 
 ## Two features, two different axes
 

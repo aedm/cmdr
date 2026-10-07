@@ -828,8 +828,9 @@ local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile
   destination does.
 - **ADB**: reports the open's `STAT`/`STA2` date; writes it as the push's `DONE` mtime (a u32: whole seconds, clamped
   at 2106), falling back to now only for a dateless source (`crates/cmdr-adb/DETAILS.md`).
-- **MTP**: writes it as the upload's `DateModified`; doesn't report one on reads yet, and no cell pins either half
-  (the virtual device has no dates; `crates/cmdr-mtp/DETAILS.md` § "Dates on copies").
+- **MTP**: reports the `DateModified` from the `ObjectInfo` the read's open already fetched; writes it as the upload's
+  `DateModified`, in UTC with a `Z`. Whole seconds. A zoneless device date reads as UTC, an open product call (issue
+  #373 item 4; `crates/cmdr-mtp/DETAILS.md` § "Dates on copies").
 - **SMB**: reports the server's `LastWriteTime` on both foreground read paths (streamed and one-frame compound); doesn't
   write one yet: smb2's `Tree` has no SET_INFO `FileBasicInformation` call, so a cell asserts the gap and
   `write_from_stream_impl` carries a `TODO(mtime)`. The read date costs ONE extra compound frame (a `stat` sent
@@ -854,8 +855,8 @@ local copies keep dates on their own path (`chunked_copy.rs`, copyfile/clonefile
   `conformance_test.rs` runs both; a read-only backend, or a server that stores no date (Apache `mod_dav`), runs only
   the second, seeded by its fixture's own means.
 - **Through the engine**: `backend_suites/network_dates_test_support.rs`'s
-  `a_copy_onto_the_server_keeps_the_source_date` and `a_copy_off_the_server_keeps_the_source_date`, with cells for ADB
-  and SFTP; WebDAV runs only the copy-off half, through `a_copy_off_the_server_keeps_the_date_it_lists` on a file its
+  `a_copy_onto_the_server_keeps_the_source_date` and `a_copy_off_the_server_keeps_the_source_date`, with cells for ADB,
+  MTP (`mtp_dates_test.rs`, on the virtual device), and SFTP; WebDAV runs only the copy-off half, through `a_copy_off_the_server_keeps_the_date_it_lists` on a file its
   fixture dated. Plus `in_memory_dates_test.rs`, which pins the engine's own half (the checkpoint wrapper,
   staging, the final rename) against the double in the unit lane. S3's engine cell is
   `s3_transfer_integration_test.rs::copying_onto_a_bucket_lands_every_byte_and_the_mtime`.
