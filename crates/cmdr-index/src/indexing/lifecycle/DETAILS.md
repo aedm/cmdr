@@ -204,10 +204,12 @@ uses: `start_pending_phases` can't start one in that window, so the answer can't
 refusal reschedules rather than spending the attempt, and the claim moves the window before the attempt runs, so retries
 can't stack either. Anchored by `phases/tests/retry.rs`, which fires a retry from inside a live walk.
 
-📌 **Follow-up, not yet done:** `resume_branch_watch` (`state/startup.rs`) bends the same contract, running
-`IndexStore::open_read_connection` plus `branches::resumed_for` inside its `with_running_manager` window. It's far
-lighter than the phase start was (one read connection, one persisted branch set) and nothing has been observed waiting
-on it, so it's a cleanup rather than a bug: move the read outside the window the way `PhaseStart::run` does.
+📌 **Follow-up, not yet done:** `resume_branch_watch` (`state/startup.rs`) still bends the same contract, running
+`IndexStore::open_read_connection` plus `branches::resumed_for` inside its `with_running_manager` window (its watcher
+start moved off the lock, § "Every `fseventsd` call runs off the registry"). It's far lighter than the phase start was
+(one read connection, one persisted branch set) and nothing has been observed waiting on it, so it's a cleanup rather
+than a bug. Moving it needs care: a teardown landing between the read and `resumed_for` would leave a branch set behind
+for a volume that `withdraw_from_the_read_path` already forgot.
 
 ⚠️ **A master off→on only brings back drives `drives_to_resume` names**, which is why per-drive intent is recorded from
 the user's ENABLE (`user_enabled`) and never inferred from a completed scan: a drive part way through its first index —
@@ -637,6 +639,24 @@ real hardware (QA). The fix is two-pronged and both halves are load-bearing: (1)
 manager's own freshness `Arc` (no registry re-lock); (2) `force_scan`/fallback drop the guard before the blocking
 prelude. Regression-guarded by `state::tests::scan_start_freshness_firing_does_not_relock_the_registry` (a
 watchdog-timeout test: fire scan-start while holding the registry lock; pre-fix it deadlocks and the watchdog trips).
+
+**Every `fseventsd` call runs off the registry, a watcher's STOP included.** Gotcha/Why: a stream start, an
+`FSEventsGetCurrentEventId`, and a watcher stop (`abort` joins the run-loop thread, which unregisters the stream) are
+each a round trip to the one `fseventsd` every process shares. Under load one branch-watch start held `INDEX_REGISTRY`
+for 5.8 s in the live app (2026-10-06, measured while profiling the lock), because `ensure_branch_watch` ran inside
+`with_running_manager` from `begin_branch_coverage` (every walk), `resume_branch_watch`, and `stop_scan`; it stalled
+`get_status` and every other registry user, for every volume. A branch watch now starts in three steps
+(`manager/branch_watch.rs`): `plan_branch_watch` under the lock (in-memory checks, marks the start in flight),
+`BranchWatchStart::start` with no lock (the veto read, the replay id, the stream), `install_branch_watch` under the
+lock, which hands the watcher back to be stopped when the volume moved on (stopped, restarted, detached, or watched by a
+scan meanwhile). The registry door is `state::ensure_branch_watch`; the case list is on `start_the_branch_watch`. A
+stopped scan's watcher comes OUT under the lock (`end_the_scan`) and stops after, and a rescan retires the old watcher
+inside `off_the_registry`'s work, which is why `DetachedManager::take` runs nothing against the manager. A detach's
+hand-back calls `state::ensure_branch_watch`, so a start that found the manager out and stopped its watcher isn't the
+last word. ❌ Never call `IndexManager::ensure_branch_watch` (plan, start, and install in one go) from a
+`with_running_manager` closure: it's for a caller that holds the manager off the registry. Pinned by
+`phases/tests/lock_discipline.rs`, which parks the fake stream start at a gate (`watch/watcher/fake_journal.rs`) and
+asks `get_status` meanwhile.
 
 **A manual rescan routes by the TYPED volume kind.** `state::force_scan(vid)` calls `mgr.force_rescan(...)`, NOT
 `mgr.start_scan(...)`. `force_rescan` dispatches on `rescan_scanner_for_kind(self.kind)`: a trait-scanned kind (SMB/MTP)

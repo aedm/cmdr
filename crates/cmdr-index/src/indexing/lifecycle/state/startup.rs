@@ -548,6 +548,11 @@ pub(in crate::indexing::lifecycle) fn start_pending_phases(volume_id: &str) {
 /// deliberately — an unregistered volume answers neither sizes nor coverage
 /// questions, so the first moment that coverage can be read is the moment its
 /// index comes up, and that's the moment to make it live again.
+///
+/// ⚠️ The watcher starts OFF the lock (`state::ensure_branch_watch`): a stream
+/// start is an `fseventsd` round trip. Reading the branch set back still happens
+/// inside the window, see `../DETAILS.md` § "And the standing-up itself runs off
+/// the lock too" for why that one is left.
 fn resume_branch_watch(volume_id: &str) {
     with_running_manager(volume_id, |mgr| {
         let conn = match IndexStore::open_read_connection(mgr.db_path()) {
@@ -558,8 +563,8 @@ fn resume_branch_watch(volume_id: &str) {
             }
         };
         crate::indexing::watch::branches::resumed_for(volume_id, &mgr.path_space(), &conn);
-        mgr.ensure_branch_watch(true);
     });
+    super::ensure_branch_watch(volume_id, true);
 }
 
 /// Internal SMB-start entry point, called by `smb_index::start_indexing_for_smb`

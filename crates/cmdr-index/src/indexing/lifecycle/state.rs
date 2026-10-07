@@ -41,7 +41,7 @@ use std::sync::LazyLock;
 use std::sync::atomic::Ordering;
 
 use super::freshness::Freshness;
-use super::manager::IndexManager;
+use super::manager::{BranchWatchStart, IndexManager};
 use crate::indexing::hold::VolumeWork;
 use crate::indexing::store::{IndexFailure, IndexStore};
 use crate::indexing::volume::{IndexVolumeKind, VolumeId};
@@ -509,7 +509,53 @@ pub(crate) fn cover_context_for(
 /// it. A volume with no live index (a vetoed drive, a share) has nothing to tell,
 /// and the walk runs exactly as it did.
 pub(crate) fn begin_branch_coverage(volume_id: &str, paths: &[String]) {
-    with_running_manager(volume_id, |mgr| mgr.begin_branch_coverage(paths));
+    let mut planned = None;
+    with_running_manager(volume_id, |mgr| planned = mgr.begin_branch_coverage(paths));
+    start_the_branch_watch(volume_id, planned);
+}
+
+/// Bring a volume's walk-covered branches under a watcher if they aren't yet,
+/// through the registry.
+pub(in crate::indexing::lifecycle) fn ensure_branch_watch(volume_id: &str, resuming: bool) {
+    let mut planned = None;
+    with_running_manager(volume_id, |mgr| planned = mgr.plan_branch_watch(resuming));
+    start_the_branch_watch(volume_id, planned);
+}
+
+/// Start a planned branch watch with the registry lock RELEASED, then install it
+/// under a second short one.
+///
+/// ⚠️ **The start blocks on `fseventsd`** (a stream start and an event-id query,
+/// 5.8 s for one start under load in the live app), so holding the registry across
+/// it stalled `get_status` and every other registry user, for every volume
+/// (`manager/branch_watch.rs`). Anything can happen in the gap, and each case
+/// ends with nothing running that nobody holds:
+///
+/// - **a second caller** finds the start in flight and leaves it to this one;
+/// - **the volume stops, or stops and starts again**: there is no running manager,
+///   or one whose in-flight mark isn't this start's, so the watcher comes back and
+///   is stopped here;
+/// - **a scan start takes the manager out** (`Detached`): the same, and the scan
+///   brings its own watcher, or the hand-back starts the branch watch again
+///   (`scan_control::hand_the_manager_back`);
+/// - **a watcher came up meanwhile**: the install declines, and this one stops;
+/// - **indexing turned off for the drive**: a teardown, which is the first case.
+fn start_the_branch_watch(volume_id: &str, planned: Option<BranchWatchStart>) {
+    let Some(started) = planned.and_then(BranchWatchStart::start) else {
+        return;
+    };
+    let mut started = Some(started);
+    let mut stray = None;
+    with_running_manager(volume_id, |mgr| {
+        stray = mgr.install_branch_watch(started.take().expect("a started watch to install"));
+    });
+    // Still holding it means no running manager took it: the volume went away or
+    // is detached. Dropping its in-flight mark lets the next plan start afresh.
+    let stray = stray.or_else(|| started.map(|started| started.into_watcher()));
+    if let Some(mut stray) = stray {
+        log::info!("Branch watch: '{volume_id}' moved on while its watcher started; stopping that watcher");
+        stray.stop();
+    }
 }
 
 /// Tell it the walk ended, so what it held is released and what it covered
@@ -547,7 +593,9 @@ pub(crate) fn branch_coverage_buffered_events(volume_id: &str, paths: &[String])
 }
 
 /// Run something against a volume's `Running` manager, or nothing if it has
-/// none. Non-blocking work only — the registry lock is held throughout.
+/// none. Non-blocking work only — the registry lock is held throughout. ❌ That
+/// rules out every `fseventsd` call, a watcher's stop included (DETAILS § "Every
+/// `fseventsd` call runs off the registry").
 fn with_running_manager(volume_id: &str, f: impl FnOnce(&mut IndexManager)) {
     let mut reg = INDEX_REGISTRY.lock_ignore_poison();
     if let Some(IndexPhase::Running(mgr)) = reg.get_mut(volume_id).map(|i| &mut i.phase) {

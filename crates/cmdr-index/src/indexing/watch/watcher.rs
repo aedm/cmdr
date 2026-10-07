@@ -132,7 +132,7 @@ impl DriveWatcher {
     ) -> Result<Self, WatcherError> {
         #[cfg(test)]
         if fake_journal::covers(root) {
-            return Ok(fake_journal::watcher(event_sender));
+            return Ok(fake_journal::watcher(root, event_sender));
         }
 
         let running = Arc::new(AtomicBool::new(true));

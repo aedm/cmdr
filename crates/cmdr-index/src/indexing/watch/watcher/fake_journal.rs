@@ -15,7 +15,8 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex, PoisonError};
+use std::time::Duration;
 
 use cmdr_fs::ignore_poison::IgnorePoison;
 use tokio::sync::mpsc;
@@ -46,7 +47,18 @@ pub(super) fn next_event_id() -> u64 {
 /// A running watcher with no stream behind it. Its task holds the sender until
 /// `stop`, so the loop reading the other end waits the way it waits on a quiet
 /// drive, ❌ never reads a closed channel as a watcher that died.
-pub(super) fn watcher(event_sender: mpsc::UnboundedSender<FsChangeEvent>) -> DriveWatcher {
+///
+/// Parks first while a [`StreamGate`] holds `root`, the way a real start waits on
+/// a busy `fseventsd`.
+pub(super) fn watcher(root: &Path, event_sender: mpsc::UnboundedSender<FsChangeEvent>) -> DriveWatcher {
+    let gate = GATES
+        .lock_ignore_poison()
+        .iter()
+        .find(|(gated, _)| root.starts_with(gated))
+        .map(|(_, gate)| Arc::clone(gate));
+    if let Some(gate) = gate {
+        gate.park();
+    }
     let forward_task = crate::indexing::host::runtime::spawn(async move {
         let _held = event_sender;
         std::future::pending::<()>().await;
@@ -68,5 +80,79 @@ impl Drop for Guard {
         if let Some(index) = roots.iter().position(|root| *root == self.0) {
             roots.remove(index);
         }
+    }
+}
+
+/// Stream starts held at a gate, by root.
+static GATES: Mutex<Vec<(PathBuf, Arc<GateState>)>> = Mutex::new(Vec::new());
+
+/// Long enough for any machine on any load; it only ever fires on a broken test.
+const DEADLOCK_GUARD: Duration = Duration::from_secs(60);
+
+#[derive(Default)]
+struct GateState {
+    /// `(parked, open)`.
+    stage: Mutex<(bool, bool)>,
+    moved: Condvar,
+}
+
+impl GateState {
+    fn park(&self) {
+        let mut stage = self.stage.lock_ignore_poison();
+        stage.0 = true;
+        self.moved.notify_all();
+        let (stage, _) = self
+            .moved
+            .wait_timeout_while(stage, DEADLOCK_GUARD, |(_, open)| !*open)
+            .unwrap_or_else(PoisonError::into_inner);
+        drop(stage);
+    }
+
+    fn open(&self) {
+        self.stage.lock_ignore_poison().1 = true;
+        self.moved.notify_all();
+    }
+}
+
+/// Hold every fake stream start under `root` until [`StreamGate::open`], so a test
+/// can pin what callers do while one is in flight: the `fseventsd` round trip a
+/// real start makes took up to 5.8 s under load (2026-10-06, live app). Opens on
+/// drop, so a failing test never leaves a start parked.
+pub(crate) fn park_stream_starts(root: &Path) -> StreamGate {
+    let state = Arc::new(GateState::default());
+    GATES
+        .lock_ignore_poison()
+        .push((root.to_path_buf(), Arc::clone(&state)));
+    StreamGate(state)
+}
+
+/// See [`park_stream_starts`].
+pub(crate) struct StreamGate(Arc<GateState>);
+
+impl StreamGate {
+    /// Block until a stream start is parked at the gate.
+    pub(crate) fn wait_until_parked(&self) {
+        let stage = self.0.stage.lock_ignore_poison();
+        let (stage, timeout) = self
+            .0
+            .moved
+            .wait_timeout_while(stage, DEADLOCK_GUARD, |(parked, _)| !*parked)
+            .unwrap_or_else(PoisonError::into_inner);
+        drop(stage);
+        assert!(!timeout.timed_out(), "no stream start ever reached the gate");
+    }
+
+    /// Let every parked start, and every later one, through.
+    pub(crate) fn open(&self) {
+        self.0.open();
+    }
+}
+
+impl Drop for StreamGate {
+    fn drop(&mut self) {
+        self.0.open();
+        GATES
+            .lock_ignore_poison()
+            .retain(|(_, state)| !Arc::ptr_eq(state, &self.0));
     }
 }

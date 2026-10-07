@@ -237,6 +237,11 @@ mod interleaving;
 /// The two drive-menu actions a user can reach a half-covered volume with.
 mod menu_actions;
 
+/// What a walk may hold while it waits on `fseventsd`. macOS only: the gate it
+/// parks at is the fake FSEvents journal's.
+#[cfg(target_os = "macos")]
+mod lock_discipline;
+
 /// What resuming an interrupted run costs, measured against covering the same
 /// ground in one go. `#[ignore]`d.
 mod resume_bench;
