@@ -63,12 +63,15 @@ impl ColdDrive {
     /// change the OS has to deliver. Each such test is in the `real-notify` nextest
     /// group, so the live streams don't multiply each other's starvation.
     fn watched_for_real(volume_id: &'static str) -> Self {
-        let mut drive = Self::new(volume_id);
         #[cfg(target_os = "macos")]
         {
+            let mut drive = Self::new(volume_id);
             drive._journal = None;
+            drive
         }
-        drive
+        // No fake journal to drop: off macOS the watcher is the real one already.
+        #[cfg(not(target_os = "macos"))]
+        Self::new(volume_id)
     }
 
     /// The same, with the registered volume shaped by `describe` — a share, a
