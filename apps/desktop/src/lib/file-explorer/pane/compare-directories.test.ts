@@ -33,6 +33,10 @@ function paneRef(listingId: string, hasParent: boolean) {
     hasParentEntry: vi.fn(() => hasParent),
     sequence: 0,
     getLastSequence: vi.fn(() => ref.sequence),
+    generation: 0,
+    ready: true,
+    getViewGeneration: vi.fn(() => ref.generation),
+    isRowStateReady: vi.fn(() => ref.ready),
     setSelectedIndices: vi.fn(),
   }
   return ref
@@ -53,6 +57,56 @@ function answer(left: number[], right: number[], extra: Record<string, unknown> 
 describe('compareDirectories', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('drops a delayed answer after hidden off/on or sort reconfiguration', async () => {
+    const left = paneRef('L', false)
+    const right = paneRef('R', false)
+    ipc.compareDirectories.mockImplementation(() => {
+      left.generation += 2
+      return Promise.resolve(answer([0], []))
+    })
+    await compareDirectories(deps(left, right), 'missing')
+    expect(left.setSelectedIndices).not.toHaveBeenCalled()
+  })
+
+  it('does not apply to a replaced pane even when its listing id matches', async () => {
+    const left = paneRef('L', false)
+    const right = paneRef('R', false)
+    let current = left
+    ipc.compareDirectories.mockImplementation(() => {
+      current = paneRef('L', false)
+      return Promise.resolve(answer([0], []))
+    })
+    await compareDirectories(
+      {
+        getPaneRef: (side) => (side === 'left' ? current : right) as unknown as FilePaneAPI,
+        getShowHiddenFiles: () => true,
+      },
+      'missing',
+    )
+    expect(left.setSelectedIndices).not.toHaveBeenCalled()
+    expect(current.setSelectedIndices).not.toHaveBeenCalled()
+  })
+
+  it('lets the latest comparison mode win when requests overlap', async () => {
+    const left = paneRef('L', false)
+    const right = paneRef('R', false)
+    let finish!: (value: ReturnType<typeof answer>) => void
+    ipc.compareDirectories
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve
+          }),
+      )
+      .mockResolvedValueOnce(answer([2], []))
+    const live = deps(left, right)
+    const older = compareDirectories(live, 'missing')
+    await compareDirectories(live, 'sizeAndMissing')
+    finish(answer([0], []))
+    await older
+    expect(left.setSelectedIndices).toHaveBeenCalledExactlyOnceWith([2])
   })
 
   it('selects the backend rows in each pane, with each pane’s own parent offset', async () => {

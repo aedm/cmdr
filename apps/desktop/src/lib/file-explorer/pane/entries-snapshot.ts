@@ -14,7 +14,9 @@
  * dialog that's already opening.
  */
 
-import { getFileAt, getFileRange } from '$lib/tauri-commands'
+import { getFileRange, getSelectionSnapshot } from '$lib/tauri-commands'
+import { toBackendIndices } from '$lib/file-operations/transfer/transfer-dialog-utils'
+import { extractFilename } from '../operations/selection-adjustment'
 import type { FileEntry } from '../types'
 import type { CanonicalPath } from '$lib/path/canonical'
 import type { SearchSnapshot } from '$lib/search/snapshot-store.svelte'
@@ -80,6 +82,7 @@ export async function fetchEntriesSnapshot(input: EntriesSnapshotInput): Promise
 
 export interface SelectedNamesInput {
   listingId: string
+  expectedSequence: number
   includeHidden: boolean
   hasParent: boolean
   /** Every selectable row is selected; the caller stores `'all'` instead of a list. */
@@ -102,16 +105,10 @@ export async function fetchSelectedNames(input: SelectedNamesInput): Promise<str
   // FOLDER, which a `search-results://<id>` path never equals).
   if (!input.listingId) return []
 
-  if (input.isAllSelected) return 'all'
-
-  const names: string[] = []
   try {
-    for (const frontendIndex of input.selectedIndices) {
-      const backendIndex = input.hasParent ? frontendIndex - 1 : frontendIndex
-      if (backendIndex < 0) continue
-      const entry = await getFileAt(input.listingId, backendIndex, input.includeHidden)
-      if (entry) names.push(entry.name)
-    }
+    const indices = input.isAllSelected ? [] : toBackendIndices(input.selectedIndices, input.hasParent)
+    const snapshot = await getSelectionSnapshot(input.listingId, input.includeHidden, indices, input.expectedSequence)
+    return input.isAllSelected ? 'all' : snapshot.paths.map(extractFilename)
   } catch {
     // The listing died under us: the pane re-listed between the caller asking for
     // this snapshot and these reads, so the id is stale and the backend answers
@@ -123,5 +120,4 @@ export async function fetchSelectedNames(input: SelectedNamesInput): Promise<str
     // as an unhandled one.
     return []
   }
-  return names
 }

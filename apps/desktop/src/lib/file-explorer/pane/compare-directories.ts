@@ -45,7 +45,11 @@ interface Asked {
   leftListingId: string
   rightListingId: string
   includeHidden: boolean
+  leftGeneration: number
+  rightGeneration: number
 }
+
+const latestRequests = new WeakMap<FilePaneAPI, object>()
 
 const NO_DIFFERENCES: Record<CompareDirectoriesMode, () => string> = {
   newerAndMissing: () => tString('fileExplorer.compareDirectories.noDifferences.newerAndMissing'),
@@ -60,9 +64,14 @@ export async function compareDirectories(deps: CompareDirectoriesDeps, mode: Com
     addToast(tString('fileExplorer.compareDirectories.needsTwoFolders'), { level: 'info' })
     return
   }
+  const request = {}
+  latestRequests.set(asked.left, request)
+  latestRequests.set(asked.right, request)
+  const superseded = () => latestRequests.get(asked.left) !== request || latestRequests.get(asked.right) !== request
   for (let attempt = 1; attempt <= COMPARE_ATTEMPTS; attempt++) {
+    if (superseded() || movedOn(deps, asked)) return
     const result = await requestComparison(asked, mode)
-    if (!result || movedOn(deps, asked)) return
+    if (!result || superseded() || movedOn(deps, asked)) return
     if (fitsPanes(asked, result)) {
       markAndReport(asked, result, mode)
       return
@@ -81,7 +90,15 @@ function askedAbout(deps: CompareDirectoriesDeps): Asked | null {
   const leftListingId = left?.getListingId() ?? ''
   const rightListingId = right?.getListingId() ?? ''
   if (!left || !right || leftListingId === '' || rightListingId === '') return null
-  return { left, right, leftListingId, rightListingId, includeHidden: deps.getShowHiddenFiles() }
+  return {
+    left,
+    right,
+    leftListingId,
+    rightListingId,
+    includeHidden: deps.getShowHiddenFiles(),
+    leftGeneration: left.getViewGeneration(),
+    rightGeneration: right.getViewGeneration(),
+  }
 }
 
 /** The backend's answer, or `null` when there's none to apply (it said why in the log and maybe a toast). */
@@ -109,6 +126,10 @@ async function requestComparison(asked: Asked, mode: CompareDirectoriesMode): Pr
 /** The panes moved on, or hidden files were toggled: the answer is for folders no longer shown. */
 function movedOn(deps: CompareDirectoriesDeps, asked: Asked): boolean {
   return (
+    deps.getPaneRef('left') !== asked.left ||
+    deps.getPaneRef('right') !== asked.right ||
+    asked.left.getViewGeneration() !== asked.leftGeneration ||
+    asked.right.getViewGeneration() !== asked.rightGeneration ||
     asked.left.getListingId() !== asked.leftListingId ||
     asked.right.getListingId() !== asked.rightListingId ||
     deps.getShowHiddenFiles() !== asked.includeHidden
@@ -119,6 +140,8 @@ function movedOn(deps: CompareDirectoriesDeps, asked: Asked): boolean {
 function fitsPanes(asked: Asked, result: CompareDirectoriesResult): boolean {
   return (
     result.settled &&
+    asked.left.isRowStateReady() &&
+    asked.right.isRowStateReady() &&
     asked.left.getLastSequence() === result.leftSequence &&
     asked.right.getLastSequence() === result.rightSequence
   )

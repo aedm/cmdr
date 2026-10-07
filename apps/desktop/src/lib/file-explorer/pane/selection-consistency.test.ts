@@ -56,7 +56,9 @@ vi.mock('$lib/tauri-commands', () => ({
   }),
   findFileIndex: vi.fn().mockResolvedValue(0),
   getTotalCount: vi.fn().mockResolvedValue(10),
-  setListingIncludeHidden: vi.fn().mockResolvedValue(undefined),
+  setListingIncludeHidden: vi
+    .fn()
+    .mockResolvedValue({ sequence: 0, totalCount: 10, newCursorIndex: null, newSelectedIndices: null }),
   getSyncStatus: vi.fn().mockResolvedValue({ data: {}, timedOut: false }),
   // FilePane's onMount registers these image-enrichment listeners.
   onMediaEnrichProgress: vi.fn().mockResolvedValue(() => {}),
@@ -637,23 +639,29 @@ describe('Selection state consistency', () => {
     expect(emitDirectoryDiff).not.toBeNull()
     emitDirectoryDiff?.({
       listingId: 'mock-listing',
-      sequence: 1,
-      changes: [
+      batches: [
         {
-          type: 'move',
-          entry: {
-            name: 'big-folder',
-            path: '/big-folder',
-            isDirectory: true,
-            isSymlink: false,
-            permissions: 0o755,
-            owner: 'user',
-            group: 'staff',
-            iconId: 'dir',
-            extendedMetadataLoaded: true,
-          },
-          index: 0,
-          previousIndex: 3,
+          fromSequence: 0,
+          totalCount: 10,
+          sequence: 1,
+          changes: [
+            {
+              type: 'move',
+              entry: {
+                name: 'big-folder',
+                path: '/big-folder',
+                isDirectory: true,
+                isSymlink: false,
+                permissions: 0o755,
+                owner: 'user',
+                group: 'staff',
+                iconId: 'dir',
+                extendedMetadataLoaded: true,
+              },
+              index: 0,
+              previousIndex: 3,
+            },
+          ],
         },
       ],
     })

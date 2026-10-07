@@ -24,7 +24,7 @@ pub(crate) mod visible_rows;
 // Re-export types so they're available both externally and locally in this module
 // (call sites import them from `crate::file_system::listing` directly).
 pub use brief_columns::{BriefColumnWidths, BriefColumnsIpcError, compute_brief_column_text_widths};
-pub use diff::{DiffChange, DirectoryDiff, compute_diff};
+pub use diff::DirectoryDiff;
 pub use fuzzy_jump::fuzzy_find_first_match_in_listing;
 // `FileEntry` and its siblings moved to `cmdr-fs` (the `Volume` trait exchanges
 // them, and that trait is the crate's centrepiece). Aliased, not just
@@ -33,7 +33,7 @@ pub(crate) use cmdr_fs::entry as metadata;
 pub use metadata::{ExtendedMetadata, FileEntry};
 pub use operations::{
     ListingLookupError, ListingStats, ResortResult, RowBeside, find_file_index, find_file_indices, get_file_at,
-    get_file_beside, get_file_range, get_listing_stats, get_total_count, keep_listings_alive, list_directory_end,
+    get_file_beside, get_file_range, get_listing_stats, keep_listings_alive, list_directory_end,
     refresh_listing_index_sizes, resort_listing, set_listing_include_hidden,
 };
 pub use reading::{ListingTally, get_single_entry, list_directory_core, list_directory_core_with_tally};
@@ -45,10 +45,9 @@ pub use operations::{get_files_at_indices, get_paths_at_indices};
 
 // Internal re-exports for file_system module internals (pub(crate) for crate-internal use)
 pub(crate) use caching::{
-    find_listings_for_path, get_cached_listing, get_listing_volume_id_and_path, has_entry, increment_sequence,
-    insert_entry_sorted, remove_entries_by_paths, update_entry_sorted,
+    find_listings_for_path, get_cached_listing, get_listing_volume_id_and_path, has_entry, insert_entry_sorted,
+    remove_entries_by_paths, update_entry_sorted,
 };
-pub(crate) use diff::listing_changed;
 pub(crate) use orphan_reaper::start_orphan_listing_reaper;
 // Notification API for volume mutations
 pub(crate) use cached_listing::OverlayRows;

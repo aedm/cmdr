@@ -19,7 +19,8 @@ Dual-pane file explorer with keyboard-driven navigation, file selection, sorting
   diff/cursor/type-to-jump code all apply this; forgetting it lands the cursor or selection one row off.
 - **The selection snapshot for an operation happens at CONFIRM, not when the progress dialog opens.** Same-FS moves are
   instant and may finish before the dialog mounts. `startTransferProgress` (clipboard paste), `handleTransferConfirm`,
-  and `handleDeleteConfirm` all snapshot. A `diffGeneration` counter discards stale async diff/selection results.
+  and `handleDeleteConfirm` all snapshot. The pane's row-state controller guards asynchronous selection results;
+  protocol in `pane/DETAILS.md` § Compare directories.
 - **`allSelected: true` is an IPC optimization** to avoid shipping 500k indices. On cancel it calls `selectAll()` for
   move/delete/trash (source listing changed) but leaves copy untouched (source unchanged); keep that asymmetry.
 - **Don't load full listings into Svelte `$state`.** `FileDataStore` is deliberately non-reactive (only the visible

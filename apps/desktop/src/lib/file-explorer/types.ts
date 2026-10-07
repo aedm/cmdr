@@ -193,9 +193,14 @@ export interface DiffChange {
 export interface DirectoryDiff {
   /** Listing ID this diff belongs to */
   listingId: string
-  /** Monotonic sequence number for ordering */
+  /** Each transition keeps its own old/new index spaces. */
+  batches: DirectoryDiffBatch[]
+}
+
+export interface DirectoryDiffBatch {
+  fromSequence: number
   sequence: number
-  /** List of changes */
+  totalCount: number
   changes: DiffChange[]
 }
 
@@ -397,6 +402,8 @@ export const DEFAULT_SORT_BY: SortColumn = 'name'
 
 /** Result of re-sorting a listing. */
 export interface ResortResult {
+  sequence: number
+  totalCount: number
   /** New index of the cursor file after re-sorting, if found. */
   newCursorIndex: number | null
   /** New indices of previously selected files after re-sorting. */

@@ -10,8 +10,10 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   command module".
 - **`file_system/`**: directory module split by operation type. `mod.rs` has `expand_tilde()`, re-exports, tests.
   `listing.rs`: streaming + virtual-scroll listing, path queries, `find_first_fuzzy_match` (type-to-jump),
-  benchmarking, `get_brief_column_text_widths` (per-column widest-filename text widths for Brief mode). `refresh_listing`
-  takes a `force` flag. Unforced (the post-write top-ups: transfer, rename, mkdir) it short-circuits on fully-covered
+  benchmarking, `get_brief_column_text_widths` (per-column widest-filename text widths for Brief mode). The guarded
+  row commands (`resort_listing`, `set_listing_include_hidden`, `get_selection_snapshot`) delegate to the
+  listing subsystem; their committed-revision contract is `../file_system/listing/DETAILS.md` § "Diff event coalescing".
+  `refresh_listing` takes a `force` flag. Unforced (the post-write top-ups: transfer, rename, mkdir) it short-circuits on fully-covered
   listings (`Volume::listing_watch_coverage(path) == WatchCoverage::EveryWriter`), because the cache is kept fresh by
   `notify_mutation` and a redundant full re-read after every transfer (the FE's `refreshPanesAfterTransfer`) wedges slow
   volumes (MTP 17 s + USB session collision). Forced (⌘R and the MCP `refresh` tool) it always re-reads: `EveryWriter`

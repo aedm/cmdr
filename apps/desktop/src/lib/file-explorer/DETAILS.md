@@ -86,8 +86,8 @@ fallback contract, and the snapshot-pane note.
 
 - **Snapshot**: when an operation is confirmed, FilePane snapshots selected file names into `operationSelectedNames` (or
   `'all'` sentinel if all selected)
-- **Diff-driven adjustment**: on each `directory-diff` during an operation, selection is re-resolved via
-  `findFileIndices` batch IPC. A `diffGeneration` counter discards stale async results.
+- **Diff-driven adjustment**: synchronous row remapping plus guarded operation-name resolution. The applied-row protocol
+  and async tokens live in `pane/DETAILS.md` § Compare directories.
 - **Cursor adjustment**: cursor index is also adjusted on structural diffs using the same `adjustSelectionIndices`
   mechanism (treating cursor as a single-element selection). A row the backend reports as `move`d takes its cursor and
   its selection with it, so a pane sorted by date doesn't leave the cursor behind when a folder bumps its own mtime. A

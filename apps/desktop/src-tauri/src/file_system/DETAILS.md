@@ -66,17 +66,14 @@ those left in the pane after an otherwise successful 768-file copy: the SMB watc
 its batched add landed after the rename event that would have cleared it.
 
 **Read-path, not watcher.** Filtering where the frontend asks for a range (`CachedListing::rows`) rather than where the
-cache is filled is what makes the fix safe. The cache stays the truth; every accessor re-tests on every fetch, so an
-entry the pane received can always be taken away again. Filtering the watcher instead inverts the bug into a worse one:
+cache is filled is what makes the fix safe. The cache stays the truth; read boundaries reconcile scratch visibility
+through the revisioned projection (`listing/DETAILS.md` § "Diff event coalescing"). Filtering the watcher instead inverts the bug into a worse one:
 a full listing shows the temp, the watcher skips the removal that would clear it, and the pane keeps an entry pointing
 at nothing. The `.sb-` filter lived in `crates/cmdr-smb/src/volume/watcher.rs` from 2026-04-10 to 2026-08-01 and had exactly that ghost — its
 `continue` sat above the `match action`, so it skipped `Removed` too.
 
-**Re-testing on every fetch is not the same as re-deriving the whole sequence on every fetch**, and conflating the two
-is what wedged a big directory (`listing/DETAILS.md` § "Row numbers"). A listing materializes its row numbers once and
-keeps the scratch-named entries — the only ones whose answer can still change — in a short side list it re-asks about
-per read. `could_be_hidden_from_listings` is the pure name test that gates `is_hidden_from_listings`, so "this name is
-settled" holds by construction rather than by reading three functions and hoping.
+**Re-testing scratch does not require re-deriving every row on every fetch.** Cached row maps and the scratch-candidate
+gate keep ordinary directory reads constant-time; `listing/DETAILS.md` § "Row numbers" explains their split.
 
 **Other apps' scratch hides by NAME, and that's a different rule on purpose.** macOS safe-save writes
 `file.txt.sb-<uuid>` next to the original on every save (TextEdit, Preview, anything on `NSDocument`). There's no

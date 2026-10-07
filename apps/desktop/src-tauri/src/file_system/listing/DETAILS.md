@@ -120,7 +120,7 @@ idle/backstop timers and the file viewer's window-`Destroyed` net.
 It keys on `last_accessed_ms`, NOT `created_at`. `created_at` is stamped once and never refreshed, so an age-based reaper
 keyed on it would evict a pane open all session. `last_accessed_ms` (an `AtomicU64` of ms-since-a-process-epoch) is
 bumped by every operation that proves the listing still backs a live pane: the read accessors (`get_file_range`,
-`get_total_count`, `get_file_at`, `get_file_beside`, `get_listing_stats`, the index/path/batch lookups), `resort_listing`, and every
+`get_file_at`, `get_file_beside`, `get_listing_stats`, the index/path/batch lookups), `resort_listing`, and every
 watcher/notify cache patch (`insert_entry_sorted` / `remove_entries_by_paths` / `remove_entry_by_name` /
 `update_entry_sorted` / `update_listing_entries`). `AtomicU64` so read accessors stamp it lock-free under a shared `LISTING_CACHE.read()`. The
 6 h window is deliberately generous: we'd rather never evict a live listing than aggressively reclaim.
@@ -183,9 +183,10 @@ evaluations per index event on the main thread — IPC stopped being answered at
 
 **Decision: materialize the row map once per `(listing, include_hidden)`, and split it in two.** `settled` is a
 `Vec<u32>` of entry indices nothing can hide any more; `candidates` holds the scratch-NAMED entries with the count of
-settled rows ahead of each. A read re-asks `is_hidden_from_listings` about the candidates only — a handful, usually
-none — and merges them back by row number, so a lookup is an array index plus a binary search over a list that is
-almost always empty.
+settled rows ahead of each. Rows merge candidates using the listing's committed exact-path `ScratchProjection`,
+never live settings or ownership. A lookup is an array index plus a binary search over a list that is almost always
+empty. Reads check only those candidates for drift before using the map; publication is described in § "Diff event
+coalescing".
 
 **Why the split rather than an invalidation hook.** The `is_hidden` half is stable, but the scratch half is not: an
 operation settling un-hides its leftover with no change to the listing and nothing to notify anyone, because the
@@ -211,7 +212,7 @@ themselves ~15 MB.
 
 **The one case that got slower**, said plainly: reading row 0 right after a mutation used to short-circuit after one
 entry and now rebuilds the whole map. It doesn't matter in practice, because the reads that accompany it
-(`get_total_count`, `get_listing_stats`) were already walking the listing and now share that one pass — but a future
+(`get_listing_stats` and mutation publication counts) share that one pass — but a future
 caller that reads a single shallow row per mutation and nothing else is the shape to watch.
 
 **What is still O(rows), and can still be re-multiplied by a caller that loops it**: `find_file_index`,
@@ -227,12 +228,11 @@ copies (`newerAndMissing`, TC's default), nothing more (`missing`), or both copi
 
 - **Read off both cached listings under ONE lock, in each pane's row space** (`CachedListing::rows`), so the answer is a
   ready selection and a row the pane doesn't show is never marked.
-- **The answer names the state it was read from**: each listing's diff `sequence`, and `settled`, false when a change
-  was queued or in flight in `diff_emitter` (`has_unsent_changes`, checked after the read and outside the cache lock).
-  The cache mutates before its diff is sent, so without this a pane could apply rows that already include a file it
-  doesn't show yet. The frontend applies only a settled answer at the sequence its pane shows
-  (`src/lib/file-explorer/pane/DETAILS.md` § Compare directories). Residual window: a writer between its cache write
-  and its `enqueue_diff` call (a few instructions, same function) isn't seen as unsent.
+- **The answer names the committed visible revision**, read under that same lock. `settled` requires both requested
+  `includeHidden` values to match the committed settings. Scratch drift is reconciled before taking that read lock,
+  so stable shown scratch and stable owned hidden temps are valid settled states.
+  The frontend also requires its applied revisions to match; a queued event is safe because its revision was already
+  committed. See § "Diff event coalescing" for publication and guarded consumption.
 - **Names match as the Mac does**: the exact spelling first, else a name that folds to the same key
   (`cmdr_fs::name_fold`, case and Unicode form). A folded match counts only when the key is unique on BOTH sides, so
   the two directions always agree: `Report` and `report` (a case-sensitive volume) against `REPORT` pair nothing.
@@ -482,10 +482,8 @@ loudly, so `sorting::tests::apply_permutation_moves_each_row_to_its_destination`
   hash lookups in the cached `.bin` table. `calculate_max_width_with_suffixes()` is the entry point, used by
   `brief_columns::compute_brief_column_text_widths` to size each Brief column to its widest filename (plus a per-row
   trailing suffix that reserves room for the Finder tag-dot cluster).
-- **Sequence counter on `CachedListing`, not `WatchedDirectory`**: SMB and MTP volumes don't use FSEvents
-  (`can_watch_listings() == false`), so they have no `WatchedDirectory`. With the sequence on the watcher,
-  `increment_sequence` returned `None` and `directory-diff` events never fired for those volumes. The `AtomicU64` on
-  `CachedListing` works for all volume types; the FSEvents path uses the same counter.
+- **Revision on `CachedListing`, not `WatchedDirectory`**: it describes the committed pane view on every volume,
+  including SMB and MTP, which have no FSEvents `WatchedDirectory`. See § "Diff event coalescing".
 - **`ListingEventSink` trait decouples streaming from Tauri** (same pattern as `OperationEventSink`):
   `read_directory_with_progress` emits events, but `tauri::AppHandle` can't be created in tests.
   `CollectorListingEventSink` captures events for assertions. `Arc<dyn ListingEventSink>` (not `&dyn`) because the sink
@@ -647,26 +645,49 @@ is the one at stake, and it takes its fixture from `write_operations::backend_su
 
 ## Diff event coalescing (diff_emitter.rs)
 
-All `directory-diff` emit paths funnel through `diff_emitter::enqueue_diff(listing_id, changes)` instead of calling
-`app.emit` directly. The module buffers changes per listing and flushes one combined event after a 50 ms trailing
-window. Producers: `caching::notify_added` / `notify_removed` / `notify_modified`; `caching::notify_full_refresh`
-(SMB `STATUS_NOTIFY_ENUM_DIR` re-reads); `watcher::handle_directory_change_incremental`;
-`watcher::handle_directory_change` (full re-read fallback); `commands::file_system::write_ops::emit_synthetic_entry_diff`
-(`create_file` / `create_directory`); `caching::publish_replacement`, which every `Replaced` and `FullRefresh` ends in.
+Mutation owners (`caching.rs` patch helpers and tag writes, `operations.rs` full replacements) allocate the listing's
+visible `sequence` and enqueue under ONE cache write lock. Initial revision is zero; hidden-only patches do not
+advance it. Full replacements enrich and sort first, then `diff_rows` compares the committed old projection with the
+pinned replacement projection and stores the final replacement under that lock. An identical raw replacement still
+reconciles visibility drift. Callers never enqueue the same patch again. Lock order is cache then queue; the emitter
+never reads the cache to stamp a batch.
 
-**Why**: a 5k-file bulk delete used to fire one `directory-diff` per file. The frontend handler in `FilePane.svelte`
-runs ~5 IPC calls per event (`getTotalCount`, `refetchColumnWidths`, `fetchEntryUnderCursor`, `fetchListingStats`, plus
-a virtual-list re-fetch), so the source pane flickered heavily (the brief view's columns collapsed to width-of-name on
-every recompute). Coalescing into one event per 50 ms caps the FE work at ≤ 20 emits/sec/listing and the flicker goes
-away.
+**Scratch visibility belongs to the revision.** `CachedListing` captures exact path-keyed decisions at construction,
+so revision zero's count and later rows agree. Ordinary directories have an empty projection. Read boundaries keep
+the shared-lock fast path when there is no drift; otherwise they reacquire the write lock, capture and recheck live
+decisions once, diff old/new projected rows, commit the projection, and publish its revision and pinned count before
+consuming indices. Stable scratch does not block guarded sorting, hidden toggles, selection snapshots, or comparison.
+If ownership or either advanced scratch setting changed, an old guarded revision returns `Changed`; applying the
+transition and retrying succeeds. A flip after validation cannot change rows at that revision: rows never resample.
+An unobserved ABA exposes no intermediate rows; an observed flip and flip back allocate separate revisions.
 
-**Why it's safe**: only the IPC emit is deferred. Cache mutations stay synchronous and inline at the call site, so
-`get_file_range` always sees the latest entries. Per-change `index` values stay correct because each producer computes
-them against the pane's rows at the moment it mutates.
+Entry mutations reconcile and publish scratch drift FIRST, then derive their own old/new coordinates using that
+pinned projection. For `[b,c]` with hidden `a.cmdr-tmp-*`, ownership expiry plus removal of `b` publishes an add at
+zero, count three (`r0→r1`), then a remove at one, count two (`r1→r2`). New scratch paths are sampled once when admitted;
+the same decision supplies their diff and count. Removed candidates are forgotten. A projection-only change affecting
+no currently shown rows still publishes an empty batch linking revisions (for example, a scratch dotfile with hidden
+files off). Reconciliation has no ownership notifications and does not clone the whole listing on ordinary reads;
+both visible-row caches remain valid across projection changes.
 
-**Cleanup**: `list_directory_end` calls `diff_emitter::drop_pending(listing_id)` so an in-flight buffer for a closed
-listing doesn't fire a trailing event. The E2E `flush_all_watchers` helper (`#[cfg(feature = "playwright-e2e")]`) also
-calls `flush_all_pending()` so tests don't have to wait out the 50 ms window.
+Wire payload: `{ listingId, batches: [{ fromSequence, sequence, totalCount, changes }] }`. Each batch is one old/new
+row space; one multi-path removal is one batch, successive mutations are separate batches. `totalCount` is the final
+visible count for that transition. A 50 ms window coalesces transport without flattening coordinate spaces. Events may
+arrive out of order; clients chain batches by revision rather than treating an event's changes as one transition.
+
+`resort_listing` accepts a final `expected_sequence: Option<u64>` and returns `ResortResult` with `sequence`,
+`totalCount`, `newCursorIndex`, and `newSelectedIndices`. It refuses stale revisions before interpreting selected rows,
+commits a revision even for identical ordering, and discards queued old-space batches under the cache write lock.
+Already drained batches retain their older stamps, so the client can discard them. `set_listing_include_hidden` takes
+the expected revision plus optional cursor and selection, remaps exact surviving identities from the OLD visibility
+to the NEW visibility, and returns the same result. An unchanged setting does not allocate a revision.
+
+`get_selection_snapshot(listing_id, include_hidden, selected_indices, expected_sequence)` consumes backend-space rows
+under one reconciled read lock, returning `{ paths, fileCount, folderCount }`. Revision or visibility mismatch and
+invalid rows return typed `ListingLookupError::Changed` (`type: "changed"`); a missing listing remains `Gone`.
+This guards row-to-path consumption, not subsequent filesystem operations.
+
+Ending a listing drops the queue under the cache write lock. The E2E `flush_all_watchers` helper also drains queues
+through `flush_all_pending()` without waiting for the transport window.
 
 ## File metadata tiers
 

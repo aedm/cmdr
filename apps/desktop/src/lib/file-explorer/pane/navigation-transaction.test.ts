@@ -92,7 +92,9 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => {
     getPathsAtIndices: vi.fn().mockResolvedValue([]),
     getSyncStatus: vi.fn().mockResolvedValue({ data: {}, timedOut: false }),
     getTotalCount: vi.fn().mockResolvedValue(0),
-    setListingIncludeHidden: vi.fn().mockResolvedValue(undefined),
+    setListingIncludeHidden: vi
+      .fn()
+      .mockResolvedValue({ sequence: 0, totalCount: 0, newCursorIndex: null, newSelectedIndices: null }),
     refreshListingIndexSizes: vi.fn().mockResolvedValue(undefined),
     openFile: vi.fn().mockResolvedValue(undefined),
     getIcons: vi.fn().mockResolvedValue({ data: {}, timedOut: false }),

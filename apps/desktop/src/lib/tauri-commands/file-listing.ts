@@ -112,6 +112,7 @@ export async function resortListing(
   selectedIndices?: number[],
   allSelected?: boolean,
   directorySortMode?: ListingDirectorySortMode,
+  expectedSequence: number | null = null,
 ): Promise<ResortResult> {
   const res = await commands.resortListing(
     listingId,
@@ -122,6 +123,7 @@ export async function resortListing(
     includeHidden,
     selectedIndices ?? null,
     allSelected ?? null,
+    expectedSequence,
   )
   if (res.status === 'error') throwListingLookupError(res.error)
   return res.data
@@ -143,17 +145,6 @@ export async function getFileRange(
   const res = await commands.getFileRange(listingId, start, count, includeHidden)
   if (res.status === 'error') throwListingLookupError(res.error)
   return res.data as FileEntry[]
-}
-
-/**
- * Gets total count of entries in a cached listing.
- * @param listingId - The listing ID from listDirectoryStart.
- * @param includeHidden - Whether to include hidden files in count.
- */
-export async function getTotalCount(listingId: string, includeHidden: boolean): Promise<number> {
-  const res = await commands.getTotalCount(listingId, includeHidden)
-  if (res.status === 'error') throwListingLookupError(res.error)
-  return res.data
 }
 
 export type { CompareDirectoriesMode, CompareDirectoriesResult }
@@ -323,9 +314,36 @@ export async function keepListingsAlive(listingIds: string[]): Promise<string[]>
  * @param listingId - The listing ID from listDirectoryStart.
  * @param includeHidden - The pane's hidden-files setting.
  */
-export async function setListingIncludeHidden(listingId: string, includeHidden: boolean): Promise<void> {
-  const res = await commands.setListingIncludeHidden(listingId, includeHidden)
+export async function setListingIncludeHidden(
+  listingId: string,
+  includeHidden: boolean,
+  expectedSequence: number | null,
+  cursorFilename: string | null,
+  selectedIndices: number[] | null,
+  allSelected: boolean | null,
+): Promise<ResortResult> {
+  const res = await commands.setListingIncludeHidden(
+    listingId,
+    includeHidden,
+    expectedSequence,
+    cursorFilename,
+    selectedIndices,
+    allSelected,
+  )
   if (res.status === 'error') throwListingLookupError(res.error)
+  return res.data
+}
+
+/** Paths and counts resolved under one lock, only for the caller's exact row state. */
+export async function getSelectionSnapshot(
+  listingId: string,
+  includeHidden: boolean,
+  selectedIndices: number[],
+  expectedSequence: number,
+) {
+  const res = await commands.getSelectionSnapshot(listingId, includeHidden, selectedIndices, expectedSequence)
+  if (res.status === 'error') throwListingLookupError(res.error)
+  return res.data
 }
 
 /**

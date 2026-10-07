@@ -204,7 +204,8 @@ decisions"; the estimator in § "ETA + throughput"; `WriteSettledGuard` in § "S
   (`transfer/DETAILS.md`, the volume-side Rename reservation).
 - **`create.rs` co-locates the synthetic listing-cache diff** (`should_emit_synthetic_diff` /
   `emit_synthetic_entry_diff`, both `pub(super)`) that lands a brand-new entry in the pane on local-FS-backed volumes.
-  `paste_clipboard.rs` reuses both so a pasted file cursor-lands exactly like mkfile.
+  `paste_clipboard.rs` reuses both so a pasted file cursor-lands exactly like mkfile. The insertion helper owns
+  publication; see `../listing/DETAILS.md` § "Diff event coalescing".
 - **Scan-phase `expected_files_total` / `expected_bytes_total` come from
   `crate::indexing::read::expected_totals::expected_totals_for_sources`** and are `None` when the index doesn't cover
   every source; the FE then falls back to a tally-only display instead of a progress bar. `scan.rs`'s walker derives

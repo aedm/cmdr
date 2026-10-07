@@ -37,7 +37,9 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => {
     findFileIndex: vi.fn().mockResolvedValue(null),
     getTotalCount: vi.fn().mockResolvedValue(0),
     getListingStats: vi.fn().mockResolvedValue({ data: null, timedOut: false }),
-    setListingIncludeHidden: vi.fn().mockResolvedValue(undefined),
+    setListingIncludeHidden: vi
+      .fn()
+      .mockResolvedValue({ sequence: 0, totalCount: 0, newCursorIndex: null, newSelectedIndices: null }),
     getSyncStatus: vi.fn().mockResolvedValue({ data: {}, timedOut: false }),
     onMediaEnrichProgress: vi.fn().mockResolvedValue(() => {}),
     onMediaEnrichTerminal: vi.fn().mockResolvedValue(() => {}),

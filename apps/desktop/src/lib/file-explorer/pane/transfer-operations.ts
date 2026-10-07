@@ -1,4 +1,6 @@
-import { getFileAt, getListingStats, getPathsAtIndices, type Initiator } from '$lib/tauri-commands'
+import { getFileAt, getSelectionSnapshot, getPathsAtIndices, type Initiator } from '$lib/tauri-commands'
+import { addToast } from '$lib/ui/toast'
+import { tString } from '$lib/intl/messages.svelte'
 import { toBackendIndices, toBackendCursorIndex } from '$lib/file-operations/transfer/transfer-dialog-utils'
 import type { SortColumn, SortOrder, TransferOperationType, VolumeInfo } from '../types'
 import type { DuplicateFollowUp } from './duplicate-rename'
@@ -77,12 +79,23 @@ export async function buildTransferPropsFromSelection(
   hasParent: boolean,
   isLeft: boolean,
   context: TransferContext,
+  expectedSequence: number,
 ): Promise<TransferDialogPropsDraft | null> {
   const backendIndices = toBackendIndices(selectedIndices, hasParent)
   if (backendIndices.length === 0) return null
 
-  const stats = await getListingStats(listingId, context.showHiddenFiles, backendIndices)
-  const sourcePaths = await getSelectedFilePaths(listingId, selectedIndices, context.showHiddenFiles, hasParent)
+  let snapshot: { paths: string[]; fileCount: number; folderCount: number }
+  try {
+    snapshot = await getSelectionSnapshot(listingId, context.showHiddenFiles, backendIndices, expectedSequence)
+  } catch (error) {
+    const refusal = error as { type?: string; failure?: { type?: string } }
+    const type = refusal.failure?.type ?? refusal.type
+    if (type !== 'changed' && type !== 'gone') throw error
+    // Refuse rather than reinterpret old selection indices under a newer revision.
+    addToast(tString('fileExplorer.compareDirectories.keptChanging'), { level: 'warn' })
+    return null
+  }
+  const sourcePaths = snapshot.paths
   if (sourcePaths.length === 0) return null
 
   return {
@@ -91,8 +104,8 @@ export async function buildTransferPropsFromSelection(
     destinationPath: context.destPath,
     direction: isLeft ? 'right' : 'left',
     currentVolumeId: context.destVolumeId,
-    fileCount: stats.selectedFiles ?? 0,
-    folderCount: stats.selectedDirs ?? 0,
+    fileCount: snapshot.fileCount,
+    folderCount: snapshot.folderCount,
     sourceFolderPath: context.sourcePath,
     sortColumn: context.sortColumn,
     sortOrder: context.sortOrder,

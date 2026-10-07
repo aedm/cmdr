@@ -9,9 +9,8 @@ use crate::file_system::{
     find_file_indices as ops_find_file_indices,
     fuzzy_find_first_match_in_listing as ops_fuzzy_find_first_match_in_listing, get_file_at as ops_get_file_at,
     get_file_beside as ops_get_file_beside, get_file_range as ops_get_file_range,
-    get_listing_stats as ops_get_listing_stats, get_total_count as ops_get_total_count,
-    keep_listings_alive as ops_keep_listings_alive, list_directory_end as ops_list_directory_end,
-    list_directory_start_streaming as ops_list_directory_start_streaming,
+    get_listing_stats as ops_get_listing_stats, keep_listings_alive as ops_keep_listings_alive,
+    list_directory_end as ops_list_directory_end, list_directory_start_streaming as ops_list_directory_start_streaming,
     refresh_listing_index_sizes as ops_refresh_listing_index_sizes, resort_listing as ops_resort_listing,
     set_listing_include_hidden as ops_set_listing_include_hidden,
 };
@@ -335,6 +334,7 @@ pub async fn resort_listing(
     include_hidden: bool,
     selected_indices: Option<Vec<usize>>,
     all_selected: Option<bool>,
+    expected_sequence: Option<u64>,
 ) -> Result<ResortResult, ListingLookupError> {
     ops_resort_listing(
         &listing_id,
@@ -345,6 +345,7 @@ pub async fn resort_listing(
         include_hidden,
         selected_indices.as_deref(),
         all_selected.unwrap_or(false),
+        expected_sequence,
     )
 }
 
@@ -357,12 +358,6 @@ pub async fn get_file_range(
     include_hidden: bool,
 ) -> Result<Vec<FileEntry>, ListingLookupError> {
     ops_get_file_range(&listing_id, start, count, include_hidden)
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn get_total_count(listing_id: String, include_hidden: bool) -> Result<usize, ListingLookupError> {
-    ops_get_total_count(&listing_id, include_hidden)
 }
 
 /// Returns the widest filename's text-only width (in px) per Brief-mode column.
@@ -539,8 +534,39 @@ pub async fn keep_listings_alive(listing_ids: Vec<String>) -> Vec<String> {
 /// after the hidden-files toggle.
 #[tauri::command]
 #[specta::specta]
-pub async fn set_listing_include_hidden(listing_id: String, include_hidden: bool) -> Result<(), ListingLookupError> {
-    ops_set_listing_include_hidden(&listing_id, include_hidden)
+pub async fn set_listing_include_hidden(
+    listing_id: String,
+    include_hidden: bool,
+    expected_sequence: Option<u64>,
+    cursor_filename: Option<String>,
+    selected_indices: Option<Vec<usize>>,
+    all_selected: Option<bool>,
+) -> Result<ResortResult, ListingLookupError> {
+    ops_set_listing_include_hidden(
+        &listing_id,
+        include_hidden,
+        expected_sequence,
+        cursor_filename.as_deref(),
+        selected_indices.as_deref(),
+        all_selected.unwrap_or(false),
+    )
+}
+
+/// Consume a selection only while it still names the committed backend rows.
+#[tauri::command]
+#[specta::specta]
+pub async fn get_selection_snapshot(
+    listing_id: String,
+    include_hidden: bool,
+    selected_indices: Vec<usize>,
+    expected_sequence: u64,
+) -> Result<crate::file_system::listing::operations::SelectionSnapshot, ListingLookupError> {
+    crate::file_system::listing::operations::get_selection_snapshot(
+        &listing_id,
+        include_hidden,
+        &selected_indices,
+        expected_sequence,
+    )
 }
 
 /// The listing's path when a non-local volume's own watcher claims to see every

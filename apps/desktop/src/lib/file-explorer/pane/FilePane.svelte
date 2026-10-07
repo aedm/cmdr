@@ -8,6 +8,7 @@
         SelectPayload,
         SortColumn,
         SortOrder,
+        ResortResult,
         VisibleRangePayload,
     } from '../types'
     import {
@@ -71,6 +72,8 @@
     import { createSelectionState } from './selection-state.svelte'
     import { createPaneMcpSync, paneListingOf } from './pane-mcp-sync.svelte'
     import { initListingDiffSync } from './listing-diff-sync.svelte'
+    import { createPaneRowState } from './pane-row-state'
+    import { toBackendIndices, toFrontendIndices } from './sorting-handlers'
     import { createRenameState } from '../rename/rename-state.svelte'
     import { type ListingDirectorySortMode } from '$lib/settings'
     import { tString } from '$lib/intl/messages.svelte'
@@ -270,7 +273,9 @@
     // Operation snapshot: tracks which files were selected when an operation started,
     // so the diff handler can adjust selection as files disappear.
     let operationSelectedNames = $state<string[] | 'all' | null>(null)
-    let diffGeneration = 0 // NOT $state: only used in async callbacks, never for rendering
+    const rowState = createPaneRowState({ getListingId: () => listingId, getLoading: () => loading,
+        getOperationActive: () => operationSelectedNames !== null || renameFlow.pendingCursorName !== null,
+        getIncludeHidden: () => includeHidden, onReconfigure: () => { renameFlow.pendingCursorName = null } })
 
     // Type-to-jump: per-pane buffer + indicator + the IPC fuzzy-match runner and
     // the MCP mirror of the last matched name, all in a `*.svelte.ts` controller.
@@ -323,19 +328,22 @@
         getFullListRef: () => fullListRef,
         getListingId: () => listingId,
         setListingId: (id) => {
+            rowState.reset()
+            operationSelectedNames = null
             listingId = id
         },
         getLoading: () => loading,
         setLoading: (value) => {
             loading = value
+            if (!value) rowState.initialize()
         },
         getTotalCount: () => totalCount,
         setTotalCount: (count) => {
             totalCount = count
         },
-        getLastSequence: () => lastSequence,
+        getLastSequence: rowState.getSequence,
         setLastSequence: (sequence) => {
-            lastSequence = sequence
+            rowState.setSequence(sequence)
         },
         setError: (value) => {
             error = value
@@ -940,7 +948,16 @@
 
     /** The last `directory-diff` sequence this pane applied: which state of its listing its rows show. */
     export function getLastSequence(): number {
-        return lastSequence
+        return rowState.getSequence()
+    }
+    export function getViewGeneration(): number { return rowState.getGeneration() }
+    export function isRowStateReady(): boolean { return rowState.isReady() }
+    export function getRowState() { return rowState }
+    export function applyRowResult(result: ResortResult): () => void {
+        totalCount = result.totalCount
+        if (result.newSelectedIndices !== null) selection.setSelectedIndices(toFrontendIndices(result.newSelectedIndices, hasParent))
+        cursorIndex = result.newCursorIndex === null ? Math.max(0, Math.min(cursorIndex, effectiveTotalCount - 1)) : result.newCursorIndex + (hasParent ? 1 : 0)
+        return () => { void setCursorIndex(cursorIndex); refreshView() }
     }
 
     // noinspection JSUnusedGlobalSymbols -- Used dynamically
@@ -949,6 +966,7 @@
     }
 
     export function setSelectedIndices(indices: number[]): void {
+        rowState.invalidateWork()
         selection.setSelectedIndices(indices)
     }
 
@@ -1085,20 +1103,20 @@
 
     /** Snapshots the current selection as file names for diff-driven adjustment during operations. */
     export async function snapshotSelectionForOperation(): Promise<void> {
-        operationSelectedNames = await fetchSelectedNames({
-            listingId,
-            includeHidden,
-            hasParent,
-            isAllSelected: selection.isAllSelected(hasParent, effectiveTotalCount),
-            selectedIndices: selection.getSelectedIndices(),
-        })
+        const token = rowState.capture()
+        const endWork = rowState.beginAsyncWork()
+        try {
+            const names = await fetchSelectedNames({ listingId, includeHidden, hasParent, expectedSequence: token.sequence,
+                isAllSelected: selection.isAllSelected(hasParent, effectiveTotalCount), selectedIndices: selection.getSelectedIndices() })
+            if (rowState.matches(token)) operationSelectedNames = names
+        } finally { endWork() }
     }
 
     /** Clears the operation snapshot and invalidates in-flight findFileIndices callbacks. Returns the previous value. */
     export function clearOperationSnapshot(): string[] | 'all' | null {
         const prev = operationSelectedNames
         operationSelectedNames = null
-        diffGeneration++
+        rowState.invalidateWork()
         return prev
     }
 
@@ -1289,9 +1307,6 @@
         return loader.navigateToParent()
     }
 
-    // Track last sequence for file watcher diffs (read/written by the loader's
-    // swap-state accessors and by `listing-diff-sync`).
-    let lastSequence = 0
     // Opening folder state (before read_dir starts - slow for network folders)
     let openingFolder = $state(false)
     // What the folder waits on once its volume stopped answering mid-read, else `null`;
@@ -1660,14 +1675,11 @@
             void hiddenFilesResync.resync({
                 listingId,
                 includeHidden,
-                // Read cursor state without tracking to avoid infinite re-triggers
-                nameToFollow: untrack(() => selectionInfo.entry?.name),
-                cursorIndex: untrack(() => cursorIndex),
-                getHasParent: () => hasParent,
-                setTotalCount: (count) => {
-                    totalCount = count
-                },
-                setCursorIndex,
+                rowState,
+                getSortState: () => ({ cursorFilename: selectionInfo.entry?.name,
+                    backendSelectedIndices: toBackendIndices(selection.getSelectedIndices(), hasParent),
+                    allSelected: isAllSelected(), hasParent }),
+                applyResult: applyRowResult,
             })
         }
     })
@@ -1786,6 +1798,7 @@
     // Registered once during init; deps pass reactive reads via getters and the
     // few mutations back via setters/callbacks (see `listing-diff-sync.svelte.ts`).
     initListingDiffSync({
+        rowState,
         selection,
         rename,
         renameFlow,
@@ -1800,12 +1813,6 @@
         getCurrentPath: () => currentPath,
         getVolumePath: () => volumePath,
         getOperationSelectedNames: () => operationSelectedNames,
-        getLastSequence: () => lastSequence,
-        setLastSequence: (sequence: number) => {
-            lastSequence = sequence
-        },
-        getDiffGeneration: () => diffGeneration,
-        bumpDiffGeneration: () => ++diffGeneration,
         setTotalCount: (count: number) => {
             totalCount = count
         },
@@ -1926,6 +1933,7 @@
         gitBrowser.cleanup()
         // The teardown above ended this pane's listing; a resync mid-flight must stop quietly.
         hiddenFilesResync.dispose()
+        rowState.dispose()
     })
 </script>
 

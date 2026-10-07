@@ -1,215 +1,144 @@
-/**
- * Tests for `hidden-files-resync.ts`, keeping a pane consistent after the
- * hidden-files toggle changes how many rows the listing has. They pin:
- * - the backend hears the new setting before anything is read back,
- * - the new total is published before any cursor math runs,
- * - the cursor follows the file it was on, with the `..` row offset applied,
- * - a cursor left past the end is clamped, and only then,
- * - a file that just became hidden falls back to the clamp,
- * - an empty listing puts the cursor at 0 rather than -1,
- * - a resync the pane has moved on from (a new listing, a newer toggle, or the
- *   pane's own teardown) ends quietly and writes nothing, while a failure on the
- *   live listing still rejects.
- */
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
-
-const { ipc } = vi.hoisted<{
-  ipc: { getTotalCount: Mock; findFileIndex: Mock; setListingIncludeHidden: Mock }
-}>(() => ({
-  ipc: { getTotalCount: vi.fn(), findFileIndex: vi.fn(), setListingIncludeHidden: vi.fn() },
-}))
-
-vi.mock('$lib/tauri-commands', () => ({
-  getTotalCount: ipc.getTotalCount,
-  findFileIndex: ipc.findFileIndex,
-  setListingIncludeHidden: ipc.setListingIncludeHidden,
-}))
-
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHiddenFilesResync } from './hidden-files-resync'
+import { createPaneRowState } from './pane-row-state'
+import type { ResortResult } from '../types'
 
-describe('resyncAfterHiddenFilesToggle', () => {
-  let setTotalCount: Mock
-  let setCursorIndex: Mock
-  /** The listing the pane shows right now; a test moves the pane on by changing it. */
-  let paneListingId: string
-  let resync: ReturnType<typeof createHiddenFilesResync>
+const ipc = vi.hoisted(() => ({ setListingIncludeHidden: vi.fn(), getTotalCount: vi.fn() }))
+vi.mock('$lib/tauri-commands', () => ipc)
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    setTotalCount = vi.fn()
-    setCursorIndex = vi.fn().mockResolvedValue(undefined)
-    ipc.getTotalCount.mockResolvedValue(10)
-    ipc.findFileIndex.mockResolvedValue(null)
-    ipc.setListingIncludeHidden.mockResolvedValue(undefined)
-    paneListingId = 'listing-1'
-    resync = createHiddenFilesResync(() => paneListingId)
+function harness() {
+  let listingId = 'listing-1'
+  const rows = createPaneRowState({
+    getListingId: () => listingId,
+    getLoading: () => false,
+    getOperationActive: () => false,
   })
-
-  function run(over: Partial<Parameters<ReturnType<typeof createHiddenFilesResync>['resync']>[0]> = {}) {
-    return resync.resync({
-      listingId: 'listing-1',
-      includeHidden: true,
-      nameToFollow: undefined,
-      cursorIndex: 0,
-      getHasParent: () => false,
-      setTotalCount,
-      setCursorIndex,
-      ...over,
-    })
+  rows.initialize()
+  rows.setSequence(7)
+  const sync = createHiddenFilesResync(() => listingId)
+  const install = vi.fn()
+  const getSortState = vi.fn(() => ({
+    cursorFilename: 'a.txt',
+    backendSelectedIndices: [2],
+    allSelected: false,
+    hasParent: false,
+  }))
+  return {
+    rows,
+    sync,
+    install,
+    getSortState,
+    navigate: () => {
+      listingId = 'listing-2'
+      rows.reset()
+    },
+    run: (includeHidden = true) =>
+      sync.resync({ listingId, includeHidden, rowState: rows, getSortState, applyResult: install }),
   }
+}
 
-  // The backend numbers `directory-diff` rows in the pane's row space and skips
-  // rows the pane can't see, so it has to know the setting before the pane
-  // re-reads anything in the new space.
-  it('tells the backend the new setting before reading the count', async () => {
-    const calls: string[] = []
+const result: ResortResult = { sequence: 8, totalCount: 3, newCursorIndex: 1, newSelectedIndices: [1] }
+
+describe('hidden visibility row transition', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    ipc.setListingIncludeHidden.mockResolvedValue(result)
+  })
+
+  it('atomically remaps hidden visibility from the exact old selected rows', async () => {
+    const pane = harness()
+    const done = pane.run()
+    expect(pane.rows.isReady()).toBe(false)
+    await done
+    expect(ipc.setListingIncludeHidden).toHaveBeenCalledWith('listing-1', true, 7, 'a.txt', [2], false)
+    expect(ipc.getTotalCount).not.toHaveBeenCalled()
+    expect(pane.install).toHaveBeenCalledExactlyOnceWith(result)
+    expect(pane.rows.getSequence()).toBe(8)
+  })
+
+  it('installs the response before draining a newer buffered transition', async () => {
+    const pane = harness()
+    const order: string[] = []
+    pane.install.mockImplementation(() => order.push('response'))
+    pane.rows.setBatchApplier(() => {
+      order.push('diff')
+    })
     ipc.setListingIncludeHidden.mockImplementation(() => {
-      calls.push('set')
-      return Promise.resolve()
+      pane.rows.receive([{ fromSequence: 8, sequence: 9, totalCount: 2, changes: [] }])
+      expect(order).toEqual([])
+      return Promise.resolve(result)
     })
-    ipc.getTotalCount.mockImplementation(() => {
-      calls.push('count')
-      return Promise.resolve(10)
+    await pane.run()
+    expect(order).toEqual(['response', 'diff'])
+    expect(pane.rows.getSequence()).toBe(9)
+  })
+
+  it('recaptures selection after draining a changed refusal, rather than reusing old rows', async () => {
+    vi.useFakeTimers()
+    const pane = harness()
+    pane.rows.setBatchApplier(() => {
+      pane.getSortState.mockReturnValue({
+        cursorFilename: 'a.txt',
+        backendSelectedIndices: [1],
+        allSelected: false,
+        hasParent: false,
+      })
     })
-    await run({ includeHidden: false })
-    expect(ipc.setListingIncludeHidden).toHaveBeenCalledWith('listing-1', false)
-    expect(calls).toEqual(['set', 'count'])
+    ipc.setListingIncludeHidden
+      .mockImplementationOnce(() => {
+        pane.rows.receive([{ fromSequence: 7, sequence: 8, totalCount: 2, changes: [] }])
+        return Promise.reject(Object.assign(new Error(), { type: 'changed', listingId: 'listing-1' }))
+      })
+      .mockResolvedValueOnce({ ...result, sequence: 9 })
+    const done = pane.run(false)
+    await vi.advanceTimersByTimeAsync(100)
+    await done
+    expect(ipc.setListingIncludeHidden).toHaveBeenLastCalledWith('listing-1', false, 8, 'a.txt', [1], false)
+    vi.useRealTimers()
   })
 
-  it('publishes the new total count', async () => {
-    await run()
-    expect(ipc.getTotalCount).toHaveBeenCalledWith('listing-1', true)
-    expect(setTotalCount).toHaveBeenCalledWith(10)
+  it('serializes off/on ABA and advances the local generation for both requests immediately', async () => {
+    const pane = harness()
+    let finish!: (result: ResortResult) => void
+    ipc.setListingIncludeHidden
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve
+          }),
+      )
+      .mockResolvedValueOnce({ ...result, sequence: 9 })
+    const generation = pane.rows.getGeneration()
+    const first = pane.run(false)
+    const second = pane.run(true)
+    expect(pane.rows.getGeneration()).toBe(generation + 2)
+    await Promise.resolve()
+    expect(ipc.setListingIncludeHidden).toHaveBeenCalledTimes(1)
+    finish(result)
+    await Promise.all([first, second])
+    expect(ipc.setListingIncludeHidden).toHaveBeenLastCalledWith('listing-1', true, 8, 'a.txt', [2], false)
   })
 
-  it('keeps the cursor on the same file', async () => {
-    ipc.findFileIndex.mockResolvedValue(4)
-    await run({ nameToFollow: 'a.txt', cursorIndex: 7 })
-    expect(ipc.findFileIndex).toHaveBeenCalledWith('listing-1', 'a.txt', true)
-    expect(setCursorIndex).toHaveBeenCalledWith(4)
-  })
-
-  it('offsets the found index by the `..` row', async () => {
-    ipc.findFileIndex.mockResolvedValue(4)
-    await run({ nameToFollow: 'a.txt', getHasParent: () => true })
-    expect(setCursorIndex).toHaveBeenCalledWith(5)
-  })
-
-  it('leaves a still-valid cursor alone when there is no file to follow', async () => {
-    await run({ cursorIndex: 3 })
-    expect(setCursorIndex).not.toHaveBeenCalled()
-  })
-
-  it('clamps a cursor left past the end', async () => {
-    ipc.getTotalCount.mockResolvedValue(3)
-    await run({ cursorIndex: 8 })
-    expect(setCursorIndex).toHaveBeenCalledWith(2)
-  })
-
-  it('counts the `..` row when deciding whether the cursor still fits', async () => {
-    ipc.getTotalCount.mockResolvedValue(3)
-    await run({ cursorIndex: 3, getHasParent: () => true })
-    expect(setCursorIndex).not.toHaveBeenCalled()
-  })
-
-  it('clamps when the followed file just became hidden', async () => {
-    ipc.getTotalCount.mockResolvedValue(2)
-    ipc.findFileIndex.mockResolvedValue(null)
-    await run({ nameToFollow: 'hidden.txt', cursorIndex: 5 })
-    expect(setCursorIndex).toHaveBeenCalledWith(1)
-  })
-
-  it('puts the cursor at 0 on an emptied listing', async () => {
-    ipc.getTotalCount.mockResolvedValue(0)
-    await run({ cursorIndex: 4 })
-    expect(setCursorIndex).toHaveBeenCalledWith(0)
-  })
-
-  // A navigation ends the old listing in the same tick it clears the pane's id
-  // (`listing-loader.ts`), so a read still in flight is answered "Listing not
-  // found". The caller is a fire-and-forget `void`, so that rejection used to
-  // escape the window as an unhandled one (MCP `select_volume` then `nav_to_path`).
-  it('ends quietly when the pane moved to another listing and the read found the old one gone', async () => {
-    ipc.getTotalCount.mockImplementation(() => {
-      paneListingId = 'listing-2'
-      return Promise.reject(new Error('Listing not found: listing-1'))
+  it.each(['navigate', 'dispose'] as const)('does not install after %s', async (action) => {
+    const pane = harness()
+    ipc.setListingIncludeHidden.mockImplementationOnce(() => {
+      if (action === 'navigate') pane.navigate()
+      else pane.sync.dispose()
+      return Promise.resolve(result)
     })
-    await expect(run({ nameToFollow: 'a.txt' })).resolves.toBeUndefined()
-    expect(setTotalCount).not.toHaveBeenCalled()
-    expect(setCursorIndex).not.toHaveBeenCalled()
+    await pane.run()
+    expect(pane.install).not.toHaveBeenCalled()
   })
 
-  // The old listing can also answer before it's torn down. Its count and cursor
-  // describe a listing the pane no longer shows.
-  it('writes nothing into a pane that moved on while the count was being read', async () => {
-    ipc.getTotalCount.mockImplementation(() => {
-      paneListingId = 'listing-2'
-      return Promise.resolve(3)
+  it('suppresses a gone rejection after disposal but not a live fault', async () => {
+    const pane = harness()
+    ipc.setListingIncludeHidden.mockImplementationOnce(() => {
+      pane.sync.dispose()
+      return Promise.reject(Object.assign(new Error(), { type: 'gone' }))
     })
-    await run({ cursorIndex: 8 })
-    expect(setTotalCount).not.toHaveBeenCalled()
-    expect(setCursorIndex).not.toHaveBeenCalled()
-  })
-
-  it('leaves the cursor alone when the pane moved on while the followed file was being looked up', async () => {
-    ipc.findFileIndex.mockImplementation(() => {
-      paneListingId = ''
-      return Promise.resolve(4)
-    })
-    await run({ nameToFollow: 'a.txt' })
-    expect(setCursorIndex).not.toHaveBeenCalled()
-  })
-
-  it('gives way to a newer toggle on the same listing', async () => {
-    let answerFirstCount: (count: number) => void = () => {}
-    ipc.getTotalCount.mockImplementationOnce(
-      () =>
-        new Promise<number>((resolve) => {
-          answerFirstCount = resolve
-        }),
-    )
-    const first = run({ includeHidden: true })
-    await vi.waitFor(() => {
-      expect(ipc.getTotalCount).toHaveBeenCalledTimes(1)
-    })
-    await run({ includeHidden: false })
-    expect(setTotalCount).toHaveBeenCalledExactlyOnceWith(10)
-
-    answerFirstCount(99)
-    await first
-    expect(setTotalCount).toHaveBeenCalledExactlyOnceWith(10)
-  })
-
-  // A destroyed pane still reports its old listing id, but its teardown (or the
-  // tab that replaced it, `{#key}` in `DualPaneExplorer.svelte`) already ended
-  // that listing. Seen in a dev hot-reload burst; a tab switch does it too.
-  it('ends quietly when the pane was destroyed and the read found its listing gone', async () => {
-    ipc.getTotalCount.mockImplementation(() => {
-      resync.dispose()
-      return Promise.reject(new Error('Listing not found: listing-1'))
-    })
-    await expect(run({ nameToFollow: 'a.txt' })).resolves.toBeUndefined()
-    expect(setTotalCount).not.toHaveBeenCalled()
-    expect(setCursorIndex).not.toHaveBeenCalled()
-  })
-
-  it('writes nothing into a pane destroyed while the followed file was being looked up', async () => {
-    ipc.findFileIndex.mockImplementation(() => {
-      resync.dispose()
-      return Promise.resolve(4)
-    })
-    await run({ nameToFollow: 'a.txt' })
-    expect(setCursorIndex).not.toHaveBeenCalled()
-  })
-
-  it('does nothing once the pane is destroyed', async () => {
-    resync.dispose()
-    await run()
-    expect(ipc.setListingIncludeHidden).not.toHaveBeenCalled()
-  })
-
-  it('still rejects when a read fails on the listing the pane is showing', async () => {
-    ipc.getTotalCount.mockRejectedValue(new Error('Failed to acquire cache lock'))
-    await expect(run()).rejects.toThrow('Failed to acquire cache lock')
+    await expect(pane.run()).resolves.toBeUndefined()
+    const live = harness()
+    ipc.setListingIncludeHidden.mockRejectedValueOnce({ type: 'internal' })
+    await expect(live.run()).rejects.toEqual({ type: 'internal' })
   })
 })

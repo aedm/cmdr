@@ -4,6 +4,8 @@ import type { Initiator, ListingIndexSizesChanged, Location } from '$lib/tauri-c
 import type { HubRow } from '../network/servers-hub-rows'
 import type { FavoritesMenuOpenTrigger } from '../navigation/favorites-analytics'
 import type { HistoryCursor } from '../navigation/navigation-history'
+import type { PaneRowState } from './pane-row-state'
+import type { ResortResult } from '../types'
 
 /** Options for `startRename`. */
 export interface StartRenameOptions {
@@ -187,6 +189,11 @@ export interface FilePaneAPI {
    * show. Row numbers the backend read at another sequence don't fit them.
    */
   getLastSequence(): number
+  getViewGeneration(): number
+  isRowStateReady(): boolean
+  getRowState(): PaneRowState
+  /** Installs count, cursor, and selection synchronously; row-state owns the revision. */
+  applyRowResult(result: ResortResult): () => void
   getCurrentPath(): string
   getVolumeId(): string
   isMtp(): boolean

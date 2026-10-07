@@ -27,13 +27,13 @@ carry live here:
   inset. See `views/DETAILS.md`.
 - **`listing-diff-sync.svelte.ts` runs the `directory-diff` handler at two rates.** Cursor/selection reconciliation
   fires IMMEDIATELY (it has to stay exact; it also follows `move`d rows by identity, see `../DETAILS.md` § Operation
-  lifecycle), while the visible-listing refetch (soft-refresh tick, `totalCount`, stats, brief column widths) is
-  coalesced by a leading + trailing `createThrottle` at `INDEX_LISTING_UPDATE_MIN_INTERVAL_MS` (250 ms, ≤4/sec). Under
-  heavy churn the backend `diff_emitter` only collapses to ~50 ms (~20/sec), and each unthrottled refetch re-renders the
-  range into fresh WebKit compositor surfaces (1+ GB GPU under a storm), so the throttle is the demand-side cap. The
-  index-SIZE path (`listing-index-sizes-changed` → `FilePane.applyIndexSizes`) is a separate source, paced by the
-  backend (`src-tauri/src/listing_index_sizes/`: only rows whose shown values moved, at most one per listing per 2 s,
-  none while the window is hidden), and applied with no IPC but the status-bar totals.
+  lifecycle), as does the event's snapshot `totalCount`, while the visible-listing refetch (soft-refresh tick, stats,
+  brief column widths) is coalesced by a leading + trailing `createThrottle` at `INDEX_LISTING_UPDATE_MIN_INTERVAL_MS`
+  (250 ms, ≤4/sec). Under heavy churn the backend `diff_emitter` only collapses to ~50 ms (~20/sec), and each
+  unthrottled refetch re-renders the range into fresh WebKit compositor surfaces (1+ GB GPU under a storm), so the
+  throttle is the demand-side cap. The index-SIZE path (`listing-index-sizes-changed` → `FilePane.applyIndexSizes`) is a
+  separate source, paced by the backend (`src-tauri/src/listing_index_sizes/`: only rows whose shown values moved, at
+  most one per listing per 2 s, none while the window is hidden), and applied with no IPC but the status-bar totals.
 - **`git-browser-sync.svelte.ts::cleanup()` has to drop the SETTING listeners too**, not just the repo subscription, or
   they leak per pane.
 - **Two independent MCP mirrors, so a change to one doesn't cover the other**: `pane-mcp-sync.svelte.ts` mirrors pane
@@ -1493,8 +1493,8 @@ survive the rebuild on the Rust side, so they aren't in that list.
 - **A listing lookup can outlive its listing.** `abandonListing` ends the backend listing the moment the pane walks
   away, so a `findFileIndex` still in flight answers refused, and one that succeeded names rows no longer on screen. A
   caller that fires and forgets compares the pane's listing id before and after, ❌ never the refusal's message:
-  `pane-commands.ts::moveCursorByNameInFileListing` answers "not found". The `directory-diff` and
-  `write-source-item-done` chains in `listing-diff-sync.svelte.ts` don't guard this yet.
+  `pane-commands.ts::moveCursorByNameInFileListing` answers "not found". The diff and source-item continuations use
+  `pane-row-state.ts` tokens plus backend revision validation (see Compare directories below).
 - **Parent offset.** When `hasParent`, frontend cursor index = backend index + 1. `toFrontendIndices` applies this; the
   type-to-jump match callback applies it manually. Forgetting it lands the cursor one row off on every match.
 - **Selection's `SvelteSet` requires mutations, not reassignment.** `selectionState.selectedIndices.add(i)` works;
@@ -1678,13 +1678,30 @@ and says what happened in a toast. What the user should know, and the copy says:
 the two folders, by name and the listed modification time or size, never contents and never subfolders, so "nothing to
 select" is worded per mode and promises no more than that.
 
-- **Row numbers fit only the state they were read from.** The answer carries each listing's diff sequence and `settled`
-  (nothing was still on its way to a pane). It's applied only when settled AND each pane's `getLastSequence()` equals
-  it; otherwise the diffs haven't landed, so it asks again after `COMPARE_RETRY_DELAY_MS`, up to `COMPARE_ATTEMPTS`
-  times, then gives up with a toast. Why: a file appearing between the compare and the selection shifted the rows, and
-  ⇧F2 then selected a file that's equal on both sides, the wrong input for F5.
-- **An answer for panes that moved on is dropped** (a listing id changed, or hidden files were toggled): it describes
-  rows the panes no longer show. A `gone` listing stays quiet; `timedOut` / `internal` toast.
+- **`pane-row-state.ts` owns each pane's applied row revision and view gate.** Initial rows have sequence zero; loading
+  buffers transitions until the initial cursor and selection are installed. `DirectoryDiff.batches` preserves each
+  `{fromSequence, sequence, totalCount, changes}` transition. Apply only a batch whose predecessor is the applied
+  revision, synchronously install its count/cursor/selection, then advance the revision. Buffer out-of-order successors,
+  ignore already-applied endpoints, and never flatten changes from different row spaces or treat a gap as applied.
+  Scrolling, fetching, and throttled rendering are effects after the logical installation, not prerequisites.
+- **Sorting and hidden visibility share one serialized gate.** Gate before requesting IPC. Each request supplies the
+  exact applied sequence and freshly captured selection. Both commands return an atomic `ResortResult` with sequence,
+  count, cursor, and selection. Install the response synchronously, then drain buffered successors. A typed `changed`
+  refusal drains applicable diffs and recaptures the selection before a bounded retry; it never relabels stale indices
+  with a newer revision. Navigation, replacement, and disposal invalidate the response.
+- **Comparison needs two ready, identical pane objects.** Backend `settled` means the cached visibility matches the
+  request; it does not assert that frontend rows have caught up. Both applied sequences must match the result. Readiness
+  excludes loading, view changes, gaps, operation tracking, and async row work. Apply both selections in one synchronous
+  turn. Retry unsettled revisions using `COMPARE_RETRY_DELAY_MS` / `COMPARE_ATTEMPTS`, then warn. A local view
+  generation drops answers overtaken by reconfiguration, including hidden off/on ABA; per-pane request tokens make the
+  latest comparison mode win. A `gone` listing stays quiet; `timedOut` / `internal` toast.
+- **Async continuations are not row installations.** Operation name and pending rename lookups hold async-work leases,
+  capture listing/generation/revision/work tokens, and validate the backend revision before writing. Compare selections,
+  clearing an operation snapshot, reconfiguration, and disposal invalidate old work. Pending rename still allows the
+  synchronous selection remap; reconfiguration clears its cursor intention.
+- **F5 resolves selected paths and counts under one lock.** `transfer-operations.ts` calls `getSelectionSnapshot` with
+  backend-space indices and the exact applied revision. A typed `changed` / `gone` refusal warns and opens no transfer,
+  rather than resolving those same old indices in a newer cache. The caller also rejects replaced/navigated panes.
 
 ## Select all of the same kind
 

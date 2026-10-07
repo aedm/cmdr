@@ -463,8 +463,6 @@ pub(super) fn should_emit_synthetic_diff(volume_id: Option<&str>) -> bool {
 /// `pub(super)` so the sibling paste-clipboard writer reuses it (see
 /// `should_emit_synthetic_diff`).
 pub(super) fn emit_synthetic_entry_diff(volume_id: Option<&str>, entry_path: &Path, parent_path: &Path) {
-    use crate::file_system::listing::DiffChange;
-    use crate::file_system::listing::diff_emitter::enqueue_diff;
     use crate::file_system::listing::reading::get_single_entry;
     use crate::file_system::listing::{find_listings_for_path, insert_entry_sorted};
 
@@ -490,15 +488,8 @@ pub(super) fn emit_synthetic_entry_diff(volume_id: Option<&str>, entry_path: &Pa
 
     // 4. For each listing, insert and enqueue (nothing, to a pane that doesn't show it)
     for (listing_id, _sort_by, _sort_order, _dir_sort_mode) in listings {
-        // insert_entry_sorted acquires LISTING_CACHE write lock and releases it on return
-        let Some(rows) = insert_entry_sorted(&listing_id, entry.clone()) else {
-            continue; // Already exists or listing gone
-        };
-
-        enqueue_diff(
-            &listing_id,
-            DiffChange::for_pane(entry.clone(), rows).into_iter().collect(),
-        );
+        // The insertion owns revision allocation and publication under its write lock.
+        let _ = insert_entry_sorted(&listing_id, entry.clone());
     }
 }
 

@@ -143,7 +143,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::file_system::get_file_beside,
                     crate::commands::file_system::get_files_at_indices,
                     crate::commands::file_system::get_paths_at_indices,
-                    crate::commands::file_system::get_total_count,
+                    crate::commands::file_system::get_selection_snapshot,
                     crate::commands::file_system::get_brief_column_text_widths,
                     crate::commands::file_system::find_file_index,
                     crate::commands::file_system::compare_directories,

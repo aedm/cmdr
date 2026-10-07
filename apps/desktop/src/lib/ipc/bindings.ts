@@ -58,8 +58,24 @@ export const commands = {
    *  to rows it doesn't show, so the pane calls this before re-reading its rows
    *  after the hidden-files toggle.
    */
-  setListingIncludeHidden: (listingId: string, includeHidden: boolean) =>
-    typedError<null, ListingLookupError>(__TAURI_INVOKE('set_listing_include_hidden', { listingId, includeHidden })),
+  setListingIncludeHidden: (
+    listingId: string,
+    includeHidden: boolean,
+    expectedSequence: number | null,
+    cursorFilename: string | null,
+    selectedIndices: number[] | null,
+    allSelected: boolean | null,
+  ) =>
+    typedError<ResortResult, ListingLookupError>(
+      __TAURI_INVOKE('set_listing_include_hidden', {
+        listingId,
+        includeHidden,
+        expectedSequence,
+        cursorFilename,
+        selectedIndices,
+        allSelected,
+      }),
+    ),
   /**
    *  Re-reads a directory listing, emitting any diff.
    *
@@ -420,8 +436,16 @@ export const commands = {
     typedError<string[], ListingLookupError>(
       __TAURI_INVOKE('get_paths_at_indices', { listingId, selectedIndices, includeHidden, hasParent }),
     ),
-  getTotalCount: (listingId: string, includeHidden: boolean) =>
-    typedError<number, ListingLookupError>(__TAURI_INVOKE('get_total_count', { listingId, includeHidden })),
+  // Consume a selection only while it still names the committed backend rows.
+  getSelectionSnapshot: (
+    listingId: string,
+    includeHidden: boolean,
+    selectedIndices: number[],
+    expectedSequence: number,
+  ) =>
+    typedError<SelectionSnapshot, ListingLookupError>(
+      __TAURI_INVOKE('get_selection_snapshot', { listingId, includeHidden, selectedIndices, expectedSequence }),
+    ),
   /**
    *  Returns the widest filename's text-only width (in px) per Brief-mode column.
    *
@@ -510,6 +534,7 @@ export const commands = {
     includeHidden: boolean,
     selectedIndices: number[] | null,
     allSelected: boolean | null,
+    expectedSequence: number | null,
   ) =>
     typedError<ResortResult, ListingLookupError>(
       __TAURI_INVOKE('resort_listing', {
@@ -521,6 +546,7 @@ export const commands = {
         includeHidden,
         selectedIndices,
         allSelected,
+        expectedSequence,
       }),
     ),
   getPathLimits: () => __TAURI_INVOKE<PathLimits>('get_path_limits'),
@@ -6028,6 +6054,7 @@ export type CloudAiConsentWriteError =
 export type CompareDirectoriesError =
   // A pane's listing is no longer cached (its pane moved on).
   | { type: 'gone'; listingId: string }
+  | { type: 'changed'; listingId: string }
   // The comparison didn't finish within its deadline.
   | { type: 'timedOut' }
   // The comparison's worker failed; `detail` is log text only.
@@ -6056,14 +6083,14 @@ export type CompareDirectoriesResult = {
   left: number[]
   right: number[]
   /**
-   *  The listing's diff sequence the rows were read at. A pane may mark them
-   *  only while its last applied `directory-diff` sequence is exactly this.
+   *  The committed visible revision the rows were read at. A pane may mark them
+   *  only while its applied revision is exactly this.
    */
   leftSequence: number
   rightSequence: number
   /**
-   *  No change was waiting to reach either pane while the rows were read. When
-   *  false, the cache was ahead of the panes and the rows may name other files.
+   *  Requested visibility matches both committed listings and neither has an
+   *  unversioned scratch-dependent projection. Publication latency is irrelevant.
    */
   settled: boolean
 }
@@ -6887,8 +6914,14 @@ export type DirectoryDeletedEvent = {
 // `directory-diff` event sent to the frontend.
 export type DirectoryDiff = {
   listingId: string
-  // Monotonic.
+  batches: DirectoryDiffBatch[]
+}
+
+// One committed transition, with indices in its own old/new row spaces.
+export type DirectoryDiffBatch = {
+  fromSequence: number
   sequence: number
+  totalCount: number
   changes: DiffChange[]
 }
 
@@ -9508,15 +9541,17 @@ export type ListingIndexSizesChanged = {
 }
 
 /**
- *  Why a listing accessor couldn't answer: the listing it names isn't cached.
+ *  Why a listing accessor couldn't answer: gone, or a guarded row space changed.
  *
  *  Typed so the frontend can tell a pane whose listing went away (and re-list it)
- *  from any other failure, without reading a message. It's the accessors' only
- *  failure: the cache lock recovers from poison rather than refusing.
+ *  from stale row indices, without reading a message. The cache lock recovers
+ *  from poison rather than refusing.
  */
 export type ListingLookupError =
   // Ended by its pane, never started, or reclaimed by the orphan reaper.
-  { type: 'gone'; listingId: string }
+  | { type: 'gone'; listingId: string }
+  // The supplied row space is not the committed listing state.
+  | { type: 'changed'; listingId: string }
 
 // Opening event payload (emitted just before read_dir starts - the slow part for network folders)
 export type ListingOpeningEvent = {
@@ -12314,6 +12349,8 @@ export type ResolveLocationResult = {
 
 // Result of re-sorting a directory listing.
 export type ResortResult = {
+  sequence: number
+  totalCount: number
   /**
    *  New index of the file that was at the cursor position before re-sorting.
    *  None if the filename wasn't provided or wasn't found.
@@ -13610,6 +13647,13 @@ export type SelectionHistoryEntry = {
    *  rather than "returns results".
    */
   matchCount: number
+}
+
+// Exact paths and kinds consumed from one guarded backend row space.
+export type SelectionSnapshot = {
+  paths: string[]
+  fileCount: number
+  folderCount: number
 }
 
 /**

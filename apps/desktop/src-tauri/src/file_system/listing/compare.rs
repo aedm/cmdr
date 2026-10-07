@@ -10,20 +10,17 @@
 //! row space ([`CachedListing::rows`](super::cached_listing::CachedListing::rows)),
 //! so the indices are ready to become a selection, and a row the pane doesn't
 //! show (a hidden file, scratch) is never marked. Row numbers only fit a pane
-//! showing the same state, so the answer carries each listing's diff sequence and
-//! whether a change was still on its way to the pane (`settled`); the frontend
-//! marks nothing unless its panes match.
+//! showing the same committed state, so the answer carries each listing's revision.
+//! Scratch drift is committed before reading; `settled` confirms the requested visibility.
+//! The frontend marks nothing unless its own applied revisions also match.
 
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 
 use serde::{Deserialize, Serialize};
 
-use cmdr_fs::ignore_poison::RwLockIgnorePoison;
 use cmdr_fs::name_fold::fold_name;
 
-use crate::file_system::listing::cached_listing::LISTING_CACHE;
-use crate::file_system::listing::diff_emitter::has_unsent_changes;
 use crate::file_system::listing::metadata::FileEntry;
 use crate::file_system::listing::operations::ListingLookupError;
 use crate::file_system::listing::visible_rows::VisibleRows;
@@ -52,17 +49,25 @@ pub enum CompareDirectoriesMode {
 #[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum CompareDirectoriesError {
     /// A pane's listing is no longer cached (its pane moved on).
-    Gone { listing_id: String },
+    Gone {
+        listing_id: String,
+    },
+    Changed {
+        listing_id: String,
+    },
     /// The comparison didn't finish within its deadline.
     TimedOut,
     /// The comparison's worker failed; `detail` is log text only.
-    Internal { detail: String },
+    Internal {
+        detail: String,
+    },
 }
 
 impl From<ListingLookupError> for CompareDirectoriesError {
     fn from(err: ListingLookupError) -> Self {
         match err {
             ListingLookupError::Gone { listing_id } => Self::Gone { listing_id },
+            ListingLookupError::Changed { listing_id } => Self::Changed { listing_id },
         }
     }
 }
@@ -74,12 +79,12 @@ impl From<ListingLookupError> for CompareDirectoriesError {
 pub struct CompareDirectoriesResult {
     pub left: Vec<usize>,
     pub right: Vec<usize>,
-    /// The listing's diff sequence the rows were read at. A pane may mark them
-    /// only while its last applied `directory-diff` sequence is exactly this.
+    /// The committed visible revision the rows were read at. A pane may mark them
+    /// only while its applied revision is exactly this.
     pub left_sequence: u64,
     pub right_sequence: u64,
-    /// No change was waiting to reach either pane while the rows were read. When
-    /// false, the cache was ahead of the panes and the rows may name other files.
+    /// Requested visibility matches both reconciled committed listings.
+    /// Publication latency is irrelevant.
     pub settled: bool,
 }
 
@@ -91,7 +96,7 @@ pub fn compare_directories(
     right_include_hidden: bool,
     mode: CompareDirectoriesMode,
 ) -> Result<CompareDirectoriesResult, ListingLookupError> {
-    let cache = LISTING_CACHE.read_ignore_poison();
+    let cache = super::operations::reconciled_cache(&[left_listing_id, right_listing_id]);
     let left = cache
         .get(left_listing_id)
         .ok_or_else(|| ListingLookupError::gone(left_listing_id))?;
@@ -102,6 +107,7 @@ pub fn compare_directories(
     right.touch();
     let left_sequence = left.sequence.load(Ordering::Acquire);
     let right_sequence = right.sequence.load(Ordering::Acquire);
+    let settled = left.include_hidden() == left_include_hidden && right.include_hidden() == right_include_hidden;
 
     let left_rows = left.rows(left_include_hidden);
     let right_rows = right.rows(right_include_hidden);
@@ -113,10 +119,6 @@ pub fn compare_directories(
     drop(right_rows);
     drop(cache);
 
-    // Checked after the read, outside the cache lock: a change the read saw is
-    // either still unsent (queued or in flight) or already counted in a sequence
-    // that moved past the one read above.
-    let settled = settled_at(left_listing_id, left_sequence) && settled_at(right_listing_id, right_sequence);
     Ok(CompareDirectoriesResult {
         left: left_marked,
         right: right_marked,
@@ -124,15 +126,6 @@ pub fn compare_directories(
         right_sequence,
         settled,
     })
-}
-
-/// Whether `listing_id` still sits at `sequence` with nothing waiting to reach its pane.
-fn settled_at(listing_id: &str, sequence: u64) -> bool {
-    !has_unsent_changes(listing_id)
-        && LISTING_CACHE
-            .read_ignore_poison()
-            .get(listing_id)
-            .is_some_and(|listing| listing.sequence.load(Ordering::Acquire) == sequence)
 }
 
 /// The files one pane shows, looked up by name the way the other pane's names
