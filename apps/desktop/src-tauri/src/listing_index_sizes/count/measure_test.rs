@@ -12,7 +12,7 @@ use crate::test_support::TestDir;
 fn fresh_job(tag: &str) -> Arc<jobs::Job> {
     match jobs::enqueue(tag, Vec::new(), Instant::now()) {
         Joined::Owner(job) => job,
-        Joined::Waiter { .. } => panic!("a fresh tag owns its job"),
+        Joined::Waiter { .. } | Joined::Retiring(_) => panic!("a fresh tag owns its job"),
     }
 }
 

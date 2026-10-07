@@ -22,6 +22,84 @@ fn queued(paths: &[&str]) -> Vec<(String, RowSizes)> {
     paths.iter().map(|p| (p.to_string(), RowSizes::default())).collect()
 }
 
+#[tokio::test]
+async fn esc_during_resolution_finds_the_job_and_prevents_a_walk() {
+    let listing = TestListing::new()
+        .path("/data")
+        .entries(vec![folder("/data/a")])
+        .insert("jobs-startup");
+    let id = listing.id().to_string();
+    let requested = plan(listing.id(), false, None, |_| false).expect("cached");
+    let resolved = async move {
+        assert!(jobs::cancel(&id), "Esc must find the job before resolving the volume");
+        Some(Arc::new(cmdr_fs::volume::InMemoryVolume::new("startup")) as Arc<dyn crate::file_system::volume::Volume>)
+    };
+    let outcome = super::count_resolving(listing.id(), requested, resolved, &|_| {
+        panic!("no row should be published")
+    })
+    .await
+    .expect("cancelled, not disconnected");
+    assert!(outcome.cancelled);
+    assert_eq!(outcome.counted, 0);
+}
+
+#[test]
+fn cancellation_reserves_publication_until_the_owner_finishes() {
+    let id = "jobs-cancel-reservation";
+    let Joined::Owner(old) = jobs::enqueue(id, queued(&["/a"]), Instant::now()) else {
+        panic!("owner");
+    };
+    assert!(jobs::cancel(id));
+    assert!(
+        matches!(jobs::enqueue(id, queued(&["/a"]), Instant::now()), Joined::Retiring(_)),
+        "a replacement cannot publish before the old owner restores its rows"
+    );
+    jobs::end(id, &old);
+    assert!(matches!(
+        jobs::enqueue(id, queued(&["/a"]), Instant::now()),
+        Joined::Owner(_)
+    ));
+    jobs::cancel(id);
+}
+
+#[test]
+fn restoring_a_manual_partial_preserves_its_ownership() {
+    let listing = TestListing::new()
+        .path("/data")
+        .entries(vec![folder("/data/a")])
+        .insert("jobs-manual-restore");
+    jobs::mark_manual(listing.id(), "/data/a");
+    let Joined::Owner(job) = jobs::enqueue(listing.id(), queued(&["/data/a"]), Instant::now()) else {
+        panic!("owner");
+    };
+    let row = jobs::next(listing.id(), &job).expect("queued");
+    super::publish::restore(listing.id(), &row.path, row.before, row.before_manual, &|_| {});
+    assert!(jobs::manual_paths(listing.id(), super::publish::listing_is_open).contains("/data/a"));
+    jobs::end(listing.id(), &job);
+}
+
+#[tokio::test(start_paused = true)]
+async fn ui_cancellation_does_not_drop_an_in_flight_scan() {
+    use crate::test_support::WedgedVolume;
+    let listing = TestListing::new()
+        .path("/data")
+        .entries(vec![folder("/data/a")])
+        .insert("jobs-scan-lifetime");
+    let volume: Arc<dyn crate::file_system::volume::Volume> = Arc::new(WedgedVolume::new("lifetime"));
+    let weak = Arc::downgrade(&volume);
+    let id = listing.id().to_string();
+    let sink = move |_| {
+        jobs::cancel(&id);
+    };
+    let plan = plan(listing.id(), false, None, |_| false).expect("cached");
+    let outcome = count_with(listing.id(), plan, volume, &sink).await;
+    assert!(outcome.cancelled, "UI completion is responsive");
+    assert!(
+        weak.upgrade().is_some(),
+        "the backend operation still owns its volume until it returns"
+    );
+}
+
 #[test]
 fn a_request_while_a_count_runs_joins_its_queue_without_repeats() {
     let id = "jobs-join";

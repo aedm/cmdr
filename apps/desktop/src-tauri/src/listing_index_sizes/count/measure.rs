@@ -65,22 +65,22 @@ pub(super) enum MeasureError {
     Unreadable(String),
 }
 
-/// Measures `folder` on `volume`, bumping `live` as it goes.
-pub(super) async fn measure(
-    volume: &Arc<dyn Volume>,
-    folder: &str,
-    job: &Arc<Job>,
-    live: &Arc<Live>,
-) -> Result<Measured, MeasureError> {
+/// Owns backend I/O independently of the UI wait. Dropping this handle detaches
+/// the worker, never cancels an in-flight protocol operation or local syscall.
+/// The worker holds no listing or sink and only writes its private live totals.
+pub(super) fn start(
+    volume: Arc<dyn Volume>,
+    folder: String,
+    job: Arc<Job>,
+    live: Arc<Live>,
+) -> tokio::task::JoinHandle<Result<Measured, MeasureError>> {
     match volume.local_path() {
         Some(root) => {
-            let path = cmdr_fs::volume::root_anchored(&root, Path::new(folder));
-            let (job, live) = (Arc::clone(job), Arc::clone(live));
+            let path = cmdr_fs::volume::root_anchored(&root, Path::new(&folder));
+            // No async task retained waiting for an uninterruptible syscall.
             tokio::task::spawn_blocking(move || walk_local(&path, &job, &live))
-                .await
-                .unwrap_or_else(|err| Err(MeasureError::Unreadable(err.to_string())))
         }
-        None => measure_through_volume(volume, folder, job, live).await,
+        None => tokio::spawn(async move { measure_through_volume(&volume, &folder, &job, &live).await }),
     }
 }
 
@@ -90,6 +90,9 @@ async fn measure_through_volume(
     job: &Arc<Job>,
     live: &Arc<Live>,
 ) -> Result<Measured, MeasureError> {
+    if job.is_cancelled() {
+        return Err(MeasureError::Stopped);
+    }
     let on_progress = |progress: ListingProgress| live.set(progress);
     let boundary = ScanBoundary::new(Some(&on_progress)).stopping_at(ScanStop::new(Arc::clone(job) as _));
     match volume
@@ -115,6 +118,9 @@ async fn measure_through_volume(
 pub(super) fn walk_local(root: &Path, job: &Job, live: &Live) -> Result<Measured, MeasureError> {
     use std::os::unix::fs::MetadataExt;
 
+    if job.is_cancelled() {
+        return Err(MeasureError::Stopped);
+    }
     let mut physical = 0u64;
     let mut skipped = 0usize;
     // Hard links count once on disk; `nlink == 1` (nearly every file) skips the set.

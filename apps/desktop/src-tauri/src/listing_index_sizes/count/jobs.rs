@@ -4,9 +4,9 @@
 //! until it drains. A request that arrives while a job runs appends its folders
 //! (skipping ones already queued or being walked) and waits for the job to end,
 //! so Space on three folders in a row counts all three, in order, rather than
-//! each one abandoning the last. Esc ([`cancel`]) takes the job out of the map
-//! and raises its stop; the owner then stops the walk, puts back the rows still
-//! waiting, and ends the job. A request after that starts a fresh job.
+//! each one abandoning the last. Esc ([`cancel`]) raises its stop. The owner
+//! retains publication ownership until its final partial/restored rows land,
+//! then releases the listing. Backend workers never publish rows themselves.
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::pin::Pin;
@@ -26,6 +26,7 @@ pub(super) struct Queued {
     pub path: String,
     /// What the row showed when it was queued: put back if its walk never runs.
     pub before: RowSizes,
+    pub before_manual: bool,
     pub since: Instant,
     /// Whether its hourglass went up, so a cancel knows which rows to put back.
     pub lit: bool,
@@ -63,16 +64,19 @@ impl Job {
     }
 
     /// Appends the folders not already queued or being walked. Returns how many it took.
-    fn append(&self, folders: Vec<(String, RowSizes)>, now: Instant) -> usize {
+    fn append(&self, listing_id: &str, folders: Vec<(String, RowSizes)>, now: Instant) -> usize {
         let mut inner = self.inner.lock_ignore_poison();
+        let manual = MANUAL.lock_ignore_poison();
         let mut known: HashSet<String> = inner.queue.iter().map(|q| q.path.clone()).collect();
         known.extend(inner.current.clone());
         let mut took = 0;
         for (path, before) in folders {
             if known.insert(path.clone()) {
+                let before_manual = manual.get(listing_id).is_some_and(|paths| paths.contains(&path));
                 inner.queue.push_back(Queued {
                     path,
                     before,
+                    before_manual,
                     since: now,
                     lit: false,
                 });
@@ -129,6 +133,8 @@ static JOBS: LazyLock<Mutex<HashMap<String, Arc<Job>>>> = LazyLock::new(|| Mutex
 pub(super) enum Joined {
     /// No job was running: this request runs the queue.
     Owner(Arc<Job>),
+    /// Cancelled, but its owner is still finalizing rows. Retry after it finishes.
+    Retiring(watch::Receiver<Option<FolderSizeCountOutcome>>),
     /// A job was running and took the folders (`appended` of them); wait for its end.
     Waiter {
         appended: usize,
@@ -141,14 +147,17 @@ pub(super) enum Joined {
 pub(super) fn enqueue(listing_id: &str, folders: Vec<(String, RowSizes)>, now: Instant) -> Joined {
     let mut jobs = JOBS.lock_ignore_poison();
     if let Some(job) = jobs.get(listing_id) {
-        let appended = job.append(folders, now);
+        if job.is_cancelled() {
+            return Joined::Retiring(job.done.subscribe());
+        }
+        let appended = job.append(listing_id, folders, now);
         return Joined::Waiter {
             appended,
             done: job.done.subscribe(),
         };
     }
     let job = Arc::new(Job::new());
-    job.append(folders, now);
+    job.append(listing_id, folders, now);
     jobs.insert(listing_id.to_string(), Arc::clone(&job));
     Joined::Owner(job)
 }
@@ -182,7 +191,7 @@ pub(super) fn end(listing_id: &str, job: &Arc<Job>) {
 /// Stops the job running for `listing_id` (Esc, or the listing closing). Reports
 /// whether one was running.
 pub(crate) fn cancel(listing_id: &str) -> bool {
-    match JOBS.lock_ignore_poison().remove(listing_id) {
+    match JOBS.lock_ignore_poison().get(listing_id) {
         Some(job) => {
             job.cancel();
             true

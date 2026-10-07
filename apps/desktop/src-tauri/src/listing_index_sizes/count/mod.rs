@@ -21,6 +21,8 @@
 mod jobs;
 #[cfg(test)]
 mod jobs_test;
+#[cfg(test)]
+mod lifecycle_test;
 mod measure;
 #[cfg(test)]
 mod measure_test;
@@ -151,49 +153,127 @@ pub(crate) async fn count(
     let plan = plan(listing_id, include_hidden, only, |volume_id| {
         index.volume_status(volume_id).enabled
     })?;
-    let resolved = crate::file_system::volume::manager::get_volume_manager()
-        .resolve(&plan.volume_id, &plan.dir)
-        .await;
-    let Some(volume) = resolved.volume else {
-        log::info!(target: "folder_sizes", "count for {listing_id} not started: volume {} isn't connected", plan.volume_id);
-        return Err(CountFolderSizesError::NotConnected {
-            volume_id: plan.volume_id,
-        });
+    let volume_id = plan.volume_id.clone();
+    let dir = plan.dir.clone();
+    count_resolving(
+        listing_id,
+        plan,
+        async move {
+            crate::file_system::volume::manager::get_volume_manager()
+                .resolve(&volume_id, &dir)
+                .await
+                .volume
+        },
+        sink,
+    )
+    .await
+}
+
+async fn count_resolving(
+    listing_id: &str,
+    mut requested: CountPlan,
+    resolve: impl Future<Output = Option<Arc<dyn Volume>>> + Send + 'static,
+    sink: Sink<'_>,
+) -> Result<FolderSizeCountOutcome, CountFolderSizesError> {
+    let job = loop {
+        let folders = requested.folders.iter().map(|f| (f.path.clone(), f.before)).collect();
+        match jobs::enqueue(listing_id, folders, Instant::now()) {
+            Joined::Owner(job) => break job,
+            Joined::Waiter { appended, done } => {
+                log::debug!(target: "folder_sizes", "count for {listing_id} queued {appended} folder(s) on the running one");
+                return Ok(wait_for_end(done).await);
+            }
+            Joined::Retiring(done) => {
+                // No replacement may publish before the old owner's final rows.
+                // Re-read their sizes afterwards, including the exact-size skip.
+                let _ = wait_for_end(done).await;
+                let only: Vec<_> = requested.folders.iter().map(|f| f.path.clone()).collect();
+                requested = plan(listing_id, true, Some(&only), |volume_id| {
+                    crate::index_host::index().volume_status(volume_id).enabled
+                })?;
+            }
+        }
     };
-    Ok(count_with(listing_id, plan, volume, sink).await)
+    if requested.folders.is_empty() {
+        jobs::end(listing_id, &job);
+        let outcome = FolderSizeCountOutcome::default();
+        job.finish(outcome.clone());
+        return Ok(outcome);
+    }
+    // Resolution can itself issue backend I/O. The task owns its lifetime, but
+    // has no publication authority, just like the measurement worker.
+    let mut resolving = tokio::spawn(resolve);
+    let mut tick = tokio::time::interval(TICK);
+    tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    let volume = loop {
+        if job.is_cancelled() {
+            finish_cancelled(listing_id, &job, sink);
+            let outcome = FolderSizeCountOutcome {
+                cancelled: true,
+                ..Default::default()
+            };
+            job.finish(outcome.clone());
+            return Ok(outcome);
+        }
+        tokio::select! {
+            resolved = &mut resolving => {
+                // Cancellation wins even when resolution finishes in the same turn.
+                if job.is_cancelled() { continue; }
+                match resolved {
+                    Ok(Some(volume)) => break volume,
+                    Ok(None) | Err(_) => {
+                        job.cancel();
+                        finish_cancelled(listing_id, &job, sink);
+                        job.finish(FolderSizeCountOutcome { cancelled: true, ..Default::default() });
+                        return Err(CountFolderSizesError::NotConnected { volume_id: requested.volume_id });
+                    }
+                }
+            }
+            _ = tick.tick() => light_waiting(listing_id, &job, sink),
+        }
+    };
+    log::info!(target: "folder_sizes", "count started for {listing_id} on {}: {} folder(s), {}",
+        requested.volume_id, requested.folders.len(), if volume.local_path().is_some() { "local walk" } else { "volume scan" });
+    Ok(run(listing_id, &job, &volume, sink).await)
 }
 
 /// Queues `plan`'s folders on `listing_id`'s count, running it when none runs,
 /// and answers how the count ended.
+#[cfg(test)]
 pub(crate) async fn count_with(
     listing_id: &str,
     plan: CountPlan,
     volume: Arc<dyn Volume>,
     sink: Sink<'_>,
 ) -> FolderSizeCountOutcome {
-    let asked = plan.folders.len();
-    let folders = plan.folders.into_iter().map(|f| (f.path, f.before)).collect();
-    match jobs::enqueue(listing_id, folders, Instant::now()) {
-        Joined::Owner(job) => {
-            log::info!(target: "folder_sizes", "count started for {listing_id} on {}: {asked} folder(s), {}",
-                plan.volume_id, if volume.local_path().is_some() { "local walk" } else { "volume scan" });
-            run(listing_id, &job, &volume, sink).await
+    count_resolving(listing_id, plan, std::future::ready(Some(volume)), sink)
+        .await
+        .expect("test volume is connected")
+}
+
+async fn wait_for_end(
+    mut done: tokio::sync::watch::Receiver<Option<FolderSizeCountOutcome>>,
+) -> FolderSizeCountOutcome {
+    loop {
+        if let Some(outcome) = done.borrow().clone() {
+            return outcome;
         }
-        Joined::Waiter { appended, mut done } => {
-            log::debug!(target: "folder_sizes", "count for {listing_id} queued {appended} of {asked} folder(s) on the running one");
-            loop {
-                if let Some(outcome) = done.borrow().clone() {
-                    return outcome;
-                }
-                if done.changed().await.is_err() {
-                    return FolderSizeCountOutcome {
-                        cancelled: true,
-                        ..FolderSizeCountOutcome::default()
-                    };
-                }
-            }
+        if done.changed().await.is_err() {
+            return FolderSizeCountOutcome {
+                cancelled: true,
+                ..Default::default()
+            };
         }
     }
+}
+
+fn finish_cancelled(listing_id: &str, job: &Arc<Job>, sink: Sink<'_>) {
+    for waiting in job.drain() {
+        if waiting.lit {
+            restore(listing_id, &waiting.path, waiting.before, waiting.before_manual, sink);
+        }
+    }
+    jobs::end(listing_id, job);
 }
 
 /// What one folder's walk came to.
@@ -231,14 +311,7 @@ async fn run(listing_id: &str, job: &Arc<Job>, volume: &Arc<dyn Volume>, sink: S
     }
     if job.is_cancelled() {
         outcome.cancelled = true;
-        // Rows still waiting go back to what they showed; the job leaves the map
-        // if a cancel didn't already take it.
-        for waiting in job.drain() {
-            if waiting.lit {
-                restore(listing_id, &waiting.path, waiting.before, sink);
-            }
-        }
-        jobs::end(listing_id, job);
+        finish_cancelled(listing_id, job, sink);
     }
     log::info!(target: "folder_sizes", "count for {listing_id} {}: {} counted, {} unreadable, {:?}",
         if outcome.cancelled { "stopped" } else { "finished" }, outcome.counted, outcome.unreadable, started.elapsed());
@@ -261,17 +334,16 @@ async fn walk_one(listing_id: &str, job: &Arc<Job>, volume: &Arc<dyn Volume>, fo
     let started = Instant::now();
     // When the row last showed a running total; `None` while it hasn't shown one.
     let mut shown: Option<Instant> = None;
-    let walk = measure::measure(volume, path, job, &live);
-    tokio::pin!(walk);
+    let mut walk = measure::start(Arc::clone(volume), path.to_string(), Arc::clone(job), Arc::clone(&live));
     let mut tick = tokio::time::interval(TICK);
     tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
     let result = loop {
         tokio::select! {
-            result = &mut walk => break result,
+            result = &mut walk => break result.unwrap_or_else(|err| Err(MeasureError::Unreadable(err.to_string()))),
             _ = tick.tick() => {
-                // A walk wedged in one `readdir` (a sleeping NAS, a dead SFTP session)
-                // never comes back to see the stop: Esc ends it from here, and the
-                // dropped future abandons it.
+                // The UI stops waiting, but dropping a JoinHandle does NOT drop
+                // backend I/O. Its worker observes ScanStop after the in-flight
+                // operation returns and never publishes a late result.
                 if job.is_cancelled() {
                     break Err(MeasureError::Stopped);
                 }
@@ -330,13 +402,13 @@ async fn walk_one(listing_id: &str, job: &Arc<Job>, volume: &Arc<dyn Volume>, fo
                         sink,
                     );
                 }
-                None => restore(listing_id, path, folder.before, sink),
+                None => restore(listing_id, path, folder.before, folder.before_manual, sink),
             }
             Step::Stopped
         }
         Err(MeasureError::Unreadable(why)) => {
             log::info!(target: "folder_sizes", "count for {listing_id}: couldn't read a folder: {why}");
-            restore(listing_id, path, folder.before, sink);
+            restore(listing_id, path, folder.before, folder.before_manual, sink);
             Step::Unreadable
         }
     }

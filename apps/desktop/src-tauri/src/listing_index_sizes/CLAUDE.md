@@ -32,5 +32,7 @@ when its size, counts, or hourglass actually move.
 - **While the main window is hidden, nothing runs** (`main_window_visibility`); batches merge into one refresh per
   listing on show. ❌ Don't let a due deadline arm while hidden: the loop would spin.
 - **The batch arrives on the index writer's thread**: `dirs_updated` only hands it to the worker. ❌ Don't do work there.
+- **On-demand cancellation ends the UI wait, not in-flight backend I/O.** Owned measurement workers never publish;
+  the listing's job retains publication ownership until its final partial/restored rows land. Details below.
 
 Flow, the batch shapes it reads, and decisions: `DETAILS.md`.

@@ -80,8 +80,12 @@ pub(super) fn publish(listing_id: &str, folder: &str, stats: DirStats, sink: Sin
 /// Puts back the sizes a row showed before the count touched it (a walk that
 /// never ran, or couldn't read the folder). The pane re-reads its window from the
 /// cache (`full`), since "no size" isn't a reading an event can carry.
-pub(super) fn restore(listing_id: &str, folder: &str, before: RowSizes, sink: Sink<'_>) {
-    jobs::unmark_manual(listing_id, folder);
+pub(super) fn restore(listing_id: &str, folder: &str, before: RowSizes, before_manual: bool, sink: Sink<'_>) {
+    if before_manual {
+        jobs::mark_manual(listing_id, folder);
+    } else {
+        jobs::unmark_manual(listing_id, folder);
+    }
     if write_to_cache(listing_id, folder, |entry| before.apply_to(entry)) == Wrote::Row {
         sink(ListingIndexSizesChanged {
             listing_id: listing_id.to_string(),

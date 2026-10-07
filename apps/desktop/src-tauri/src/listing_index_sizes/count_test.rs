@@ -299,7 +299,8 @@ async fn a_long_walk_shows_the_hourglass_on_its_folder_and_on_the_ones_waiting_t
     let plan = plan(listing.id(), false, None, |_| false).expect("cached");
     let id = listing.id().to_string();
     let wedged: Arc<dyn Volume> = Arc::new(WedgedVolume::new("wedged"));
-    // The walk never ends on its own: it runs until Esc.
+    // Esc completes the UI wait; the owned backend worker stays parked until
+    // this test's runtime shuts down, because this volume never returns from I/O.
     let count = tokio::spawn(async move { count_with(&id, plan, wedged, &sink).await });
 
     let lit = |events: &[ListingIndexSizesChanged], path: &str| {

@@ -72,7 +72,7 @@ runs on; `count/` walks what it can't (SFTP, WebDAV, S3, archives, an excluded f
   ms after it was queued (a size it already had stays, an unknown one reads `<dir>`); a finished folder its exact size,
   or a lower bound (`≥`) when parts couldn't be read. A count done within 200 ms never blinks an hourglass. A ticker
   (50 ms) beside the walk does all the sending, so a walk stuck in one `readdir` still lights its row and still stops
-  on Esc (the ticker abandons it).
+  waiting on Esc. The UI finishing does not imply that backend I/O has terminated.
 - **Measuring** (`count/measure.rs`): on a volume with a local path (the Mac's disks, shares mounted under `/Volumes`)
   our own `walkdir` walk on a blocking thread, bumping the running totals per entry and asking the stop per entry. An
   unreadable subfolder is SKIPPED and counted, and the folder's size becomes a lower bound: `~/Library` gets a number
@@ -82,14 +82,24 @@ runs on; `count/` walks what it can't (SFTP, WebDAV, S3, archives, an excluded f
   so an archive or `.git` route walks its own tree.
 - **Requests queue, one job per listing** (`count/jobs.rs`). The first request owns the job and walks the queue until it
   drains; a request arriving meanwhile appends its folders (skipping ones queued or being walked) and resolves when the
-  job ends, with its outcome. So three Spaces in a row count three folders, in order. ❌ Never supersede: the old rule
-  abandoned a slow folder whenever a quick one was asked for. Esc (`cancel_folder_size_count`) takes the job out and
-  stops it: the folder being walked keeps its running total as a lower bound (or goes back to what it showed if it
+  job ends, with its outcome. So three Spaces in a row count three folders, in order. The job is registered before
+  volume resolution starts, so Esc also finds a request still resolving an archive or `.git` route. Esc raises its
+  stop: the folder being walked keeps its running total as a lower bound (or goes back to what it showed if it
   never got to show one), and the waiting rows whose hourglass went up go back to what they showed. Closing the listing
-  cancels its job (`listing_closed`), and a job that finds its listing gone stops itself.
+  cancels its job (`listing_closed`), and a job that finds its listing gone stops itself. The owner retains the registry
+  slot through its final publications. A retry arriving during finalization waits for it, then rereads the requested
+  rows (including the exact-size skip) before starting a new job.
+- **Backend lifetime is separate from publication ownership** (`count/measure.rs`): a remote scan owns its volume,
+  stop signal, and private running totals in a spawned task. Cancellation detaches its join handle, not its backend
+  future: an in-flight protocol operation must finish before the scan consults `ScanStop` cooperatively. Only the UI
+  owner publishes; a detached worker cannot overwrite a replacement's readings. Local walks use `spawn_blocking`
+  directly, retaining no async waiter after cancellation. A hung syscall cannot be interrupted; its blocking worker
+  holds only the path, stop signal, and private totals until it returns. Volume resolution likewise owns its in-flight
+  future independently of the UI wait and never starts a late walk after cancellation.
 - **Readings travel the index's road** (`count/publish.rs`): written into `LISTING_CACHE` (`update_index_sizes_by_path`),
   then sent as `listing-index-sizes-changed`; restoring a row sends a `full` event, since "no size" isn't a reading an
-  event can carry. The frontend has no new row path.
+  event can carry. Restoration restores manual ownership as well as sizes, so an unreadable or quickly cancelled retry
+  keeps an existing manual lower bound retryable on indexed volumes. The frontend has no new row path.
 - **Decision: on a volume the index RUNS on, the index keeps its rows.** "Runs" is `volume_status(..).enabled`: ❌ never
   `volume_ids()`, which still lists an index that is shutting down or failed, and then nothing completed its stale lower
   bounds (the review's "sometimes nothing got counted" with indexing just turned off). Only a folder the index says
