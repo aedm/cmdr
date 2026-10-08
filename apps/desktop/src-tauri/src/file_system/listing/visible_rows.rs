@@ -230,7 +230,7 @@ pub(crate) fn shows(entry: &FileEntry, include_hidden: bool, name_filter: Option
     shown_by_setting(entry, include_hidden, name_filter) && !staging::is_hidden_from_listings(&entry.name)
 }
 
-/// The half of [`shows`] that can't change while the entry sits unchanged.
+/// The hidden-file and name-filter predicates, independent of scratch ownership.
 fn shown_by_setting(entry: &FileEntry, include_hidden: bool, name_filter: Option<&NameFilter>) -> bool {
     (include_hidden || !entry.is_hidden) && name_filter.is_none_or(|filter| filter.matches(&entry.name))
 }

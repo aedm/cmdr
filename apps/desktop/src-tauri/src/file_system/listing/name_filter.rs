@@ -1,6 +1,6 @@
 //! Quick filter: the pattern a pane narrows its rows to while the user types.
 //!
-//! The pane's rows are the entries [`visible_rows`] shows,
+//! The pane's rows are the entries [`super::visible_rows`] shows,
 //! so the filter is one more input to THAT predicate, never a second filter
 //! point: counts, ranges, selection indices, type-to-jump, and `directory-diff`
 //! rows all agree on what a filtered pane is showing.
