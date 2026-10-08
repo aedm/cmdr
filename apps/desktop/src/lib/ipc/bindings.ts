@@ -11026,38 +11026,6 @@ export type MutationError =
     }
 
 /**
- *  Where the pane's cursor and selection land after a quick-filter change, in
- *  the new row space.
- */
-export type NameFilterResult = {
-  /**
-   *  Whether the listing took the new pattern. `false` only when the caller
-   *  asked to refuse a pattern nothing matches: the listing then keeps its
-   *  previous filter, and the rest of this answer describes that one.
-   */
-  accepted: boolean
-  // How many rows the pane shows under the new filter.
-  totalCount: number
-  /**
-   *  The row of the file that was under the cursor, or `None` when the new
-   *  filter leaves it out (or no file was given).
-   */
-  newCursorIndex: number | null
-  /**
-   *  The rows of the previously selected files the new filter still shows. A
-   *  selected file the filter leaves out drops out of the selection, so no
-   *  operation ever acts on a row the user can't see.
-   */
-  newSelectedIndices: number[]
-  /**
-   *  The diff sequence the new row space starts at, when the filter changed. Every
-   *  `directory-diff` numbered up to it describes the old rows: the pane takes it
-   *  as its last applied sequence and skips them. `None` when nothing changed.
-   */
-  sequence: number | null
-}
-
-/**
  *  The reply of `create_directory`, `create_file`, and `rename_file`. A refusal
  *  inside the deadline is the command's `Err(MutationError)`, as before.
  */
@@ -11095,6 +11063,38 @@ export type MutationSettledOutcome =
       // Why.
       error: MutationError
     }
+
+/**
+ *  Where the pane's cursor and selection land after a quick-filter change, in
+ *  the new row space.
+ */
+export type NameFilterResult = {
+  /**
+   *  Whether the listing took the new pattern. `false` only when the caller
+   *  asked to refuse a pattern nothing matches: the listing then keeps its
+   *  previous filter, and the rest of this answer describes that one.
+   */
+  accepted: boolean
+  // How many rows the pane shows under the new filter.
+  totalCount: number
+  /**
+   *  The row of the file that was under the cursor, or `None` when the new
+   *  filter leaves it out (or no file was given).
+   */
+  newCursorIndex: number | null
+  /**
+   *  The rows of the previously selected files the new filter still shows. A
+   *  selected file the filter leaves out drops out of the selection, so no
+   *  operation ever acts on a row the user can't see.
+   */
+  newSelectedIndices: number[]
+  /**
+   *  The diff sequence the new row space starts at, when the filter changed. Every
+   *  `directory-diff` numbered up to it describes the old rows: the pane takes it
+   *  as its last applied sequence and skips them. `None` when nothing changed.
+   */
+  sequence: number | null
+}
 
 export type NegotiatedSummaryDto = {
   dialect: string
