@@ -59,6 +59,13 @@ pub struct PastedClipboardFile {
 /// inside the deadline is the command's `Err(MutationError)`. Same contract as
 /// `MutationReply` (`write_operations/mutation_reply.rs`), with the created
 /// file riding along.
+#[cfg_attr(
+    not(target_os = "macos"),
+    allow(
+        dead_code,
+        reason = "Linux keeps the reply type for its unsupported clipboard command's wire signature"
+    )
+)]
 #[derive(Clone, Debug, serde::Serialize, specta::Type)]
 #[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum PasteClipboardReply {
@@ -86,6 +93,13 @@ pub struct ClipboardPasteSettled {
 }
 
 /// How a paste that outlived its deadline ended.
+#[cfg_attr(
+    not(target_os = "macos"),
+    allow(
+        dead_code,
+        reason = "the clipboard settle event is shared across platforms but emitted only on macOS"
+    )
+)]
 #[derive(Clone, Debug, serde::Serialize, specta::Type)]
 #[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ClipboardPasteOutcome {
