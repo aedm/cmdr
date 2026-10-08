@@ -366,6 +366,12 @@
     "forms": "menu and command Bereken mapgroottes (imperative first, like Finder); Settings label infinitive last (Mapgrootte berekenen met Spatie); the running work → de berekening",
     "sources": "macOS Finder ViewOptionsWindow 65.title (Bereken alle grootten); TC 503 Ruimte berekenen, 5138; Double Commander Bereken in gebruik zijnde ruimte"
   },
+  "camera": {
+    "accept": ["camera’s", "camera's"],
+    "chosen": "camera",
+    "confidence": "high",
+    "sources": "macOS AppKit NSStillCameraTemplate ‘camera’; catalog"
+  },
   "camera-details": {
     "chosen": "cameragegevens",
     "confidence": "tentative",

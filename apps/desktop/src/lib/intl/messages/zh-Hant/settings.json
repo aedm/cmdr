@@ -158,13 +158,13 @@
   "@settings.appearance.tintSmb.description": {
     "sourceHash": "bddee40"
   },
-  "settings.appearance.tintMtp.label": "為 MTP 窗格著色",
+  "settings.appearance.tintMtp.label": "為裝置窗格著色（MTP、ADB）",
   "@settings.appearance.tintMtp.label": {
-    "sourceHash": "2054351"
+    "sourceHash": "c50c536"
   },
-  "settings.appearance.tintMtp.description": "為顯示 Android、Kindle 或相機裝置的窗格加上的背景著色。",
+  "settings.appearance.tintMtp.description": "為顯示手機、Kindle 或相機的窗格加上的背景著色，無論透過 MTP 還是 ADB 連接。",
   "@settings.appearance.tintMtp.description": {
-    "sourceHash": "a09d99a"
+    "sourceHash": "d70512d"
   },
   "settings.appearance.textSize.label": "文字大小",
   "@settings.appearance.textSize.label": {

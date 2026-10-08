@@ -319,6 +319,11 @@
     "forms": "Calculate folder sizes → Tính toán kích cỡ thư mục; stop the work → dừng tính toán; adding up in prose → cộng dồn",
     "sources": "macOS Finder ViewOptionsWindow 65.title (Tính toán tất cả kích cỡ); TC 5138 Tính toán dung lượng chiếm (503 has bare Tính dung lượng)"
   },
+  "camera": {
+    "chosen": "máy ảnh",
+    "confidence": "high",
+    "sources": "macOS AppKit NSStillCameraTemplate “máy ảnh”; catalog (mtpEnabled)"
+  },
   "camera-details": {
     "chosen": "thông tin máy ảnh",
     "confidence": "high",

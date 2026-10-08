@@ -368,6 +368,12 @@
     "forms": "Calculate folder sizes → Beräkna mappstorlekar; the running work → beräkningen; adding up in prose → räknar ihop",
     "sources": "macOS Finder ViewOptionsWindow 65.title (Beräkna alla storlekar); TC 503 Beräkna utrymme, 5138; Double Commander Beräkna upptaget utrymme"
   },
+  "camera": {
+    "accept": ["kameror", "kameraenhet"],
+    "chosen": "kamera",
+    "confidence": "high",
+    "sources": "macOS AppKit NSStillCameraTemplate ”kamera”; catalog"
+  },
   "camera-details": {
     "avoid": [
       {

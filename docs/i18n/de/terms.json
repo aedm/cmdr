@@ -280,6 +280,12 @@
     "forms": "Calculate folder sizes → Ordnergrößen berechnen; the running work → die Berechnung; adding a folder's contents up in prose → rechnet … zusammen",
     "sources": "macOS Finder ViewOptionsWindow 65.title (Calculate all sizes → Alle Größen berechnen); Double Commander (Belegten Speicherplatz berechnen); TC says Speicherbedarf ermitteln (503, 5138), same feature, other verb"
   },
+  "camera": {
+    "accept": ["Kameras"],
+    "chosen": "Kamera",
+    "confidence": "high",
+    "sources": "macOS AppKit NSStillCameraTemplate „Kamera“; catalog (settings.fileOperations.mtpEnabled.label)"
+  },
   "column": {
     "chosen": "Spalte",
     "confidence": "high",

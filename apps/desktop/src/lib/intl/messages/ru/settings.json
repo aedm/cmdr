@@ -156,13 +156,13 @@
   "@settings.appearance.tintSmb.description": {
     "sourceHash": "bddee40"
   },
-  "settings.appearance.tintMtp.label": "Оттенок панелей MTP",
+  "settings.appearance.tintMtp.label": "Оттенок панелей устройств (MTP, ADB)",
   "@settings.appearance.tintMtp.label": {
-    "sourceHash": "2054351"
+    "sourceHash": "c50c536"
   },
-  "settings.appearance.tintMtp.description": "Оттенок фона панелей с устройством Android, Kindle или камерой.",
+  "settings.appearance.tintMtp.description": "Оттенок фона панелей с телефоном, Kindle или камерой, подключенными по MTP или ADB.",
   "@settings.appearance.tintMtp.description": {
-    "sourceHash": "a09d99a"
+    "sourceHash": "d70512d"
   },
   "settings.appearance.textSize.label": "Размер текста",
   "@settings.appearance.textSize.label": {

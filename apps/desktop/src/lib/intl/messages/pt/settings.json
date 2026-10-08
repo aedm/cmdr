@@ -158,13 +158,13 @@
   "@settings.appearance.tintSmb.description": {
     "sourceHash": "bddee40"
   },
-  "settings.appearance.tintMtp.label": "Matizar painéis MTP",
+  "settings.appearance.tintMtp.label": "Matizar painéis de dispositivo (MTP, ADB)",
   "@settings.appearance.tintMtp.label": {
-    "sourceHash": "2054351"
+    "sourceHash": "c50c536"
   },
-  "settings.appearance.tintMtp.description": "Matiz de fundo aplicado a painéis que mostram um dispositivo Android, Kindle ou câmera.",
+  "settings.appearance.tintMtp.description": "Matiz de fundo aplicado a painéis que mostram um celular, um Kindle ou uma câmera, seja a conexão por MTP ou por ADB.",
   "@settings.appearance.tintMtp.description": {
-    "sourceHash": "a09d99a"
+    "sourceHash": "d70512d"
   },
   "settings.appearance.textSize.label": "Tamanho do texto",
   "@settings.appearance.textSize.label": {

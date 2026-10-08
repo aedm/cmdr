@@ -378,6 +378,11 @@
     "forms": "Calculate folder sizes → 计算文件夹大小; stop the work → 停止计算",
     "sources": "macOS Finder ViewOptionsWindow 65.title (计算所有大小); TC zh-CN 503 计算占用空间, 5138 计算文件夹大小; Double Commander 计算占用空间"
   },
+  "camera": {
+    "chosen": "相机",
+    "confidence": "high",
+    "sources": "macOS AppKit NSStillCameraTemplate“相机”; catalog (mtpEnabled, MTP section 相机)"
+  },
   "camera-details": {
     "avoid": [
       {

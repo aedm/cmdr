@@ -163,3 +163,5 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
 - Brief proposal: `pnpm i18n:brief --lang all` leaves out the `es-419` overlay, yet `i18n-es-overlay.test.ts` fails
   until new `es` keys using `Ajustes` or the compound perfect get forks. Have the brief list the overlay forks a batch
   needs. (es-419)
+- `settings.appearance.tintMtp.*`: the notes say keep `ADB` and `Kindle` verbatim, but neither is in `BRAND_WORDS`, so
+  `dont-translate` can't guard them. Add both (`ADB` alongside `MTP`). (11)

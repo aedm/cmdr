@@ -439,6 +439,13 @@
     "forms": "Calculate folder sizes → Mappaméretek kiszámítása; the running work → a számítás; adding up in prose → összeadja",
     "sources": "macOS Finder ViewOptionsWindow 65.title (Minden méret kiszámítása); TC 503, 5138 (Elfoglalt terület számítása); Double Commander Foglalt terület számítása"
   },
+  "camera": {
+    "accept": ["kamerák", "kamerát", "kameraeszköz"],
+    "chosen": "kamera",
+    "confidence": "tentative",
+    "note": "macOS says fényképezőgép for a still camera; the catalog settled on the shorter everyday kamera, which also covers phones-as-cameras. A native reviewer may revisit (review-queue).",
+    "sources": "catalog (~10 uses: mtpEnabled, MTP section, camera details); macOS AppKit NSStillCameraTemplate and the Photos EXIF fields say „fényképezőgép”"
+  },
   "camera-details": {
     "chosen": "kameraadatok",
     "accept": ["kameraadat"],

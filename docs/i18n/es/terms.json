@@ -320,6 +320,12 @@
     "forms": "Calculate folder sizes → Calcular tamaños de carpetas; the running work → el cálculo; adding up in prose → suma",
     "sources": "macOS Finder ViewOptionsWindow 65.title (Calcular los tamaños); TC 503 Calcular espacio, 5138; Double Commander Calcular espacio ocupado"
   },
+  "camera": {
+    "accept": ["cámaras"],
+    "chosen": "cámara",
+    "confidence": "high",
+    "sources": "macOS AppKit NSStillCameraTemplate “cámara”; catalog (settings.fileOperations.mtpEnabled.label)"
+  },
   "camera-details": {
     "chosen": "datos de la cámara",
     "forms": "camera → cámara, with the article as Nautilus's EXIF labels (Marca de la cámara)",

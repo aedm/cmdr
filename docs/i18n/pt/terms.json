@@ -312,6 +312,13 @@
     "forms": "Calculate folder sizes → Calcular tamanhos das pastas; the running work in prose → o cálculo",
     "sources": "macOS Finder ViewOptionsWindow 65.title pt-BR (Calcular o tamanho de tudo); TC pt-BR 503 Calcular espaço, 5138; Double Commander pt-BR Calcular Espaço Ocupado"
   },
+  "camera": {
+    "accept": ["câmeras"],
+    "avoid": [{ "form": "câmara", "why": "the pt-PT spelling; Cmdr ships Brazilian" }],
+    "chosen": "câmera",
+    "confidence": "high",
+    "sources": "pt-BR macOS Photos (Modelo da câmera, Marca da câmera); catalog (mtpEnabled, MTP section)"
+  },
   "camera-details": {
     "chosen": "detalhes da câmera",
     "avoid": [

@@ -158,13 +158,13 @@
   "@settings.appearance.tintSmb.description": {
     "sourceHash": "bddee40"
   },
-  "settings.appearance.tintMtp.label": "Teinter les panneaux MTP",
+  "settings.appearance.tintMtp.label": "Teinter les panneaux d’appareil (MTP, ADB)",
   "@settings.appearance.tintMtp.label": {
-    "sourceHash": "2054351"
+    "sourceHash": "c50c536"
   },
-  "settings.appearance.tintMtp.description": "Teinte de fond appliquée aux panneaux affichant un appareil Android, Kindle ou un appareil photo.",
+  "settings.appearance.tintMtp.description": "Teinte de fond appliquée aux panneaux affichant un téléphone, un Kindle ou un appareil photo, que la connexion passe par MTP ou par ADB.",
   "@settings.appearance.tintMtp.description": {
-    "sourceHash": "a09d99a"
+    "sourceHash": "d70512d"
   },
   "settings.appearance.textSize.label": "Taille du texte",
   "@settings.appearance.textSize.label": {

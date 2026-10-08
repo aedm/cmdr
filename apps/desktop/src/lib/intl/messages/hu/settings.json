@@ -158,13 +158,13 @@
   "@settings.appearance.tintSmb.description": {
     "sourceHash": "bddee40"
   },
-  "settings.appearance.tintMtp.label": "MTP-panelek színezése",
+  "settings.appearance.tintMtp.label": "Eszközpanelek színezése (MTP, ADB)",
   "@settings.appearance.tintMtp.label": {
-    "sourceHash": "2054351"
+    "sourceHash": "c50c536"
   },
-  "settings.appearance.tintMtp.description": "Háttérszínezés az Android-, Kindle- vagy kameraeszközt mutató paneleken.",
+  "settings.appearance.tintMtp.description": "Háttérszínezés a telefont, Kindle-t vagy kamerát mutató paneleken, MTP- és ADB-kapcsolatnál egyaránt.",
   "@settings.appearance.tintMtp.description": {
-    "sourceHash": "a09d99a"
+    "sourceHash": "d70512d"
   },
   "settings.appearance.textSize.label": "Szövegméret",
   "@settings.appearance.textSize.label": {
