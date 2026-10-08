@@ -17,7 +17,8 @@
 //! Finder", 2026-10-08)
 //!
 //! Once the user has said no, every later `osascript` ask dies with -1743 and no
-//! window, which nothing would ever report. So [`open_get_info`] first reads the
+//! window, which nothing would ever report. So `open_get_info` (macOS-only, hence no
+//! doc link: Linux rustdoc can't resolve it) first reads the
 //! stored answer without prompting, and returns [`GetInfoError::AutomationDenied`]
 //! for the frontend to explain.
 
