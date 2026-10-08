@@ -251,6 +251,11 @@
     "forms": "noun bijlage; verb bijvoegen (Zet hier neer om bij te voegen)",
     "sources": "MS (attachment → bijlage); verb paired with the noun (tentative)"
   },
+  "automation": {
+    "chosen": "Automatisering",
+    "confidence": "high",
+    "sources": "macOS 27.0 (26A428) SecurityPrivacyExtension.appex Localizable.loctable, key AUTOMATION, 2026-10-08"
+  },
   "available-offline": {
     "chosen": "offline beschikbaar",
     "confidence": "high",

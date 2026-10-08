@@ -305,6 +305,14 @@
   "@fileExplorer.typeToJump.prefix": {
     "sourceHash": "e9e3412"
   },
+  "fileExplorer.quickFilter.prefix": "Filtern: ",
+  "@fileExplorer.quickFilter.prefix": {
+    "sourceHash": "b549365"
+  },
+  "fileExplorer.quickFilter.ariaLabel": "Angezeigt werden Namen, die „{pattern}“ enthalten",
+  "@fileExplorer.quickFilter.ariaLabel": {
+    "sourceHash": "9b223b0"
+  },
   "fileExplorer.searchResults.unavailableTitle": "Suchergebnisse nicht mehr verfügbar",
   "@fileExplorer.searchResults.unavailableTitle": {
     "sourceHash": "ebcc5a7"
@@ -1740,14 +1748,6 @@
   "fileExplorer.folderSizes.unreadable": "{count, plural, one {# Ordner ließ sich nicht vollständig lesen, deshalb ist seine Größe vielleicht unvollständig.} other {# Ordner ließen sich nicht vollständig lesen, deshalb sind ihre Größen vielleicht unvollständig.}}",
   "@fileExplorer.folderSizes.unreadable": {
     "sourceHash": "ad31a56"
-  },
-  "fileExplorer.quickFilter.prefix": "Filtern: ",
-  "@fileExplorer.quickFilter.prefix": {
-    "sourceHash": "b549365"
-  },
-  "fileExplorer.quickFilter.ariaLabel": "Angezeigt werden Namen, die „{pattern}“ enthalten",
-  "@fileExplorer.quickFilter.ariaLabel": {
-    "sourceHash": "9b223b0"
   },
   "fileExplorer.quickFilter.clear": "Filter löschen",
   "@fileExplorer.quickFilter.clear": {

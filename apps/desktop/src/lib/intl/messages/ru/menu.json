@@ -267,6 +267,10 @@
   "@menu.view.swapPanes": {
     "sourceHash": "cc29396"
   },
+  "menu.view.clonePane": "Клонировать панель",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
+  },
   "menu.view.calculateFolderSizes": "Вычислить размеры папок",
   "@menu.view.calculateFolderSizes": {
     "sourceHash": "d2a83da"
@@ -696,9 +700,5 @@
   "menu.help.viewDebugLog": "Просмотреть журнал отладки",
   "@menu.help.viewDebugLog": {
     "sourceHash": "007c98d"
-  },
-  "menu.view.clonePane": "Клонировать панель",
-  "@menu.view.clonePane": {
-    "sourceHash": "74b2c7f"
   }
 }

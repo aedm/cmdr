@@ -924,6 +924,18 @@
   "@commands.handler.openTerminalHere.timedOut": {
     "sourceHash": "ed36313"
   },
+  "commands.handler.getInfo.automationOff": "“显示简介”需要 Cmdr 能控制 Finder，但这项权限已关闭。去“系统设置 > 隐私与安全性 > 自动化”里打开 Cmdr 下面的 Finder。",
+  "@commands.handler.getInfo.automationOff": {
+    "sourceHash": "7e831ef"
+  },
+  "commands.handler.getInfo.openAutomationSettings": "打开“自动化”设置",
+  "@commands.handler.getInfo.openAutomationSettings": {
+    "sourceHash": "f04940d"
+  },
+  "commands.handler.getInfo.notReached": "Cmdr 连不上 Finder，没能打开“显示简介”。再试一次。",
+  "@commands.handler.getInfo.notReached": {
+    "sourceHash": "9cbc272"
+  },
   "commands.handler.zoomResetHintShortcut": "你可以按 {shortcut} 把缩放级别重置为 100%。",
   "@commands.handler.zoomResetHintShortcut": {
     "sourceHash": "efdd715"

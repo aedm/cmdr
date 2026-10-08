@@ -305,6 +305,14 @@
   "@fileExplorer.typeToJump.prefix": {
     "sourceHash": "e9e3412"
   },
+  "fileExplorer.quickFilter.prefix": "Lọc: ",
+  "@fileExplorer.quickFilter.prefix": {
+    "sourceHash": "b549365"
+  },
+  "fileExplorer.quickFilter.ariaLabel": "Đang hiển thị các tên có chứa “{pattern}”",
+  "@fileExplorer.quickFilter.ariaLabel": {
+    "sourceHash": "9b223b0"
+  },
   "fileExplorer.searchResults.unavailableTitle": "Kết quả tìm kiếm không còn khả dụng",
   "@fileExplorer.searchResults.unavailableTitle": {
     "sourceHash": "ebcc5a7"
@@ -1735,14 +1743,6 @@
   "fileExplorer.folderSizes.unreadable": "{count, plural, other {Có # thư mục không đọc được hết, nên kích cỡ có thể không đầy đủ.}}",
   "@fileExplorer.folderSizes.unreadable": {
     "sourceHash": "ad31a56"
-  },
-  "fileExplorer.quickFilter.prefix": "Lọc: ",
-  "@fileExplorer.quickFilter.prefix": {
-    "sourceHash": "b549365"
-  },
-  "fileExplorer.quickFilter.ariaLabel": "Đang hiển thị các tên có chứa “{pattern}”",
-  "@fileExplorer.quickFilter.ariaLabel": {
-    "sourceHash": "9b223b0"
   },
   "fileExplorer.quickFilter.clear": "Xóa bộ lọc",
   "@fileExplorer.quickFilter.clear": {

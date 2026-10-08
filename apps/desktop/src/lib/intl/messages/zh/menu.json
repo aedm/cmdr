@@ -267,6 +267,10 @@
   "@menu.view.swapPanes": {
     "sourceHash": "cc29396"
   },
+  "menu.view.clonePane": "克隆窗格",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
+  },
   "menu.view.calculateFolderSizes": "计算文件夹大小",
   "@menu.view.calculateFolderSizes": {
     "sourceHash": "d2a83da"
@@ -695,9 +699,5 @@
   "menu.help.viewDebugLog": "查看调试日志",
   "@menu.help.viewDebugLog": {
     "sourceHash": "007c98d"
-  },
-  "menu.view.clonePane": "克隆窗格",
-  "@menu.view.clonePane": {
-    "sourceHash": "74b2c7f"
   }
 }

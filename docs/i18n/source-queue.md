@@ -156,3 +156,10 @@ rule into `translation-principles.md` or `translator-instructions.md`), then del
   keyboard", but most non-US Mac keyboards print only the ⌫ glyph and an English "esc", so there's no printed name to
   copy. Say "the name macOS gives the key in your language (VoiceOver's key names)" instead; that's what the
   `delete-key` rulings record. (11)
+- `commands.handler.getInfo.automationOff`, `.openAutomationSettings`: hardcode "System Settings > Privacy & Security >
+  Automation" while siblings use the runtime `{system_settings}` / `{privacy_and_security}` / `{localNetwork}` tokens
+  read from the user's Mac; use tokens (add an `{automation}` one) so a pane rename can't drift. (11)
+- `commands.handler.getInfo.*`: no screenshot of either toast or the button, so widths are guesses. (11)
+- Brief proposal: `pnpm i18n:brief --lang all` leaves out the `es-419` overlay, yet `i18n-es-overlay.test.ts` fails
+  until new `es` keys using `Ajustes` or the compound perfect get forks. Have the brief list the overlay forks a batch
+  needs. (es-419)

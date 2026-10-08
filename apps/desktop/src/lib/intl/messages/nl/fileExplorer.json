@@ -306,6 +306,15 @@
   "@fileExplorer.typeToJump.prefix": {
     "sourceHash": "e9e3412"
   },
+  "fileExplorer.quickFilter.prefix": "Filter: ",
+  "@fileExplorer.quickFilter.prefix": {
+    "sourceHash": "b549365",
+    "sameAsSourceJustification": "'Filter' is the Dutch word too (catalog: Filter recente selecties, Groottefilter actief; nl terms.json filter); the badge names the Filter typing mode, beside the shipped 'Ga naar: '."
+  },
+  "fileExplorer.quickFilter.ariaLabel": "Toont namen die ‘{pattern}’ bevatten",
+  "@fileExplorer.quickFilter.ariaLabel": {
+    "sourceHash": "9b223b0"
+  },
   "fileExplorer.searchResults.unavailableTitle": "Zoekresultaten zijn niet meer beschikbaar",
   "@fileExplorer.searchResults.unavailableTitle": {
     "sourceHash": "ebcc5a7"
@@ -1747,15 +1756,6 @@
   "fileExplorer.folderSizes.unreadable": "{count, plural, one {Kon # map niet volledig lezen, dus de grootte ervan is misschien onvolledig.} other {Kon # mappen niet volledig lezen, dus de groottes ervan zijn misschien onvolledig.}}",
   "@fileExplorer.folderSizes.unreadable": {
     "sourceHash": "ad31a56"
-  },
-  "fileExplorer.quickFilter.prefix": "Filter: ",
-  "@fileExplorer.quickFilter.prefix": {
-    "sourceHash": "b549365",
-    "sameAsSourceJustification": "'Filter' is the Dutch word too (catalog: Filter recente selecties, Groottefilter actief; nl terms.json filter); the badge names the Filter typing mode, beside the shipped 'Ga naar: '."
-  },
-  "fileExplorer.quickFilter.ariaLabel": "Toont namen die ‘{pattern}’ bevatten",
-  "@fileExplorer.quickFilter.ariaLabel": {
-    "sourceHash": "9b223b0"
   },
   "fileExplorer.quickFilter.clear": "Filter wissen",
   "@fileExplorer.quickFilter.clear": {

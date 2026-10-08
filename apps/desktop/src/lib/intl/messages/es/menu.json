@@ -268,6 +268,10 @@
   "@menu.view.swapPanes": {
     "sourceHash": "cc29396"
   },
+  "menu.view.clonePane": "Clonar panel",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
+  },
   "menu.view.calculateFolderSizes": "Calcular tamaños de carpetas",
   "@menu.view.calculateFolderSizes": {
     "sourceHash": "d2a83da"
@@ -698,9 +702,5 @@
   "menu.help.viewDebugLog": "Ver registro de depuración",
   "@menu.help.viewDebugLog": {
     "sourceHash": "007c98d"
-  },
-  "menu.view.clonePane": "Clonar panel",
-  "@menu.view.clonePane": {
-    "sourceHash": "74b2c7f"
   }
 }

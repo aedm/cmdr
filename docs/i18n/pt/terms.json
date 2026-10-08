@@ -190,6 +190,11 @@
     "confidence": "confirmed",
     "sources": "MS terminology pt-BR (attach → anexar, attached file → anexo)"
   },
+  "automation": {
+    "chosen": "Automação",
+    "confidence": "high",
+    "sources": "macOS 27.0 (26A428) SecurityPrivacyExtension.appex Localizable.loctable, pt_BR, key AUTOMATION, 2026-10-08"
+  },
   "back": {
     "chosen": "Voltar",
     "accept": ["volt"],

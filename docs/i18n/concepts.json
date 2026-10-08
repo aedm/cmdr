@@ -296,6 +296,12 @@
     "match": ["authentication", "authenticate", "authenticated"],
     "sense": "A server or volume checking the user's identity: the technical act behind signing in (authentication required, rejected)."
   },
+  "automation": {
+    "distinct": ["privacy-and-security"],
+    "en": "Automation",
+    "match": ["automation"],
+    "sense": "The macOS Privacy & Security > Automation pane, where the user lets one app control another (Cmdr controlling Finder)."
+  },
   "available-offline": {
     "distinct": ["online-only"],
     "en": "available offline",

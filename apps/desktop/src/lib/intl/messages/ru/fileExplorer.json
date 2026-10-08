@@ -305,6 +305,14 @@
   "@fileExplorer.typeToJump.prefix": {
     "sourceHash": "e9e3412"
   },
+  "fileExplorer.quickFilter.prefix": "Фильтр: ",
+  "@fileExplorer.quickFilter.prefix": {
+    "sourceHash": "b549365"
+  },
+  "fileExplorer.quickFilter.ariaLabel": "Показаны имена, содержащие «{pattern}»",
+  "@fileExplorer.quickFilter.ariaLabel": {
+    "sourceHash": "9b223b0"
+  },
   "fileExplorer.searchResults.unavailableTitle": "Результаты поиска больше недоступны",
   "@fileExplorer.searchResults.unavailableTitle": {
     "sourceHash": "ebcc5a7"
@@ -1734,14 +1742,6 @@
   "fileExplorer.folderSizes.unreadable": "{count, plural, =1 {Не удалось полностью прочитать # папку, поэтому ее размер может быть неполным.} one {Не удалось полностью прочитать # папку, поэтому их размеры могут быть неполными.} few {Не удалось полностью прочитать # папки, поэтому их размеры могут быть неполными.} many {Не удалось полностью прочитать # папок, поэтому их размеры могут быть неполными.} other {Не удалось полностью прочитать # папки, поэтому их размеры могут быть неполными.}}",
   "@fileExplorer.folderSizes.unreadable": {
     "sourceHash": "ad31a56"
-  },
-  "fileExplorer.quickFilter.prefix": "Фильтр: ",
-  "@fileExplorer.quickFilter.prefix": {
-    "sourceHash": "b549365"
-  },
-  "fileExplorer.quickFilter.ariaLabel": "Показаны имена, содержащие «{pattern}»",
-  "@fileExplorer.quickFilter.ariaLabel": {
-    "sourceHash": "9b223b0"
   },
   "fileExplorer.quickFilter.clear": "Снять фильтр",
   "@fileExplorer.quickFilter.clear": {

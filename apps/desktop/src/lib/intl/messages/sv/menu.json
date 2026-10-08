@@ -268,6 +268,10 @@
   "@menu.view.swapPanes": {
     "sourceHash": "cc29396"
   },
+  "menu.view.clonePane": "Klona panel",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
+  },
   "menu.view.calculateFolderSizes": "Beräkna mappstorlekar",
   "@menu.view.calculateFolderSizes": {
     "sourceHash": "d2a83da"
@@ -694,9 +698,5 @@
   "menu.help.viewDebugLog": "Visa felsökningslogg",
   "@menu.help.viewDebugLog": {
     "sourceHash": "007c98d"
-  },
-  "menu.view.clonePane": "Klona panel",
-  "@menu.view.clonePane": {
-    "sourceHash": "74b2c7f"
   }
 }

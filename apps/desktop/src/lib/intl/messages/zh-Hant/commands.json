@@ -924,6 +924,18 @@
   "@commands.handler.openTerminalHere.timedOut": {
     "sourceHash": "ed36313"
   },
+  "commands.handler.getInfo.automationOff": "「取得資訊」需要 Cmdr 能控制 Finder，但這項權限已關閉。到「系統設定 > 隱私權與安全性 > 自動化」裡開啟 Cmdr 底下的 Finder。",
+  "@commands.handler.getInfo.automationOff": {
+    "sourceHash": "7e831ef"
+  },
+  "commands.handler.getInfo.openAutomationSettings": "開啟「自動化」設定",
+  "@commands.handler.getInfo.openAutomationSettings": {
+    "sourceHash": "f04940d"
+  },
+  "commands.handler.getInfo.notReached": "Cmdr 連不上 Finder，無法開啟「取得資訊」。再試一次。",
+  "@commands.handler.getInfo.notReached": {
+    "sourceHash": "9cbc272"
+  },
   "commands.handler.zoomResetHintShortcut": "你可以按 {shortcut} 把縮放比例重設為 100%。",
   "@commands.handler.zoomResetHintShortcut": {
     "sourceHash": "efdd715"

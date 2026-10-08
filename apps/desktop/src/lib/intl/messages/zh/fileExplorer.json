@@ -303,6 +303,14 @@
   "@fileExplorer.typeToJump.prefix": {
     "sourceHash": "e9e3412"
   },
+  "fileExplorer.quickFilter.prefix": "筛选：",
+  "@fileExplorer.quickFilter.prefix": {
+    "sourceHash": "b549365"
+  },
+  "fileExplorer.quickFilter.ariaLabel": "正在显示名称中包含“{pattern}”的项目",
+  "@fileExplorer.quickFilter.ariaLabel": {
+    "sourceHash": "9b223b0"
+  },
   "fileExplorer.searchResults.unavailableTitle": "搜索结果已不可用",
   "@fileExplorer.searchResults.unavailableTitle": {
     "sourceHash": "ebcc5a7"
@@ -1732,14 +1740,6 @@
   "fileExplorer.folderSizes.unreadable": "{count, plural, other {有 # 个文件夹无法完整读取，所以文件夹大小可能不完整。}}",
   "@fileExplorer.folderSizes.unreadable": {
     "sourceHash": "ad31a56"
-  },
-  "fileExplorer.quickFilter.prefix": "筛选：",
-  "@fileExplorer.quickFilter.prefix": {
-    "sourceHash": "b549365"
-  },
-  "fileExplorer.quickFilter.ariaLabel": "正在显示名称中包含“{pattern}”的项目",
-  "@fileExplorer.quickFilter.ariaLabel": {
-    "sourceHash": "9b223b0"
   },
   "fileExplorer.quickFilter.clear": "清除筛选",
   "@fileExplorer.quickFilter.clear": {

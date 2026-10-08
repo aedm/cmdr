@@ -252,6 +252,11 @@
     "confidence": "high",
     "sources": "MS terminology (autentisering), macOS"
   },
+  "automation": {
+    "chosen": "Automatisering",
+    "confidence": "high",
+    "sources": "macOS 27.0 (26A428) SecurityPrivacyExtension.appex Localizable.loctable, key AUTOMATION, 2026-10-08"
+  },
   "available-offline": {
     "accept": ["tillgängliga offline"],
     "chosen": "tillgänglig offline",

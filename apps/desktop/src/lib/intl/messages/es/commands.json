@@ -924,6 +924,18 @@
   "@commands.handler.openTerminalHere.timedOut": {
     "sourceHash": "ed36313"
   },
+  "commands.handler.getInfo.automationOff": "Para Obtener información, Cmdr necesita controlar el Finder, y eso está desactivado. Activa el Finder debajo de Cmdr en Ajustes del Sistema > Privacidad y seguridad > Automatización.",
+  "@commands.handler.getInfo.automationOff": {
+    "sourceHash": "7e831ef"
+  },
+  "commands.handler.getInfo.openAutomationSettings": "Abrir los ajustes de Automatización",
+  "@commands.handler.getInfo.openAutomationSettings": {
+    "sourceHash": "f04940d"
+  },
+  "commands.handler.getInfo.notReached": "Cmdr no ha podido acceder al Finder para abrir Obtener información. Inténtalo de nuevo.",
+  "@commands.handler.getInfo.notReached": {
+    "sourceHash": "9cbc272"
+  },
   "commands.handler.zoomResetHintShortcut": "Puedes restablecer el zoom al 100% con {shortcut}.",
   "@commands.handler.zoomResetHintShortcut": {
     "sourceHash": "efdd715"

@@ -927,6 +927,18 @@
   "@commands.handler.openTerminalHere.timedOut": {
     "sourceHash": "ed36313"
   },
+  "commands.handler.getInfo.automationOff": "Voor ‘Toon info’ moet Cmdr Finder kunnen besturen, en dat staat uit. Zet Finder onder Cmdr aan in Systeeminstellingen > Privacy en beveiliging > Automatisering.",
+  "@commands.handler.getInfo.automationOff": {
+    "sourceHash": "7e831ef"
+  },
+  "commands.handler.getInfo.openAutomationSettings": "Open instellingen voor Automatisering",
+  "@commands.handler.getInfo.openAutomationSettings": {
+    "sourceHash": "f04940d"
+  },
+  "commands.handler.getInfo.notReached": "Cmdr kon Finder niet bereiken om ‘Toon info’ te openen. Probeer het opnieuw.",
+  "@commands.handler.getInfo.notReached": {
+    "sourceHash": "9cbc272"
+  },
   "commands.handler.zoomResetHintShortcut": "Je kunt het zoomniveau terugzetten naar 100% met {shortcut}.",
   "@commands.handler.zoomResetHintShortcut": {
     "sourceHash": "efdd715"

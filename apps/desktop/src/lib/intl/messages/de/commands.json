@@ -924,6 +924,18 @@
   "@commands.handler.openTerminalHere.timedOut": {
     "sourceHash": "ed36313"
   },
+  "commands.handler.getInfo.automationOff": "Für „Informationen“ muss Cmdr den Finder steuern dürfen, und das ist ausgeschaltet. Schalte in Systemeinstellungen > Datenschutz & Sicherheit > Automation unter Cmdr den Finder ein.",
+  "@commands.handler.getInfo.automationOff": {
+    "sourceHash": "7e831ef"
+  },
+  "commands.handler.getInfo.openAutomationSettings": "Einstellungen für Automation öffnen",
+  "@commands.handler.getInfo.openAutomationSettings": {
+    "sourceHash": "f04940d"
+  },
+  "commands.handler.getInfo.notReached": "Cmdr konnte den Finder nicht erreichen, um „Informationen“ zu öffnen. Versuche es noch einmal.",
+  "@commands.handler.getInfo.notReached": {
+    "sourceHash": "9cbc272"
+  },
   "commands.handler.zoomResetHintShortcut": "Du kannst die Zoomstufe mit {shortcut} auf 100 % zurücksetzen.",
   "@commands.handler.zoomResetHintShortcut": {
     "sourceHash": "efdd715"

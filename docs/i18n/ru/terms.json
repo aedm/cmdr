@@ -445,6 +445,11 @@
     "confidence": "high",
     "sources": "macOS Finder LocalizableMerged CS203 (Authentication needed → требуется аутентификация); macOS live VPN, IMAP (Аутентификация); Thunar"
   },
+  "automation": {
+    "chosen": "Автоматизация",
+    "confidence": "high",
+    "sources": "macOS 27.0 (26A428) SecurityPrivacyExtension.appex Localizable.loctable, key AUTOMATION, 2026-10-08"
+  },
   "available-offline": {
     "chosen": "доступно офлайн",
     "accept": ["офлайн"],

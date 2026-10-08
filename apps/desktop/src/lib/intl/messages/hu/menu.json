@@ -267,6 +267,10 @@
   "@menu.view.swapPanes": {
     "sourceHash": "cc29396"
   },
+  "menu.view.clonePane": "Panel klónozása",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
+  },
   "menu.view.calculateFolderSizes": "Mappaméretek kiszámítása",
   "@menu.view.calculateFolderSizes": {
     "sourceHash": "d2a83da"
@@ -696,9 +700,5 @@
   "menu.help.viewDebugLog": "Hibakeresési napló megtekintése",
   "@menu.help.viewDebugLog": {
     "sourceHash": "007c98d"
-  },
-  "menu.view.clonePane": "Panel klónozása",
-  "@menu.view.clonePane": {
-    "sourceHash": "74b2c7f"
   }
 }

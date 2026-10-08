@@ -924,6 +924,18 @@
   "@commands.handler.openTerminalHere.timedOut": {
     "sourceHash": "ed36313"
   },
+  "commands.handler.getInfo.automationOff": "Az Infó megjelenítése parancshoz a Cmdrnek vezérelnie kell a Findert, de ez ki van kapcsolva. Kapcsold be a Findert a Cmdr alatt itt: Rendszerbeállítások > Adatvédelem és biztonság > Automatizálás.",
+  "@commands.handler.getInfo.automationOff": {
+    "sourceHash": "7e831ef"
+  },
+  "commands.handler.getInfo.openAutomationSettings": "Beállítások megnyitása: Automatizálás",
+  "@commands.handler.getInfo.openAutomationSettings": {
+    "sourceHash": "f04940d"
+  },
+  "commands.handler.getInfo.notReached": "A Cmdr nem tudta elérni a Findert, hogy megnyissa az Infó megjelenítése ablakot. Próbáld újra.",
+  "@commands.handler.getInfo.notReached": {
+    "sourceHash": "9cbc272"
+  },
   "commands.handler.zoomResetHintShortcut": "A nagyítási szintet 100%-ra állíthatod vissza így: {shortcut}.",
   "@commands.handler.zoomResetHintShortcut": {
     "sourceHash": "efdd715"

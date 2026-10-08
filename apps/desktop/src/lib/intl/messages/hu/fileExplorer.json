@@ -305,6 +305,14 @@
   "@fileExplorer.typeToJump.prefix": {
     "sourceHash": "e9e3412"
   },
+  "fileExplorer.quickFilter.prefix": "Szűrés: ",
+  "@fileExplorer.quickFilter.prefix": {
+    "sourceHash": "b549365"
+  },
+  "fileExplorer.quickFilter.ariaLabel": "Ezt tartalmazó nevek megjelenítése: „{pattern}”",
+  "@fileExplorer.quickFilter.ariaLabel": {
+    "sourceHash": "9b223b0"
+  },
   "fileExplorer.searchResults.unavailableTitle": "A keresési találatok már nem érhetők el",
   "@fileExplorer.searchResults.unavailableTitle": {
     "sourceHash": "ebcc5a7"
@@ -1735,14 +1743,6 @@
   "fileExplorer.folderSizes.unreadable": "{count, plural, one {Nem sikerült teljesen beolvasni # mappát, ezért lehet, hogy a mérete hiányos.} other {Nem sikerült teljesen beolvasni # mappát, ezért lehet, hogy a méretük hiányos.}}",
   "@fileExplorer.folderSizes.unreadable": {
     "sourceHash": "ad31a56"
-  },
-  "fileExplorer.quickFilter.prefix": "Szűrés: ",
-  "@fileExplorer.quickFilter.prefix": {
-    "sourceHash": "b549365"
-  },
-  "fileExplorer.quickFilter.ariaLabel": "Ezt tartalmazó nevek megjelenítése: „{pattern}”",
-  "@fileExplorer.quickFilter.ariaLabel": {
-    "sourceHash": "9b223b0"
   },
   "fileExplorer.quickFilter.clear": "Szűrő törlése",
   "@fileExplorer.quickFilter.clear": {

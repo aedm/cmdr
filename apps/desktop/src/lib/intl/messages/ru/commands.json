@@ -924,6 +924,18 @@
   "@commands.handler.openTerminalHere.timedOut": {
     "sourceHash": "ed36313"
   },
+  "commands.handler.getInfo.automationOff": "Чтобы открыть окно «Свойства», Cmdr нужно управлять Finder, а это выключено. Включите Finder под Cmdr в разделе «Системные настройки > Конфиденциальность и безопасность > Автоматизация».",
+  "@commands.handler.getInfo.automationOff": {
+    "sourceHash": "7e831ef"
+  },
+  "commands.handler.getInfo.openAutomationSettings": "Открыть настройки «Автоматизация»",
+  "@commands.handler.getInfo.openAutomationSettings": {
+    "sourceHash": "f04940d"
+  },
+  "commands.handler.getInfo.notReached": "Cmdr не удалось связаться с Finder, чтобы открыть окно «Свойства». Попробуйте еще раз.",
+  "@commands.handler.getInfo.notReached": {
+    "sourceHash": "9cbc272"
+  },
   "commands.handler.zoomResetHintShortcut": "Вернуть масштаб 100 % можно сочетанием {shortcut}.",
   "@commands.handler.zoomResetHintShortcut": {
     "sourceHash": "efdd715"

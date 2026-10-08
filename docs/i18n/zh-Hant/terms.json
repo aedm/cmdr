@@ -312,6 +312,11 @@
     "confidence": "high",
     "sources": "DC; catalog errors.listing.attributeNotFound.*"
   },
+  "automation": {
+    "chosen": "自動化",
+    "confidence": "high",
+    "sources": "macOS 27.0 (26A428) SecurityPrivacyExtension.appex Localizable.loctable, zh_TW and zh_HK agree, key AUTOMATION, 2026-10-08"
+  },
   "available-offline": {
     "chosen": "離線可用",
     "confidence": "high",

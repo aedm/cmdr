@@ -269,6 +269,10 @@
   "@menu.view.swapPanes": {
     "sourceHash": "cc29396"
   },
+  "menu.view.clonePane": "Bereich klonen",
+  "@menu.view.clonePane": {
+    "sourceHash": "74b2c7f"
+  },
   "menu.view.calculateFolderSizes": "Ordnergrößen berechnen",
   "@menu.view.calculateFolderSizes": {
     "sourceHash": "d2a83da"
@@ -697,9 +701,5 @@
   "menu.help.viewDebugLog": "Debug-Protokoll ansehen",
   "@menu.help.viewDebugLog": {
     "sourceHash": "007c98d"
-  },
-  "menu.view.clonePane": "Bereich klonen",
-  "@menu.view.clonePane": {
-    "sourceHash": "74b2c7f"
   }
 }
