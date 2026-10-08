@@ -107,11 +107,6 @@ pub(crate) struct CachedListing {
     /// `include_hidden`, it picks the row space every reader and every
     /// `directory-diff` speaks. See `name_filter.rs`.
     name_filter: Option<NameFilter>,
-    /// Bumped by every quick-filter change: which row space a row number read off
-    /// this listing belongs to. A diff carries the epoch its rows were read at, and
-    /// `diff_emitter` drops one from an older epoch (see `DETAILS.md` § The quick
-    /// filter and in-flight diffs).
-    filter_epoch: u64,
     /// Row numbers over the visible subset of `entries`, per `include_hidden`.
     /// Rebuilt lazily after any mutation; see `visible_rows.rs`.
     visible_rows: VisibleRowsCache,
@@ -192,7 +187,6 @@ impl CachedListing {
             include_hidden,
             scratch_projection,
             name_filter: None,
-            filter_epoch: 0,
             visible_rows: VisibleRowsCache::new(),
             path_index: PathIndexCache::new(),
             sort_by,
@@ -338,15 +332,9 @@ impl CachedListing {
         let changed = self.name_filter != name_filter;
         if changed {
             self.name_filter = name_filter;
-            self.filter_epoch += 1;
             self.visible_rows.invalidate();
         }
         changed
-    }
-
-    /// The quick filter's epoch: which row space a row read off this listing now belongs to.
-    pub(crate) fn filter_epoch(&self) -> u64 {
-        self.filter_epoch
     }
 
     /// Whether the pane showing this listing shows hidden entries.
@@ -381,11 +369,16 @@ impl CachedListing {
     }
 
     pub(crate) fn shows(&self, entry: &FileEntry) -> bool {
-        self.scratch_projection.shows(entry, self.include_hidden)
-            && self
-                .name_filter
-                .as_ref()
-                .is_none_or(|filter| filter.matches(&entry.name))
+        self.shows_with_filter(entry, self.include_hidden, self.name_filter.as_ref())
+    }
+
+    pub(crate) fn shows_with_filter(
+        &self,
+        entry: &FileEntry,
+        include_hidden: bool,
+        filter: Option<&NameFilter>,
+    ) -> bool {
+        self.scratch_projection.shows(entry, include_hidden) && filter.is_none_or(|filter| filter.matches(&entry.name))
     }
 
     /// Commit projection drift BEFORE any consumer interprets old row indices.

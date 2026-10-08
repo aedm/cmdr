@@ -305,20 +305,20 @@ fn a_captured_projection_pins_rows_without_double_sampling_settings_or_ownership
     let entries = vec![entry(name), entry("b.sb-temp"), entry("c")];
     let cache = VisibleRowsCache::new();
     let committed = ScratchProjection::for_entries(&entries, &ScratchProjection::default());
-    assert_eq!(cache.rows(&entries, true, &committed).len(), 1);
+    assert_eq!(cache.rows(&entries, true, None, &committed).len(), 1);
     set_show_staging_temps(true);
     set_show_safe_save_files(true);
     let capture = committed.live();
     set_show_staging_temps(false);
     set_show_safe_save_files(false);
-    assert_eq!(cache.rows(&entries, true, &capture).len(), 3);
+    assert_eq!(cache.rows(&entries, true, None, &capture).len(), 3);
     assert_eq!(
-        cache.rows(&entries, true, &capture).get(0).unwrap().path,
+        cache.rows(&entries, true, None, &capture).get(0).unwrap().path,
         entries[0].path
     );
-    assert_eq!(cache.rows(&entries, true, &committed).len(), 1);
+    assert_eq!(cache.rows(&entries, true, None, &committed).len(), 1);
     drop(owner);
     // Ownership can expire between capture and row construction too.
-    assert_eq!(cache.rows(&entries, true, &committed).len(), 1);
-    assert_eq!(cache.rows(&entries, true, &committed.live()).len(), 2);
+    assert_eq!(cache.rows(&entries, true, None, &committed).len(), 1);
+    assert_eq!(cache.rows(&entries, true, None, &committed.live()).len(), 2);
 }

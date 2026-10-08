@@ -2,6 +2,7 @@
 
 use crate::file_system::get_files_at_indices as ops_get_files_at_indices;
 use crate::file_system::get_paths_at_indices as ops_get_paths_at_indices;
+use crate::file_system::listing::name_filter::set_listing_name_filter_guarded as ops_set_listing_name_filter;
 use crate::file_system::{
     BriefColumnWidths, BriefColumnsIpcError, DirectorySortMode, FileEntry, ListingLookupError, ListingStats,
     NameFilterResult, ResortResult, RowBeside, SortColumn, SortOrder, StreamingListingStartResult,
@@ -13,7 +14,6 @@ use crate::file_system::{
     list_directory_end as ops_list_directory_end, list_directory_start_streaming as ops_list_directory_start_streaming,
     refresh_listing_index_sizes as ops_refresh_listing_index_sizes, resort_listing as ops_resort_listing,
     set_listing_include_hidden as ops_set_listing_include_hidden,
-    set_listing_name_filter as ops_set_listing_name_filter,
 };
 use std::path::{Path, PathBuf};
 use tokio::time::Duration;
@@ -604,6 +604,7 @@ pub async fn get_selection_snapshot(
 /// `refuse_empty`, a pattern that matches nothing is refused (`accepted: false`).
 #[tauri::command]
 #[specta::specta]
+#[allow(clippy::too_many_arguments, reason = "Tauri commands require top-level arguments")]
 pub async fn set_listing_name_filter(
     listing_id: String,
     pattern: Option<String>,
@@ -611,6 +612,7 @@ pub async fn set_listing_name_filter(
     cursor_filename: Option<String>,
     selected_indices: Vec<usize>,
     refuse_empty: bool,
+    expected_sequence: Option<u64>,
 ) -> Result<NameFilterResult, ListingLookupError> {
     ops_set_listing_name_filter(
         &listing_id,
@@ -619,6 +621,7 @@ pub async fn set_listing_name_filter(
         cursor_filename.as_deref(),
         &selected_indices,
         refuse_empty,
+        expected_sequence,
     )
 }
 

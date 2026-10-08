@@ -12,7 +12,6 @@
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::sync::atomic::Ordering;
 
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +19,6 @@ use cmdr_fs::ignore_poison::RwLockIgnorePoison;
 
 use crate::file_system::listing::cached_listing::LISTING_CACHE;
 use crate::file_system::listing::operations::ListingLookupError;
-use crate::file_system::listing::visible_rows;
 
 use cmdr_fs::name_fold::fold_name;
 
@@ -128,8 +126,9 @@ pub struct NameFilterResult {
 /// the same lock, is what makes the refusal exact; the frontend can't know the
 /// count before asking.
 ///
-/// Pending changes stay queued: the flush rejects old filter epochs under the
-/// cache read lock without discarding watcher changes from the new row space.
+/// Superseded pending transitions are dropped under the cache write lock, before
+/// a watcher can publish a transition in the new row space.
+#[cfg(test)]
 pub fn set_listing_name_filter(
     listing_id: &str,
     pattern: Option<&str>,
@@ -145,11 +144,42 @@ pub fn set_listing_name_filter(
         cursor_filename,
         selected_indices,
         refuse_empty,
+        None,
         #[cfg(test)]
         || {},
     )
 }
 
+#[allow(
+    clippy::too_many_arguments,
+    reason = "Filter reconfiguration carries a guarded selection"
+)]
+pub fn set_listing_name_filter_guarded(
+    listing_id: &str,
+    pattern: Option<&str>,
+    include_hidden: bool,
+    cursor_filename: Option<&str>,
+    selected_indices: &[usize],
+    refuse_empty: bool,
+    expected_sequence: Option<u64>,
+) -> Result<NameFilterResult, ListingLookupError> {
+    set_listing_name_filter_inner(
+        listing_id,
+        pattern,
+        include_hidden,
+        cursor_filename,
+        selected_indices,
+        refuse_empty,
+        expected_sequence,
+        #[cfg(test)]
+        || {},
+    )
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    reason = "Filter reconfiguration carries a guarded selection and test hook"
+)]
 pub(super) fn set_listing_name_filter_inner(
     listing_id: &str,
     pattern: Option<&str>,
@@ -157,6 +187,7 @@ pub(super) fn set_listing_name_filter_inner(
     cursor_filename: Option<&str>,
     selected_indices: &[usize],
     refuse_empty: bool,
+    expected_sequence: Option<u64>,
     #[cfg(test)] after_unlock: impl FnOnce(),
 ) -> Result<NameFilterResult, ListingLookupError> {
     let result = {
@@ -164,6 +195,11 @@ pub(super) fn set_listing_name_filter_inner(
         let listing = cache
             .get_mut(listing_id)
             .ok_or_else(|| ListingLookupError::gone(listing_id))?;
+        listing.reconcile_scratch(listing_id);
+        super::operations::check_expected(listing_id, listing, expected_sequence)?;
+        if expected_sequence.is_some() && listing.include_hidden() != include_hidden {
+            return Err(ListingLookupError::changed(listing_id));
+        }
         listing.touch();
 
         let selected_names: Vec<String> = {
@@ -184,10 +220,16 @@ pub(super) fn set_listing_name_filter_inner(
             && !listing
                 .entries()
                 .iter()
-                .any(|entry| visible_rows::shows(entry, include_hidden, next.as_ref()));
+                .any(|entry| listing.shows_with_filter(entry, include_hidden, next.as_ref()));
         let changed = !refused && listing.set_name_filter(next);
         // Under the write lock, so no diff can be sequenced between the switch and this.
-        let sequence = changed.then(|| listing.sequence.fetch_add(1, Ordering::AcqRel) + 1);
+        let sequence = if changed {
+            let sequence = listing.advance_sequence();
+            super::diff_emitter::drop_pending(listing_id);
+            Some(sequence)
+        } else {
+            expected_sequence
+        };
 
         let rows = listing.rows(include_hidden);
         let names_to_rows: HashMap<&str, usize> = rows

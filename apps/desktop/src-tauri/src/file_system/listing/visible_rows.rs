@@ -225,6 +225,7 @@ impl VisibleMap {
 /// Hidden means `FileEntry::is_hidden` (a dotfile, macOS's `UF_HIDDEN` flag,
 /// `/.hidden` at a volume root), never a name test; scratch hides whatever the
 /// setting.
+#[cfg(test)]
 pub(crate) fn shows(entry: &FileEntry, include_hidden: bool, name_filter: Option<&NameFilter>) -> bool {
     shown_by_setting(entry, include_hidden, name_filter) && !staging::is_hidden_from_listings(&entry.name)
 }

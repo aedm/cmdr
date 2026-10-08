@@ -12,6 +12,7 @@ pub(crate) mod fuzzy_jump;
 pub(crate) mod listing_host;
 pub(crate) mod mutation;
 pub(crate) mod name_filter;
+pub use name_filter::NameFilterResult;
 pub(crate) mod operations;
 pub(crate) mod orphan_reaper;
 pub(crate) mod path_index;
@@ -33,9 +34,9 @@ pub use fuzzy_jump::fuzzy_find_first_match_in_listing;
 pub(crate) use cmdr_fs::entry as metadata;
 pub use metadata::{ExtendedMetadata, FileEntry};
 pub use operations::{
-    ListingLookupError, ListingStats, NameFilterResult, ResortResult, RowBeside, find_file_index, find_file_indices,
-    get_file_at, get_file_beside, get_file_range, get_listing_stats, keep_listings_alive, list_directory_end,
-    refresh_listing_index_sizes, resort_listing, set_listing_include_hidden, set_listing_name_filter,
+    ListingLookupError, ListingStats, ResortResult, RowBeside, find_file_index, find_file_indices, get_file_at,
+    get_file_beside, get_file_range, get_listing_stats, keep_listings_alive, list_directory_end,
+    refresh_listing_index_sizes, resort_listing, set_listing_include_hidden,
 };
 pub use reading::{ListingTally, get_single_entry, list_directory_core, list_directory_core_with_tally};
 pub use sorting::{DirectorySortMode, SortColumn, SortOrder};

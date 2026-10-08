@@ -385,6 +385,7 @@ export async function setListingNameFilter(
   cursorFilename: string | undefined,
   selectedIndices: number[],
   refuseEmpty: boolean,
+  expectedSequence: number | null = null,
 ): Promise<NameFilterResult> {
   const res = await commands.setListingNameFilter(
     listingId,
@@ -393,6 +394,7 @@ export async function setListingNameFilter(
     cursorFilename ?? null,
     selectedIndices,
     refuseEmpty,
+    expectedSequence,
   )
   if (res.status === 'error') throwListingLookupError(res.error)
   return res.data

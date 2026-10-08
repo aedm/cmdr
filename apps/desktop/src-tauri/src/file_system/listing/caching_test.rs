@@ -168,8 +168,7 @@ fn test_insert_entry_sorted_name_asc() {
         rows,
         Some(PaneRows {
             before: None,
-            after: Some(1),
-            epoch: 0
+            after: Some(1)
         })
     );
 
@@ -198,8 +197,7 @@ fn test_insert_entry_sorted_size_desc_dirs_first() {
         rows,
         Some(PaneRows {
             before: None,
-            after: Some(1),
-            epoch: 0
+            after: Some(1)
         })
     );
 
@@ -290,8 +288,7 @@ fn test_remove_entries_by_paths_returns_correct_index_and_entry() {
         *rows,
         PaneRows {
             before: Some(1),
-            after: None,
-            epoch: 0
+            after: None
         }
     );
     assert_eq!(entry.name, "beta.txt");
@@ -475,8 +472,7 @@ fn test_update_entry_sorted_in_place_for_non_sort_change() {
         result,
         Some(PaneRows {
             before: Some(1),
-            after: Some(1),
-            epoch: 0
+            after: Some(1)
         })
     );
 
@@ -505,8 +501,7 @@ fn test_update_entry_sorted_moved_for_size_change() {
         result,
         Some(PaneRows {
             before: Some(0),
-            after: Some(2),
-            epoch: 0
+            after: Some(2)
         })
     );
 
@@ -544,8 +539,7 @@ fn test_update_entry_sorted_moved_for_modified_at_change() {
         result,
         Some(PaneRows {
             before: Some(0),
-            after: Some(1),
-            epoch: 0
+            after: Some(1)
         })
     );
 }

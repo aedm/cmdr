@@ -3,13 +3,13 @@
 //! `directory-diff` speaks.
 
 use super::cached_listing::OverlayRows;
-use super::caching::{notify_added, sequence_changes};
+use super::caching::notify_added;
 use super::caching_test_support::{TestListing, TestListingGuard};
-use super::diff::{DiffChange, DiffChangeType, compute_diff};
-use super::diff_emitter::{hold_for_test, pending_changes_for_test};
+use super::diff::{DiffChangeType, compute_diff};
+use super::diff_emitter::{hold_for_test, pending_changes_for_test, take_batches_for_test};
 use super::metadata::FileEntry;
 use super::name_filter::{NameFilter, set_listing_name_filter};
-use super::operations::{find_file_index, get_file_at, get_total_count, replace_listing_entries};
+use super::operations::{find_file_index, get_file_at, get_total_count, update_listing_entries};
 use super::sorting::{DirectorySortMode, SortColumn, SortOrder, sort_entries};
 
 const DIR: &str = "/test/name-filter";
@@ -175,7 +175,7 @@ fn a_filter_change_discards_old_rows_at_the_real_flush_boundary() {
 
     set_listing_name_filter(listing.id(), Some("pdf"), false, None, &[], false).expect("listing is cached");
 
-    assert!(super::diff_emitter::prepare_flush(listing.id()).is_none());
+    assert!(take_batches_for_test(listing.id()).is_empty());
 }
 
 #[test]
@@ -183,24 +183,33 @@ fn a_new_epoch_enqueue_between_filter_unlock_and_return_survives_flush() {
     let listing = pane("name-filter-new-epoch-pending-race");
     notify_added(listing.id(), entry("echo.txt"));
 
-    let result =
-        super::name_filter::set_listing_name_filter_inner(listing.id(), Some("pdf"), false, None, &[], false, || {
+    let result = super::name_filter::set_listing_name_filter_inner(
+        listing.id(),
+        Some("pdf"),
+        false,
+        None,
+        &[],
+        false,
+        None,
+        || {
             // This callback runs after the real cache write lock is released,
             // exactly where a watcher can enqueue before the setter returns.
+            hold_for_test(listing.id());
             notify_added(listing.id(), entry("bravo.pdf"));
-            assert_eq!(pending_changes_for_test(listing.id()).len(), 2);
-        })
-        .expect("listing is cached");
+            assert_eq!(pending_changes_for_test(listing.id()).len(), 1);
+        },
+    )
+    .expect("listing is cached");
 
-    let diff = super::diff_emitter::prepare_flush(listing.id())
-        .expect("the new-epoch watcher change must survive the filter setter");
+    let batches = take_batches_for_test(listing.id());
+    assert_eq!(batches.len(), 1);
+    let diff = &batches[0];
     assert_eq!(diff.sequence, result.sequence.unwrap() + 1);
     assert_eq!(diff.changes.len(), 1, "old-epoch rows are discarded at flush");
     let change = &diff.changes[0];
     assert_eq!(change.change_type, DiffChangeType::Add);
     assert_eq!(change.entry.name, "bravo.pdf");
     assert_eq!(change.index, 1);
-    assert_eq!(change.filter_epoch, Some(1));
     assert!(pending_changes_for_test(listing.id()).is_empty());
 }
 
@@ -216,7 +225,7 @@ fn a_new_file_the_filter_leaves_out_is_nothing_the_pane_hears_about() {
     notify_added(listing.id(), entry("bravo.pdf"));
     let queued: Vec<(DiffChangeType, String, usize)> = pending_changes_for_test(listing.id())
         .into_iter()
-        .map(|c: DiffChange| (c.change_type, c.entry.name, c.index))
+        .map(|c| (c.change_type, c.entry.name, c.index))
         .collect();
     assert_eq!(queued, vec![(DiffChangeType::Add, "bravo.pdf".to_string(), 1)]);
 }
@@ -319,17 +328,17 @@ fn a_refusal_looks_past_the_rows_the_current_filter_hides() {
 
 #[test]
 fn a_change_read_in_the_old_row_space_is_never_sent_after_the_filter_changed() {
-    // The race: a watcher read its rows, the user typed, then the batch went out.
     let listing = pane("name-filter-race");
-    let stale = DiffChange::added(entry("echo.txt"), 4).read_at(0);
+    notify_added(listing.id(), entry("echo.txt"));
     set_listing_name_filter(listing.id(), Some("pdf"), false, None, &[], false).expect("listing is cached");
-
-    assert!(sequence_changes(listing.id(), vec![stale]).is_none());
-    // One read in the new row space goes out, numbered after the switch.
-    let fresh = DiffChange::added(entry("bravo.pdf"), 1).read_at(1);
-    let (sequence, sent) = sequence_changes(listing.id(), vec![fresh]).expect("a current change is sent");
+    assert!(take_batches_for_test(listing.id()).is_empty());
+    hold_for_test(listing.id());
+    notify_added(listing.id(), entry("bravo.pdf"));
+    let sent = take_batches_for_test(listing.id());
     assert_eq!(sent.len(), 1);
-    assert_eq!(sequence, 2);
+    assert_eq!(sent[0].changes[0].index, 1);
+    assert_eq!(sent[0].from_sequence, 2);
+    assert_eq!(sent[0].sequence, 3);
 }
 
 #[test]
@@ -349,15 +358,63 @@ fn a_re_read_that_crossed_a_filter_change_is_diffed_again_in_the_new_rows() {
     let mut fresh = entries();
     fresh.push(entry("echo.pdf"));
     let fresh = sorted(fresh);
-    let stale = compute_diff(&entries(), &fresh, false, None);
     set_listing_name_filter(listing.id(), Some("pdf"), false, None, &[], false).expect("listing is cached");
-
-    let sent = replace_listing_entries(listing.id(), fresh, OverlayRows::Unchanged, 0, stale);
-
-    let rows: Vec<(DiffChangeType, String, usize)> = sent
+    hold_for_test(listing.id());
+    update_listing_entries(listing.id(), fresh, OverlayRows::Unchanged);
+    let sent = take_batches_for_test(listing.id())
         .into_iter()
-        .map(|c| (c.change_type, c.entry.name, c.index))
-        .collect();
+        .flat_map(|batch| batch.changes);
+
+    let rows: Vec<(DiffChangeType, String, usize)> = sent.map(|c| (c.change_type, c.entry.name, c.index)).collect();
     // In the "pdf" rows (alpha.pdf, charlie.pdf) the new file is row 2.
     assert_eq!(rows, vec![(DiffChangeType::Add, "echo.pdf".to_string(), 2)]);
+}
+
+#[test]
+fn a_filter_change_invalidates_guarded_selection_from_the_previous_rows() {
+    use super::operations::{ListingLookupError, get_selection_snapshot};
+    let listing = pane("name-filter-selection-revision");
+    set_listing_name_filter(listing.id(), Some("pdf"), false, None, &[], false).unwrap();
+    assert!(matches!(
+        get_selection_snapshot(listing.id(), false, &[1], 0),
+        Err(ListingLookupError::Changed { .. })
+    ));
+    let snapshot = get_selection_snapshot(listing.id(), false, &[1], 1).unwrap();
+    assert_eq!(snapshot.paths, vec![entry("charlie.pdf").path]);
+    assert!(matches!(
+        super::name_filter::set_listing_name_filter_guarded(listing.id(), None, false, None, &[1], false, Some(0)),
+        Err(ListingLookupError::Changed { .. })
+    ));
+    assert_eq!(row_names(&listing), vec!["alpha.pdf", "charlie.pdf"]);
+}
+
+#[test]
+fn scratch_drift_is_reconciled_before_a_guarded_filter_consumes_selection() {
+    use super::operations::ListingLookupError;
+    use crate::file_system::staging::{ShowTempsGuard, StagingTemp};
+    let _settings = ShowTempsGuard::set(false);
+    let owner = std::sync::Arc::new(());
+    let temp = StagingTemp::mint(
+        &std::path::Path::new(DIR).join("a.pdf"),
+        Some(std::sync::Arc::downgrade(&owner)),
+    );
+    let name = temp.path().file_name().unwrap().to_str().unwrap();
+    let listing = TestListing::new()
+        .path(DIR)
+        .include_hidden(false)
+        .entries(sorted(vec![entry(name), entry("z.pdf")]))
+        .insert("name-filter-scratch-guard");
+    hold_for_test(listing.id());
+    assert_eq!(row_names(&listing), vec!["z.pdf"]);
+    drop(owner);
+    assert!(matches!(
+        super::name_filter::set_listing_name_filter_guarded(listing.id(), Some("z"), false, None, &[0], false, Some(0)),
+        Err(ListingLookupError::Changed { .. })
+    ));
+    let result =
+        super::name_filter::set_listing_name_filter_guarded(listing.id(), Some("z"), false, None, &[1], false, Some(1))
+            .unwrap();
+    assert_eq!(result.new_selected_indices, vec![0]);
+    assert_eq!(result.sequence, Some(2));
+    assert_eq!(row_names(&listing), vec!["z.pdf"]);
 }

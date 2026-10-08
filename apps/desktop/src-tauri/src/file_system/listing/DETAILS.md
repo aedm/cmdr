@@ -267,32 +267,25 @@ point: counts, ranges, selection, type-to-jump, and `directory-diff` rows all sp
 
 ### The quick filter and in-flight diffs
 
-A diff's row numbers belong to the row space they were read in, and a filter change swaps it. A watcher reads its rows
-under one lock and sends them a flush window (50 ms) later; a batch re-read even diffs before it writes. So a diff
-could be read under one filter and reach a pane already showing another, shifting its cursor and selection by the
-wrong rows. Three pieces close that:
+A filter change is a committed visible revision, using the same `sequence` identity as sort, hidden visibility,
+scratch reconciliation, selection snapshots, and comparison. There is no independent filter epoch.
 
-- **Every listing has a `filter_epoch`, bumped by each filter change**, and a change carries the epoch its rows were
-  read at (`PaneRows::epoch` → `DiffChange::for_pane`, or `DiffChange::read_at`). `diff_emitter`'s flush numbers a
-  batch through `caching::sequence_changes`, which under ONE read lock drops every change from an older epoch and
-  takes the next sequence for the rest. Dropping is right: those rows were patched before the switch, so the switch's
-  full refetch already shows them.
-  The setter leaves the pending buffer intact: clearing it after releasing the cache lock can erase a watcher
-  update from the new epoch. `diff_emitter::prepare_flush` drains the buffer before taking the cache read lock,
-  so pending and cache locks are not held together. Mixed-epoch batches keep only current changes.
-- **A batch re-read that crossed a switch is diffed again** (`operations::replace_listing_entries`): it diffed before
-  writing, so under the write lock it compares the epoch it read at, and on a mismatch recomputes the diff against the
-  filter as it stands. Dropping it instead would lose the update: its write lands AFTER the switch's refetch.
-- **The switch answers the sequence its rows start at**, and the pane takes it as its last applied one, so a diff
-  numbered before the switch that arrives late is skipped (the refetch holds it).
+- The guarded setter reconciles scratch drift, then checks the caller's expected revision and hidden setting BEFORE
+  interpreting selection indices. A typed `Changed` refusal leaves the filter untouched; the pane drains buffered
+  transitions and retries with fresh indices.
+- A successful change advances the revision and drops superseded queued transitions under the cache write lock
+  (cache then queue). A new-space watcher mutation cannot enqueue until that lock is released, so the drop cannot
+  erase it. An already-drained old batch is harmless: its revision precedes the response barrier.
+- Watcher and overlay replacements sort, compare committed projected rows, replace, and publish under that same
+  write lock. An async directory read crossing a filter change therefore derives its diff in the current row space,
+  without an externally computed diff or an enqueue after unlocking.
+- Filter requests use the pane's `pane-row-state.ts` reconfiguration gate. Pending diffs wait for the response;
+  synchronous installation establishes the response revision before buffered batches drain. Reconfiguration also
+  invalidates old async selection continuations and gates compare and destructive-operation snapshots.
 
-The frontend serializes filter requests and diff reconciliation so new-row diffs wait for the switch's answer;
-see `apps/desktop/src/lib/file-explorer/pane/DETAILS.md` § Quick filter.
-Pinned by `name_filter_test.rs` (`a_change_read_in_the_old_row_space_is_never_sent_after_the_filter_changed`, and the
-re-read and sequence tests beside it). `a_new_epoch_enqueue_between_filter_unlock_and_return_survives_flush`
-injects a real watcher mutation after the setter unlocks, then uses the production pending-buffer/sequence boundary
-to assert that only the new-epoch change survives, numbered after the switch. The fixture holds the flush timer;
-no sleeps or scheduler timing are needed.
+`name_filter_test.rs` covers old-space pending drops, fresh publication after the setter unlocks, replacements
+crossing a filter change, guarded selection refusal, and scratch drift before filtering. The post-unlock test injects
+a real watcher mutation and holds the flush timer; no sleeps or scheduler timing are needed.
 
 ## Diffs speak the pane's rows
 
@@ -321,10 +314,10 @@ for row 1).
   `update_entry_sorted`) return `PaneRows { before, after }`, read off the row map as it stood BEFORE their own patch and
   under the same write lock (`VisibleRows::rows_before` / `row_of_entry`, two binary searches). ❗ Reading after the patch
   would rebuild the map per patch, once per add in a burst. `DiffChange::for_pane` turns the pair into a change or none.
-- The batch re-reads (`publish_replacement`, the watcher's `handle_directory_change`) diff the SHOWN rows of old and new
-  with `compute_diff(old, new, include_hidden, name_filter)`, so moves are judged among the pane's rows alone, and decide the cache
-  write separately with `listing_changed`: an empty pane diff can still owe the cache a hidden entry's news.
-- `visible_rows::shows` is the one predicate, the same one the row map is built from. ❌ No name test anywhere.
+- Batch re-reads (`publish_replacement`, the watcher's `handle_directory_change`) call `update_listing_entries`,
+  which diffs committed projected rows through `CachedListing::replace_entries` under the cache write lock.
+  `compute_diff(old, new, include_hidden, name_filter)` is a test-only helper.
+- `CachedListing::shows` combines the filter with captured scratch decisions and hidden visibility, matching its row map.
 - `is_entry_modified` counts `is_hidden`: with hidden files shown the row dims, and a `chflags hidden` reaching a full
   re-read would otherwise leave the cache holding the old flag.
 - A toggle drops what's queued for the listing: it's numbered in the old row space, the pane re-reads its count and

@@ -44,6 +44,7 @@
 import { setListingNameFilter } from '$lib/tauri-commands'
 import { getAppLogger } from '$lib/logging/logger'
 import type { ListingUpdateQueue } from './listing-update-queue'
+import type { PaneRowState } from './pane-row-state'
 
 const log = getAppLogger('fileExplorer')
 
@@ -57,6 +58,7 @@ export interface QuickFilterApplied {
 }
 
 export interface QuickFilterControllerDeps {
+  rowState?: PaneRowState
   runListingUpdate: ListingUpdateQueue
   getListingId: () => string
   getLoading: () => boolean
@@ -105,6 +107,39 @@ export function createQuickFilterController(deps: QuickFilterControllerDeps): Qu
 
   async function sendOnce(listingId: string, sent: string): Promise<boolean | undefined> {
     const startedGeneration = generation
+    if (deps.rowState) {
+      let accepted: boolean | undefined
+      const hasParent = deps.getHasParent()
+      await deps.rowState.changeView({
+        isCurrent: () => deps.getListingId() === listingId && generation === startedGeneration,
+        request: async (token) => {
+          const result = await setListingNameFilter(
+            listingId,
+            sent === '' ? null : sent,
+            token.includeHidden,
+            deps.getCursorFilename(),
+            toBackend(deps.getSelectedIndices(), hasParent),
+            sent.length > applied.length,
+            token.sequence,
+          )
+          accepted = result.accepted
+          return { ...result, sequence: result.sequence ?? token.sequence }
+        },
+        install: (result) => {
+          if (!accepted) return
+          applied = sent
+          const offset = hasParent ? 1 : 0
+          deps.apply({
+            totalCount: result.totalCount,
+            cursorIndex:
+              result.newCursorIndex === null ? (result.totalCount > 0 ? offset : 0) : result.newCursorIndex + offset,
+            selectedIndices: (result.newSelectedIndices ?? []).map((i) => i + offset),
+            sequence: result.sequence,
+          })
+        },
+      })
+      return accepted
+    }
     return deps.runListingUpdate(async () => {
       if (deps.getListingId() !== listingId || generation !== startedGeneration) return
       const hasParent = deps.getHasParent()

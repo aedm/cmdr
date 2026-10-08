@@ -21,6 +21,8 @@ Backend directory reading, caching, sorting, and streaming: 100k+ entries, non-b
   The emitter coalesces transport, never transition boundaries or revisions. Indices are pane rows, not entry indices.
   Rows use committed exact-path scratch decisions. Reconcile and publish scratch drift BEFORE an entry mutation or
   guarded index consumption, then check the expected revision. `DETAILS.md` § "Diff event coalescing".
+- **Quick-filter changes share that revision** and drop superseded pending batches under the cache write lock,
+  never after unlocking. Guard selection remapping before changing the filter. `DETAILS.md` § "The quick filter and in-flight diffs".
 - **Refreshes of ONE directory stay serialized** (`notify_full_refresh`), or an older read lands last.
 - **`listing_overlays::decorate` folds in rows no volume holds**, between enrich and the sort, in all THREE read paths
   (`streaming.rs`, `operations.rs`, the watcher's full refresh); miss one and a refresh strips them.

@@ -298,11 +298,10 @@
         onSyncMcp: () => { debouncedSyncMcp.call(); },
     })
 
-    // Quick filter (the `filter` typing mode): the pattern + one-at-a-time IPC
-    // runner, in `quick-filter-controller.svelte.ts`. The backend owns the
-    // filtering; this applies its answer (count, cursor, selection) here.
+    // Backend filtering shares the pane's revision gate with sort and visibility.
     const runListingUpdate = createListingUpdateQueue()
     const quickFilter = createQuickFilterController({
+        rowState,
         runListingUpdate,
         getListingId: () => listingId,
         getLoading: () => loading,
@@ -311,9 +310,8 @@
         getHasParent: () => hasParent,
         getCursorFilename: () => selectionInfo.entry?.name,
         getSelectedIndices: () => selection.getSelectedIndices(),
-        apply: ({ totalCount: count, cursorIndex: cursor, selectedIndices, sequence }) => {
+        apply: ({ totalCount: count, cursorIndex: cursor, selectedIndices }) => {
             // Diffs numbered up to the switch speak the old rows; the refetch below holds them.
-            if (sequence !== null) lastSequence = Math.max(lastSequence, sequence)
             totalCount = count
             selection.setSelectedIndices(selectedIndices)
             cacheGeneration++
@@ -323,16 +321,9 @@
         },
     })
 
-    // Rename state (inline rename editor)
     const rename = createRenameState()
 
-    // Listing loader: the streaming directory-load pipeline + the generation /
-    // listingId drop-foreign-listings token model, in a `*.svelte.ts` factory.
-    // The pane's lifecycle `$state` (listingId / loading / totalCount / error /
-    // …) STAYS here (many non-loader readers); the loader reads/writes it through
-    // the accessors below. Deps are deferred closures, so the state they touch may
-    // be declared later in this file (the pattern `jump` already uses for
-    // `debouncedSyncMcp`).
+    // The streaming loader reads pane lifecycle state through deferred accessors.
     const loader = createListingLoader({
         paneId,
         getVolumeId: () => volumeId,

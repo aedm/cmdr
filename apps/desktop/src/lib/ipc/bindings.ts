@@ -89,6 +89,7 @@ export const commands = {
     cursorFilename: string | null,
     selectedIndices: number[],
     refuseEmpty: boolean,
+    expectedSequence: number | null,
   ) =>
     typedError<NameFilterResult, ListingLookupError>(
       __TAURI_INVOKE('set_listing_name_filter', {
@@ -98,6 +99,7 @@ export const commands = {
         cursorFilename,
         selectedIndices,
         refuseEmpty,
+        expectedSequence,
       }),
     ),
   /**
