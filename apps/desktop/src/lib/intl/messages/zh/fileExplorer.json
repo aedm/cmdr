@@ -879,9 +879,9 @@
   "@fileExplorer.rename.stillRenaming": {
     "sourceHash": "a05cca5"
   },
-  "fileExplorer.rename.stillRenamingAndOthers": "仍在重命名“{name}”和{others, plural, other {其他 {othersText} 个文件}}。宗卷响应很慢。",
+  "fileExplorer.rename.stillRenamingAndOthers": "仍在重命名“{name}”和{kind, select, folders {{others, plural, other {其他 {othersText} 个文件夹}}} files {{others, plural, other {其他 {othersText} 个文件}}} other {{others, plural, other {其他 {othersText} 个文件和文件夹}}}}。宗卷响应很慢。",
   "@fileExplorer.rename.stillRenamingAndOthers": {
-    "sourceHash": "f0487ef"
+    "sourceHash": "933be25"
   },
   "fileExplorer.columns.name": "名称",
   "@fileExplorer.columns.name": {

@@ -881,9 +881,9 @@
   "@fileExplorer.rename.stillRenaming": {
     "sourceHash": "a05cca5"
   },
-  "fileExplorer.rename.stillRenamingAndOthers": "«{name}» и {others, plural, =1 {еще один файл} one {еще {othersText} файл} few {еще {othersText} файла} many {еще {othersText} файлов} other {еще {othersText} файла}} все еще переименовываются. Том медленно отвечает.",
+  "fileExplorer.rename.stillRenamingAndOthers": "«{name}» и {kind, select, folders {{others, plural, =1 {еще одна папка} one {еще {othersText} папка} few {еще {othersText} папки} many {еще {othersText} папок} other {еще {othersText} папки}}} files {{others, plural, =1 {еще один файл} one {еще {othersText} файл} few {еще {othersText} файла} many {еще {othersText} файлов} other {еще {othersText} файла}}} other {{others, plural, one {другие файлы и папки ({othersText})} few {другие файлы и папки ({othersText})} many {другие файлы и папки ({othersText})} other {другие файлы и папки ({othersText})}}}} все еще переименовываются. Том медленно отвечает.",
   "@fileExplorer.rename.stillRenamingAndOthers": {
-    "sourceHash": "f0487ef"
+    "sourceHash": "933be25"
   },
   "fileExplorer.columns.name": "Имя",
   "@fileExplorer.columns.name": {

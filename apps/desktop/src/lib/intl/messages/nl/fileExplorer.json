@@ -883,9 +883,9 @@
   "@fileExplorer.rename.stillRenaming": {
     "sourceHash": "a05cca5"
   },
-  "fileExplorer.rename.stillRenamingAndOthers": "De namen van ‘{name}’ en {others, plural, one {één ander bestand} other {{othersText} andere bestanden}} worden nog gewijzigd. Het volume reageert traag.",
+  "fileExplorer.rename.stillRenamingAndOthers": "De namen van ‘{name}’ en {kind, select, folders {{others, plural, one {één andere map} other {{othersText} andere mappen}}} files {{others, plural, one {één ander bestand} other {{othersText} andere bestanden}}} other {{others, plural, one {{othersText} andere bestanden en mappen} other {{othersText} andere bestanden en mappen}}}} worden nog gewijzigd. Het volume reageert traag.",
   "@fileExplorer.rename.stillRenamingAndOthers": {
-    "sourceHash": "f0487ef"
+    "sourceHash": "933be25"
   },
   "fileExplorer.columns.name": "Naam",
   "@fileExplorer.columns.name": {

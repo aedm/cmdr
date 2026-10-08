@@ -881,9 +881,9 @@
   "@fileExplorer.rename.stillRenaming": {
     "sourceHash": "a05cca5"
   },
-  "fileExplorer.rename.stillRenamingAndOthers": "„{name}“ und {others, plural, one {eine weitere Datei} other {{othersText} weitere Dateien}} werden noch umbenannt. Das Volume antwortet langsam.",
+  "fileExplorer.rename.stillRenamingAndOthers": "„{name}“ und {kind, select, folders {{others, plural, one {ein weiterer Ordner} other {{othersText} weitere Ordner}}} files {{others, plural, one {eine weitere Datei} other {{othersText} weitere Dateien}}} other {{others, plural, one {{othersText} weitere Dateien und Ordner} other {{othersText} weitere Dateien und Ordner}}}} werden noch umbenannt. Das Volume antwortet langsam.",
   "@fileExplorer.rename.stillRenamingAndOthers": {
-    "sourceHash": "f0487ef"
+    "sourceHash": "933be25"
   },
   "fileExplorer.columns.name": "Name",
   "@fileExplorer.columns.name": {

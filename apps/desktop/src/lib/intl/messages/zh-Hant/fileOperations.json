@@ -131,9 +131,9 @@
   "@fileOperations.mkfile.notCreatedToast": {
     "sourceHash": "4f30e62"
   },
-  "fileOperations.newEntry.stillCreating": "仍在建立「{name}」。卷宗回應很慢，關閉這個視窗也不會停止建立。",
+  "fileOperations.newEntry.stillCreating": "仍在建立「{name}」。卷宗回應很慢。你可以放心關閉這個對話方塊，建立會繼續進行，而且現在已經無法取消了。",
   "@fileOperations.newEntry.stillCreating": {
-    "sourceHash": "d66d5cd"
+    "sourceHash": "74e376f"
   },
   "fileOperations.mkfile.title": "新增檔案",
   "@fileOperations.mkfile.title": {

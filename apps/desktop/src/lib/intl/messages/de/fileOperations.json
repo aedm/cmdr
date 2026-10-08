@@ -132,9 +132,9 @@
   "@fileOperations.mkfile.notCreatedToast": {
     "sourceHash": "4f30e62"
   },
-  "fileOperations.newEntry.stillCreating": "„{name}“ wird noch erstellt. Das Volume antwortet langsam, und das Schließen stoppt den Vorgang nicht.",
+  "fileOperations.newEntry.stillCreating": "„{name}“ wird noch erstellt. Das Volume antwortet langsam. Du kannst diesen Dialog ruhig schließen, die Erstellung läuft weiter, und abbrechen lässt sie sich jetzt nicht mehr.",
   "@fileOperations.newEntry.stillCreating": {
-    "sourceHash": "d66d5cd"
+    "sourceHash": "74e376f"
   },
   "fileOperations.mkfile.title": "Neue Datei",
   "@fileOperations.mkfile.title": {

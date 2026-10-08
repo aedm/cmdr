@@ -881,9 +881,9 @@
   "@fileExplorer.rename.stillRenaming": {
     "sourceHash": "a05cca5"
   },
-  "fileExplorer.rename.stillRenamingAndOthers": "Håller fortfarande på att byta namn på ”{name}” och {others, plural, one {en annan fil} other {{othersText} andra filer}}. Volymen svarar långsamt.",
+  "fileExplorer.rename.stillRenamingAndOthers": "Håller fortfarande på att byta namn på ”{name}” och {kind, select, folders {{others, plural, one {en annan mapp} other {{othersText} andra mappar}}} files {{others, plural, one {en annan fil} other {{othersText} andra filer}}} other {{others, plural, one {{othersText} andra filer och mappar} other {{othersText} andra filer och mappar}}}}. Volymen svarar långsamt.",
   "@fileExplorer.rename.stillRenamingAndOthers": {
-    "sourceHash": "f0487ef"
+    "sourceHash": "933be25"
   },
   "fileExplorer.columns.name": "Namn",
   "@fileExplorer.columns.name": {

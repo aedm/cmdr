@@ -881,9 +881,9 @@
   "@fileExplorer.rename.stillRenaming": {
     "sourceHash": "a05cca5"
   },
-  "fileExplorer.rename.stillRenamingAndOthers": "Vẫn đang đổi tên “{name}” và {others, plural, other {{othersText} tệp khác}}. Ổ đĩa phản hồi chậm.",
+  "fileExplorer.rename.stillRenamingAndOthers": "Vẫn đang đổi tên “{name}” và {kind, select, folders {{others, plural, other {{othersText} thư mục khác}}} files {{others, plural, other {{othersText} tệp khác}}} other {{others, plural, other {{othersText} tệp và thư mục khác}}}}. Ổ đĩa phản hồi chậm.",
   "@fileExplorer.rename.stillRenamingAndOthers": {
-    "sourceHash": "f0487ef"
+    "sourceHash": "933be25"
   },
   "fileExplorer.columns.name": "Tên",
   "@fileExplorer.columns.name": {

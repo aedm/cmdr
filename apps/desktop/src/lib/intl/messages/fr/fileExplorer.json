@@ -881,9 +881,9 @@
   "@fileExplorer.rename.stillRenaming": {
     "sourceHash": "a05cca5"
   },
-  "fileExplorer.rename.stillRenamingAndOthers": "Renommage de « {name} » et {others, plural, one {d’un autre fichier} many {de {othersText} autres fichiers} other {de {othersText} autres fichiers}} toujours en cours. Le volume met du temps à répondre.",
+  "fileExplorer.rename.stillRenamingAndOthers": "Renommage de « {name} » et {kind, select, folders {{others, plural, one {d’un autre dossier} many {de {othersText} autres dossiers} other {de {othersText} autres dossiers}}} files {{others, plural, one {d’un autre fichier} many {de {othersText} autres fichiers} other {de {othersText} autres fichiers}}} other {{others, plural, one {de {othersText} autres fichiers et dossiers} many {de {othersText} autres fichiers et dossiers} other {de {othersText} autres fichiers et dossiers}}}} toujours en cours. Le volume met du temps à répondre.",
   "@fileExplorer.rename.stillRenamingAndOthers": {
-    "sourceHash": "f0487ef"
+    "sourceHash": "933be25"
   },
   "fileExplorer.columns.name": "Nom",
   "@fileExplorer.columns.name": {

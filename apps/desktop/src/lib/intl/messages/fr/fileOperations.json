@@ -132,9 +132,9 @@
   "@fileOperations.mkfile.notCreatedToast": {
     "sourceHash": "4f30e62"
   },
-  "fileOperations.newEntry.stillCreating": "Création de « {name} » toujours en cours. Le volume met du temps à répondre et fermer cette fenêtre n’arrête pas la création.",
+  "fileOperations.newEntry.stillCreating": "Création de « {name} » toujours en cours. Le volume met du temps à répondre. Vous pouvez fermer cette fenêtre sans crainte : la création va continuer et ne peut plus être annulée.",
   "@fileOperations.newEntry.stillCreating": {
-    "sourceHash": "d66d5cd"
+    "sourceHash": "74e376f"
   },
   "fileOperations.mkfile.title": "Nouveau fichier",
   "@fileOperations.mkfile.title": {

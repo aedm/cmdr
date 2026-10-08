@@ -132,9 +132,9 @@
   "@fileOperations.mkfile.notCreatedToast": {
     "sourceHash": "4f30e62"
   },
-  "fileOperations.newEntry.stillCreating": "‘{name}’ wordt nog aangemaakt. Het volume reageert traag, en als je dit sluit, stopt het aanmaken niet.",
+  "fileOperations.newEntry.stillCreating": "‘{name}’ wordt nog aangemaakt. Het volume reageert traag. Je kunt dit venster gerust sluiten: het aanmaken gaat gewoon door en annuleren kan nu niet meer.",
   "@fileOperations.newEntry.stillCreating": {
-    "sourceHash": "d66d5cd"
+    "sourceHash": "74e376f"
   },
   "fileOperations.mkfile.title": "Nieuw bestand",
   "@fileOperations.mkfile.title": {

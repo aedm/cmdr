@@ -132,9 +132,9 @@
   "@fileOperations.mkfile.notCreatedToast": {
     "sourceHash": "4f30e62"
   },
-  "fileOperations.newEntry.stillCreating": "Håller fortfarande på att skapa ”{name}”. Volymen svarar långsamt och att stänga det här stoppar inte skapandet.",
+  "fileOperations.newEntry.stillCreating": "Håller fortfarande på att skapa ”{name}”. Volymen svarar långsamt. Du kan lugnt stänga dialogen. Skapandet fortsätter ändå och går inte längre att avbryta.",
   "@fileOperations.newEntry.stillCreating": {
-    "sourceHash": "d66d5cd"
+    "sourceHash": "74e376f"
   },
   "fileOperations.mkfile.title": "Ny fil",
   "@fileOperations.mkfile.title": {

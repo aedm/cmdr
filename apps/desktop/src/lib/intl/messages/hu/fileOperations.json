@@ -132,9 +132,9 @@
   "@fileOperations.mkfile.notCreatedToast": {
     "sourceHash": "4f30e62"
   },
-  "fileOperations.newEntry.stillCreating": "„{name}” létrehozása még folyamatban van. A kötet lassan válaszol, és ha bezárod ezt az ablakot, a létrehozás akkor sem áll meg.",
+  "fileOperations.newEntry.stillCreating": "„{name}” létrehozása még folyamatban van. A kötet lassan válaszol. Nyugodtan bezárhatod ezt az ablakot, a létrehozás folytatódik, és megszakítani már nem lehet.",
   "@fileOperations.newEntry.stillCreating": {
-    "sourceHash": "d66d5cd"
+    "sourceHash": "74e376f"
   },
   "fileOperations.mkfile.title": "Új fájl",
   "@fileOperations.mkfile.title": {

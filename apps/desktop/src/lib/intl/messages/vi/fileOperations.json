@@ -132,9 +132,9 @@
   "@fileOperations.mkfile.notCreatedToast": {
     "sourceHash": "4f30e62"
   },
-  "fileOperations.newEntry.stillCreating": "Vẫn đang tạo “{name}”. Ổ đĩa phản hồi chậm, và đóng cửa sổ này cũng không dừng việc tạo.",
+  "fileOperations.newEntry.stillCreating": "Vẫn đang tạo “{name}”. Ổ đĩa phản hồi chậm. Bạn cứ yên tâm đóng hộp thoại này: việc tạo vẫn sẽ tiếp tục và giờ không hủy được nữa.",
   "@fileOperations.newEntry.stillCreating": {
-    "sourceHash": "d66d5cd"
+    "sourceHash": "74e376f"
   },
   "fileOperations.mkfile.title": "Tệp mới",
   "@fileOperations.mkfile.title": {

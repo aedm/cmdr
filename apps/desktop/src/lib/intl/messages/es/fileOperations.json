@@ -131,9 +131,9 @@
   "@fileOperations.mkfile.notCreatedToast": {
     "sourceHash": "4f30e62"
   },
-  "fileOperations.newEntry.stillCreating": "Todavía se está creando “{name}”. El volumen tarda en responder, y cerrar el diálogo no detiene la creación.",
+  "fileOperations.newEntry.stillCreating": "Todavía se está creando “{name}”. El volumen tarda en responder. Puedes cerrar este diálogo sin problema: la creación seguirá adelante y ya no se puede cancelar.",
   "@fileOperations.newEntry.stillCreating": {
-    "sourceHash": "d66d5cd"
+    "sourceHash": "74e376f"
   },
   "fileOperations.mkfile.title": "Nuevo archivo",
   "@fileOperations.mkfile.title": {

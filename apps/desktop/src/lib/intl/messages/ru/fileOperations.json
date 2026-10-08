@@ -132,9 +132,9 @@
   "@fileOperations.mkfile.notCreatedToast": {
     "sourceHash": "4f30e62"
   },
-  "fileOperations.newEntry.stillCreating": "«{name}» все еще создается. Том медленно отвечает, и если закрыть это окно, создание не остановится.",
+  "fileOperations.newEntry.stillCreating": "«{name}» все еще создается. Том медленно отвечает. Это диалоговое окно можно спокойно закрыть: создание продолжится, а отменить его уже нельзя.",
   "@fileOperations.newEntry.stillCreating": {
-    "sourceHash": "d66d5cd"
+    "sourceHash": "74e376f"
   },
   "fileOperations.mkfile.title": "Новый файл",
   "@fileOperations.mkfile.title": {

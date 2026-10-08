@@ -980,6 +980,13 @@
     "sources": "macOS Finder (PE5.1 mert az eszköz eltűnt); Double Commander (külső eszközök (például okostelefonok))",
     "note": "A phone specifically is telefon; eszköz covers cameras and Kindles too."
   },
+  "dialog": {
+    "chosen": "párbeszédablak",
+    "accept": ["párbeszéd", "ablak"],
+    "forms": "a named Cmdr dialog → a Fájlok kijelölése párbeszédablak; telling the user to close it in prose → zárd be ezt az ablakot / nyugodtan bezárhatod ezt az ablakot",
+    "confidence": "high",
+    "sources": "catalog (fileExplorer.pane.dialogRenderFailedToast: Ez a párbeszédablak; zárd be ezt az ablakot ×4); MS terminology (dialog box → párbeszédpanel, the Windows form); macOS Finder/AppKit/System Settings bundles never name the concept"
+  },
   "disable": {
     "chosen": "kikapcsolás",
     "accept": ["kikapcsol", "ki van kapcsolva", "ki legyen", "letilt", "kapcsol", "le van tiltva"],

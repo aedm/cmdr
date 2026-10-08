@@ -132,9 +132,9 @@
   "@fileOperations.mkfile.notCreatedToast": {
     "sourceHash": "4f30e62"
   },
-  "fileOperations.newEntry.stillCreating": "A criação de “{name}” ainda está em andamento. O volume está demorando para responder, e fechar esta janela não interrompe a criação.",
+  "fileOperations.newEntry.stillCreating": "A criação de “{name}” ainda está em andamento. O volume está demorando para responder. Você pode fechar esta janela sem problemas: a criação vai continuar e não dá mais para cancelá-la.",
   "@fileOperations.newEntry.stillCreating": {
-    "sourceHash": "d66d5cd"
+    "sourceHash": "74e376f"
   },
   "fileOperations.mkfile.title": "Novo arquivo",
   "@fileOperations.mkfile.title": {

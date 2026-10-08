@@ -881,9 +881,9 @@
   "@fileExplorer.rename.stillRenaming": {
     "sourceHash": "a05cca5"
   },
-  "fileExplorer.rename.stillRenamingAndOthers": "„{name}” és {others, plural, one {egy másik fájl} other {{othersText} másik fájl}} átnevezése még folyamatban van. A kötet lassan válaszol.",
+  "fileExplorer.rename.stillRenamingAndOthers": "„{name}” és {kind, select, folders {{others, plural, one {egy másik mappa} other {{othersText} másik mappa}}} files {{others, plural, one {egy másik fájl} other {{othersText} másik fájl}}} other {{others, plural, one {{othersText} másik fájl és mappa} other {{othersText} másik fájl és mappa}}}} átnevezése még folyamatban van. A kötet lassan válaszol.",
   "@fileExplorer.rename.stillRenamingAndOthers": {
-    "sourceHash": "f0487ef"
+    "sourceHash": "933be25"
   },
   "fileExplorer.columns.name": "Név",
   "@fileExplorer.columns.name": {

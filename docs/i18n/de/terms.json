@@ -873,6 +873,13 @@
     "note": "device and phone follow the English key by key: Gerät where it says device, Telefon where it says phone.",
     "sources": "standard German; catalog"
   },
+  "dialog": {
+    "accept": ["Dialogs", "Fenster"],
+    "chosen": "Dialog",
+    "confidence": "high",
+    "forms": "a named Cmdr dialog → den Dialog „Dateien auswählen“ (title quoted); closing it in prose → diesen Dialog schließen",
+    "sources": "catalog (commands.selectionSelectFiles.description: den Dialog „Dateien auswählen“); MS terminology (dialog box → Dialogfeld, too technical for prose); macOS Finder/AppKit/System Settings bundles never name the concept"
+  },
   "disable": {
     "accept": ["deaktiviert", "ausschalten", "ausgeschaltet", "aus", "deaktivier"],
     "chosen": "deaktivieren",
