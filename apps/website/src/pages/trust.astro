@@ -307,8 +307,9 @@ const toc = [
             <strong>What else the profile covers</strong>: the Desktop, Documents, and Downloads folders, and network
             and removable volumes. Full Disk Access already includes them; they're listed separately so you can drop
             Full Disk Access and grant only those. It leaves out local network access, which isn't a privacy profile
-            setting (macOS 27 can suggest it through the declarative app settings configuration), and Photos and
-            Music, which Cmdr only uses for icons and thumbnails.
+            setting (macOS 27 can suggest it through the declarative app settings configuration), Photos and Music,
+            which Cmdr only uses for icons and thumbnails, and Automation of Finder, which each user approves the first
+            time they use Get info.
         </li>
         <li>
             <strong>On macOS 27</strong>, Apple marks privacy profiles as deprecated, and they still apply. Full Disk
@@ -505,6 +506,10 @@ const toc = [
         <li><strong>Network volumes and removable volumes</strong>: to browse network shares, USB drives, and SD cards.</li>
         <li><strong>Local network</strong>: to connect to SMB file servers directly and find them on the network.</li>
         <li><strong>Music and Photos</strong>: to read file metadata for icons and thumbnails. Cmdr doesn't read the libraries.</li>
+        <li>
+            <strong>Automation of Finder</strong>: to open Finder's Get Info window for a file, the first time someone
+            uses Get info. Cmdr asks Finder for nothing else, and it needs no entitlement for this.
+        </li>
     </ul>
     <p>Other things Cmdr does on the system that a reviewer might notice:</p>
     <ul>
