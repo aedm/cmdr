@@ -3213,6 +3213,12 @@
     "confidence": "high",
     "sources": "AP-TW (AP-HK 幻燈片)"
   },
+  "slow": {
+    "chosen": "慢",
+    "forms": "a volume or server slow to answer → 回應很慢 / 回應太慢",
+    "confidence": "high",
+    "sources": "AP-TW (較慢), DOL (很慢); catalog (fileExplorer.pane.directConnectionTooSlowToast, fileExplorer.pane.trashUnconfirmedToast)"
+  },
   "software": {
     "accept": ["硬體"],
     "avoid": [

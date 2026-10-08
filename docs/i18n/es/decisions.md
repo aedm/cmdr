@@ -205,11 +205,9 @@ The stats carry a stable random id, so ❌ never `anónimas`, and ❌ never the 
 
 `mantener`, not `conservar` (a choice). `Se ha mantenido el nombre “{name}”`: `su nombre` would point at the insert.
 
-## El renombrado sin confirmar y el nombre que el sistema rechaza (`fileExplorer.rename.unconfirmed*`, `fileOperations.validation.nameNotUsable`)
+## El nombre que el sistema rechaza (`fileOperations.validation.nameNotUsable`)
 
-Nobody knows whether the rename happened, so nothing may imply it didn't:
-`es posible que el cambio sí se haya aplicado`, all arms plural (even `one` covers two renames), `ni el de` for the
-others. `Ese nombre de archivo no puede usarse`: `Ese` is "that name you typed"; no full stop, it composes into
+`Ese nombre de archivo no puede usarse`: `Ese` is "that name you typed"; no full stop, it composes into
 `chainKeptOriginalName`.
 
 ## Operaciones sugeridas: el diálogo de lo que propone Ask Cmdr (`suggestedOps.*`, `commands.suggestedOpsShow.*`)

@@ -599,7 +599,7 @@
     "chosen": "bekräfta",
     "confidence": "high",
     "forms": "Det gick inte att bekräfta att …; Cmdr kunde inte bekräfta …",
-    "sources": "macOS; catalog (fileOperations.mkdir.timeoutMessage)"
+    "sources": "macOS; catalog (errors.write.moveNotConfirmed.*)"
   },
   "conflict": {
     "chosen": "konflikt",

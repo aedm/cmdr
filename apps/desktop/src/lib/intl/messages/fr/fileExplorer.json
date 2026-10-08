@@ -745,6 +745,14 @@
   "@fileExplorer.clipboard.empty": {
     "sourceHash": "0cbe304"
   },
+  "fileExplorer.clipboard.stillPasting": "Création d’un fichier à partir du presse-papiers toujours en cours. Le volume met du temps à répondre.",
+  "@fileExplorer.clipboard.stillPasting": {
+    "sourceHash": "0e98ca7"
+  },
+  "fileExplorer.clipboard.notPasted": "Cmdr n’a pas pu créer de fichier à partir du presse-papiers. {reason}",
+  "@fileExplorer.clipboard.notPasted": {
+    "sourceHash": "a6e63c7"
+  },
   "fileExplorer.clipboard.pastedAsFile": "Contenu du presse-papiers collé dans {filename} ({kind, select, image {image} pdf {PDF} other {texte}})",
   "@fileExplorer.clipboard.pastedAsFile": {
     "sourceHash": "d61d4b5"
@@ -860,6 +868,14 @@
   "fileExplorer.rename.needsOwnMoveDialog": "Ce renommage copie les données sur le serveur et doit passer par sa propre boîte de dialogue Déplacer. Renommez cet élément à nouveau, séparément.",
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "sourceHash": "87110e0"
+  },
+  "fileExplorer.rename.stillRenaming": "Renommage de « {name} » toujours en cours. Le volume met du temps à répondre.",
+  "@fileExplorer.rename.stillRenaming": {
+    "sourceHash": "a05cca5"
+  },
+  "fileExplorer.rename.stillRenamingAndOthers": "Renommage de « {name} » et {others, plural, one {d’un autre fichier} many {de {othersText} autres fichiers} other {de {othersText} autres fichiers}} toujours en cours. Le volume met du temps à répondre.",
+  "@fileExplorer.rename.stillRenamingAndOthers": {
+    "sourceHash": "f0487ef"
   },
   "fileExplorer.columns.name": "Nom",
   "@fileExplorer.columns.name": {

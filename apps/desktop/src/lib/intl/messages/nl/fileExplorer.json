@@ -746,6 +746,14 @@
   "@fileExplorer.clipboard.empty": {
     "sourceHash": "0cbe304"
   },
+  "fileExplorer.clipboard.stillPasting": "Er wordt nog een bestand aangemaakt met de klembordinhoud. Het volume reageert traag.",
+  "@fileExplorer.clipboard.stillPasting": {
+    "sourceHash": "0e98ca7"
+  },
+  "fileExplorer.clipboard.notPasted": "Cmdr kon geen bestand aanmaken met de klembordinhoud. {reason}",
+  "@fileExplorer.clipboard.notPasted": {
+    "sourceHash": "a6e63c7"
+  },
   "fileExplorer.clipboard.pastedAsFile": "{kind, select, image {Klembordafbeelding} pdf {Klembord-PDF} other {Klembordtekst}} als {filename} geplakt",
   "@fileExplorer.clipboard.pastedAsFile": {
     "sourceHash": "d61d4b5"
@@ -861,6 +869,14 @@
   "fileExplorer.rename.needsOwnMoveDialog": "Een naamwijziging kopieert hier op de server, en daarvoor is een eigen venster ‘Verplaats’ nodig. Wijzig die naam nog eens, los van de rest.",
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "sourceHash": "87110e0"
+  },
+  "fileExplorer.rename.stillRenaming": "De naam van ‘{name}’ wordt nog gewijzigd. Het volume reageert traag.",
+  "@fileExplorer.rename.stillRenaming": {
+    "sourceHash": "a05cca5"
+  },
+  "fileExplorer.rename.stillRenamingAndOthers": "De namen van ‘{name}’ en {others, plural, one {één ander bestand} other {{othersText} andere bestanden}} worden nog gewijzigd. Het volume reageert traag.",
+  "@fileExplorer.rename.stillRenamingAndOthers": {
+    "sourceHash": "f0487ef"
   },
   "fileExplorer.columns.name": "Naam",
   "@fileExplorer.columns.name": {

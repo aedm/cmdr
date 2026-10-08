@@ -745,6 +745,14 @@
   "@fileExplorer.clipboard.empty": {
     "sourceHash": "0cbe304"
   },
+  "fileExplorer.clipboard.stillPasting": "Файл из буфера обмена все еще создается. Том медленно отвечает.",
+  "@fileExplorer.clipboard.stillPasting": {
+    "sourceHash": "0e98ca7"
+  },
+  "fileExplorer.clipboard.notPasted": "Cmdr не удалось создать файл из буфера обмена. {reason}",
+  "@fileExplorer.clipboard.notPasted": {
+    "sourceHash": "a6e63c7"
+  },
   "fileExplorer.clipboard.pastedAsFile": "{kind, select, image {Изображение из буфера обмена вставлено} pdf {PDF из буфера обмена вставлен} other {Текст из буфера обмена вставлен}} как файл {filename}",
   "@fileExplorer.clipboard.pastedAsFile": {
     "sourceHash": "d61d4b5"
@@ -860,6 +868,14 @@
   "fileExplorer.rename.needsOwnMoveDialog": "Переименование здесь выполняется копированием на сервере, поэтому нужно отдельное диалоговое окно «Переместить». Переименуйте этот объект еще раз, отдельно от других.",
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "sourceHash": "87110e0"
+  },
+  "fileExplorer.rename.stillRenaming": "«{name}» все еще переименовывается. Том медленно отвечает.",
+  "@fileExplorer.rename.stillRenaming": {
+    "sourceHash": "a05cca5"
+  },
+  "fileExplorer.rename.stillRenamingAndOthers": "«{name}» и {others, plural, =1 {еще один файл} one {еще {othersText} файл} few {еще {othersText} файла} many {еще {othersText} файлов} other {еще {othersText} файла}} все еще переименовываются. Том медленно отвечает.",
+  "@fileExplorer.rename.stillRenamingAndOthers": {
+    "sourceHash": "f0487ef"
   },
   "fileExplorer.columns.name": "Имя",
   "@fileExplorer.columns.name": {

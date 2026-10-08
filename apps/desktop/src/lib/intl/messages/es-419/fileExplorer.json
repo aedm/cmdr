@@ -159,6 +159,10 @@
   "@fileExplorer.edit.launchRefused": {
     "sourceHash": "50368e9"
   },
+  "fileExplorer.clipboard.notPasted": "Cmdr no pudo crear un archivo a partir del portapapeles. {reason}",
+  "@fileExplorer.clipboard.notPasted": {
+    "sourceHash": "69d94ad"
+  },
   "fileExplorer.clipboard.pastedAsFile": "Se pegó {kind, select, image {la imagen} pdf {el PDF} other {el texto}} del portapapeles como {filename}",
   "@fileExplorer.clipboard.pastedAsFile": {
     "sourceHash": "8b6ffb6"

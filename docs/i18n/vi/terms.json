@@ -543,7 +543,7 @@
     "confidence": "high",
     "decision": "A move that could not be confirmed",
     "forms": "couldn't confirm → chưa xác nhận được (not yet proven), never a flat không thể",
-    "sources": "MS terminology (confirm → xác nhận); catalog (fileOperations.mkdir.timeoutMessage)"
+    "sources": "MS terminology (confirm → xác nhận); catalog (errors.write.moveNotConfirmed.*)"
   },
   "conflict": {
     "chosen": "xung đột",

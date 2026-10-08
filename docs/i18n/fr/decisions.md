@@ -278,13 +278,11 @@ values write the catalog's `’`.
 - "and so did “{name}”: {reason}" → `ainsi que « {name} » : {reason}` (Finder’s "X et N autres"): the name stays next to
   the colon, as `{reason}` is about it alone.
 
-## Renommage non confirmé : le volume ne répond pas (`fileExplorer.rename.unconfirmed*`, `fileOperations.validation.nameNotUsable`)
+## Volume lent : création et renommage toujours en cours (`fileOperations.newEntry.stillCreating`, `fileExplorer.rename.stillRenaming*`, `fileExplorer.clipboard.stillPasting`, `fileOperations.validation.nameNotUsable`)
 
-- The opposite of `chainKept*`: never imply the name stayed. `Impossible de confirmer le renommage de « X »`, on the
-  `mkdir.timeoutMessage` mold, with the same `quand même`.
-- Name the file in the second sentence (`donc le fichier a peut-être quand même été renommé`), never `il`: the nearest
-  masculine noun is `le volume`. The doubled `peut-être` is deliberate (two different doubts).
-- Several files → `les renommages de « X » et de {n} autres fichiers`: `de` repeats because they’re complements (unlike
+- `<Nom verbal> de « X » toujours en cours. Le volume met du temps à répondre.`: one frame for all four, never `il` /
+  `elle` for X (folder or file).
+- Several files → `Renommage de « X » et de {n} autres fichiers`: `de` repeats because they’re complements (unlike
   `ainsi que` above).
 - `Le nom du fichier ne peut pas être utilisé`, matching its `validation.*` siblings, no final period (it also fills
   `{reason}`).

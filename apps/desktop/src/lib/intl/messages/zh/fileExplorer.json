@@ -743,6 +743,14 @@
   "@fileExplorer.clipboard.empty": {
     "sourceHash": "0cbe304"
   },
+  "fileExplorer.clipboard.stillPasting": "仍在用剪贴板内容创建文件。宗卷响应很慢。",
+  "@fileExplorer.clipboard.stillPasting": {
+    "sourceHash": "0e98ca7"
+  },
+  "fileExplorer.clipboard.notPasted": "Cmdr 无法用剪贴板内容创建文件。{reason}",
+  "@fileExplorer.clipboard.notPasted": {
+    "sourceHash": "a6e63c7"
+  },
   "fileExplorer.clipboard.pastedAsFile": "已将剪贴板{kind, select, image {图像} pdf { PDF } other {文本}}粘贴为 {filename}",
   "@fileExplorer.clipboard.pastedAsFile": {
     "sourceHash": "d61d4b5"
@@ -858,6 +866,14 @@
   "fileExplorer.rename.needsOwnMoveDialog": "重命名它需要在服务器上拷贝，得在“移动”对话框里另行确认。请单独再重命名它一次。",
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "sourceHash": "87110e0"
+  },
+  "fileExplorer.rename.stillRenaming": "仍在重命名“{name}”。宗卷响应很慢。",
+  "@fileExplorer.rename.stillRenaming": {
+    "sourceHash": "a05cca5"
+  },
+  "fileExplorer.rename.stillRenamingAndOthers": "仍在重命名“{name}”和{others, plural, other {其他 {othersText} 个文件}}。宗卷响应很慢。",
+  "@fileExplorer.rename.stillRenamingAndOthers": {
+    "sourceHash": "f0487ef"
   },
   "fileExplorer.columns.name": "名称",
   "@fileExplorer.columns.name": {

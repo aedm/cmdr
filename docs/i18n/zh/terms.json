@@ -611,7 +611,7 @@
   "confirm": {
     "chosen": "确认",
     "confidence": "confirmed",
-    "decision": "无法确认的重命名 + 名称不可用",
+    "decision": "名称不可用 + 重命名链计数",
     "forms": "\"couldn't confirm X\" → 无法确认 X 是否已… (a hedge, never a failure)",
     "sources": "MS terminology"
   },

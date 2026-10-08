@@ -51,6 +51,14 @@
   "@fileOperations.delete.confirmMoveToTrash": {
     "sourceHash": "b9a042e"
   },
+  "fileOperations.mkfile.notCreatedToast": "Cmdr no pudo crear el archivo “{name}”. {reason}",
+  "@fileOperations.mkfile.notCreatedToast": {
+    "sourceHash": "134e04c"
+  },
+  "fileOperations.mkdir.notCreatedToast": "Cmdr no pudo crear la carpeta “{name}”. {reason}",
+  "@fileOperations.mkdir.notCreatedToast": {
+    "sourceHash": "b941580"
+  },
   "fileOperations.transferDialog.destinationNoPermission": "No tienes permiso para agregar archivos a esta carpeta.",
   "@fileOperations.transferDialog.destinationNoPermission": {
     "sourceHash": "d160d62"

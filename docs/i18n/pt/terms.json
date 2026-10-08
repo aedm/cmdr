@@ -2499,7 +2499,8 @@
   "slow": {
     "chosen": "lento",
     "accept": ["lenta", "devagar"],
-    "forms": "4x mais lenta do que …",
+    "proseAccept": ["demorando"],
+    "forms": "4x mais lenta do que …; a volume slow to answer → o volume está demorando para responder",
     "confidence": "high",
     "sources": "MS terminology pt-BR (conexão mais lenta)"
   },

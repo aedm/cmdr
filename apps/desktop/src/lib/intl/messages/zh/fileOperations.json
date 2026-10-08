@@ -3,6 +3,10 @@
   "@fileOperations.button.cancel": {
     "sourceHash": "19766ed"
   },
+  "fileOperations.button.close": "关闭",
+  "@fileOperations.button.close": {
+    "sourceHash": "7d9eb7a"
+  },
   "fileOperations.button.ok": "好",
   "@fileOperations.button.ok": {
     "sourceHash": "565339b"
@@ -123,6 +127,14 @@
   "@fileOperations.delete.symlinkNoticeMany": {
     "sourceHash": "56b3f52"
   },
+  "fileOperations.mkfile.notCreatedToast": "Cmdr 无法创建文件“{name}”。{reason}",
+  "@fileOperations.mkfile.notCreatedToast": {
+    "sourceHash": "4f30e62"
+  },
+  "fileOperations.newEntry.stillCreating": "仍在创建“{name}”。宗卷响应很慢，关闭这个窗口也不会停止创建。",
+  "@fileOperations.newEntry.stillCreating": {
+    "sourceHash": "d66d5cd"
+  },
   "fileOperations.mkfile.title": "新建文件",
   "@fileOperations.mkfile.title": {
     "sourceHash": "44dedd0"
@@ -154,6 +166,10 @@
   "fileOperations.mkdir.placeholder": "示例：my-project",
   "@fileOperations.mkdir.placeholder": {
     "sourceHash": "7612b56"
+  },
+  "fileOperations.mkdir.notCreatedToast": "Cmdr 无法创建文件夹“{name}”。{reason}",
+  "@fileOperations.mkdir.notCreatedToast": {
+    "sourceHash": "517ef4b"
   },
   "fileOperations.mkdir.aiSuggestionsAria": "AI 建议",
   "@fileOperations.mkdir.aiSuggestionsAria": {

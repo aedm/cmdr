@@ -2540,7 +2540,7 @@
     "accept": ["lent", "despacio", "tarda"],
     "forms": "the volume may be slow → el volumen puede ir lento",
     "confidence": "high",
-    "sources": "catalog (fileOperations.mkdir.timeoutMessage)"
+    "sources": "catalog (fileExplorer.pane.trashUnconfirmedToast, fileOperations.newEntry.stillCreating)"
   },
   "sort": {
     "chosen": "Ordenar",

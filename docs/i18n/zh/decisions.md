@@ -234,12 +234,10 @@ The header `检查更改` has no `正在` (a header, not live status), like its 
 - Stop in the rollback tooltip `停止`, ❌ never `取消` (Cancel keeps the finished files; the tooltip exists to say
   rollback doesn't).
 
-## 无法确认的重命名 + 名称不可用 + 重命名链计数 (`fileExplorer.rename.unconfirmed*`, `fileOperations.validation.nameNotUsable`, `fileExplorer.rename.chainKeptOriginalName*`)
+## 名称不可用 + 重命名链计数 (`fileOperations.validation.nameNotUsable`, `fileExplorer.rename.chainKeptOriginalName*`)
 
-- "Couldn't confirm" family: `无法确认…是否已…`, then `这个宗卷可能比较慢，所以…也许已经…了`, the same hedge across
-  rename, folder creation, and trash.
-- `名称也许已经改好了` mirrors `保留了原来的名称` (the opposite outcome) on the same noun; `重命名` is a verb and reads
-  badly as a subject. ❌ The unconfirmed toast never says the file kept its name.
+- "Couldn't confirm" (`fileExplorer.pane.trashUnconfirmedToast`): `无法确认…是否已…`, then
+  `这个宗卷可能比较慢，但…也许已经…了`.
 - Chain toast: `{reason}` stays last after `：`, hung on `“{name}”…也一样` alone; macOS's merged `“X”和其他 N 个文件都…`
   would bind it to every file.
 - `这个文件名不能使用` / `这个文件夹名不能使用` (Finder `不能使用名称`), no `。`: it's composed into `{reason}。`

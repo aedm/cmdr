@@ -3,6 +3,10 @@
   "@fileOperations.button.cancel": {
     "sourceHash": "19766ed"
   },
+  "fileOperations.button.close": "Stäng",
+  "@fileOperations.button.close": {
+    "sourceHash": "7d9eb7a"
+  },
   "fileOperations.button.ok": "OK",
   "@fileOperations.button.ok": {
     "sourceHash": "565339b",
@@ -124,6 +128,14 @@
   "@fileOperations.delete.symlinkNoticeMany": {
     "sourceHash": "56b3f52"
   },
+  "fileOperations.mkfile.notCreatedToast": "Cmdr kunde inte skapa filen ”{name}”. {reason}",
+  "@fileOperations.mkfile.notCreatedToast": {
+    "sourceHash": "4f30e62"
+  },
+  "fileOperations.newEntry.stillCreating": "Håller fortfarande på att skapa ”{name}”. Volymen svarar långsamt och att stänga det här stoppar inte skapandet.",
+  "@fileOperations.newEntry.stillCreating": {
+    "sourceHash": "d66d5cd"
+  },
   "fileOperations.mkfile.title": "Ny fil",
   "@fileOperations.mkfile.title": {
     "sourceHash": "44dedd0"
@@ -155,6 +167,10 @@
   "fileOperations.mkdir.placeholder": "Exempel: mitt-projekt",
   "@fileOperations.mkdir.placeholder": {
     "sourceHash": "7612b56"
+  },
+  "fileOperations.mkdir.notCreatedToast": "Cmdr kunde inte skapa mappen ”{name}”. {reason}",
+  "@fileOperations.mkdir.notCreatedToast": {
+    "sourceHash": "517ef4b"
   },
   "fileOperations.mkdir.aiSuggestionsAria": "AI-förslag",
   "@fileOperations.mkdir.aiSuggestionsAria": {

@@ -722,7 +722,7 @@
       }
     ],
     "confidence": "high",
-    "sources": "catalog (fileExplorer.pane.trashUnconfirmedToast, fileOperations.mkdir.timeoutMessage); macOS AppKit (Confirm = Megerősítés, the approval sense)",
+    "sources": "catalog (fileExplorer.pane.trashUnconfirmedToast); macOS AppKit (Confirm = Megerősítés, the approval sense)",
     "decision": "A move that could not be confirmed"
   },
   "conflict": {
@@ -2790,7 +2790,7 @@
   "rename": {
     "chosen": "átnevezés",
     "accept": ["átnevez", "átneveződ", "nevezhető át", "nevezd át", "nevez"],
-    "forms": "label Átnevezés; can’t be renamed → nem nevezhető át; the unconfirmed rename (no agent) → hogy „{name}” átneveződött; rename cycle → átnevezési ciklus",
+    "forms": "label Átnevezés; can’t be renamed → nem nevezhető át; a rename still running → „{name}” átnevezése még folyamatban van; rename cycle → átnevezési ciklus",
     "avoid": [
       {
         "form": "átnevezték (for Cmdr's own rename)",

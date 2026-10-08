@@ -3,6 +3,10 @@
   "@fileOperations.button.cancel": {
     "sourceHash": "19766ed"
   },
+  "fileOperations.button.close": "關閉",
+  "@fileOperations.button.close": {
+    "sourceHash": "7d9eb7a"
+  },
   "fileOperations.button.ok": "好",
   "@fileOperations.button.ok": {
     "sourceHash": "565339b"
@@ -123,6 +127,14 @@
   "@fileOperations.delete.symlinkNoticeMany": {
     "sourceHash": "56b3f52"
   },
+  "fileOperations.mkfile.notCreatedToast": "Cmdr 無法建立檔案「{name}」。{reason}",
+  "@fileOperations.mkfile.notCreatedToast": {
+    "sourceHash": "4f30e62"
+  },
+  "fileOperations.newEntry.stillCreating": "仍在建立「{name}」。卷宗回應很慢，關閉這個視窗也不會停止建立。",
+  "@fileOperations.newEntry.stillCreating": {
+    "sourceHash": "d66d5cd"
+  },
   "fileOperations.mkfile.title": "新增檔案",
   "@fileOperations.mkfile.title": {
     "sourceHash": "44dedd0"
@@ -154,6 +166,10 @@
   "fileOperations.mkdir.placeholder": "例如：my-project",
   "@fileOperations.mkdir.placeholder": {
     "sourceHash": "7612b56"
+  },
+  "fileOperations.mkdir.notCreatedToast": "Cmdr 無法建立資料夾「{name}」。{reason}",
+  "@fileOperations.mkdir.notCreatedToast": {
+    "sourceHash": "517ef4b"
   },
   "fileOperations.mkdir.aiSuggestionsAria": "AI 建議",
   "@fileOperations.mkdir.aiSuggestionsAria": {

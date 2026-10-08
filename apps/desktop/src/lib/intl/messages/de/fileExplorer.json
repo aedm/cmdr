@@ -745,6 +745,14 @@
   "@fileExplorer.clipboard.empty": {
     "sourceHash": "0cbe304"
   },
+  "fileExplorer.clipboard.stillPasting": "Aus der Zwischenablage wird noch eine Datei erstellt. Das Volume antwortet langsam.",
+  "@fileExplorer.clipboard.stillPasting": {
+    "sourceHash": "0e98ca7"
+  },
+  "fileExplorer.clipboard.notPasted": "Cmdr konnte aus der Zwischenablage keine Datei erstellen. {reason}",
+  "@fileExplorer.clipboard.notPasted": {
+    "sourceHash": "a6e63c7"
+  },
   "fileExplorer.clipboard.pastedAsFile": "{kind, select, image {Bild} pdf {PDF} other {Text}} aus der Zwischenablage als {filename} eingesetzt",
   "@fileExplorer.clipboard.pastedAsFile": {
     "sourceHash": "d61d4b5"
@@ -860,6 +868,14 @@
   "fileExplorer.rename.needsOwnMoveDialog": "Das Umbenennen kopiert auf dem Server und braucht deshalb einen eigenen Dialog „Bewegen“. Benenne das Objekt noch einmal einzeln um.",
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "sourceHash": "87110e0"
+  },
+  "fileExplorer.rename.stillRenaming": "„{name}“ wird noch umbenannt. Das Volume antwortet langsam.",
+  "@fileExplorer.rename.stillRenaming": {
+    "sourceHash": "a05cca5"
+  },
+  "fileExplorer.rename.stillRenamingAndOthers": "„{name}“ und {others, plural, one {eine weitere Datei} other {{othersText} weitere Dateien}} werden noch umbenannt. Das Volume antwortet langsam.",
+  "@fileExplorer.rename.stillRenamingAndOthers": {
+    "sourceHash": "f0487ef"
   },
   "fileExplorer.columns.name": "Name",
   "@fileExplorer.columns.name": {

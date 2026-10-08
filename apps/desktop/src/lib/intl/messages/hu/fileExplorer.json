@@ -745,6 +745,14 @@
   "@fileExplorer.clipboard.empty": {
     "sourceHash": "0cbe304"
   },
+  "fileExplorer.clipboard.stillPasting": "Egy fájl létrehozása a vágólap tartalmából még folyamatban van. A kötet lassan válaszol.",
+  "@fileExplorer.clipboard.stillPasting": {
+    "sourceHash": "0e98ca7"
+  },
+  "fileExplorer.clipboard.notPasted": "A Cmdr nem tudott fájlt létrehozni a vágólap tartalmából. {reason}",
+  "@fileExplorer.clipboard.notPasted": {
+    "sourceHash": "a6e63c7"
+  },
   "fileExplorer.clipboard.pastedAsFile": "A vágólap {kind, select, image {képe} pdf {PDF-je} other {szövege}} fájlként beillesztve: {filename}",
   "@fileExplorer.clipboard.pastedAsFile": {
     "sourceHash": "d61d4b5"
@@ -860,6 +868,14 @@
   "fileExplorer.rename.needsOwnMoveDialog": "Az átnevezése a szerveren másolással jár, ezért külön Áthelyezés párbeszédablak kell hozzá. Nevezd át újra, egymagában.",
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "sourceHash": "87110e0"
+  },
+  "fileExplorer.rename.stillRenaming": "„{name}” átnevezése még folyamatban van. A kötet lassan válaszol.",
+  "@fileExplorer.rename.stillRenaming": {
+    "sourceHash": "a05cca5"
+  },
+  "fileExplorer.rename.stillRenamingAndOthers": "„{name}” és {others, plural, one {egy másik fájl} other {{othersText} másik fájl}} átnevezése még folyamatban van. A kötet lassan válaszol.",
+  "@fileExplorer.rename.stillRenamingAndOthers": {
+    "sourceHash": "f0487ef"
   },
   "fileExplorer.columns.name": "Név",
   "@fileExplorer.columns.name": {

@@ -3,6 +3,10 @@
   "@fileOperations.button.cancel": {
     "sourceHash": "19766ed"
   },
+  "fileOperations.button.close": "Cerrar",
+  "@fileOperations.button.close": {
+    "sourceHash": "7d9eb7a"
+  },
   "fileOperations.button.ok": "Aceptar",
   "@fileOperations.button.ok": {
     "sourceHash": "565339b"
@@ -123,6 +127,14 @@
   "@fileOperations.delete.symlinkNoticeMany": {
     "sourceHash": "56b3f52"
   },
+  "fileOperations.mkfile.notCreatedToast": "Cmdr no ha podido crear el archivo “{name}”. {reason}",
+  "@fileOperations.mkfile.notCreatedToast": {
+    "sourceHash": "4f30e62"
+  },
+  "fileOperations.newEntry.stillCreating": "Todavía se está creando “{name}”. El volumen tarda en responder, y cerrar el diálogo no detiene la creación.",
+  "@fileOperations.newEntry.stillCreating": {
+    "sourceHash": "d66d5cd"
+  },
   "fileOperations.mkfile.title": "Nuevo archivo",
   "@fileOperations.mkfile.title": {
     "sourceHash": "44dedd0"
@@ -154,6 +166,10 @@
   "fileOperations.mkdir.placeholder": "Ejemplo: mi-proyecto",
   "@fileOperations.mkdir.placeholder": {
     "sourceHash": "7612b56"
+  },
+  "fileOperations.mkdir.notCreatedToast": "Cmdr no ha podido crear la carpeta “{name}”. {reason}",
+  "@fileOperations.mkdir.notCreatedToast": {
+    "sourceHash": "517ef4b"
   },
   "fileOperations.mkdir.aiSuggestionsAria": "Sugerencias de IA",
   "@fileOperations.mkdir.aiSuggestionsAria": {

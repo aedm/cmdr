@@ -745,6 +745,14 @@
   "@fileExplorer.clipboard.empty": {
     "sourceHash": "0cbe304"
   },
+  "fileExplorer.clipboard.stillPasting": "Håller fortfarande på att skapa en fil från urklipp. Volymen svarar långsamt.",
+  "@fileExplorer.clipboard.stillPasting": {
+    "sourceHash": "0e98ca7"
+  },
+  "fileExplorer.clipboard.notPasted": "Cmdr kunde inte skapa en fil från urklipp. {reason}",
+  "@fileExplorer.clipboard.notPasted": {
+    "sourceHash": "a6e63c7"
+  },
   "fileExplorer.clipboard.pastedAsFile": "Klistrade in {kind, select, image {en bild} pdf {en PDF} other {text}} från urklipp som {filename}",
   "@fileExplorer.clipboard.pastedAsFile": {
     "sourceHash": "d61d4b5"
@@ -860,6 +868,14 @@
   "fileExplorer.rename.needsOwnMoveDialog": "Namnbytet kopierar på servern och behöver därför en egen Flytta-dialog. Byt namn på objektet igen, separat.",
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "sourceHash": "87110e0"
+  },
+  "fileExplorer.rename.stillRenaming": "Håller fortfarande på att byta namn på ”{name}”. Volymen svarar långsamt.",
+  "@fileExplorer.rename.stillRenaming": {
+    "sourceHash": "a05cca5"
+  },
+  "fileExplorer.rename.stillRenamingAndOthers": "Håller fortfarande på att byta namn på ”{name}” och {others, plural, one {en annan fil} other {{othersText} andra filer}}. Volymen svarar långsamt.",
+  "@fileExplorer.rename.stillRenamingAndOthers": {
+    "sourceHash": "f0487ef"
   },
   "fileExplorer.columns.name": "Namn",
   "@fileExplorer.columns.name": {

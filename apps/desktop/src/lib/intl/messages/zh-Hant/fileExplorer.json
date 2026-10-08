@@ -743,6 +743,14 @@
   "@fileExplorer.clipboard.empty": {
     "sourceHash": "0cbe304"
   },
+  "fileExplorer.clipboard.stillPasting": "仍在用剪貼板的內容建立檔案。卷宗回應很慢。",
+  "@fileExplorer.clipboard.stillPasting": {
+    "sourceHash": "0e98ca7"
+  },
+  "fileExplorer.clipboard.notPasted": "Cmdr 無法用剪貼板的內容建立檔案。{reason}",
+  "@fileExplorer.clipboard.notPasted": {
+    "sourceHash": "a6e63c7"
+  },
   "fileExplorer.clipboard.pastedAsFile": "已將剪貼板中的{kind, select, image {影像} pdf { PDF } other {文字}}貼上為 {filename}",
   "@fileExplorer.clipboard.pastedAsFile": {
     "sourceHash": "d61d4b5"
@@ -858,6 +866,14 @@
   "fileExplorer.rename.needsOwnMoveDialog": "重新命名這個項目要在伺服器上複製，得單獨開一個「移動」對話方塊確認。請把這個項目單獨再重新命名一次。",
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "sourceHash": "87110e0"
+  },
+  "fileExplorer.rename.stillRenaming": "仍在重新命名「{name}」。卷宗回應很慢。",
+  "@fileExplorer.rename.stillRenaming": {
+    "sourceHash": "a05cca5"
+  },
+  "fileExplorer.rename.stillRenamingAndOthers": "仍在重新命名「{name}」和{others, plural, other {另外 {othersText} 個檔案}}。卷宗回應很慢。",
+  "@fileExplorer.rename.stillRenamingAndOthers": {
+    "sourceHash": "f0487ef"
   },
   "fileExplorer.columns.name": "名稱",
   "@fileExplorer.columns.name": {

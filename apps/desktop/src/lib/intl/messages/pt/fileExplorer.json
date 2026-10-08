@@ -745,6 +745,14 @@
   "@fileExplorer.clipboard.empty": {
     "sourceHash": "0cbe304"
   },
+  "fileExplorer.clipboard.stillPasting": "A criação de um arquivo a partir da área de transferência ainda está em andamento. O volume está demorando para responder.",
+  "@fileExplorer.clipboard.stillPasting": {
+    "sourceHash": "0e98ca7"
+  },
+  "fileExplorer.clipboard.notPasted": "O Cmdr não conseguiu criar um arquivo a partir da área de transferência. {reason}",
+  "@fileExplorer.clipboard.notPasted": {
+    "sourceHash": "a6e63c7"
+  },
   "fileExplorer.clipboard.pastedAsFile": "{kind, select, image {Imagem colada} pdf {PDF colado} other {Texto colado}} da área de transferência como {filename}",
   "@fileExplorer.clipboard.pastedAsFile": {
     "sourceHash": "d61d4b5"
@@ -860,6 +868,14 @@
   "fileExplorer.rename.needsOwnMoveDialog": "Renomear este item faz uma cópia no servidor, o que exige um diálogo Mover só para ele. Renomeie só este item de novo.",
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "sourceHash": "87110e0"
+  },
+  "fileExplorer.rename.stillRenaming": "A renomeação de “{name}” ainda está em andamento. O volume está demorando para responder.",
+  "@fileExplorer.rename.stillRenaming": {
+    "sourceHash": "a05cca5"
+  },
+  "fileExplorer.rename.stillRenamingAndOthers": "As renomeações de “{name}” e de {others, plural, one {outro arquivo} many {outros {othersText} arquivos} other {outros {othersText} arquivos}} ainda estão em andamento. O volume está demorando para responder.",
+  "@fileExplorer.rename.stillRenamingAndOthers": {
+    "sourceHash": "f0487ef"
   },
   "fileExplorer.columns.name": "Nome",
   "@fileExplorer.columns.name": {

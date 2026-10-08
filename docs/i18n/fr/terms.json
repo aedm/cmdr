@@ -656,7 +656,7 @@
     "accept": ["confirmation", "confirmé", "confirmez"],
     "chosen": "confirmer",
     "confidence": "high",
-    "forms": "Couldn’t confirm X → Impossible de confirmer X (the fixed family of mkdir.timeoutMessage, rename.unconfirmed, trashUnconfirmedToast)",
+    "forms": "Couldn’t confirm X → Impossible de confirmer X (the fixed family of trashUnconfirmedToast)",
     "sources": "MS terminology FRA (ids 1475887, 37786)"
   },
   "conflict": {
@@ -2819,9 +2819,10 @@
   },
   "slow": {
     "chosen": "lent",
+    "proseAccept": ["met du temps"],
     "confidence": "high",
     "decision": "Notification de repli sur le montage macOS",
-    "forms": "agrees with the named object (la connexion … plus lente); speed multipliers spelled out (4 fois plus lente)",
+    "forms": "agrees with the named object (la connexion … plus lente); speed multipliers spelled out (4 fois plus lente); a volume slow to answer → le volume met du temps à répondre",
     "sources": "Nautilus (plus lente)"
   },
   "sort": {

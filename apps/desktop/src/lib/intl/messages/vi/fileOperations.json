@@ -3,6 +3,10 @@
   "@fileOperations.button.cancel": {
     "sourceHash": "19766ed"
   },
+  "fileOperations.button.close": "Đóng",
+  "@fileOperations.button.close": {
+    "sourceHash": "7d9eb7a"
+  },
   "fileOperations.button.ok": "OK",
   "@fileOperations.button.ok": {
     "sourceHash": "565339b",
@@ -124,6 +128,14 @@
   "@fileOperations.delete.symlinkNoticeMany": {
     "sourceHash": "56b3f52"
   },
+  "fileOperations.mkfile.notCreatedToast": "Cmdr không thể tạo tệp “{name}”. {reason}",
+  "@fileOperations.mkfile.notCreatedToast": {
+    "sourceHash": "4f30e62"
+  },
+  "fileOperations.newEntry.stillCreating": "Vẫn đang tạo “{name}”. Ổ đĩa phản hồi chậm, và đóng cửa sổ này cũng không dừng việc tạo.",
+  "@fileOperations.newEntry.stillCreating": {
+    "sourceHash": "d66d5cd"
+  },
   "fileOperations.mkfile.title": "Tệp mới",
   "@fileOperations.mkfile.title": {
     "sourceHash": "44dedd0"
@@ -155,6 +167,10 @@
   "fileOperations.mkdir.placeholder": "Ví dụ: du-an-cua-toi",
   "@fileOperations.mkdir.placeholder": {
     "sourceHash": "7612b56"
+  },
+  "fileOperations.mkdir.notCreatedToast": "Cmdr không thể tạo thư mục “{name}”. {reason}",
+  "@fileOperations.mkdir.notCreatedToast": {
+    "sourceHash": "517ef4b"
   },
   "fileOperations.mkdir.aiSuggestionsAria": "Gợi ý AI",
   "@fileOperations.mkdir.aiSuggestionsAria": {

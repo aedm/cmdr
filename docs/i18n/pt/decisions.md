@@ -119,11 +119,10 @@ the installed macOS `pt_BR.lproj` bundles.
 - `stagingFolderKept` guards the USER's files: never suggest deleting the folder. `deixou tudo onde está`: `tudo` avoids
   a clitic; not `no lugar`, which means "instead" in this catalog.
 
-## Rename chain and unconfirmed rename (`fileExplorer.rename.chainKeptOriginalNameAndOthers`, `fileExplorer.rename.unconfirmed*`, `fileOperations.validation.nameNotUsable`)
+## Rename chain and slow rename (`fileExplorer.rename.chainKeptOriginalNameAndOthers`, `fileExplorer.rename.stillRenaming*`, `fileOperations.newEntry.stillCreating`, `fileOperations.validation.nameNotUsable`)
 
 - `e outros {N} itens` with `outros` BEFORE the numeral, Finder's order (`MR201_V3`), over Nautilus' `{N} outros`.
-- The unconfirmed toast's subject is `a renomeação`, never `o arquivo pode ter sido renomeado`: it may be a folder. The
-  noun repeats in the second sentence because `ela` / `elas` would be ambiguous in the `AndOthers` key.
+- Still-running toasts take the act as subject (`A criação de “X”`), never `“X” está sendo criado`: X may be a folder.
 - `nameNotUsable` has no final period: it's composed into `{reason}`.
 
 ## Rename and create refusals (`errors.mutation.*`, `errors.volume.*`)
