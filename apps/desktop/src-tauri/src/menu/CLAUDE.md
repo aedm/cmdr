@@ -23,7 +23,8 @@ Native menu bars for macOS and Linux, built from scratch in the user's language.
   through `frontend_shortcut_to_menu_text`, ❌ not the bar's floored `frontend_shortcut_to_accelerator`.
 - **A BAR combo with no ⌘/⌃/⌥, or one whose key muda can't name (`+`, `*`, `ö`), is DISPLAYED, never registered** —
   `⇧8` IS `*`, and AppKit fires a registered one app-wide. `displayed_item` carries the glyph. ❗ `setAttributedTitle:`
-  also rewrites `title`, so `find_ns_item` matches only to the first TAB.
+  also rewrites `title` (which muda 0.20's `text()` reads back), so `find_ns_item` and `menu_item_text` both cut at
+  the first TAB.
 - **Accelerator changes go remove/recreate/reinsert**, so `MenuState` tracks each item's submenu and index; a live
   label moves through `MenuState::set_item_label`, ❌ never a bare `set_text`.
 - **Four families skip `"execute-command"`**: CheckMenuItems auto-toggle (it would double-toggle) and send

@@ -352,14 +352,21 @@ pub(super) fn submenu_by_id<R: Runtime>(menu: &Menu<R>, id: &str) -> Option<Subm
 ///
 /// The one copy: both this file's icon pass and `context_menu_icons.rs` resolve a Tauri
 /// ID to a live title before crossing into AppKit, which has never heard of a menu ID.
+///
+/// ❗ Returns the [`plain_title`], without our display-accelerator run. muda 0.20's `text()`
+/// reads the live `NSMenuItem.title` (`muda-0.20.0/src/platform_impl/macos/mod.rs:260`), which
+/// `setAttributedTitle:` has already rewritten to `"{label}\t{glyph}"` once
+/// `display_accelerators.rs` ran, so every re-apply after a bar swap missed its own item and the
+/// `+` / `-` glyphs went missing. (muda 0.19 returned a cached copy of the label instead.)
 pub(super) fn menu_item_text<R: Runtime>(item: &MenuItemKind<R>) -> Option<String> {
-    match item {
+    let text = match item {
         MenuItemKind::MenuItem(item) => item.text().ok(),
         MenuItemKind::Submenu(item) => item.text().ok(),
         MenuItemKind::Predefined(item) => item.text().ok(),
         MenuItemKind::Check(item) => item.text().ok(),
         MenuItemKind::Icon(item) => item.text().ok(),
-    }
+    }?;
+    Some(plain_title(&text).to_string())
 }
 
 /// The `NSMenu` hanging off the item in `parent` with this title.
