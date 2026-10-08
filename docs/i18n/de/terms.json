@@ -679,9 +679,8 @@
     ],
     "chosen": "bestätigen",
     "confidence": "high",
-    "decision": "Unconfirmed rename + the catch-all name rejection",
     "forms": "Couldn't confirm X → Es ließ sich nicht bestätigen, dass … / Die Bewegung ließ sich nicht bestätigen",
-    "sources": "catalog (fileExplorer.pane.trashUnconfirmedToast, fileOperations.mkdir.timeoutMessage)"
+    "sources": "catalog (fileExplorer.pane.trashUnconfirmedToast)"
   },
   "conflict": {
     "accept": ["Konflikte"],

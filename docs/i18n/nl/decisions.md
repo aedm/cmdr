@@ -182,10 +182,8 @@ line.
   so the reason follows the name it explains.
 - Keeps the verb and tense of `chainKeptOriginalName`.
 
-## De onbevestigde naamwijziging en de onbruikbare naam (`fileExplorer.rename.unconfirmed`/`unconfirmedAndOthers`, `fileOperations.validation.nameNotUsable`)
+## De onbruikbare naam (`fileOperations.validation.nameNotUsable`)
 
-- Never say the file kept its name: Cmdr doesn't know. `We konden … niet bevestigen` and the tail
-  `dus de naam is misschien toch gewijzigd`, both from `fileExplorer.pane.trashUnconfirmedToast`.
 - `Deze bestandsnaam kan niet worden gebruikt` (Finder `RN31`), with no final period: it's also inserted before
   `‘{name}’ behoudt zijn naam.`
 

@@ -88,8 +88,8 @@ export function createRenameFlow(deps: RenameFlowDeps) {
   const siblingNames = createSiblingNames()
 
   // What a chain tells the user about the names it didn't apply and the renames
-  // no volume confirmed: two running toasts, one per pane (`chain-reports.ts`).
-  const chainReports = createChainReports({ paneId: deps.paneId, getListingId: deps.getListingId })
+  // a slow volume is still working on: two running toasts, one per pane (`chain-reports.ts`).
+  const chainReports = createChainReports({ paneId: deps.paneId })
 
   /** The listing the conflict hint is being checked against right now. */
   function currentScope(): ListingScope {
@@ -380,8 +380,11 @@ export function createRenameFlow(deps: RenameFlowDeps) {
         // nothing at all.
         chainReports.keptName(target.originalName, result.message)
         break
-      case 'timeout':
-        chainReports.unconfirmed(target.originalName)
+      case 'still-renaming':
+        // Counted in the running toast; its end is reported like any superseded save's.
+        void chainReports.stillRenaming(target.originalName, result.settled).then((end) => {
+          reportSupersededResult(end, target, trimmedName)
+        })
         break
       case 'conflict':
         // The only authority on a conflict, and the chain must not stop to ask:
@@ -428,13 +431,12 @@ export function createRenameFlow(deps: RenameFlowDeps) {
         if (commitFromClickAway) closeEditor()
         else rename.triggerShake()
         break
-      case 'timeout':
+      case 'still-renaming':
+        // Let go rather than hold the person on a slow volume. The end may come
+        // after they've moved on, so it's reported like a superseded save's.
         closeEditor()
         restoreFocus()
-        // The same aggregated toast the chain uses: a chain's last rename ends
-        // here rather than superseded, and its timeout belongs in the running
-        // count with the others.
-        chainReports.unconfirmed(target.originalName)
+        reportSupersededResult(result, target, trimmedName)
         break
       case 'extension-ask':
         // The dialog steals focus and blurs the editor; that blur must not cancel.

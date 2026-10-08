@@ -52,7 +52,11 @@ vi.mock('../rename/rename-operations', () => ({
   checkPermission: checkPermissionSpy,
 }))
 vi.mock('$lib/settings', () => ({ getSetting: getSettingSpy }))
-vi.mock('$lib/ui/toast', () => ({ addToastForPane: addToastSpy, dismissTransientToastsForPane: vi.fn() }))
+vi.mock('$lib/ui/toast', () => ({
+  addToastForPane: addToastSpy,
+  dismissToast: vi.fn(),
+  dismissTransientToastsForPane: vi.fn(),
+}))
 vi.mock('$lib/intl/messages.svelte', () => ({ tString: (k: string) => k }))
 // Spread the real module: `trash-availability.ts` reaches for
 // `pathCrossesArchiveBoundary` through here too, and a mock that answers for only
@@ -62,7 +66,6 @@ vi.mock('./archive-paths', async (importOriginal) => ({
   pathInsideArchive: pathInsideArchiveSpy,
 }))
 
-import { refreshListing } from '$lib/tauri-commands'
 import { buildFlow, deferred, PASTED, type Entry } from './test-rename-flow'
 
 const ERROR_VALIDATION = { severity: 'error', message: 'Filename can\'t contain "/" or null characters' }
@@ -570,20 +573,20 @@ describe('a superseded rename session may speak, never steer', () => {
     expect(rename.active).toBe(true)
   })
 
-  it('a timeout reported after the user moved on still warns, and refreshes once the volume goes quiet', async () => {
-    vi.useFakeTimers()
-    try {
-      const { rename, landSave } = supersededSave()
+  it('a slow rename reported after the user moved on says it is still running, and its refusal never touches the live editor', async () => {
+    const { rename, landSave } = supersededSave()
+    const end = deferred<unknown>()
 
-      await landSave({ type: 'timeout' })
+    await landSave({ type: 'still-renaming', settled: end.promise })
+    expect(addToastSpy).toHaveBeenCalled()
 
-      expect(addToastSpy).toHaveBeenCalled()
-      await vi.advanceTimersByTimeAsync(2000)
-      expect(refreshListing).toHaveBeenCalledWith('lst-1', false)
-      expect(rename.active).toBe(true)
-    } finally {
-      vi.useRealTimers()
-    }
+    end.resolve({ type: 'error', message: 'The disk is read-only' })
+    await end.promise
+    await Promise.resolve()
+
+    expect(rename.shaking).toBe(false)
+    expect(rename.active).toBe(true)
+    expect(rename.target?.path).toBe(NEXT.path)
   })
 
   it('a conflict reported after the user moved on never opens a dialog about it', async () => {

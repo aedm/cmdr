@@ -232,14 +232,11 @@ catalog.
 - `stagedLeftover.*` is Cmdr's own work file: `ofullständig kopia`, `rensar bort`, and `vid en senare överföring`, ❌
   never "nästa gång": cleanup skips anything younger than an hour, so the next try may clear nothing.
 
-## Rename toasts: chained and unconfirmed (`fileExplorer.rename.chainKeptOriginalNameAndOthers`, `fileExplorer.rename.unconfirmed*`, `fileOperations.validation.nameNotUsable`)
+## Rename toasts: chained (`fileExplorer.rename.chainKeptOriginalNameAndOthers`, `fileOperations.validation.nameNotUsable`)
 
-- The two families mean opposite things (definitely kept vs unknown) and must never blur.
 - "kept its name" → present `behåller sitt namn` (Total Commander's `Behåll namnet`): the state the file is in.
 - "and so did …" → `, liksom …`. ❌ Not `och det gör …` (unreadable without a comma) nor bureaucratic
   `och detsamma gäller`.
-- Unconfirmed follows `fileExplorer.pane.trashUnconfirmedToast`: `så filen kan ändå ha bytt namn`. ❌ Not `gått igenom`
-  or `lyckats` (the house voice avoids that status word). Several renames take the definite plural `namnbytena av`.
 - `Det här mappnamnet / filnamnet kan inte användas` (Finder's `Namnet … kan inte användas`), no final period.
 
 ## Suggested operations (`suggestedOps.*`, `commands.suggestedOpsShow.*`)

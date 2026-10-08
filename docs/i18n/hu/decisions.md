@@ -214,13 +214,8 @@ usage stats → `használati statisztika`, a random id → `egy véletlenszerű 
 `{othersText} másik fájl megtartotta a nevét, és „{name}” is: {reason}`. The gapped `is` carries "and so did" and puts
 the named file right before its colon, since `{reason}` covers only that file. `one` spells out `Egy másik fájl`.
 
-## A meg nem erősített átnevezés buboréka és a fel nem használható név (`fileExplorer.rename.unconfirmed`/`unconfirmedAndOthers`, `fileOperations.validation.nameNotUsable`)
+## A fel nem használható név (`fileOperations.validation.nameNotUsable`)
 
-- Couldn't confirm → `Nem sikerült megerősíteni, hogy „{name}” átneveződött`, the family's opener
-  (`trashUnconfirmedToast`, `mkdir.timeoutMessage`). The object form `… átnevezését megerősíteni` reads as "approve".
-- The mediopassive `átneveződött` over `átnevezték`, which implies someone outside Cmdr.
-- `az átnevezés attól még sikerülhetett` names its subject: dropped, it would read as the volume. The subject is the
-  rename, never `a fájl`, since a folder can stand there too.
 - That filename can't be used → `A fájlnév nem használható` / `A mappa neve nem használható` (macOS), no final period:
   it's embedded in a longer sentence.
 

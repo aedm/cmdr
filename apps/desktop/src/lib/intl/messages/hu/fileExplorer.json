@@ -861,14 +861,6 @@
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "sourceHash": "87110e0"
   },
-  "fileExplorer.rename.unconfirmed": "Nem sikerült megerősíteni, hogy „{name}” átneveződött. Lehet, hogy a kötet lassú, így az átnevezés attól még sikerülhetett.",
-  "@fileExplorer.rename.unconfirmed": {
-    "sourceHash": "059ac81"
-  },
-  "fileExplorer.rename.unconfirmedAndOthers": "Nem sikerült megerősíteni, hogy „{name}” és még {others, plural, one {egy másik fájl} other {{othersText} másik fájl}} átneveződött. Lehet, hogy a kötet lassú, így az átnevezések attól még sikerülhettek.",
-  "@fileExplorer.rename.unconfirmedAndOthers": {
-    "sourceHash": "f16b15d"
-  },
   "fileExplorer.columns.name": "Név",
   "@fileExplorer.columns.name": {
     "sourceHash": "dcd1d52"

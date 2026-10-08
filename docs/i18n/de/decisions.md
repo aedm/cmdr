@@ -223,16 +223,8 @@ backticks. Term rulings live in `terms.json`, open questions in `review-queue.md
 - `3 weitere Dateien behalten ihre bisherigen Namen, ebenso „A“: …` (Finder's `ebenso`);
   `„A“ behält den bisherigen Namen`, never `seinen` (gender bet on the insert).
 
-## Unconfirmed rename + the catch-all name rejection (`fileExplorer.rename.unconfirmed`/`.unconfirmedAndOthers`, `fileOperations.validation.nameNotUsable`)
+## The catch-all name rejection (`fileOperations.validation.nameNotUsable`)
 
-- `unconfirmed*` means Cmdr couldn't tell (the rename may have worked); never let it blur with `chainKept*` (it
-  definitely kept its name).
-- `Es ließ sich nicht bestätigen, dass „X“ umbenannt wurde` (the catalog's frame,
-  `fileExplorer.pane.trashUnconfirmedToast`): the `dass` clause keeps `{name}` nominative, where a `von` noun frame
-  forces dative plural branches. The plural branches reuse `chainKeptOriginalNameAndOthers` verbatim.
-- `die Umbenennung hat also womöglich trotzdem geklappt` names its subject: a bare `sie` would point at the files. The
-  timeout hedges (`womöglich trotzdem`, `Das Volume ist vielleicht langsam`) match
-  `fileExplorer.pane.trashUnconfirmedToast`.
 - `Dieser Dateiname kann nicht verwendet werden` (Finder's catch-all), no closing period: the value is composed into
   `fileExplorer.rename.keptOriginalName`.
 

@@ -10,7 +10,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { MutationError, VolumeError } from '$lib/ipc/bindings'
 import { _setLocaleForTests } from '$lib/intl/locale'
 import { renderMutationError, renderVolumeError, technicalDetail } from './mutation-error-messages'
-import { MutationFailure, asMutationError, isMutationTimeout, throwMutationError } from './mutation-error'
+import { asMutationError, throwMutationError } from './mutation-error'
 
 beforeAll(() => {
   _setLocaleForTests('en-US')
@@ -171,11 +171,5 @@ describe('MutationFailure', () => {
       expect(asMutationError(e)).toEqual({ type: 'alreadyExists', name: 'notes.txt' })
       expect(e).toBeInstanceOf(Error)
     }
-  })
-
-  it('reports a timeout without anyone reading a sentence', () => {
-    expect(isMutationTimeout(new MutationFailure({ type: 'timedOut' }))).toBe(true)
-    expect(isMutationTimeout(new MutationFailure({ type: 'nameEmpty' }))).toBe(false)
-    expect(isMutationTimeout(new Error('something else'))).toBe(false)
   })
 })

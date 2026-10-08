@@ -861,14 +861,6 @@
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "sourceHash": "87110e0"
   },
-  "fileExplorer.rename.unconfirmed": "Impossible de confirmer le renommage de « {name} ». Le volume est peut-être lent, donc le fichier a peut-être quand même été renommé.",
-  "@fileExplorer.rename.unconfirmed": {
-    "sourceHash": "059ac81"
-  },
-  "fileExplorer.rename.unconfirmedAndOthers": "Impossible de confirmer les renommages de « {name} » et {others, plural, one {d’un autre fichier} many {de {othersText} autres fichiers} other {de {othersText} autres fichiers}}. Le volume est peut-être lent, donc les fichiers ont peut-être quand même été renommés.",
-  "@fileExplorer.rename.unconfirmedAndOthers": {
-    "sourceHash": "f16b15d"
-  },
   "fileExplorer.columns.name": "Nom",
   "@fileExplorer.columns.name": {
     "sourceHash": "dcd1d52"

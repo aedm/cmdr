@@ -22,8 +22,9 @@ Full details (save flow, validation tiers, cursor tracking, decisions): `DETAILS
   change under every extension policy**: no dialog, no red border. What a policy does with a real one: `DETAILS.md`.
 - **Conflict detection on local FS compares `dev+ino` via `symlink_metadata()`, never `exists()`**: on case-insensitive
   APFS `readme.txt` → `README.txt` is the same file, which `exists()` would call a conflict.
-- **A `renameFile` / `moveToTrash` timeout is not a failure**: the rename may have landed on disk, so warn honestly
-  ("may have succeeded"), never as a kept name, and refresh. Chained ones share ONE toast and ONE debounced refresh.
+- **A slow rename is not a failure**: past the backend's deadline it's `still-renaming` and reports its real end later,
+  never as a kept name until the volume refuses. Chained ones share ONE running toast. A `moveToTrash` timeout warns
+  that it may have succeeded, and refreshes.
 - **Thread `volumeId` through `renameFile` / `checkRenameValidity` / `checkRenamePermission`.** Conflict checks ride the
   Volume trait; the permission check is LOCAL, so whether it applies is Rust's call per volume. ❌ Never re-classify
   volumes here by id prefix: an `mtp-` test was the whole gate once, and F2 died on every SFTP, WebDAV, and ADB pane
@@ -35,7 +36,7 @@ Full details (save flow, validation tiers, cursor tracking, decisions): `DETAILS
 - **A bare arrow chains the rename to the next row, and five orderings inside that step fail silently**: the save fires
   BEFORE the next activation; the editor opens on the entry captured at keypress time, which is the row BESIDE it, ❌
   never one at an index; a conflict is dropped on the BACKEND's answer, ❌ never on cached sibling names; and kept vs
-  unconfirmed names pool into two running toasts. Each one's why: `DETAILS.md` § Chaining.
+  still-renaming names pool into two running toasts. Each one's why: `DETAILS.md` § Chaining.
 - **Clicking outside the editor SAVES; losing focus any other way discards.** The commit hangs off a document
   `mousedown` (capture), never off blur: blur can't tell a click from the row scrolling out of the virtual window, and
   committing on a scroll would rename a file nobody chose. Enter saves too. Guards and the invalid-name toast:

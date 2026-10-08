@@ -861,14 +861,6 @@
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "sourceHash": "87110e0"
   },
-  "fileExplorer.rename.unconfirmed": "Det gick inte att bekräfta namnbytet av ”{name}”. Volymen kan vara långsam, så filen kan ändå ha bytt namn.",
-  "@fileExplorer.rename.unconfirmed": {
-    "sourceHash": "059ac81"
-  },
-  "fileExplorer.rename.unconfirmedAndOthers": "Det gick inte att bekräfta namnbytena av ”{name}” och {others, plural, one {en annan fil} other {{othersText} andra filer}}. Volymen kan vara långsam, så filerna kan ändå ha bytt namn.",
-  "@fileExplorer.rename.unconfirmedAndOthers": {
-    "sourceHash": "f16b15d"
-  },
   "fileExplorer.columns.name": "Namn",
   "@fileExplorer.columns.name": {
     "sourceHash": "dcd1d52"

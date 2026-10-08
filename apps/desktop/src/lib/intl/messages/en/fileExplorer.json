@@ -1283,19 +1283,19 @@
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "description": "Reason shown inside fileExplorer.rename.chainKeptOriginalName (after the colon) when the user renames a run of files with the up/down arrows and more than one of them is a big folder or file on cloud storage (S3). There, a rename copies every file inside on the server and deletes the originals, so it has to be confirmed in the Move dialog first. The first such item in the run gets that dialog; this message is for the others, which kept their names. It asks the user to rename that item again on its own. Two sentences that land after the colon in fileExplorer.rename.chainKeptOriginalName, so start the first one the way your language starts text after a colon (English capitalizes it), like the other reasons that fill that slot."
   },
-  "fileExplorer.rename.unconfirmed": "Couldn’t confirm the rename of “{name}”. The volume may be slow, so the rename may still have gone through.",
-  "@fileExplorer.rename.unconfirmed": {
-    "description": "Warning toast shown when a rename gets no answer from the volume in time (a slow network share or phone). The rename may well have succeeded on disk, so the message must never say the file kept its name; it says Cmdr couldn’t tell. Cmdr re-reads the folder right after, so the user will see which it was. {name} is the name the file had before the rename, shown in quotes. As soon as a second rename goes unanswered, this same toast is rewritten with fileExplorer.rename.unconfirmedAndOthers, so the two read as one message that grows.",
+  "fileExplorer.rename.stillRenaming": "Still renaming “{name}”. The volume is slow to answer.",
+  "@fileExplorer.rename.stillRenaming": {
+    "description": "Toast shown when a rename takes more than a couple of seconds on a slow volume (a network share or phone). The rename is still running and will most likely finish; the toast goes away by itself when it does, and if the volume refuses, another toast says why. {name} is the name the file had before the rename, shown in quotes. As soon as a second rename is still running, this same toast is rewritten with fileExplorer.rename.stillRenamingAndOthers, so the two read as one message.",
     "placeholders": {
       "name": "the name the file had before the rename"
     }
   },
-  "fileExplorer.rename.unconfirmedAndOthers": "Couldn’t confirm the rename of “{name}” and {others, plural, one {one other file} other {{othersText} other files}}. The volume may be slow, so the renames may still have gone through.",
-  "@fileExplorer.rename.unconfirmedAndOthers": {
-    "description": "Warning toast shown when SEVERAL renames get no answer from the volume in time, which happens when the user renames a run of files by pressing the up/down arrow inside the inline rename editor and each rename is still waiting on a slow network share or phone. It is the same single toast as fileExplorer.rename.unconfirmed, rewritten each time another rename goes unanswered, so a long run can’t bury the user in toasts. The renames may well have succeeded on disk, so the message must never say the files kept their names. {name} is the name the most recent file had before its rename, shown in quotes. {othersText} is how many OTHER renames went unanswered, already formatted for display; it is always 1 or more.",
+  "fileExplorer.rename.stillRenamingAndOthers": "Still renaming “{name}” and {others, plural, one {one other file} other {{othersText} other files}}. The volume is slow to answer.",
+  "@fileExplorer.rename.stillRenamingAndOthers": {
+    "description": "Toast shown when SEVERAL renames are still running on a slow volume (a network share or phone), which happens when the user renames a run of files by pressing the up/down arrow inside the inline rename editor. It is the same single toast as fileExplorer.rename.stillRenaming, rewritten as renames start and finish, so a long run can’t bury the user in toasts; it goes away once they've all finished. {name} is the name the most recent file had before its rename, shown in quotes. {othersText} is how many OTHER renames are still running, already formatted for display; it is always 1 or more.",
     "placeholders": {
       "name": "the name the most recent file had before its rename",
-      "othersText": "how many other renames went unanswered, already formatted for display",
+      "othersText": "how many other renames are still running, already formatted for display",
       "others": "the same number of other renames (drives the singular/plural form)"
     }
   },

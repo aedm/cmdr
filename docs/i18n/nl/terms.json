@@ -592,7 +592,6 @@
     "accept": ["bevestig", "bevestiging"],
     "chosen": "bevestigen",
     "confidence": "high",
-    "decision": "De onbevestigde naamwijziging en de onbruikbare naam",
     "forms": "\"Couldn't confirm …\" → We konden … niet bevestigen / Cmdr kon … niet bevestigen; heading Kon het verplaatsen niet bevestigen",
     "sources": "MS (confirm → bevestigen), macOS AppKit (Bevestig)"
   },

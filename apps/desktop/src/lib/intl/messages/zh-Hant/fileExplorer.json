@@ -859,14 +859,6 @@
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "sourceHash": "87110e0"
   },
-  "fileExplorer.rename.unconfirmed": "無法確認「{name}」是否已重新命名。這個卷宗可能比較慢，所以名稱也許已經改好了。",
-  "@fileExplorer.rename.unconfirmed": {
-    "sourceHash": "059ac81"
-  },
-  "fileExplorer.rename.unconfirmedAndOthers": "無法確認「{name}」和{others, plural, other {另外 {othersText} 個檔案}}是否已重新命名。這個卷宗可能比較慢，所以這些名稱也許都已經改好了。",
-  "@fileExplorer.rename.unconfirmedAndOthers": {
-    "sourceHash": "f16b15d"
-  },
   "fileExplorer.columns.name": "名稱",
   "@fileExplorer.columns.name": {
     "sourceHash": "dcd1d52"

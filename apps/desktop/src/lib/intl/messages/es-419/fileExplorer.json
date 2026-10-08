@@ -191,14 +191,6 @@
   "@fileExplorer.rename.chainKeptOriginalNameAndOthers": {
     "sourceHash": "0953523"
   },
-  "fileExplorer.rename.unconfirmed": "No se pudo confirmar el cambio de nombre de “{name}”. El volumen puede ir lento, así que es posible que el cambio sí se haya aplicado.",
-  "@fileExplorer.rename.unconfirmed": {
-    "sourceHash": "6823529"
-  },
-  "fileExplorer.rename.unconfirmedAndOthers": "No se pudo confirmar el cambio de nombre de “{name}” ni el de {others, plural, one {otro archivo} many {otros {othersText} archivos} other {otros {othersText} archivos}}. El volumen puede ir lento, así que es posible que los cambios sí se hayan aplicado.",
-  "@fileExplorer.rename.unconfirmedAndOthers": {
-    "sourceHash": "674578c"
-  },
   "fileExplorer.dateTooltip.lastMoved": "Último movimiento (“agregado”)",
   "@fileExplorer.dateTooltip.lastMoved": {
     "sourceHash": "f1b3bdb"

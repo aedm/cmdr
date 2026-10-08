@@ -27,7 +27,7 @@ vi.mock('$lib/logging/logger', () => ({
 import { tString } from '$lib/intl/messages.svelte'
 import { MutationFailure } from '$lib/file-operations/mutation-error'
 import { renderMutationError } from '$lib/file-operations/mutation-error-messages'
-import { executeRenameSave } from './rename-operations'
+import { executeRenameSave, performRename } from './rename-operations'
 import type { RenameTarget } from './rename-state.svelte'
 
 const FILE: RenameTarget = {
@@ -145,6 +145,72 @@ describe('a rename that copies', () => {
     const result = await executeRenameSave(FOLDER, 'renamed', 'yes', false, 's3-1')
 
     expect(result).toEqual({ type: 'success', newName: 'renamed' })
-    expect(renameFileSpy).toHaveBeenCalledWith('/dir/notes', '/dir/renamed', false, 's3-1')
+    expect(renameFileSpy).toHaveBeenCalledWith(
+      '/dir/notes',
+      '/dir/renamed',
+      false,
+      's3-1',
+      undefined,
+      expect.objectContaining({ onStillRunning: expect.any(Function) as unknown }),
+    )
+  })
+})
+
+describe('a rename on a slow volume', () => {
+  /** A `renameFile` that says it's still running, then waits until the test ends it. */
+  function slowRename() {
+    let land!: () => void
+    let refuse!: (e: unknown) => void
+    renameFileSpy.mockImplementationOnce(
+      (
+        _from: string,
+        _to: string,
+        _force: boolean,
+        _volumeId?: string,
+        _initiator?: unknown,
+        wait?: { onStillRunning?: () => void },
+      ) => {
+        wait?.onStillRunning?.()
+        return new Promise<void>((resolve, reject) => {
+          land = resolve
+          refuse = reject
+        })
+      },
+    )
+    return {
+      land: () => {
+        land()
+      },
+      refuse: (e: unknown) => {
+        refuse(e)
+      },
+    }
+  }
+
+  it('hands back at the deadline as still renaming, never as a failure, and settles as a success', async () => {
+    const volume = slowRename()
+
+    const result = await performRename(FILE, 'renamed.txt', false, 'smb-naspi')
+
+    expect(result.type).toBe('still-renaming')
+    volume.land()
+    if (result.type === 'still-renaming') {
+      expect(await result.settled).toEqual({ type: 'success', newName: 'renamed.txt' })
+    }
+  })
+
+  it("settles with the volume's own reason when the slow rename is refused", async () => {
+    const volume = slowRename()
+
+    const result = await performRename(FILE, 'renamed.txt', false, 'smb-naspi')
+    volume.refuse(new MutationFailure({ type: 'parentNotWritable', path: '/dir' }))
+
+    expect(result.type).toBe('still-renaming')
+    if (result.type === 'still-renaming') {
+      expect(await result.settled).toEqual({
+        type: 'error',
+        message: renderMutationError({ type: 'parentNotWritable', path: '/dir' }, 'file', 'renamed.txt'),
+      })
+    }
   })
 })

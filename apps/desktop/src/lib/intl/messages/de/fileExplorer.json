@@ -861,14 +861,6 @@
   "@fileExplorer.rename.needsOwnMoveDialog": {
     "sourceHash": "87110e0"
   },
-  "fileExplorer.rename.unconfirmed": "Es ließ sich nicht bestätigen, dass „{name}“ umbenannt wurde. Das Volume ist vielleicht langsam, die Umbenennung hat also womöglich trotzdem geklappt.",
-  "@fileExplorer.rename.unconfirmed": {
-    "sourceHash": "059ac81"
-  },
-  "fileExplorer.rename.unconfirmedAndOthers": "Es ließ sich nicht bestätigen, dass „{name}“ und {others, plural, one {eine weitere Datei} other {{othersText} weitere Dateien}} umbenannt wurden. Das Volume ist vielleicht langsam, die Umbenennungen haben also womöglich trotzdem geklappt.",
-  "@fileExplorer.rename.unconfirmedAndOthers": {
-    "sourceHash": "f16b15d"
-  },
   "fileExplorer.columns.name": "Name",
   "@fileExplorer.columns.name": {
     "sourceHash": "dcd1d52",
