@@ -153,6 +153,11 @@ where it is shown.
 - **Every way Show can open nothing leaves a warn line** in the release log: the row logs a rejected emit, and the main
   window logs a miss in its snapshot (with its row count) or a missing explorer. A refusal already logs and toasts. A
   CI-only Linux failure once left no trace at all, because the miss logged at info, which release builds drop.
+- **The E2E names the hop a failed Show died on.** That Linux failure (CI runs 37450234515 and 37763174127, both
+  attempts each) came back with NONE of those warns, and never reproduced locally (40 repeats of the spec, three full
+  Linux suites, two of them under CPU contention, 2026-10-08). So `operation-queue.spec.ts` puts a throwaway listener in
+  each window and reads the main window's app listener out of Tauri's listener table; a failure now says whether the
+  request left the queue window, reached the main webview, and found a live handler there.
 - **The main window can refuse.** Its dialog slot is single-occupancy; a refusal comes back as a toast there, next to
   the dialog that refused. Reasoning and the invisible-occupancy hazard: `../../file-explorer/pane/DETAILS.md` § "Birth
   context".
