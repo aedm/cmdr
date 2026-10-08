@@ -59,7 +59,7 @@ describe('new-file and new-folder dialog chrome (en)', () => {
 
   it('resolves the slow-create notice + AI suggestion chrome', () => {
     expect(tString('fileOperations.newEntry.stillCreating', { name: 'photos' })).toBe(
-      'Still creating “photos”. The volume is slow to answer, and closing this won’t stop it.',
+      'Still creating “photos”. The volume is slow to answer. Feel free to close this dialog, the creation will keep going, and there is no way to cancel it now.',
     )
     expect(tString('fileOperations.button.close')).toBe('Close')
     expect(

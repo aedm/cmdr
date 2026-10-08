@@ -239,9 +239,9 @@
     }
   },
 
-  "fileOperations.newEntry.stillCreating": "Still creating “{name}”. The volume is slow to answer, and closing this won’t stop it.",
+  "fileOperations.newEntry.stillCreating": "Still creating “{name}”. The volume is slow to answer. Feel free to close this dialog, the creation will keep going, and there is no way to cancel it now.",
   "@fileOperations.newEntry.stillCreating": {
-    "description": "Notice in the new-folder and new-file dialogs once the volume (a slow network share, a phone) has taken more than a couple of seconds to create the entry. It is still working and will most likely finish; the dialog closes by itself when it does. 'Closing this' means closing the dialog: the create carries on in the background.",
+    "description": "Notice in the new-folder and new-file dialogs once the volume (a slow network share, a phone) has taken more than a couple of seconds to create the entry. It is still working and will most likely finish; the dialog closes by itself when it does. At this moment the dialog’s Cancel button turns into Close: closing the dialog does NOT stop the creation, which carries on in the background. There is no way to cancel it because the request is already with the volume, and the sentence tells the user so plainly.",
     "placeholders": {
       "name": "the folder or file name being created, e.g. photos"
     }
