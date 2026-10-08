@@ -1097,6 +1097,18 @@
   "@commands.handler.openTerminalHere.timedOut": {
     "description": "Toast shown when the launch outlived the few seconds Cmdr waits for it. Honest about not knowing: the app may well appear a moment later. Conversational; avoid the words \"error\" and \"failed\"."
   },
+  "commands.handler.getInfo.automationOff": "Get info needs Cmdr to control Finder, and that’s turned off. Switch on Finder under Cmdr in System Settings > Privacy & Security > Automation.",
+  "@commands.handler.getInfo.automationOff": {
+    "description": "Toast shown when the user presses Get info (opens Finder's file-information window) but has earlier told macOS not to let Cmdr control Finder. Cmdr asks Finder to open that window, so it can't without this permission. \"System Settings\", \"Privacy & Security\", and \"Automation\" are Apple's names for the macOS settings pane and must match the localized macOS wording in the target language. \"Get info\" matches the File menu item (menu.file.getInfo). A button below opens that settings pane. Conversational; avoid the words \"error\" and \"failed\"."
+  },
+  "commands.handler.getInfo.openAutomationSettings": "Open Automation settings",
+  "@commands.handler.getInfo.openAutomationSettings": {
+    "description": "Button in the Get info toast (commands.handler.getInfo.automationOff) that opens System Settings at Privacy & Security > Automation. \"Automation\" is Apple's name for that macOS settings pane and must match the localized macOS wording."
+  },
+  "commands.handler.getInfo.notReached": "Cmdr couldn’t reach Finder to open Get info. Give it another try.",
+  "@commands.handler.getInfo.notReached": {
+    "description": "Toast shown when Cmdr couldn't ask Finder to open its Get info window (the helper didn't start, or didn't answer in a few seconds). Usually a one-off; the second sentence suggests trying again. \"Get info\" matches the File menu item (menu.file.getInfo). Conversational; avoid the words \"error\" and \"failed\"."
+  },
   "commands.handler.zoomResetHintShortcut": "You can reset the zoom level to 100% by {shortcut}.",
   "@commands.handler.zoomResetHintShortcut": {
     "description": "Trailing hint appended to the zoom-changed toast, telling the user how to reset zoom when a reset shortcut is bound. \"100%\" is literal.",

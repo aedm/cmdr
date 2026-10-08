@@ -126,6 +126,8 @@ export {
   quickLookSetPath,
   quickLookClose,
   getInfo,
+  GetInfoFailure,
+  asGetInfoError,
   openInEditor,
   OpenInEditorFailure,
   asOpenInEditorError,
@@ -144,6 +146,7 @@ export type {
   DriveItemLinks,
   EditorOpenOutcome,
   EditorOpenReport,
+  GetInfoError,
   MenuAnchor,
   OpenInEditorError,
   OpenTerminalError,
@@ -241,6 +244,7 @@ export {
   openPrivacySettings,
   openSystemSettingsUrl,
   openLocalNetworkSettings,
+  openAutomationSettings,
   openAppearanceSettings,
 } from './storage'
 export type { Location, PathVolumeResolution, ResolveLocationResult, SpaceInfo, VolumeContextAction } from './storage'

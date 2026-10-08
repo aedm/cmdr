@@ -1638,8 +1638,11 @@ export const commands = {
   quickLookSetPath: (path: string, volumeId: string) =>
     typedError<null, string>(__TAURI_INVOKE('quick_look_set_path', { path, volumeId })),
   quickLookClose: () => typedError<null, string>(__TAURI_INVOKE('quick_look_close')),
-  // Open the Get Info window for a file (macOS only, no-op on other platforms)
-  getInfo: (path: string) => typedError<null, string>(__TAURI_INVOKE('get_info', { path })),
+  /**
+   *  Opens Finder's Get Info window for a file, or says why macOS won't let it
+   *  (`file_system::get_info`).
+   */
+  getInfo: (path: string) => typedError<null, GetInfoError>(__TAURI_INVOKE('get_info', { path })),
   /**
    *  Opens a file in the text editor `app_choice` names.
    *
@@ -8054,6 +8057,21 @@ export type FuzzyJumpError =
     // The listing the caller asked about.
     listingId: string
   }
+
+// Why `open_get_info` couldn't ask Finder for the window.
+export type GetInfoError =
+  /**
+   *  The user turned off Cmdr's control of Finder (System Settings > Privacy &
+   *  Security > Automation), so macOS would drop the ask without a word.
+   */
+  | { type: 'automationDenied' }
+  /**
+   *  `osascript` couldn't be spawned. Carries the OS errno where there is one, so
+   *  nothing has to read the message.
+   */
+  | { type: 'launchRefused'; errno: number | null }
+  // The ask didn't finish inside the command's deadline.
+  | { type: 'timedOut' }
 
 /**
  *  What a [`GitEntryMeta::Count`] is counting.

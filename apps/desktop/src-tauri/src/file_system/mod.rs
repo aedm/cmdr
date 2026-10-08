@@ -10,6 +10,8 @@ pub mod filesystem_kind;
 /// A bounded pool of 8 MB-stack OS threads for synchronous macOS framework calls.
 #[cfg(target_os = "macos")]
 pub(crate) mod framework_pool;
+// Ungated: `get_info` answers with its error type on every platform.
+pub mod get_info;
 pub mod git;
 pub mod google_drive;
 /// The app's `VolumeProvider`: what the index asks about mounted volumes.

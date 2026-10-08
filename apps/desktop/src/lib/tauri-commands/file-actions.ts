@@ -8,6 +8,7 @@ import {
   type ShareLinkExpiry,
   type VolumeError,
   type EditorOpenReport,
+  type GetInfoError,
   type OpenInEditorError,
   type OpenTerminalError,
   type OpenTerminalOutcome,
@@ -23,6 +24,7 @@ export type {
   DriveItemLinks,
   EditorOpenOutcome,
   EditorOpenReport,
+  GetInfoError,
   OpenInEditorError,
   OpenTerminalError,
   OpenTerminalOutcome,
@@ -347,13 +349,28 @@ export async function quickLookClose(): Promise<void> {
   if (res.status === 'error') throwIpcError(res.error)
 }
 
+/** A Get Info ask that never reached Finder, still carrying the backend's typed reason. */
+export class GetInfoFailure extends TypedFailure<GetInfoError> {
+  constructor(failure: GetInfoError) {
+    super(failure, `get info refused: ${failure.type}`)
+    this.name = 'GetInfoFailure'
+  }
+}
+
+/** The typed refusal behind a caught value, or `null` when it isn't one. */
+export function asGetInfoError(error: unknown): GetInfoError | null {
+  return error instanceof GetInfoFailure ? error.failure : null
+}
+
 /**
- * Open file info window (macOS only, no-op on other platforms).
+ * Opens Finder's Get Info window for a file (macOS only, no-op on other platforms).
+ * Throws {@link GetInfoFailure} when the ask couldn't reach Finder, most notably
+ * when the user turned off Cmdr's control of Finder in System Settings.
  * @param path - Absolute path to the file.
  */
 export async function getInfo(path: string): Promise<void> {
   const res = await commands.getInfo(path)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throw new GetInfoFailure(res.error)
 }
 
 /** An editor launch that never started, still carrying the backend's typed reason. */

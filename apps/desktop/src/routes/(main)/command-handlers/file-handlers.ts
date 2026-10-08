@@ -12,7 +12,6 @@ import {
   copyToClipboard,
   quickLookOpen,
   quickLookClose,
-  getInfo,
   cloudMakeAvailableOffline,
   cloudRemoveDownload,
   googleDriveLinks,
@@ -29,6 +28,7 @@ import { getFocusedPanePath, getFocusedPaneVolumeId } from '$lib/file-explorer/p
 import { capabilitiesFor } from '$lib/file-explorer/pane/volume-capabilities'
 import { pathInsideArchive } from '$lib/file-explorer/pane/archive-paths'
 import { openInEditorOrExplain } from '$lib/file-explorer/pane/editor-open'
+import { openGetInfoOrExplain } from '$lib/file-explorer/pane/get-info-open'
 import { resolveTerminalFolder } from '$lib/open-terminal/terminal-target'
 import { openTerminalHereForFolder } from '$lib/open-terminal/open-terminal-here'
 import { tString } from '$lib/intl/messages.svelte'
@@ -286,7 +286,7 @@ export const fileHandlers = {
     await explorerRef?.openContextMenuAtCursor()
   },
 
-  'file.getInfo': (hctx) => withEntryUnderCursor(hctx, (entry) => getInfo(entry.path)),
+  'file.getInfo': (hctx) => withEntryUnderCursor(hctx, (entry) => openGetInfoOrExplain(entry.path)),
 
   'cloud.makeOffline': (hctx) =>
     withEntryUnderCursor(hctx, async (entry) => {

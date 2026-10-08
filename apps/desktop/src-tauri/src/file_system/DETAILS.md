@@ -24,6 +24,8 @@ badges). The leaves beside them:
 - `file_provider_actions/`: every provider's own File Provider actions in the file context menu (Dropbox, Google Drive,
   MacDroid, any provider).
 - `open_with.rs`: the "Open with" candidate apps. `share.rs`: the `Share` submenu's services.
+- `get_info.rs`: Finder's Get Info window, through `osascript`, refusing up front when the user has turned off Cmdr's control
+  of Finder (why `osascript` and not an in-process Apple Event: its module doc).
 - `tags.rs`: Finder tags. `terminal.rs`: "open terminal here". `text_editor.rs`: which app F4 opens a file in (wire
   types; the macOS half in `text_editor_macos.rs`, its tests in `text_editor_test.rs`).
 
