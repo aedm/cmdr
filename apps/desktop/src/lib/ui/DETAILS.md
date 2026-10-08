@@ -1188,6 +1188,17 @@ Age label: once a toast has been up a minute, "2m ago" / "1h ago" sits on the co
 - **It counts from `postedAt`, which a same-id re-add re-stamps.** Replaced content is fresh news; "5m ago" on it would
   be wrong.
 
+Countdown ring: a transient toast draws a thin ring around its X that empties exactly when the dismiss timer fires, so
+the user can tell a toast that's leaving from one that stays (persistent toasts get no ring). Decisions:
+
+- **It tells the truth about the timer, not about the natural clock.** Under the pointer the ring freezes (the toast
+  won't go while hovered); on leave it drains its remainder over whatever the timer was re-armed for, so it still hits
+  zero as the toast goes even when the one-second grace tail decides. A same-id re-raise refills it.
+- **CSS draws it.** `ToastItem` only sets the circle's inline dash offset (the share already emptied), its
+  `animation-duration`, and a `data-state`; a keyed `{#key ringRun}` restarts the animation. No per-frame JS. It's
+  `aria-hidden`, like the age label.
+- **It runs under reduced motion too.** It's a slow, linear status indicator, not movement across the screen.
+
 Five levels. Pick by what kind of feedback the toast carries, not by how the message reads:
 
 - **`default`** (gray, the fallback): factual neutral status with no action needed and no value judgement. In-progress
