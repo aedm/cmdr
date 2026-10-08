@@ -41,6 +41,11 @@ fn the_walk_counts_files_folders_and_bytes() {
 
 #[test]
 fn an_unreadable_subfolder_is_skipped_and_the_rest_still_counted() {
+    // Root bypasses chmod restrictions (including in the Linux test container).
+    // SAFETY: geteuid takes no arguments, accesses no caller memory, and cannot fail.
+    if unsafe { libc::geteuid() } == 0 {
+        return;
+    }
     let dir = TestDir::new("measure-skip");
     std::fs::create_dir_all(dir.join("a/locked")).expect("mkdir");
     std::fs::write(dir.join("a/open.txt"), vec![0u8; 10]).expect("write");
