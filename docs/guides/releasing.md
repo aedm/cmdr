@@ -503,6 +503,30 @@ every file it copies, which nothing can strip (verified on macOS 27.0, 2026-10-0
 5. The next release attaches the pkg. Then update `/trust` (the `DevTodo` under "Deploying Cmdr") and this section's
    "Not verified yet".
 
+### Renewing the Developer ID Installer certificate
+
+David's calendar reminds him every 10 months. Steps 1–3 and 5–6 are his (portal and Bitwarden), step 4 is an agent's.
+
+1. Keychain Access › Certificate Assistant › Request a Certificate From a Certificate Authority: his email, a common
+   name, "Saved to disk".
+2. At `developer.apple.com/account/resources/certificates/add`, choose **Developer ID Installer** and the **G2 Sub-CA**,
+   upload the CSR, download the `.cer`, and double-click it to install.
+3. ❗ The G1 trap: always pick G2 in the portal. A certificate made through Xcode on 2026-10-07 chained to the old
+   "Developer ID Certification Authority" (G1) and expires 2027-02-01.
+4. Export and set the secrets, keeping the password out of shell history (hand it to David once, for step 5):
+   - `security export -k login.keychain-db -t identities -f pkcs12 -P "$PW" -o all.p12` exports every identity (with
+     `PW=$(openssl rand -base64 24)` in the same shell).
+   - Pull out the one identity: `openssl pkcs12 -in all.p12 -passin env:PW -nodes`, keep the "Developer ID Installer"
+     certificate and the key whose `localKeyID` matches it, then `openssl pkcs12 -export -legacy` them into
+     `developer-id-installer.p12` with `-passout env:PW` (without `-legacy`, macOS `security import` in CI may reject an
+     OpenSSL 3 file). Check with `openssl pkcs12 -in developer-id-installer.p12 -passin env:PW -info -noout -legacy`.
+   - Set both:
+     `base64 -i developer-id-installer.p12 | gh secret set APPLE_INSTALLER_CERTIFICATE --env release -R vdavid/cmdr`,
+     then `printf %s "$PW" | gh secret set APPLE_INSTALLER_CERTIFICATE_PASSWORD --env release -R vdavid/cmdr`. Delete
+     `all.p12` and the PEM files.
+5. David stores the `.p12` and its password in Bitwarden, then deletes the file.
+6. Revoke the previous certificate in the portal.
+
 ## How updates work
 
 - App checks `https://getcmdr.com/latest.json` on start and every 60 min
