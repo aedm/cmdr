@@ -894,13 +894,7 @@
         await syncPaneStateToMcp()
     }
 
-    /**
-     * Sets the "land the cursor on this name when the next diff applies" marker.
-     * The diff handler already reads `renameFlow.pendingCursorName` for the rename
-     * flow; mkdir/mkfile reuse the same channel so a freshly-created entry can
-     * dodge the structural cursor shift `adjustSelectionIndices` would otherwise
-     * apply when an `add` lands at or above the cursor's index.
-     */
+    /** Rename and create share a cursor target that overrides the next diff's structural shift. */
     export function setPendingCursorName(name: string | null): void {
         renameFlow.pendingCursorName = name
     }
@@ -909,23 +903,12 @@
         historyCursor.restore(target)
     }
 
-    /**
-     * Handles one keystroke for the type-to-jump feature. Appends to the buffer,
-     * fires the IPC match, and (on the response) moves the cursor.
-     *
-     * Streaming listings: per the plan, we do NOT auto-jump on
-     * `listing-progress`: each keystroke = exactly one match against the
-     * cache as it stands at that moment.
-     */
+    /** Match once per keystroke against the current cache, never on streaming progress. */
     export function handleJumpKeystroke(char: string): void {
         jump.handleJumpKeystroke(char)
     }
 
-    /**
-     * True while a type-to-jump is active: the buffer holds at least one character
-     * (i.e. before the reset timeout empties it). DualPaneExplorer reads this to
-     * decide whether a printable keystroke extends the buffer or runs its command.
-     */
+    /** An active buffer captures printable keys until its reset timeout. */
     export function isJumpActive(): boolean {
         return jump.isJumpActive()
     }

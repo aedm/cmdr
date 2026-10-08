@@ -4,12 +4,9 @@ Backend directory reading, caching, sorting, and streaming: 100k+ entries, non-b
 
 ## Module map
 
-- Read and serve: **reading.rs** disk I/O, **streaming.rs** async progress and cancellation (`ListingEventSink`),
-  **stall.rs** + **stalled_on.rs** reads that go quiet, **operations.rs** the sync API, **cached_listing.rs** `CachedListing` + `LISTING_CACHE`, **caching.rs** patch helpers,
-  **orphan_reaper.rs** the 6 h backstop, **mutation.rs**, **foreign_path.rs** stored spellings.
-- Derive and emit: **diff.rs** `compute_diff`, **diff_emitter.rs** 50 ms coalescing, **visible_rows.rs** /
-  **path_index.rs** the row and path maps, **sorting.rs** the one comparator, **collation.rs** the one name order, plus
-  **listing_host.rs**, **brief_columns.rs**, **fuzzy_jump.rs**, **name_filter.rs**. `FileEntry` is `cmdr-fs`'s, as `listing::metadata`.
+- Read: **reading.rs**, **streaming.rs**, **stall.rs**. Cache and mutate: **cached_listing.rs**, **caching.rs**,
+  **operations.rs**. Project and publish: **visible_rows.rs**, **path_index.rs**, **name_filter.rs**, **diff.rs**,
+  **diff_emitter.rs**. Sort: **sorting.rs**, **collation.rs**. `FileEntry` comes from `cmdr-fs`.
 
 ## Invariants and gotchas
 
