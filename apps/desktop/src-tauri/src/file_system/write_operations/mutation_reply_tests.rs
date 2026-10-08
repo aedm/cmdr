@@ -106,6 +106,11 @@ async fn a_refusal_past_the_deadline_settles_with_the_typed_reason() {
     );
 }
 
+/// A volume backend that panics mid-write.
+fn fall_over() -> Result<(), MutationError> {
+    panic!("the volume backend fell over")
+}
+
 #[tokio::test(start_paused = true)]
 async fn a_panic_past_the_deadline_settles_as_unexpected() {
     let (on_settled, rx) = settle_channel();
@@ -113,9 +118,7 @@ async fn a_panic_past_the_deadline_settles_as_unexpected() {
         Duration::from_secs(2),
         async {
             after(Duration::from_secs(7)).await;
-            panic!("the volume backend fell over");
-            #[allow(unreachable_code)]
-            Ok::<(), MutationError>(())
+            fall_over()
         },
         on_settled,
     )

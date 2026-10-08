@@ -1,6 +1,7 @@
 /**
  * Tier 3 a11y tests for the file-operations chrome: the conflict dialog, the
- * rollback confirmation, the progress readout, and the new-entry name field.
+ * rollback confirmation, the progress readout, the new-entry name field, and the
+ * slow-create notice.
  *
  * One file per component would cost about three times as much: `svelte-tests`
  * charges per test FILE, not per test (`docs/testing.md` § "What a test actually
@@ -57,6 +58,7 @@ import RollbackConfirmDialog from './RollbackConfirmDialog.svelte'
 import TransferProgressReadout from './TransferProgressReadout.svelte'
 import NewEntryNameField from './NewEntryNameField.svelte'
 import S3CostLine from './S3CostLine.svelte'
+import StillCreatingNotice from './StillCreatingNotice.svelte'
 import { NewEntryNameCheck } from './new-entry-name-check.svelte'
 
 // These components share one jsdom document, the dialogs portal into
@@ -287,6 +289,25 @@ describe('S3CostLine a11y', () => {
     await vi.waitFor(() => {
       expect(host.querySelector('.s3-cost')).not.toBeNull()
     })
+    await expectNoA11yViolations(host)
+  })
+})
+
+/**
+ * Tier 3 a11y test for `StillCreatingNotice.svelte`: the new-folder / new-file
+ * dialogs' "still creating" line, a live status beside a spinner.
+ */
+describe('StillCreatingNotice a11y', () => {
+  beforeEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  it('the slow-create notice has no a11y violations', async () => {
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    mount(StillCreatingNotice, { target: host, props: { name: 'photos' } })
+    await tick()
+    expect(host.querySelector('[role="status"]')).not.toBeNull()
     await expectNoA11yViolations(host)
   })
 })

@@ -61,7 +61,14 @@ function slowCreate() {
       })
     },
   )
-  return { land: () => land(), refuse: (e: unknown) => refuse(e) }
+  return {
+    land: () => {
+      land()
+    },
+    refuse: (e: unknown) => {
+      refuse(e)
+    },
+  }
 }
 
 function pressEnter(target: HTMLElement): void {
@@ -81,7 +88,7 @@ describe('NewFolderDialog on a slow volume', () => {
     const notice = target.querySelector('[role="status"]')
     expect(notice?.textContent).toContain('Still creating “summer”')
     expect(target.textContent).not.toContain('Couldn’t')
-    const buttons = [...target.querySelectorAll('button')].map((b) => b.textContent?.trim())
+    const buttons = [...target.querySelectorAll('button')].map((b) => b.textContent.trim())
     expect(buttons, 'Cancel becomes Close: closing does not stop the create').toContain('Close')
     expect(onCreated).not.toHaveBeenCalled()
 
@@ -102,7 +109,7 @@ describe('NewFolderDialog on a slow volume', () => {
 
     expect(target.querySelector('[role="status"]')).toBeNull()
     expect(target.textContent).toContain('summer')
-    const buttons = [...target.querySelectorAll('button')].map((b) => b.textContent?.trim())
+    const buttons = [...target.querySelectorAll('button')].map((b) => b.textContent.trim())
     expect(buttons).toContain('Cancel')
   })
 })

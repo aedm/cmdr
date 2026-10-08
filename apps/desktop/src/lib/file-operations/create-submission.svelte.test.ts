@@ -10,7 +10,11 @@ import { MutationFailure } from './mutation-error'
 import { CreateSubmission } from './create-submission.svelte'
 
 const addToast = vi.fn()
-vi.mock('$lib/ui/toast', () => ({ addToast: (...args: unknown[]) => addToast(...args) }))
+vi.mock('$lib/ui/toast', () => ({
+  addToast: (...args: unknown[]) => {
+    addToast(...args)
+  },
+}))
 
 /** A create the test ends by hand, and says "still running" for on demand. */
 function controllableCreate() {
@@ -27,8 +31,12 @@ function controllableCreate() {
   return {
     create,
     stillRunning: () => wait.onStillRunning?.(),
-    land: () => land(),
-    refuse: (e: unknown) => refuse(e),
+    land: () => {
+      land()
+    },
+    refuse: (e: unknown) => {
+      refuse(e)
+    },
   }
 }
 
