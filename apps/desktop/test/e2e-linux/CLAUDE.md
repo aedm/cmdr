@@ -15,6 +15,7 @@ pnpm test:e2e:linux:build              # Force-rebuild Docker images (base with 
 pnpm test:e2e:linux:shell              # Interactive shell in container
 pnpm test:e2e:linux:vnc                # VNC mode with hot reload (pnpm dev)
 ./scripts/e2e-linux.sh --grep "SMB"    # Run only tests matching a pattern
+./scripts/e2e-linux.sh --grep "Operation queue" --repeat-each 10  # Chase a flake
 ```
 
 ## Must-knows
