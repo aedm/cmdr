@@ -1125,6 +1125,17 @@
   "@fileExplorer.clipboard.empty": {
     "description": "Warning toast when the user pastes but the clipboard has no files. \"⌘C\" is the copy shortcut glyph; keep it."
   },
+  "fileExplorer.clipboard.stillPasting": "Still creating a file from the clipboard. The volume is slow to answer.",
+  "@fileExplorer.clipboard.stillPasting": {
+    "description": "Toast shown when pasting clipboard content (text, an image, a PDF) as a new file takes more than a couple of seconds on a slow volume (a network share or phone). The file is still being written and will most likely appear; this toast goes away by itself when it does, and another toast then names the file."
+  },
+  "fileExplorer.clipboard.notPasted": "Cmdr couldn’t create a file from the clipboard. {reason}",
+  "@fileExplorer.clipboard.notPasted": {
+    "description": "Toast shown when the volume refuses to save the clipboard content (text, an image, a PDF) as a new file, for example a read-only folder. It can arrive a while after the paste on a slow volume.",
+    "placeholders": {
+      "reason": "a full sentence saying why, already translated, e.g. 'You don’t have permission to write in this folder.'"
+    }
+  },
   "fileExplorer.clipboard.pastedAsFile": "Pasted clipboard {kind, select, image {image} pdf {PDF} other {text}} as {filename}",
   "@fileExplorer.clipboard.pastedAsFile": {
     "description": "Info toast confirming that non-file clipboard content was saved into the current folder as a new file, e.g. \"Pasted clipboard text as pasted.txt\" or \"Pasted clipboard image as pasted.png\". The toast also carries a Settings button (labeled elsewhere).",

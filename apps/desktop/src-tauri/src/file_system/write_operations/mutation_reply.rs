@@ -87,42 +87,83 @@ where
     W: Future<Output = Result<T, MutationError>> + Send + 'static,
     S: FnOnce(MutationSettled) + Send + 'static,
 {
+    let replied = reply_or_hand_off(deadline, work, move |pending_id, result| {
+        let outcome = match result {
+            Ok(_) => MutationSettledOutcome::Landed,
+            Err(error) => MutationSettledOutcome::Refused { error },
+        };
+        on_settled(MutationSettled { pending_id, outcome });
+    })
+    .await?;
+    Ok(match replied {
+        Replied::Done(_) => MutationReply::Done,
+        Replied::StillRunning { pending_id } => MutationReply::StillRunning { pending_id },
+    })
+}
+
+/// What [`reply_or_hand_off`] answered: the work's value, or the id its settle
+/// will carry.
+pub(crate) enum Replied<T> {
+    Done(T),
+    StillRunning { pending_id: String },
+}
+
+/// The value-carrying core of [`reply_within`], for a command whose late end
+/// carries more than "landed" (`paste_clipboard_as_file` names the file it made)
+/// and so speaks its own reply and settle types.
+///
+/// `on_settled(pending_id, result)` runs only for a `StillRunning` answer,
+/// exactly once, from the task that waits the work out. A panicked task is
+/// `Unexpected`.
+pub(crate) async fn reply_or_hand_off<T, W, S>(
+    deadline: Duration,
+    work: W,
+    on_settled: S,
+) -> Result<Replied<T>, MutationError>
+where
+    T: Send + 'static,
+    W: Future<Output = Result<T, MutationError>> + Send + 'static,
+    S: FnOnce(String, Result<T, MutationError>) + Send + 'static,
+{
     match race_detached(deadline, work).await {
-        Raced::Answered(joined) => flatten_join(joined).map(|()| MutationReply::Done),
+        Raced::Answered(joined) => flatten_join(joined).map(Replied::Done),
         Raced::StillRunning(handle) => {
             let pending_id = uuid::Uuid::new_v4().to_string();
             let settled_id = pending_id.clone();
             tokio::spawn(async move {
-                let outcome = match flatten_join(handle.await) {
-                    Ok(()) => MutationSettledOutcome::Landed,
-                    Err(error) => MutationSettledOutcome::Refused { error },
-                };
-                log::info!(target: "write_ops", "a mutation past its deadline settled: {settled_id} {outcome:?}");
-                on_settled(MutationSettled {
-                    pending_id: settled_id,
-                    outcome,
-                });
+                let result = flatten_join(handle.await);
+                match &result {
+                    Ok(_) => log::info!(target: "write_ops", "a mutation past its deadline landed: {settled_id}"),
+                    Err(e) => {
+                        log::info!(target: "write_ops", "a mutation past its deadline was refused: {settled_id} {e}")
+                    }
+                }
+                on_settled(settled_id, result);
             });
-            Ok(MutationReply::StillRunning { pending_id })
+            Ok(Replied::StillRunning { pending_id })
         }
     }
 }
 
 /// The work's own result, with a panicked task as the `Unexpected` fallback.
-fn flatten_join<T>(joined: Result<Result<T, MutationError>, tokio::task::JoinError>) -> Result<(), MutationError> {
+fn flatten_join<T>(joined: Result<Result<T, MutationError>, tokio::task::JoinError>) -> Result<T, MutationError> {
     match joined {
-        Ok(result) => result.map(|_| ()),
+        Ok(result) => result,
         Err(join_err) => Err(MutationError::Unexpected {
             detail: join_err.to_string(),
         }),
     }
 }
 
-/// The production `on_settled`: broadcasts the event to every window.
-pub(crate) fn broadcast_settled(app: tauri::AppHandle) -> impl FnOnce(MutationSettled) + Send + 'static {
+/// The production `on_settled`: broadcasts the settle event (`mutation-settled`,
+/// or a command's own, like `clipboard-paste-settled`) to every window.
+pub(crate) fn broadcast_settled<E>(app: tauri::AppHandle) -> impl FnOnce(E) + Send + 'static
+where
+    E: Event + Serialize + Clone + Send + 'static,
+{
     move |settled| {
         if let Err(e) = settled.emit(&app) {
-            log::warn!(target: "write_ops", "couldn't emit mutation-settled: {e}");
+            log::warn!(target: "write_ops", "couldn't emit {}: {e}", E::NAME);
         }
     }
 }

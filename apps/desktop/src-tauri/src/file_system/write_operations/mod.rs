@@ -147,7 +147,7 @@ pub(crate) use create::{create_directory_managed, create_file_managed};
 // The transfer and compress dialogs' destination probe (`destination_exists`).
 pub(crate) use look_alike::held_in_another_spelling;
 #[cfg(target_os = "macos")]
-pub(crate) use paste_clipboard::write_payload_to_dir;
+pub(crate) use paste_clipboard::write_payload_replying;
 pub(crate) use rename::{
     BulkRenameRow, RenameStartError, RenameValidityResult, check_rename_permission_for_volume,
     check_rename_validity_impl, rename_managed, same_local_file, start_renames,

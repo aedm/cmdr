@@ -220,9 +220,11 @@ decisions"; the estimator in § "ETA + throughput"; `WriteSettledGuard` in § "S
   again. It journals one header and one final outcome per row. The Ask Cmdr command is the only caller, and it never
   receives paths or names from the frontend. On a non-root volume its destinations are new names: § "Look-alike
   names".
-- **`paste_clipboard.rs::write_payload_to_dir` runs under a 30 s write timeout** (`commands/clipboard.rs`), a longer
-  tier than the 5 s empty-mkfile write, because the payload can be a large image landing on a slow network volume. It
-  takes an already-read `ClipboardPayload` + a `&Path`, decoupled from NSPasteboard and the IPC edge, so it's
+- **`paste_clipboard.rs::write_payload_to_dir` runs detached under the instant-mutation reply deadline**
+  (`write_payload_replying`, § "A slow instant mutation says it is still running"), since the payload can be a large
+  image landing on a slow network volume. ❌ Never a bare timeout around it: that DROPS the write mid-flight. Its reply
+  and settle carry the created file (`PasteClipboardReply`, `clipboard-paste-settled`), which is why it uses
+  `reply_or_hand_off`, the value-carrying core of `reply_within`. The writer takes an already-read `ClipboardPayload` + a `&Path`, decoupled from NSPasteboard and the IPC edge, so it's
   `TempDir`-testable; the retry loop writes via `Volume::create_file` (O_EXCL) and bumps the counter on the TYPED
   `VolumeError::AlreadyExists`, so there's no pre-scan-then-write TOCTOU and it works on any writable volume.
   **Partial-file-on-timeout edge (accepted):** past 30 s the write future is dropped and a partial `pasted.<ext>` may
@@ -455,6 +457,11 @@ the only `Err` it can produce is the deadline or a panicked task; and `paste_cli
 task emits `mutation-settled { pendingId, outcome }` when the work ends: `Landed`, or `Refused { error }` with the same
 typed refusal an in-time reply carries (a panicked task is `Unexpected`). The frontend's `awaitMutation`
 (`apps/desktop/src/lib/tauri-commands/mutation-reply.ts`) listens BEFORE invoking, since the event can overtake the reply.
+
+`paste_clipboard_as_file` follows the same contract with the created file riding along: `PasteClipboardReply` /
+`clipboard-paste-settled`, built on `reply_or_hand_off` (the value-carrying core `reply_within` wraps), awaited by
+`awaitClipboardPaste`. The frontend shows a "still pasting" toast past the deadline, and a late landing only toasts
+the file name: no cursor land, no auto-rename, since the person may have moved on.
 
 **Why not `TimedOut`.** The deadline never bounded the work, only the reply: on a busy NAS a new folder took 7–12 s,
 the dialog said it timed out, and the folder appeared anyway, sometimes (ERR-AREUV, 2026-10). An answer the user sees

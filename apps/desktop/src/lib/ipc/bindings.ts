@@ -3483,24 +3483,20 @@ export const commands = {
   readClipboardText: () => typedError<string | null, string>(__TAURI_INVOKE('read_clipboard_text')),
   /**
    *  Reads the highest-intent non-file clipboard flavor (image / PDF / text) and
-   *  writes it into `directory` as a new `pasted.<ext>` file, returning the created
-   *  file's name + kind. `Ok(None)` = nothing pasteable on the clipboard — the
-   *  typed no-op the frontend treats as "no file created", NOT an error toast.
+   *  writes it into `directory` as a new `pasted.<ext>` file. Answers
+   *  `Done { file }` with the created file's name + kind (`file: None` = nothing
+   *  pasteable, the typed no-op the frontend treats as "no file created", NOT an
+   *  error), or `StillRunning` past the reply deadline with the real end on
+   *  `clipboard-paste-settled`.
    *
    *  Thin edge: reads the RAW pasteboard flavors on the main thread (NSPasteboard is
    *  main-thread-only), then picks the flavor + converts TIFF→PNG OFF the main
    *  thread (that decode can be hundreds of ms — never on the UI thread), and hands
-   *  the result to `write_operations::write_payload_to_dir` under the write timeout.
+   *  the result to `write_operations::write_payload_replying`.
    *  `directory` is tilde-expanded for the local `root` volume only.
    */
   pasteClipboardAsFile: (volumeId: string | null, directory: string) =>
-    typedError<
-      {
-        name: string
-        kind: PastedKind
-      } | null,
-      MutationError
-    >(__TAURI_INVOKE('paste_clipboard_as_file', { volumeId, directory })),
+    typedError<PasteClipboardReply, MutationError>(__TAURI_INVOKE('paste_clipboard_as_file', { volumeId, directory })),
   // Clears the in-process cut state without touching the system clipboard.
   clearClipboardCutState: () => __TAURI_INVOKE<void>('clear_clipboard_cut_state'),
   /**
@@ -4788,6 +4784,7 @@ export const events = {
   aiStarting: makeEvent<AiStarting>('ai-starting'),
   aiVerifying: makeEvent<AiVerifying>('ai-verifying'),
   askCmdrTurn: makeEvent<AskCmdrTurn>('ask-cmdr-turn'),
+  clipboardPasteSettled: makeEvent<ClipboardPasteSettled>('clipboard-paste-settled'),
   closeAbout: makeEvent<CloseAbout>('close-about'),
   closeAllFileViewers: makeEvent<CloseAllFileViewers>('close-all-file-viewers'),
   closeConfirmation: makeEvent<CloseConfirmation>('close-confirmation'),
@@ -6020,6 +6017,32 @@ export type ClipModelStatus = {
   configured: boolean
   // The total download size in bytes, for the honest "~X MB" copy.
   downloadBytes: number
+}
+
+// How a paste that outlived its deadline ended.
+export type ClipboardPasteOutcome =
+  // It landed as `file`.
+  | {
+      type: 'landed'
+      // The created file.
+      file: PastedClipboardFile | null
+    }
+  // It didn't, for this reason: the same refusal an in-time reply carries.
+  | {
+      type: 'refused'
+      // Why.
+      error: MutationError
+    }
+
+/**
+ *  `clipboard-paste-settled`: how a paste that answered `StillRunning` ended.
+ *  Broadcast; the waiting caller picks its own by `pending_id`.
+ */
+export type ClipboardPasteSettled = {
+  // The id the `StillRunning` reply carried.
+  pendingId: string
+  // How it ended.
+  outcome: ClipboardPasteOutcome
 }
 
 export type ClipboardReadResult = {
@@ -11711,6 +11734,26 @@ export type ParsedScope = {
   includePaths: string[]
   excludePatterns: string[]
 }
+
+/**
+ *  What `paste_clipboard_as_file` answers within its reply deadline. A refusal
+ *  inside the deadline is the command's `Err(MutationError)`. Same contract as
+ *  `MutationReply` (`write_operations/mutation_reply.rs`), with the created
+ *  file riding along.
+ */
+export type PasteClipboardReply =
+  // It ended in time: the file it created, or `None` for nothing pasteable.
+  | {
+      type: 'done'
+      // The created file.
+      file: PastedClipboardFile | null
+    }
+  // The write is still running; a [`ClipboardPasteSettled`] with this id follows.
+  | {
+      type: 'stillRunning'
+      // Names this one paste on the settle event.
+      pendingId: string
+    }
 
 /**
  *  Result of pasting clipboard content as a file: the created file's name and

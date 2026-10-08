@@ -48,6 +48,7 @@ use tauri_specta::{Builder, collect_events};
 use crate::agent::chat::stream::AskCmdrTurn;
 use crate::agent::suggested_ops::SuggestionsChanged;
 use crate::agent::wake::{AgentWakeStaged, AgentWakeStatus};
+use crate::clipboard::ClipboardPasteSettled;
 use crate::commands::search::SearchIndexReadyEvent;
 use crate::events::index_mapping::{
     AggregationProgressEvent, IndexAggregationCompleteEvent, IndexCoverageBranchEndedEvent,
@@ -1007,6 +1008,7 @@ pub fn builder() -> Builder<tauri::Wry> {
             // An instant mutation (new folder, new file, rename) that outlived its
             // reply deadline (write_operations/mutation_reply.rs).
             MutationSettled,
+            ClipboardPasteSettled, // clipboard-paste-settled (the same, for paste-as-file)
             // The leftover sweep, which belongs to no operation
             // (write_operations/in_flight_sweep.rs).
             MoveLeftoversKeptEvent, // event_name = "move-leftovers-kept"
