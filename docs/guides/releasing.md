@@ -525,7 +525,9 @@ David's calendar reminds him every 10 months. Steps 1–3 and 5–6 are his (por
      then `printf %s "$PW" | gh secret set APPLE_INSTALLER_CERTIFICATE_PASSWORD --env release -R vdavid/cmdr`. Delete
      `all.p12` and the PEM files.
 5. David stores the `.p12` and its password in Bitwarden, then deletes the file.
-6. Revoke the previous certificate in the portal.
+6. Delete the previous certificate (and its private key) from the login keychain, and let it expire. The portal has no
+   Revoke button for Developer ID certificates (verified 2026-10-08): revoking one invalidates everything it ever
+   signed, so only Apple Developer Support does it. Ask them only if its private key may have leaked.
 
 ## How updates work
 
