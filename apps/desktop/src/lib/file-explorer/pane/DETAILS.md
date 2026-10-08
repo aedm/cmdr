@@ -659,6 +659,9 @@ on MTP and a lie on SMB (another machine's writes never reached the watcher). Th
 transfer, and a forced re-read of a 1k-entry MTP folder costs ~17 s. Rationale lives with `refresh_listing` in
 `src-tauri/src/commands/file_system/listing.rs`.
 
+Same-folder copies top up both pane listings: the focused source pane needs the duplicate's row for inline rename, even
+when its watcher has not delivered the write. Cross-folder copies top up only the destination.
+
 **Explorer store (`explorer-state.svelte.ts`).** Module store owning the dual-pane navigation + UI-chrome state that
 `DualPaneExplorer` used to trap in component closures: `focusedPane`, `leftPaneWidthPercent`, `railFocused`, and the two
 tab-manager holders. State is module-private (A1): `createExplorerState()` closes over `$state` locals and exposes only
