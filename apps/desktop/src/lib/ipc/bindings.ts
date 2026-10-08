@@ -6102,8 +6102,8 @@ export type CompareDirectoriesResult = {
   leftSequence: number
   rightSequence: number
   /**
-   *  Requested visibility matches both committed listings and neither has an
-   *  unversioned scratch-dependent projection. Publication latency is irrelevant.
+   *  Requested visibility matches both reconciled committed listings.
+   *  Publication latency is irrelevant.
    */
   settled: boolean
 }
