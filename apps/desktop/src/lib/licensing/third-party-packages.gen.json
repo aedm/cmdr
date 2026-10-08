@@ -71,13 +71,13 @@
     },
     {
       "name": "alloc-no-stdlib",
-      "version": "2.0.4",
+      "version": "3.0.0",
       "license": "BSD-3-Clause",
       "url": "https://github.com/dropbox/rust-alloc-no-stdlib"
     },
     {
       "name": "alloc-stdlib",
-      "version": "0.2.4",
+      "version": "0.3.0",
       "license": "BSD-3-Clause",
       "url": "https://github.com/dropbox/rust-alloc-no-stdlib"
     },
@@ -311,13 +311,13 @@
     },
     {
       "name": "brotli",
-      "version": "8.0.4",
+      "version": "9.0.0",
       "license": "BSD-3-Clause AND MIT",
       "url": "https://github.com/dropbox/rust-brotli"
     },
     {
       "name": "brotli-decompressor",
-      "version": "5.0.3",
+      "version": "6.0.1",
       "license": "BSD-3-Clause OR MIT",
       "url": "https://github.com/dropbox/rust-brotli-decompressor"
     },
@@ -389,7 +389,7 @@
     },
     {
       "name": "cargo_toml",
-      "version": "0.22.3",
+      "version": "1.0.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://gitlab.com/lib.rs/cargo_toml"
     },
@@ -419,7 +419,7 @@
     },
     {
       "name": "cfb",
-      "version": "0.7.3",
+      "version": "0.14.0",
       "license": "MIT",
       "url": "https://github.com/mdsteele/rust-cfb"
     },
@@ -677,27 +677,21 @@
     },
     {
       "name": "cssparser",
-      "version": "0.36.0",
+      "version": "0.37.0",
       "license": "MPL-2.0",
       "url": "https://github.com/servo/rust-cssparser"
     },
     {
       "name": "cssparser-macros",
-      "version": "0.6.1",
+      "version": "0.7.1",
       "license": "MPL-2.0",
       "url": "https://github.com/servo/rust-cssparser"
     },
     {
       "name": "ctor",
-      "version": "0.8.0",
+      "version": "1.0.13",
       "license": "Apache-2.0 OR MIT",
-      "url": "https://github.com/mmastrac/rust-ctor"
-    },
-    {
-      "name": "ctor-proc-macro",
-      "version": "0.0.7",
-      "license": "Apache-2.0 OR MIT",
-      "url": "https://github.com/mmastrac/rust-ctor"
+      "url": "https://github.com/mmastrac/linktime"
     },
     {
       "name": "ctr",
@@ -856,6 +850,12 @@
       "url": "https://github.com/soc/dirs-rs"
     },
     {
+      "name": "dirs",
+      "version": "7.0.0",
+      "license": "MIT OR Apache-2.0",
+      "url": "https://codeberg.org/dirs/dirs-rs"
+    },
+    {
       "name": "dirs-sys",
       "version": "0.5.0",
       "license": "MIT OR Apache-2.0",
@@ -875,7 +875,7 @@
     },
     {
       "name": "dom_query",
-      "version": "0.27.0",
+      "version": "0.28.0",
       "license": "MIT",
       "url": "https://github.com/niklak/dom_query"
     },
@@ -1727,7 +1727,7 @@
     },
     {
       "name": "html5ever",
-      "version": "0.38.0",
+      "version": "0.39.0",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/servo/html5ever"
     },
@@ -1925,7 +1925,7 @@
     },
     {
       "name": "infer",
-      "version": "0.19.0",
+      "version": "0.22.0",
       "license": "MIT",
       "url": "https://github.com/bojand/infer"
     },
@@ -1991,13 +1991,13 @@
     },
     {
       "name": "json-patch",
-      "version": "3.0.1",
+      "version": "4.2.0",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/idubrov/json-patch"
     },
     {
       "name": "jsonptr",
-      "version": "0.6.3",
+      "version": "0.7.1",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/chanced/jsonptr"
     },
@@ -2024,6 +2024,12 @@
       "version": "0.7.0",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/pyfisch/keyboard-types"
+    },
+    {
+      "name": "keyboard-types",
+      "version": "0.8.3",
+      "license": "MIT OR Apache-2.0",
+      "url": "https://github.com/rust-windowing/keyboard-types"
     },
     {
       "name": "lebe",
@@ -2111,7 +2117,7 @@
     },
     {
       "name": "markup5ever",
-      "version": "0.38.0",
+      "version": "0.39.0",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/servo/html5ever"
     },
@@ -2225,7 +2231,7 @@
     },
     {
       "name": "muda",
-      "version": "0.19.3",
+      "version": "0.20.0",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/muda"
     },
@@ -3161,7 +3167,7 @@
     },
     {
       "name": "selectors",
-      "version": "0.36.1",
+      "version": "0.38.0",
       "license": "MPL-2.0",
       "url": "https://github.com/servo/stylo"
     },
@@ -3509,7 +3515,7 @@
     },
     {
       "name": "swift-rs",
-      "version": "1.0.7",
+      "version": "1.0.8",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/Brendonovich/swift-rs"
     },
@@ -3557,7 +3563,7 @@
     },
     {
       "name": "tao",
-      "version": "0.35.3",
+      "version": "0.37.1",
       "license": "Apache-2.0",
       "url": "https://github.com/tauri-apps/tao"
     },
@@ -3569,55 +3575,55 @@
     },
     {
       "name": "tauri",
-      "version": "2.11.5",
+      "version": "2.12.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/tauri"
     },
     {
       "name": "tauri-build",
-      "version": "2.6.3",
+      "version": "2.7.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/tauri"
     },
     {
       "name": "tauri-codegen",
-      "version": "2.6.3",
+      "version": "2.7.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/tauri"
     },
     {
       "name": "tauri-macros",
-      "version": "2.6.3",
+      "version": "2.7.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/tauri"
     },
     {
       "name": "tauri-plugin",
-      "version": "2.6.3",
+      "version": "2.7.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/tauri"
     },
     {
       "name": "tauri-plugin-clipboard-manager",
-      "version": "2.3.2",
+      "version": "2.4.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/plugins-workspace"
     },
     {
       "name": "tauri-plugin-dialog",
-      "version": "2.7.2",
+      "version": "2.8.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/plugins-workspace"
     },
     {
       "name": "tauri-plugin-fs",
-      "version": "2.5.1",
+      "version": "2.6.0",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/plugins-workspace"
     },
     {
       "name": "tauri-plugin-global-shortcut",
-      "version": "2.3.2",
+      "version": "2.4.0",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/plugins-workspace"
     },
@@ -3629,43 +3635,43 @@
     },
     {
       "name": "tauri-plugin-notification",
-      "version": "2.3.3",
+      "version": "2.5.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/plugins-workspace"
     },
     {
       "name": "tauri-plugin-opener",
-      "version": "2.5.4",
+      "version": "2.7.0",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/plugins-workspace"
     },
     {
       "name": "tauri-plugin-process",
-      "version": "2.3.1",
+      "version": "2.4.0",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/plugins-workspace"
     },
     {
       "name": "tauri-plugin-store",
-      "version": "2.4.4",
+      "version": "2.5.0",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/plugins-workspace"
     },
     {
       "name": "tauri-plugin-updater",
-      "version": "2.10.1",
+      "version": "2.13.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/plugins-workspace"
     },
     {
       "name": "tauri-runtime",
-      "version": "2.11.3",
+      "version": "2.12.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/tauri"
     },
     {
       "name": "tauri-runtime-wry",
-      "version": "2.11.4",
+      "version": "2.12.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/tauri"
     },
@@ -3683,7 +3689,7 @@
     },
     {
       "name": "tauri-utils",
-      "version": "2.9.3",
+      "version": "2.10.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/tauri"
     },
@@ -3827,19 +3833,7 @@
     },
     {
       "name": "toml",
-      "version": "0.9.12+spec-1.1.0",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://github.com/toml-rs/toml"
-    },
-    {
-      "name": "toml",
       "version": "1.1.2+spec-1.1.0",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://github.com/toml-rs/toml"
-    },
-    {
-      "name": "toml_datetime",
-      "version": "0.7.5+spec-1.1.0",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/toml-rs/toml"
     },
@@ -3976,36 +3970,6 @@
       "url": "https://github.com/servo/uluru"
     },
     {
-      "name": "unic-char-property",
-      "version": "0.9.0",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://github.com/open-i18n/rust-unic/"
-    },
-    {
-      "name": "unic-char-range",
-      "version": "0.9.0",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://github.com/open-i18n/rust-unic/"
-    },
-    {
-      "name": "unic-common",
-      "version": "0.9.0",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://github.com/open-i18n/rust-unic/"
-    },
-    {
-      "name": "unic-ucd-ident",
-      "version": "0.9.0",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://github.com/open-i18n/rust-unic/"
-    },
-    {
-      "name": "unic-ucd-version",
-      "version": "0.9.0",
-      "license": "MIT OR Apache-2.0",
-      "url": "https://github.com/open-i18n/rust-unic/"
-    },
-    {
       "name": "unicase",
       "version": "2.9.0",
       "license": "MIT OR Apache-2.0",
@@ -4091,7 +4055,7 @@
     },
     {
       "name": "urlpattern",
-      "version": "0.3.0",
+      "version": "0.6.0",
       "license": "MIT",
       "url": "https://github.com/denoland/rust-urlpattern"
     },
@@ -4168,6 +4132,12 @@
       "url": "https://github.com/seanmonstar/want"
     },
     {
+      "name": "web-time",
+      "version": "1.1.0",
+      "license": "MIT OR Apache-2.0",
+      "url": "https://github.com/daxpedda/web-time"
+    },
+    {
       "name": "web_atoms",
       "version": "0.2.5",
       "license": "MIT OR Apache-2.0",
@@ -4181,19 +4151,13 @@
     },
     {
       "name": "window-vibrancy",
-      "version": "0.6.0",
+      "version": "0.8.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/tauri-plugin-vibrancy"
     },
     {
       "name": "winnow",
       "version": "0.5.40",
-      "license": "MIT",
-      "url": "https://github.com/winnow-rs/winnow"
-    },
-    {
-      "name": "winnow",
-      "version": "0.7.15",
       "license": "MIT",
       "url": "https://github.com/winnow-rs/winnow"
     },
@@ -4223,7 +4187,7 @@
     },
     {
       "name": "wry",
-      "version": "0.55.1",
+      "version": "0.57.0",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/wry"
     },
@@ -4471,43 +4435,43 @@
     },
     {
       "name": "@tauri-apps/api",
-      "version": "2.11.1",
+      "version": "2.12.1",
       "license": "Apache-2.0 OR MIT",
       "url": "https://github.com/tauri-apps/tauri#readme"
     },
     {
       "name": "@tauri-apps/plugin-dialog",
-      "version": "2.7.2",
+      "version": "2.8.1",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/tauri-apps/plugins-workspace#readme"
     },
     {
       "name": "@tauri-apps/plugin-fs",
-      "version": "2.5.1",
+      "version": "2.6.0",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/tauri-apps/plugins-workspace#readme"
     },
     {
       "name": "@tauri-apps/plugin-opener",
-      "version": "2.5.4",
+      "version": "2.7.0",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/tauri-apps/plugins-workspace#readme"
     },
     {
       "name": "@tauri-apps/plugin-process",
-      "version": "2.3.1",
+      "version": "2.4.0",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/tauri-apps/plugins-workspace#readme"
     },
     {
       "name": "@tauri-apps/plugin-store",
-      "version": "2.4.4",
+      "version": "2.5.0",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/tauri-apps/plugins-workspace#readme"
     },
     {
       "name": "@tauri-apps/plugin-updater",
-      "version": "2.10.1",
+      "version": "2.13.1",
       "license": "MIT OR Apache-2.0",
       "url": "https://github.com/tauri-apps/plugins-workspace#readme"
     },
