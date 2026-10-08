@@ -33,13 +33,20 @@ that push would break a release.
   - **License notices.** When the pushed range changes `Cargo.lock`, `pnpm-lock.yaml`, `deny.toml`, or the vendored
     credits, it runs `desktop-third-party-notices` (`--fresh`, about a minute) and, if that rewrote
     `THIRD-PARTY-NOTICES.md` or `third-party-packages.gen.json`, commits them as
-    `chore(deps): regenerate third-party notices` and stops the push the same way. Any other push skips it. A new
-    branch, or a remote tip this clone doesn't have, counts as a change.
+    `chore(deps): regenerate third-party notices` and stops the push the same way. Any other push skips it. The range is
+    remote tip..pushed commit; for a new branch, or a remote tip this clone doesn't have, it's what the pushed commit
+    adds over every remote-tracking ref (`git log <sha> --not --remotes`).
   - **Size limits.** `file-length` and `claude-md-length` in `--ci` mode (milliseconds) on every push, so a push that
     crosses a limit stops with the check's output instead of turning CI red. Nothing to commit there: trim, split, or
     bump the allowlist entry with a reason. Skipped on a dirty tree, since both read the working tree.
 
   Both answer CI failures that kept recurring after the formatters were handled: `docs/notes/ci-health-2026-10.md`.
+
+  All three steps run when a pushed commit **is** the checked-out `HEAD` commit, whatever the refs are called, since
+  that's when the working tree is what's being pushed. Agents push a worktree branch as `git push origin HEAD:main` or
+  `push-staging:main`; when the hook matched the checked-out branch's name instead, those pushes skipped every step and
+  an over-budget `CLAUDE.md` and stale notices reached `main` (2026-10-07/08). A commit the hook adds lands on `HEAD`,
+  so when the pushed ref doesn't follow `HEAD` (`push-staging:main`), the stop message says to push `HEAD` next time.
 
 - **`post-commit`** repairs the index after `git commit <paths>` (see the gotchas).
 
@@ -73,9 +80,10 @@ that push would break a release.
 - **An unformatted file with uncommitted changes, at push time**: the formatters read the working tree, so their verdict
   says nothing certain about the pushed commit, and committing the file would sweep work in progress along. CI reports
   it.
-- **A push that doesn't include the checked-out branch**: a tag, a branch deletion, or another branch. The working tree
-  doesn't describe those. A `--tags` push during a release goes through untouched.
-- **A push during a merge, rebase, cherry-pick, or revert**: no commit can be added there.
+- **A push that doesn't send the checked-out commit**: another branch's commit gets a one-line `pre-push: skipped ...`
+  notice, since the working tree doesn't describe it. Tags and deletions put no branch content on the remote and pass
+  silently, so a `--tags` push during a release goes through untouched.
+- **A push during a merge, rebase, cherry-pick, or revert**: no commit can be added there (same notice).
 - **Untracked files**: `oxfmt .` sees them, the push doesn't contain them.
 
 ## Gotchas

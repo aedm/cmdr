@@ -88,19 +88,24 @@ func regenerateNotices(r repo, check checkRunner, pushed pushedRef, stderr io.Wr
 		return false, err
 	}
 	fmt.Fprintf(stderr, "Regenerated the third-party notices and committed them as %s (%q).\n"+
-		"Git can't add a commit to a push that's already running, so this push stopped. Push again to send everything.\n",
-		sha, noticesCommitSubject)
+		"Git can't add a commit to a push that's already running, so this push stopped. %s\n",
+		sha, noticesCommitSubject, pushAgain(r, pushed))
 	return true, nil
 }
 
-// touchesNoticesInputs reports whether the push changes any of `noticesInputs`. A
-// new branch, or a remote tip this clone doesn't have, counts as a change: there's
-// no range to read, and regenerating once too often only costs a minute.
+// touchesNoticesInputs reports whether the push changes any of `noticesInputs`. The
+// range runs from the remote tip to the pushed commit. A new branch has no remote
+// tip, and this clone may not have the one it's told about, so then the range is
+// what the pushed commit adds over every remote-tracking ref. When even that can't
+// be read, it counts as a change: regenerating once too often only costs a minute.
 func touchesNoticesInputs(r repo, pushed pushedRef) bool {
-	if strings.Trim(pushed.remoteSha, "0") == "" {
-		return true
+	var changed []string
+	var err error
+	if !isZeroSha(pushed.remoteSha) && r.hasCommit(pushed.remoteSha) {
+		changed, err = r.paths("diff", "--name-only", "-z", pushed.remoteSha, pushed.localSha)
+	} else {
+		changed, err = r.paths("log", "--format=", "--name-only", "-z", pushed.localSha, "--not", "--remotes")
 	}
-	changed, err := r.paths("diff", "--name-only", "-z", pushed.remoteSha, pushed.localSha)
 	if err != nil {
 		return true
 	}

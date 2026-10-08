@@ -1,6 +1,7 @@
 package main
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -179,14 +180,14 @@ func TestPrePushKeepsStagedWorkOutOfTheFormatCommit(t *testing.T) {
 	assertEqual(t, "status", r.status(), "A  scripts/staged.go")
 }
 
-// The working tree only says something about the branch that's checked out, so a
-// push of a tag or of another branch goes through untouched.
+// The working tree only says something about the commit that's checked out, so a
+// push of a tag or of another branch's commit goes through untouched.
 func TestPrePushIgnoresRefsThatAreNotCheckedOut(t *testing.T) {
 	r := newTestRepo(t)
 	r.commitUnformatted("scripts/a.go", unformattedGo)
 	before := r.commitCount()
 	r.git("tag", "v1")
-	r.git("branch", "other")
+	r.git("branch", "other", "HEAD~1")
 
 	r.git("push", "-q", "origin", "v1")
 	r.git("push", "-q", "origin", "other")
@@ -220,6 +221,7 @@ func TestParsePushedRefs(t *testing.T) {
 	zero := strings.Repeat("0", 40)
 	input := strings.Join([]string{
 		"refs/heads/main aaa refs/heads/main bbb",
+		"HEAD eee refs/heads/next " + zero,
 		"refs/tags/v1 ccc refs/tags/v1 " + zero,
 		"(delete) " + zero + " refs/heads/gone ddd",
 		"",
@@ -229,8 +231,11 @@ func TestParsePushedRefs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := pushedRef{localSha: "aaa", remoteSha: "bbb"}
-	if len(got) != 1 || got["refs/heads/main"] != want {
-		t.Errorf("pushed branches: got %v, want only refs/heads/main %v", got, want)
+	want := []pushedRef{
+		{localRef: "refs/heads/main", localSha: "aaa", remoteRef: "refs/heads/main", remoteSha: "bbb"},
+		{localRef: "HEAD", localSha: "eee", remoteRef: "refs/heads/next", remoteSha: zero},
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("pushed branches: got %v, want %v", got, want)
 	}
 }

@@ -25,12 +25,16 @@ func prePush(r repo, fs []formatter, check checkRunner, stdin io.Reader, stderr 
 	if err != nil {
 		return false, err
 	}
-	ref, ok := describesPushedBranch(r, pushed)
-	if !ok {
+	if len(pushed) == 0 {
+		return false, nil
+	}
+	ref, skipped := describesPush(r, pushed)
+	if skipped != "" {
+		fmt.Fprintf(stderr, "pre-push: skipped formatting, license notices, and size limits, %s. CI still checks them.\n", skipped)
 		return false, nil
 	}
 
-	if stop, err := commitFormatting(r, fs, stderr); stop || err != nil {
+	if stop, err := commitFormatting(r, fs, ref, stderr); stop || err != nil {
 		return stop, err
 	}
 	if stop, err := regenerateNotices(r, check, ref, stderr); stop || err != nil {
@@ -41,7 +45,7 @@ func prePush(r repo, fs []formatter, check checkRunner, stdin io.Reader, stderr 
 
 // commitFormatting formats what CI's formatting lanes would flag, commits it, and
 // reports whether it did (which stops the push).
-func commitFormatting(r repo, fs []formatter, stderr io.Writer) (stopPush bool, err error) {
+func commitFormatting(r repo, fs []formatter, pushed pushedRef, stderr io.Writer) (stopPush bool, err error) {
 	fixable, err := fixableFiles(r, unformattedFiles(fs, stderr))
 	if err != nil || len(fixable) == 0 {
 		return false, err
@@ -68,8 +72,8 @@ func commitFormatting(r repo, fs []formatter, stderr io.Writer) (stopPush bool, 
 		return false, err
 	}
 	fmt.Fprintf(stderr, "Formatted %d %s and committed the result as %s (%q).\n"+
-		"Git can't add a commit to a push that's already running, so this push stopped. Push again to send everything.\n",
-		len(formatted), pluralize(len(formatted), "file", "files"), sha, formatCommitSubject)
+		"Git can't add a commit to a push that's already running, so this push stopped. %s\n",
+		len(formatted), pluralize(len(formatted), "file", "files"), sha, formatCommitSubject, pushAgain(r, pushed))
 	return true, nil
 }
 
@@ -88,45 +92,84 @@ func commitOnly(r repo, paths []string, subject string) (string, error) {
 // pushedRef is one branch in a push: the local tip being sent and the remote tip
 // it replaces (all zeros for a new branch).
 type pushedRef struct {
-	localSha, remoteSha string
+	localRef, localSha, remoteRef, remoteSha string
 }
 
 // pushedBranches reads what git feeds a pre-push hook, one line per ref
-// (`<local ref> <local sha> <remote ref> <remote sha>`), and returns the local
-// branches being pushed. Tags and deletions are left out: neither puts new branch
-// content on the remote.
-func pushedBranches(stdin io.Reader) (map[string]pushedRef, error) {
-	branches := make(map[string]pushedRef)
+// (`<local ref> <local sha> <remote ref> <remote sha>`), and returns the pushes
+// that update a remote branch. Tags and deletions are left out: neither puts new
+// branch content on the remote.
+func pushedBranches(stdin io.Reader) ([]pushedRef, error) {
+	var branches []pushedRef
 	scanner := bufio.NewScanner(stdin)
 	for scanner.Scan() {
 		fields := strings.Fields(scanner.Text())
 		if len(fields) != 4 {
 			continue
 		}
-		localRef, localSha, remoteSha := fields[0], fields[1], fields[3]
-		if strings.HasPrefix(localRef, "refs/heads/") && strings.Trim(localSha, "0") != "" {
-			branches[localRef] = pushedRef{localSha: localSha, remoteSha: remoteSha}
+		p := pushedRef{localRef: fields[0], localSha: fields[1], remoteRef: fields[2], remoteSha: fields[3]}
+		if strings.HasPrefix(p.remoteRef, "refs/heads/") && !isZeroSha(p.localSha) {
+			branches = append(branches, p)
 		}
 	}
 	return branches, scanner.Err()
 }
 
-// describesPushedBranch reports whether the working tree is a fair stand-in for
-// what's being pushed, and returns the checked-out branch's push. The formatters
-// read files on disk, so their verdict only applies when the pushed branch is the
-// one checked out, and a commit can only be added while no merge, rebase, or
-// cherry-pick is underway.
-func describesPushedBranch(r repo, pushed map[string]pushedRef) (pushedRef, bool) {
-	head, err := r.git("symbolic-ref", "--quiet", "HEAD")
+// isZeroSha reports whether git means "no commit": a new remote branch's tip, or
+// a deletion's local one.
+func isZeroSha(sha string) bool {
+	return strings.Trim(sha, "0") == ""
+}
+
+// describesPush picks the push the working tree is a fair stand-in for, or says
+// why there's none. The checks read files on disk, so their verdict only applies to
+// a pushed commit that IS the checked-out one, whatever the refs are called: agents
+// push a worktree branch as `HEAD:main` or `push-staging:main`, and matching the
+// checked-out branch's name let those reach `main` unchecked. A commit can only be
+// added while no merge, rebase, or cherry-pick is underway.
+func describesPush(r repo, pushed []pushedRef) (ref pushedRef, skipped string) {
+	head, err := r.git("rev-parse", "--verify", "--quiet", "HEAD")
 	if err != nil {
-		return pushedRef{}, false
+		return pushedRef{}, "there's no commit checked out here"
 	}
-	ref, ok := pushed[strings.TrimSpace(head)]
-	if !ok {
-		return pushedRef{}, false
+	var candidates []pushedRef
+	for _, p := range pushed {
+		if p.localSha == strings.TrimSpace(head) {
+			candidates = append(candidates, p)
+		}
+	}
+	if len(candidates) == 0 {
+		return pushedRef{}, "the pushed commit isn't checked out here"
 	}
 	inProgress := []string{"MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply"}
-	return ref, !slices.ContainsFunc(inProgress, r.gitPathExists)
+	if slices.ContainsFunc(inProgress, r.gitPathExists) {
+		return pushedRef{}, "a merge, rebase, cherry-pick, or revert is underway"
+	}
+	// A commit the hook adds lands on HEAD, so prefer a push that'll pick it up.
+	if i := slices.IndexFunc(candidates, func(p pushedRef) bool { return followsHead(r, p) }); i >= 0 {
+		return candidates[i], ""
+	}
+	return candidates[0], ""
+}
+
+// followsHead reports whether a push of this local ref picks up a commit added on
+// top of HEAD: it's `HEAD` itself, or the branch HEAD points at.
+func followsHead(r repo, p pushedRef) bool {
+	if p.localRef == "HEAD" {
+		return true
+	}
+	branch, err := r.git("symbolic-ref", "--quiet", "HEAD")
+	return err == nil && strings.TrimSpace(branch) == p.localRef
+}
+
+// pushAgain tells someone whose push stopped for a new commit how to send it. When
+// the pushed ref doesn't follow HEAD, pushing it again would resend the old commit.
+func pushAgain(r repo, p pushedRef) string {
+	if followsHead(r, p) {
+		return "Push again to send everything."
+	}
+	return fmt.Sprintf("The commit is on HEAD, which %s doesn't follow, so push HEAD this time (for example `git push origin HEAD:%s`).",
+		p.localRef, strings.TrimPrefix(p.remoteRef, "refs/heads/"))
 }
 
 // unformattedFiles asks every formatter, in parallel, what its CI lane would flag.

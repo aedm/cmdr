@@ -137,6 +137,134 @@ func TestPrePushStopsAPushThatBreaksABudget(t *testing.T) {
 	}
 }
 
+// Agents push from a worktree branch straight to `main`, so the pushed local ref is
+// `HEAD` (or another name for the same commit), never the checked-out branch. The
+// working tree is still exactly what's being pushed.
+func TestPrePushStopsABudgetBreakPushedAsHEAD(t *testing.T) {
+	f := useFakeCheckRunner(t)
+	r := newTestRepo(t)
+	pushedBase(r)
+	r.git("checkout", "-q", "-b", "worktree-x")
+	r.write("other.txt", "x\n")
+	r.git("add", ".")
+	r.git("commit", "-q", "-m", "grow a file")
+	if err := os.WriteFile(f.budgetFail, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if out, err := r.tryGit("push", "origin", "HEAD:main"); err == nil {
+		t.Fatalf("a HEAD:main push went through over budget:\n%s", out)
+	}
+}
+
+func TestPrePushStopsABudgetBreakPushedUnderAnotherNameForHEAD(t *testing.T) {
+	f := useFakeCheckRunner(t)
+	r := newTestRepo(t)
+	pushedBase(r)
+	r.git("checkout", "-q", "-b", "worktree-x")
+	r.write("other.txt", "x\n")
+	r.git("add", ".")
+	r.git("commit", "-q", "-m", "grow a file")
+	r.git("branch", "push-staging")
+	if err := os.WriteFile(f.budgetFail, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if out, err := r.tryGit("push", "origin", "push-staging:main"); err == nil {
+		t.Fatalf("a push-staging:main push went through over budget:\n%s", out)
+	}
+}
+
+// A commit the hook adds lands on HEAD, which `push-staging` doesn't follow, so
+// "push again" alone would resend the stale commit. The message says what to push.
+func TestPrePushRegeneratesTheNoticesForAnotherNameForHEAD(t *testing.T) {
+	useFakeCheckRunner(t)
+	r := newTestRepo(t)
+	pushedBase(r)
+	r.git("checkout", "-q", "-b", "worktree-x")
+	r.write("Cargo.lock", "v2\n")
+	r.git("commit", "-q", "-am", "bump a crate")
+	r.git("branch", "push-staging")
+
+	out, err := r.tryGit("push", "origin", "push-staging:main")
+	if err == nil {
+		t.Fatalf("the push went through with stale notices:\n%s", out)
+	}
+	assertEqual(t, "committed notices", r.committed("HEAD", noticesFile), "regenerated\n")
+	if !strings.Contains(out, "git push origin HEAD:main") {
+		t.Errorf("the stopped push doesn't say to push HEAD:\n%s", out)
+	}
+
+	r.git("push", "-q", "origin", "HEAD:main")
+	assertEqual(t, "pushed notices", r.committed("remote:main", noticesFile), "regenerated\n")
+}
+
+// The working tree doesn't describe another branch's commit, so the checks skip it,
+// and say so: a silent skip is how a broken budget reached `main` before.
+func TestPrePushSaysItSkippedAPushOfACommitThatIsNotCheckedOut(t *testing.T) {
+	f := useFakeCheckRunner(t)
+	r := newTestRepo(t)
+	pushedBase(r)
+	r.write("other.txt", "x\n")
+	r.git("add", ".")
+	r.git("commit", "-q", "-m", "grow a file")
+	r.git("branch", "other", "HEAD~1")
+	if err := os.WriteFile(f.budgetFail, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out := r.git("push", "origin", "other")
+
+	if f.calls(t) != "" {
+		t.Errorf("the hook ran checks for a commit that isn't checked out:\n%s", f.calls(t))
+	}
+	if !strings.Contains(out, "isn't checked out") {
+		t.Errorf("the push doesn't say the checks were skipped:\n%s", out)
+	}
+}
+
+// A new remote branch has no remote tip to diff against, so the range is what the
+// push adds over every remote-tracking ref.
+func TestPrePushReadsANewBranchRangeAgainstTheRemote(t *testing.T) {
+	f := useFakeCheckRunner(t)
+	r := newTestRepo(t)
+	pushedBase(r)
+	r.git("checkout", "-q", "-b", "feature")
+	r.write("other.txt", "x\n")
+	r.git("add", ".")
+	r.git("commit", "-q", "-m", "unrelated")
+
+	r.git("push", "-q", "origin", "feature")
+	if strings.Contains(f.calls(t), "third-party-notices") {
+		t.Errorf("the hook regenerated the notices for a new branch that moved no lockfile:\n%s", f.calls(t))
+	}
+
+	r.write("Cargo.lock", "v2\n")
+	r.git("commit", "-q", "-am", "bump a crate")
+	if out, err := r.tryGit("push", "origin", "HEAD:refs/heads/feature-2"); err == nil {
+		t.Fatalf("a new branch with a lockfile change went through with stale notices:\n%s", out)
+	}
+}
+
+func TestPrePushLeavesADeletionAlone(t *testing.T) {
+	f := useFakeCheckRunner(t)
+	r := newTestRepo(t)
+	pushedBase(r)
+	r.git("push", "-q", "--no-verify", "origin", "HEAD:refs/heads/gone")
+	if err := os.WriteFile(f.budgetFail, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out := r.git("push", "origin", ":gone")
+
+	if f.calls(t) != "" {
+		t.Errorf("the hook ran checks for a deletion:\n%s", f.calls(t))
+	}
+	if strings.Contains(out, "skipped") {
+		t.Errorf("a deletion printed a skip notice:\n%s", out)
+	}
+}
+
 // The budget scanners read files on disk, so uncommitted or untracked work would
 // stand in for the pushed commit. The hook skips them then, and CI stays the gate.
 func TestPrePushSkipsTheBudgetsOnADirtyTree(t *testing.T) {

@@ -48,6 +48,12 @@ func (r repo) paths(args ...string) ([]string, error) {
 	return splitNul(out), nil
 }
 
+// hasCommit reports whether this clone has the commit a sha names.
+func (r repo) hasCommit(sha string) bool {
+	_, err := r.git("cat-file", "-e", sha+"^{commit}")
+	return err == nil
+}
+
 // gitPath resolves a name inside this worktree's own git directory, which for a
 // linked worktree is not `<root>/.git`.
 func (r repo) gitPath(name string) (string, error) {
