@@ -1301,11 +1301,12 @@
       "name": "the name the file had before the rename"
     }
   },
-  "fileExplorer.rename.stillRenamingAndOthers": "Still renaming “{name}” and {others, plural, one {one other file} other {{othersText} other files}}. The volume is slow to answer.",
+  "fileExplorer.rename.stillRenamingAndOthers": "Still renaming “{name}” and {kind, select, folders {{others, plural, one {one other folder} other {{othersText} other folders}}} files {{others, plural, one {one other file} other {{othersText} other files}}} other {{others, plural, other {{othersText} other files and folders}}}}. The volume is slow to answer.",
   "@fileExplorer.rename.stillRenamingAndOthers": {
-    "description": "Toast shown when SEVERAL renames are still running on a slow volume (a network share or phone), which happens when the user renames a run of files by pressing the up/down arrow inside the inline rename editor. It is the same single toast as fileExplorer.rename.stillRenaming, rewritten as renames start and finish, so a long run can’t bury the user in toasts; it goes away once they've all finished. {name} is the name the most recent file had before its rename, shown in quotes. {othersText} is how many OTHER renames are still running, already formatted for display; it is always 1 or more.",
+    "description": "Toast shown when SEVERAL renames are still running on a slow volume (a network share or phone), which happens when the user renames a run of files or folders by pressing the up/down arrow inside the inline rename editor. It is the same single toast as fileExplorer.rename.stillRenaming, rewritten as renames start and finish, so a long run can’t bury the user in toasts; it goes away once they've all finished. {name} is the name the most recent file or folder had before its rename, shown in quotes. {othersText} is how many OTHER renames are still running, already formatted for display; it is always 1 or more. {kind} says what those other renames are: 'folders' when they're all folders, 'files' when they're all files, and anything else (the third branch) when they're a mix of files and folders, which always means two or more.",
     "placeholders": {
-      "name": "the name the most recent file had before its rename",
+      "name": "the name the most recent file or folder had before its rename",
+      "kind": "what the other renames are: folders, files, or a mix (the last branch)",
       "othersText": "how many other renames are still running, already formatted for display",
       "others": "the same number of other renames (drives the singular/plural form)"
     }

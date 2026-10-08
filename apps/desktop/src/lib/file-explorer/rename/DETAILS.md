@@ -272,9 +272,10 @@ count. All three ways a chained name gets dropped go through it: the keypress-ti
 
 A `still-renaming` gets a SECOND running toast of its own (`stillRenaming` / `stillRenamingAndOthers`), never a place in
 the first: the rename may well land, and saying the file kept its name would be a lie. It counts what's still running,
-so it shrinks as renames settle and goes once none is left (`stillRenaming` hands back the call that takes one off). A
-rename that ends refused moves into the kept-names toast with the volume's reason; one that lands says nothing more,
-since the listing already shows it.
+so it shrinks as renames settle and goes once none is left (`stillRenaming` hands back the call that takes one off).
+Each entry carries the target's `isDirectory`, so the count reads "other folders", "other files", or "other files and
+folders" by what the OTHER running renames are (the `kind` select). A rename that ends refused moves into the kept-names
+toast with the volume's reason; one that lands says nothing more, since the listing already shows it.
 
 Two properties of the toast store force that shape, and both fail silently:
 

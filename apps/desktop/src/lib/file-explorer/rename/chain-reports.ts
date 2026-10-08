@@ -18,9 +18,23 @@ import { addToastForPane, dismissToast, type ToastOriginPane } from '$lib/ui/toa
 import { tString } from '$lib/intl/messages.svelte'
 import { formatInteger } from '$lib/intl/number-format'
 
+/** A rename the slow volume is still working on (a rename target fits as is). */
+export interface StillRenamingEntry {
+  /** The name it had before the rename. */
+  originalName: string
+  isDirectory: boolean
+}
+
 export interface ChainReportsDeps {
   /** Owning pane, so the reports stay pane-scoped. */
   paneId: ToastOriginPane
+}
+
+/** What the toast calls a group of renames: the `kind` select in `stillRenamingAndOthers`. */
+function kindOf(entries: StillRenamingEntry[]): 'folders' | 'files' | 'mixed' {
+  if (entries.every((e) => e.isDirectory)) return 'folders'
+  if (entries.every((e) => !e.isDirectory)) return 'files'
+  return 'mixed'
 }
 
 export function createChainReports(deps: ChainReportsDeps) {
@@ -32,7 +46,7 @@ export function createChainReports(deps: ChainReportsDeps) {
   const stillRenamingToastId = `rename-still-renaming-${deps.paneId}`
   // The renames the toast counts, oldest first, each by its own token so two
   // renames of same-named files settle independently.
-  let stillRenaming: { name: string }[] = []
+  let stillRenaming: StillRenamingEntry[] = []
   // Whether that toast is on screen. Dismissing it is the user saying they've
   // read it: the renames run on, but their settles don't bring it back.
   let stillRenamingShown = false
@@ -44,14 +58,15 @@ export function createChainReports(deps: ChainReportsDeps) {
       return
     }
     const newest = stillRenaming[stillRenaming.length - 1]
-    const others = stillRenaming.length - 1
+    const others = stillRenaming.slice(0, -1)
     const content =
-      others === 0
-        ? tString('fileExplorer.rename.stillRenaming', { name: newest.name })
+      others.length === 0
+        ? tString('fileExplorer.rename.stillRenaming', { name: newest.originalName })
         : tString('fileExplorer.rename.stillRenamingAndOthers', {
-            name: newest.name,
-            others,
-            othersText: formatInteger(others),
+            name: newest.originalName,
+            kind: kindOf(others),
+            others: others.length,
+            othersText: formatInteger(others.length),
           })
     addToastForPane(deps.paneId, content, {
       level: 'info',
@@ -99,17 +114,17 @@ export function createChainReports(deps: ChainReportsDeps) {
     },
 
     /**
-     * Says a slow volume is still renaming `name` (its name before the rename)
-     * until `settled` resolves, and hands `settled` back for the caller to
-     * report how it ended.
+     * Says a slow volume is still renaming `target` until `settled` resolves,
+     * and hands `settled` back for the caller to report how it ended.
      *
      * A slow rename is NOT a refusal: it may well land. So this never says the
      * file kept its name, and stays a separate message from `keptName` however
      * tempting the shared shape looks. The toast only counts what's still
      * running, and goes once nothing is.
      */
-    stillRenaming<T>(name: string, settled: Promise<T>): Promise<T> {
-      const entry = { name }
+    stillRenaming<T>(target: StillRenamingEntry, settled: Promise<T>): Promise<T> {
+      // A copy, so it's this rename's own token even if the caller reuses the object.
+      const entry = { originalName: target.originalName, isDirectory: target.isDirectory }
       stillRenaming.push(entry)
       showStillRenaming()
       return settled.finally(() => {

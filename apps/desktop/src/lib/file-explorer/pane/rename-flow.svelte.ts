@@ -382,7 +382,7 @@ export function createRenameFlow(deps: RenameFlowDeps) {
         break
       case 'still-renaming':
         // Counted in the running toast; its end is reported like any superseded save's.
-        void chainReports.stillRenaming(target.originalName, result.settled).then((end) => {
+        void chainReports.stillRenaming(target, result.settled).then((end) => {
           reportSupersededResult(end, target, trimmedName)
         })
         break
