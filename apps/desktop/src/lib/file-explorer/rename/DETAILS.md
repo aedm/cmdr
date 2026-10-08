@@ -23,10 +23,12 @@ Depth and rationale for inline rename. `CLAUDE.md` holds the must-knows.
 
 `RenameResult` variants: `noop`, `error`, `still-renaming`, `extension-ask`, `conflict`, `success`, `confirm-move`.
 
-1. **Extension check**: if `extensionPolicy === 'ask'` and extensions differ meaningfully
-   (`extensionsDifferMeaningfully()` from `filename-validation.ts`), return `{ type: 'extension-ask' }`; the caller
+1. **Extension check**: if `extensionPolicy === 'ask'` and the change needs confirming
+   (`extensionChangeNeedsConfirmation()` from `filename-validation.ts`), return `{ type: 'extension-ask' }`; the caller
    shows ExtensionChangeDialog. "Keep" retries with `skipExtensionCheck=true`. Case-only changes (`photo.JPG` →
-   `photo.jpg`) and known-equivalent changes (`.jpeg` → `.jpg`, `.md` → `.txt`) skip the dialog entirely.
+   `photo.jpg`), known-equivalent changes (`.jpeg` → `.jpg`, `.md` → `.txt`), and folders other than macOS packages
+   (`release.v1.2` → `release.v1.3`, but not `Cmdr.app` → `Cmdr.old`) skip the dialog entirely. The same rule decides
+   the "no" policy's red border.
 2. **Backend validity check**: `checkRenameValidity(parentPath, originalName, trimmedName)`. `valid: false` →
    `{ type: 'error' }`. `hasConflict: true, isCaseOnlyRename: false` → `{ type: 'conflict', validity }`.
    `hasConflict: true, isCaseOnlyRename: true` → proceed (same inode, just case). `hasConflict: false` → proceed.

@@ -19,7 +19,7 @@ Full details (save flow, validation tiers, cursor tracking, decisions): `DETAILS
 - **Same-name edit (`trimmedName === originalName`) is a cancel/no-op.** Don't emit a watcher event or refresh the pane;
   a whitespace-only edit would refresh for nothing.
 - **Case-only (`.JPG` → `.jpg`) and known-equivalent (`.jpeg` → `.jpg`, `.md` → `.txt`) extension changes count as no
-  change under every extension policy**: no dialog, no red border. What a policy does with a real one: `DETAILS.md`.
+  change under every extension policy**, as do non-package folders: no dialog, no red border. Details: `DETAILS.md`.
 - **Conflict detection on local FS compares `dev+ino` via `symlink_metadata()`, never `exists()`**: on case-insensitive
   APFS `readme.txt` → `README.txt` is the same file, which `exists()` would call a conflict.
 - **A slow rename is not a failure**: past the backend's deadline it's `still-renaming` and reports its real end later,

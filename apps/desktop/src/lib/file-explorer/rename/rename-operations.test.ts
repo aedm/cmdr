@@ -156,6 +156,35 @@ describe('a rename that copies', () => {
   })
 })
 
+describe('the extension question on save', () => {
+  beforeEach(() => {
+    checkRenameValiditySpy.mockResolvedValue({ valid: true, error: null, hasConflict: false, isCaseOnlyRename: false })
+    renameFileSpy.mockResolvedValue(undefined)
+  })
+
+  it('asks before a file changes its extension', async () => {
+    const result = await executeRenameSave(FILE, 'notes.json', 'ask')
+
+    expect(result).toEqual({ type: 'extension-ask', oldExtension: 'txt', newExtension: 'json' })
+  })
+
+  it("doesn't ask for a folder: the part after its dot is only a name", async () => {
+    const folder: RenameTarget = { ...FOLDER, path: '/dir/release.v1.2', originalName: 'release.v1.2' }
+
+    const result = await executeRenameSave(folder, 'release.v1.3', 'ask')
+
+    expect(result.type).not.toBe('extension-ask')
+  })
+
+  it('still asks before a macOS package folder loses its extension', async () => {
+    const app: RenameTarget = { ...FOLDER, path: '/dir/Cmdr.app', originalName: 'Cmdr.app' }
+
+    const result = await executeRenameSave(app, 'Cmdr.old', 'ask')
+
+    expect(result).toEqual({ type: 'extension-ask', oldExtension: 'app', newExtension: 'old' })
+  })
+})
+
 describe('a rename on a slow volume', () => {
   /** A `renameFile` that says it's still running, then waits until the test ends it. */
   function slowRename() {

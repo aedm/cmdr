@@ -132,15 +132,50 @@ export function extensionsDifferMeaningfully(oldName: string, newName: string): 
   return oldGroup === undefined || oldGroup !== EXTENSION_TO_GROUP.get(newExt)
 }
 
+/**
+ * Folder extensions that make macOS treat the folder as a package (one opaque item in Finder).
+ * Lowercase, no leading dot. Hand-kept until the backend reports packages itself (issue #385).
+ */
+const PACKAGE_EXTENSIONS: ReadonlySet<string> = new Set([
+  'app',
+  'appex',
+  'bundle',
+  'component',
+  'framework',
+  'kext',
+  'mdimporter',
+  'photoslibrary',
+  'pkg',
+  'plugin',
+  'prefpane',
+  'qlgenerator',
+  'rtfd',
+  'saver',
+  'xcodeproj',
+  'xcworkspace',
+])
+
+/**
+ * True if renaming `oldName` to `newName` changes the extension enough to confirm.
+ * For a folder, the part after a dot is usually just part of its name (`release.v1.2`), so a
+ * folder only counts when the change makes it stop or start being a macOS package (`Cmdr.app`).
+ */
+export function extensionChangeNeedsConfirmation(oldName: string, newName: string, isDirectory: boolean): boolean {
+  if (!extensionsDifferMeaningfully(oldName, newName)) return false
+  if (!isDirectory) return true
+  return PACKAGE_EXTENSIONS.has(normalizedExt(oldName)) || PACKAGE_EXTENSIONS.has(normalizedExt(newName.trim()))
+}
+
 /** Validates extension change against the user's preference. */
 export function validateExtensionChange(
   oldName: string,
   newName: string,
   allowExtensionChanges: 'yes' | 'no' | 'ask',
+  isDirectory = false,
 ): ValidationResult {
   if (allowExtensionChanges === 'yes') return OK_RESULT
 
-  if (!extensionsDifferMeaningfully(oldName, newName)) return OK_RESULT
+  if (!extensionChangeNeedsConfirmation(oldName, newName, isDirectory)) return OK_RESULT
 
   if (allowExtensionChanges === 'no') {
     const oldExt = getExtension(oldName)
@@ -228,6 +263,7 @@ export function validateFilename(
   parentPath: string,
   siblingNames: string[],
   allowExtensionChanges: 'yes' | 'no' | 'ask',
+  isDirectory = false,
 ): ValidationResult {
   const trimmed = newName.trim()
 
@@ -244,7 +280,7 @@ export function validateFilename(
   const pathLen = validatePathLength(parentPath, newName)
   if (pathLen.severity === 'error') return pathLen
 
-  const extCheck = validateExtensionChange(originalName, newName, allowExtensionChanges)
+  const extCheck = validateExtensionChange(originalName, newName, allowExtensionChanges, isDirectory)
   if (extCheck.severity === 'error') return extCheck
 
   // Warning checks

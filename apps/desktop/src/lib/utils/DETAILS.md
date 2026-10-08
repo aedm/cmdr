@@ -45,8 +45,12 @@ interface ValidationResult {
 Extension-change behavior is controlled by the `allowExtensionChanges` user setting (`yes`/`no`/`ask`). `'ask'` returns
 `ok` at validation time; the save dialog handles it separately. `extensionsDifferMeaningfully(oldName, newName)` gates
 that confirmation so users aren't pestered over case-only changes (`.JPG` → `.jpg`) or known equivalents (`.jpeg` →
-`.jpg`, `.md` → `.txt`); add an alias by extending `EQUIVALENT_EXTENSION_GROUPS` in the same file. It backs both
-`validateExtensionChange` and the rename save flow's "ask" gate.
+`.jpg`, `.md` → `.txt`); add an alias by extending `EQUIVALENT_EXTENSION_GROUPS` in the same file.
+`extensionChangeNeedsConfirmation(oldName, newName, isDirectory)` wraps it and backs both `validateExtensionChange` and
+the rename save flow's "ask" gate. For a folder, a dot is usually just part of the name (`release.v1.2`), so a folder
+only counts when the old or new extension is in `PACKAGE_EXTENSIONS` (`.app`, `.bundle`, `.photoslibrary`, …): those
+make macOS show the folder as one opaque item, and dropping the extension turns an app into a plain folder. The list is
+hand-kept until the backend reports packages itself (issue #385).
 
 ## confirm-dialog.ts
 

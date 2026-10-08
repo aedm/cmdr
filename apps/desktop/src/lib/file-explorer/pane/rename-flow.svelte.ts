@@ -197,6 +197,7 @@ export function createRenameFlow(deps: RenameFlowDeps) {
         deps.getCurrentPath(),
         siblingNames.names,
         effectiveExtensionPolicy(),
+        entry.isDirectory,
       )
       rename.setValidation(result)
     }
@@ -592,6 +593,7 @@ export function createRenameFlow(deps: RenameFlowDeps) {
         deps.getCurrentPath(),
         siblingNames.names,
         extensionPolicy,
+        rename.target?.isDirectory ?? false,
       )
       rename.setValidation(result)
     },

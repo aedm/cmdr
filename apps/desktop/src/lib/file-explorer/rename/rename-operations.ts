@@ -4,7 +4,7 @@
  * except for the actual backend calls which are awaited.
  */
 
-import { extensionsDifferMeaningfully, getExtension } from '$lib/utils/filename-validation'
+import { extensionChangeNeedsConfirmation, getExtension } from '$lib/utils/filename-validation'
 import { tString } from '$lib/intl/messages.svelte'
 
 export interface ConflictFileInfo {
@@ -86,11 +86,11 @@ export async function executeRenameSave(
     return { type: 'noop' }
   }
 
-  // Check extension change (case-only and known-equivalent changes are silently allowed)
+  // Check extension change (case-only, known-equivalent, and non-package folder changes are silently allowed)
   if (
     !skipExtensionCheck &&
     extensionPolicy === 'ask' &&
-    extensionsDifferMeaningfully(target.originalName, trimmedName)
+    extensionChangeNeedsConfirmation(target.originalName, trimmedName, target.isDirectory)
   ) {
     return {
       type: 'extension-ask',
