@@ -99,7 +99,7 @@ fn cleanup_macos_menus_inner<R: Runtime>(app: &AppHandle<R>) {
 /// none of our IDs, and their titles are AppKit's own copy, localized to the SYSTEM language: an
 /// English title match finds nothing on a Swedish Mac and every one of them survives. The
 /// identifier is AppKit's API identity and doesn't move. Our own items carry AppKit's default (the
-/// action selector name): `fireMenuItemAction:` for muda items, `undo:` / `redo:` for the two
+/// action selector name): `customAction:` for muda 0.20 items, `undo:` / `redo:` for the two
 /// predefined ones, so none of these collide. The two underscore-prefixed names are private, which
 /// is the tradeoff: still a better key than copy that changes by design.
 /// (Verified on macOS 26.5.2, reading `identifier` off every Edit item at startup, 2026-08-19.)

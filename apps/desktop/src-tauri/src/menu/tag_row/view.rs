@@ -173,9 +173,10 @@ impl TagRowView {
     /// closes the menu. Answers whether the item's action was sent.
     ///
     /// ❗ Reads the action and target off the item NOW and sends synchronously. The selector
-    /// is muda's business (`fireMenuItemAction:` today, `customAction:` in newer muda), and
-    /// on the muda we ship the item's ivar points into a `MenuChild` that is freed once
-    /// `show_file_context_menu` returns, so a deferred send would read freed memory.
+    /// is muda's business (`customAction:` in muda 0.20, `fireMenuItemAction:` in 0.19), so
+    /// it's never hardcoded. Sending inside the tracking loop keeps the row independent of
+    /// how long muda keeps the item's owner alive: 0.19's ivar pointed into a `MenuChild`
+    /// freed once `show_file_context_menu` returned, so a deferred send read freed memory.
     pub(super) fn press(&self, index: usize) -> bool {
         let Some(item) = self.ivars().items.borrow().get(index).and_then(Weak::load) else {
             return false;

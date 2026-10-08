@@ -19,7 +19,7 @@
 //! ❗ Every accelerator here is a string muda parses, and a token it doesn't know is DISCARDED
 //! rather than reported (`tauri::menu::MenuItem::new` is `.parse().ok()`), so the item comes up
 //! with no key at all and nothing says a word. muda's modifier vocabulary is `OPTION`/`ALT`,
-//! `CONTROL`/`CTRL`, `COMMAND`/`CMD`/`SUPER`, `SHIFT` (`muda-0.19.3/src/accelerator.rs:534`): ❌
+//! `CONTROL`/`CTRL`, `COMMAND`/`CMD`/`SUPER`, `SHIFT` (`muda-0.20.0/src/accelerator/mod.rs:249`): ❌
 //! never `Opt`, which cost Copy path and Show in Finder their accelerators in every release until
 //! 2026-09-16. `accelerators.rs` guards its own output with a real parse.
 //!

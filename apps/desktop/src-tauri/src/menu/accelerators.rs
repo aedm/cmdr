@@ -52,8 +52,8 @@ pub fn frontend_shortcut_to_accelerator(shortcut: &str) -> Option<String> {
     }
 }
 
-/// The punctuation muda names a physical key for, verbatim from `parse_code`
-/// (`muda-0.19.3/src/accelerator.rs:151`). ASCII letters and digits are the rest of it.
+/// The punctuation muda names a physical key for, verbatim from `parse_named_code`
+/// (`muda-0.20.0/src/accelerator/mod.rs:278`). ASCII letters and digits are the rest of it.
 const CODEABLE_PUNCTUATION: &str = "`\\[],=-./';";
 
 /// Whether muda can turn this key into a `Code`, which decides whether an accelerator naming
@@ -110,7 +110,7 @@ fn convert(shortcut: &str) -> Option<(String, bool)> {
                     result.push('+');
                 }
                 // ❗ `Alt`, ❌ never `Opt`: muda accepts `OPTION` and `ALT` and nothing else
-                // (`muda-0.19.3/src/accelerator.rs:534`), and Tauri throws the parse error away
+                // (`muda-0.20.0/src/accelerator/mod.rs:249`), and Tauri throws the parse error away
                 // (`normal.rs:65` is `.parse().ok()`), so `Opt` built items with NO accelerator at
                 // all, silently. `an_accelerator_muda_refuses_is_dropped_without_a_word` guards it.
                 result.push_str("Alt");
@@ -370,7 +370,7 @@ mod tests {
     /// comparing it to a string we made up.
     ///
     /// Everything downstream throws a parse failure away. `tauri::menu::MenuItem::new` is
-    /// `accelerator.and_then(|s| s.as_ref().parse().ok())` (`tauri-2.11.5/src/menu/normal.rs:65`),
+    /// `accelerator.and_then(|s| s.as_ref().parse().ok())` (`tauri-2.12.1/src/menu/normal.rs:65`),
     /// so a token muda doesn't know builds an item with no key at all, with no error, no panic and
     /// no log line. `Opt` was exactly that: every ⌥ accelerator in the app — Copy path, Show in
     /// Finder, Open terminal here, and any ⌥ combo a user rebound to — silently had none, while a

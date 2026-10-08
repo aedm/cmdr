@@ -17,26 +17,6 @@ reason = "rsa (Marvin attack: private-key timing side channel, no patched versio
 id = "RUSTSEC-2026-0192"
 reason = "ttf-parser is unmaintained (notice only, no known vulnerability): pulled in by lopdf 0.42 under pdf-extract (the AI agent's PDF text reader), whose latest release still pins lopdf ^0.42. lopdf 0.45 swapped it for skrifa, so this goes away when pdf-extract moves up."
 
-[[IgnoredVulns]]
-id = "RUSTSEC-2025-0075"
-reason = "unic-char-range is unmaintained (notice only, no known vulnerability): pulled in by tauri-utils 2.9 via urlpattern 0.3, for Tauri's capability URL matching. tauri-utils 2.10 (Tauri 2.12) moves to urlpattern 0.6, which drops the whole unic-* family; remove these five entries on that bump."
-
-[[IgnoredVulns]]
-id = "RUSTSEC-2025-0080"
-reason = "unic-common is unmaintained (notice only, no known vulnerability): same tauri-utils 2.9 -> urlpattern 0.3 path as RUSTSEC-2025-0075, gone with Tauri 2.12."
-
-[[IgnoredVulns]]
-id = "RUSTSEC-2025-0081"
-reason = "unic-char-property is unmaintained (notice only, no known vulnerability): same tauri-utils 2.9 -> urlpattern 0.3 path as RUSTSEC-2025-0075, gone with Tauri 2.12."
-
-[[IgnoredVulns]]
-id = "RUSTSEC-2025-0098"
-reason = "unic-ucd-version is unmaintained (notice only, no known vulnerability): same tauri-utils 2.9 -> urlpattern 0.3 path as RUSTSEC-2025-0075, gone with Tauri 2.12."
-
-[[IgnoredVulns]]
-id = "RUSTSEC-2025-0100"
-reason = "unic-ucd-ident is unmaintained (notice only, no known vulnerability): same tauri-utils 2.9 -> urlpattern 0.3 path as RUSTSEC-2025-0075, gone with Tauri 2.12."
-
 # --- Rust: can't reach the shipped app ---
 
 [[IgnoredVulns]]

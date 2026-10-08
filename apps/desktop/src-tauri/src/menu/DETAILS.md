@@ -340,9 +340,9 @@ is a layout question, and guessing wrong binds something else. It routes to the 
 the glyph shows and the frontend's keydown dispatch runs the command.
 
 ❗ **Both refusals exist because the failure they prevent is SILENT.** `tauri::menu::MenuItem::new` is
-`accelerator.and_then(|s| s.as_ref().parse().ok())` (`tauri-2.11.5/src/menu/normal.rs:65`): a string muda rejects is
+`accelerator.and_then(|s| s.as_ref().parse().ok())` (`tauri-2.12.1/src/menu/normal.rs:65`): a string muda rejects is
 discarded and the item is built with no accelerator at all — no error, no panic, no log line, indistinguishable from a
-command nobody bound. `Opt` (muda accepts `OPTION` and `ALT` only, `muda-0.19.3/src/accelerator.rs:534`) cost Copy path,
+command nobody bound. `Opt` (muda accepts `OPTION` and `ALT` only, `muda-0.20.0/src/accelerator/mod.rs:249`) cost Copy path,
 Show in Finder and every rebound ⌥ combo their menu keys for the app's whole life, and `Cmd+Plus` cost Zoom in its own,
 while green unit tests compared the output to strings we had made up. So `accelerators.rs` now PARSES what it emits, and
 a second test parses every accelerator `MENU_BAR` hardcodes. ❗ Keep both: a string comparison cannot see this class of
@@ -636,7 +636,7 @@ localizes them to the system language, so an English title match strips nothing 
 every injected item survives. Two of the four identifiers are private (`_NS…`), which is the price.
 
 Measured on macOS 26.5.2 (2026-08-19), reading every Edit item at startup: our own items carry
-AppKit's default identifier, the action selector name (`fireMenuItemAction:` for muda items, `undo:`
+AppKit's default identifier, the action selector name (`customAction:` for muda 0.20 items, `undo:`
 / `redo:` for the predefined pair), so nothing of ours collides. macOS injects duplicates (two "Start
 Dictation…", three "Emoji & Symbols"), which is why the removal loop takes every match rather than
 the first.
@@ -714,7 +714,8 @@ What a late answer may change is set by three limits, all verified with a standa
 (2026-09-24, screenshots while the menu was open):
 
 - **❗ muda holds the context menu itself borrowed for the whole popup** (`Menu::show_context_menu_for_nsview` takes
-  `borrow_mut()` around the blocking `popUpMenuPositioningItem`). `Menu::append`, `insert`, and even `ns_menu()` panic
+  `borrow_mut()` around the blocking `popUpMenuPositioningItem`; still so in muda 0.20.0, `items/menu.rs:643`, read
+  2026-10-08). `Menu::append`, `insert`, and even `ns_menu()` panic
   with "RefCell already borrowed" while it's up. Submenus and single items have their own cells and change freely, and
   AppKit redraws both live, the open submenu included. So ❌ no late code touches the top-level `Menu`.
 - **AppKit keeps the highlight at the same row index**, so a row inserted above the highlighted one moves the highlight
@@ -731,6 +732,10 @@ What a late answer may change is set by three limits, all verified with a standa
 
 Smaller rules:
 
+- **muda fits the popup on-screen from the menu's size BEFORE tracking starts** (`fit_anchor` over `ns_menu.size()`,
+  `muda-0.20.0/src/platform_impl/macos/mod.rs:1170`, read 2026-10-08). That size still counts the seven tag items and
+  the `SlotGroup` rows the tracking hook then collapses or hides, so near the bottom screen edge the menu can open a
+  little higher than its final height needs.
 - **A late empty `Share` says "No share options"** inside the submenu instead of removing it: the item is in the context
   menu, which can't change while it's up, and hiding it would move every row below it.
 - **The File Provider group has `PENDING_SLOTS` (12) slots**, titled with an invisible U+2063 plus their ID so the run
@@ -1003,8 +1008,9 @@ their behavior.
 **Why**: Tauri has no custom-view menu item, and a hand-built one would sit outside muda's bookkeeping and
 `handle_menu_event`'s routing. Keeping the items keeps the IDs, the handler, the right-clicked-selection semantics, and
 a working fallback; the row changes only the look. The click reads `action` and `target` at click time because the
-selector is muda's (`fireMenuItemAction:` in 0.19.3, `customAction:` in 0.20), and sends synchronously because 0.19.3's
-item ivar points into a `MenuChild` freed when `show_file_context_menu` returns.
+selector is muda's (`customAction:` in 0.20, `fireMenuItemAction:` in 0.19), and sends synchronously inside the tracking
+loop so it never depends on how long muda keeps the item's owner alive: 0.19's item ivar pointed into a `MenuChild`
+freed when `show_file_context_menu` returned (0.20 holds an `Rc` to it).
 
 ## Platform differences
 

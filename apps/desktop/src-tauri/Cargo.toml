@@ -106,8 +106,8 @@ tauri-plugin-dialog = "2.6"
 tauri-plugin-notification = "2.3.3"
 # Global system-wide keyboard shortcut (default ⌃⌥⌘J for "reveal latest download"). On
 # macOS, the plugin uses Carbon's `RegisterEventHotKey` so it needs no extra TCC grant
-# (Accessibility/Input Monitoring not required). Pinned at 2.3.2 (published 2026-05-28).
-tauri-plugin-global-shortcut = "=2.3.2"
+# (Accessibility/Input Monitoring not required). Pinned at 2.4.0 (published 2026-09-26).
+tauri-plugin-global-shortcut = "=2.4.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 notify = "8"
@@ -447,9 +447,11 @@ tauri = { version = "2", features = ["test"] }
 # token muda rejects. One was: `Opt` cost every ⌥ accelerator in the app until 2026-09-16.
 # No new package in the graph: cargo unifies this with the copy Tauri already resolves.
 # ❗ `default-features = false` is load-bearing, not tidiness: muda's defaults turn on `libxdo`,
-# whose `libxdo` + `libxdo-sys` crates Tauri deliberately leaves off (`tauri-2.11.5/Cargo.toml:344`)
+# whose `libxdo` + `libxdo-sys` crates Tauri deliberately leaves off (`tauri-2.12.1/Cargo.toml:344`)
 # and which a parser test has no use for. With it on, this dev-dependency ADDS two packages.
-muda = { version = "0.19", default-features = false }
+# ❗ The minor must match Tauri's own `muda` requirement, or cargo resolves a SECOND muda just for
+# this test and the parser under test is no longer the one the app ships.
+muda = { version = "0.20", default-features = false }
 # `Bytes`, the chunk type the MTP upload cells feed a fake source stream with.
 # Dev-only now: the production upload path moved into `cmdr-mtp`, which declares
 # its own copy.
