@@ -378,6 +378,7 @@ slow-timeout = { period = "70s", terminate-after = 1 }
 # 2026-10-08), and under a saturated full suite they timed out together at 8 s on four days
 # (2026-08-13, 08-23, 09-07, 09-09; check-runner `test-log.csv`). There's nothing in-process to
 # fake without dropping what they prove, the OS's own trash move, so they get headroom, not a group.
+# allowed-unmatched-nextest-filter: macos-only, the real-Trash tests only compile on macOS
 filter = '''
     test(test_move_to_trash_sync_)
   + test(trash_dir_for_path_matches_where_the_item_actually_landed)
