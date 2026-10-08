@@ -201,14 +201,14 @@
     "description": "Help text for the server tint. \"SMB\", \"SFTP\", \"WebDAV\", and \"S3\" are protocol names; keep them. A pane is one of the two file lists.",
     "screenshot": "settings-appearance.png"
   },
-  "settings.appearance.tintMtp.label": "Tint MTP panes",
+  "settings.appearance.tintMtp.label": "Tint device panes (MTP, ADB)",
   "@settings.appearance.tintMtp.label": {
-    "description": "Label for the color-tint picker applied to panes showing an MTP device. \"MTP\" is the USB device protocol name (used by Android phones, Kindles, cameras); keep it as-is.",
+    "description": "Label for the color-tint picker applied to panes showing a USB-connected device: a phone, Kindle, or camera. \"MTP\" and \"ADB\" are the two connection protocol names (MTP for phones, Kindles, and cameras; ADB for Android phones in developer mode); keep both as-is. Mirrors the server tint label's \"(SMB, SFTP, …)\" shape.",
     "screenshot": "settings-appearance.png"
   },
-  "settings.appearance.tintMtp.description": "Background tint applied to panes showing an Android, Kindle, or camera device.",
+  "settings.appearance.tintMtp.description": "Background tint applied to panes showing a phone, Kindle, or camera, whether it’s connected over MTP or ADB.",
   "@settings.appearance.tintMtp.description": {
-    "description": "Help text for the MTP tint. \"Kindle\" is a product name; keep it. These are USB-connected devices shown in a pane.",
+    "description": "Help text for the device tint. \"Kindle\" is a product name; keep it. \"MTP\" and \"ADB\" are protocol names; keep them. These are USB-connected devices shown in a pane, and one tint covers both connection kinds.",
     "screenshot": "settings-appearance.png"
   },
   "settings.appearance.textSize.label": "Text size",
